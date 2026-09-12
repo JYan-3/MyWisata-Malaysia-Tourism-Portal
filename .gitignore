@@ -1,0 +1,93 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# locally generated exports
+/output/
+
+# local PDF renders and other temporary workspace files
+/tmp/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# figma design reference screenshots (kept locally, not versioned)
+scripts/figma-screenshots/
+scripts/figma-screenshot.mjs
+
+# local Git worktrees
+.worktrees/
+
+# local-only docs and agent instructions (not shared with the team)
+/AGENTS.md
+/CLAUDE.md
+/docs/
+AGENTS.md
+
+# Lint / analysis output — never commit
+lint-results.json
+
+# Local agent reports, reviews, and scratch output
+/.superpowers/
+
+# Ignore local assets and temp files
+public/assets/
+supabase/.temp/
+scripts/__pycache__/
+
+# one-off diagnostic / debug scripts — not part of the codebase
+scripts/diag-*.mjs
+scripts/debug-*.mjs
+scripts/smoke-test.mjs
+
+# temporary ad-hoc upload / migration scripts created during dev sessions
+scripts/upload-*.ts
+scripts/update-*.ts
+scripts/combined-migration.sql
+scripts/disable-rls.sql.DO-NOT-RUN
+
+# screenshots captured during dev / QA — kept locally only
+scripts/screenshot-*.png
+
+# agent task reports and local work scratch docs
+work/
+design-qa.md
+structure.txt
+DARKMODE-A11Y-TEAM-AUDIT.md

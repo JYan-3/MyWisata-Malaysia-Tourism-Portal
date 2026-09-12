@@ -1,0 +1,463 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, CheckCircle, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
+import { useAuth } from "@/components/providers/auth";
+import { useCart } from "@/components/providers/cart";
+import { unitPrice } from "@/backend/core/helpers";
+import { AiTag } from "@/components/customer/ai-tag";
+import { EmptyState } from "@/components/shared/empty-state";
+import { ShareButton } from "@/components/shared/share-button";
+import { Button } from "@/components/ui/button";
+import { ActivityReviews } from "@/components/customer/activity-reviews";
+import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
+import type { OutletChoice } from "@/backend/domains/catalogue";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import { getActivityCommerceMode, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
+import { outletShortName } from "@/lib/outlet-display";
+import { getPlaceActivityImage } from "@/lib/customer/place-activity";
+import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
+import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
+import { getDetailBody } from "./bodies";
+import { formatMYR } from "@/lib/i18n/format";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { ProductChatButton } from "@/components/customer/product-chat-button";
+
+export function ActivityDetailClient({
+  initialActivity,
+  initialSlots,
+  initialReviews,
+  outletChoices = [],
+}: {
+  initialActivity: ComputedActivity | null;
+  initialSlots: BookingSlot[];
+  initialReviews: ProductReview[];
+  /** Empty for a single-outlet product; otherwise every outlet selling it. */
+  outletChoices?: OutletChoice[];
+}) {
+  const { t } = useTranslation("customer");
+  const searchParams = useSearchParams();
+  const { currentUser } = useAuth();
+  const gate = useCustomerCapabilityGate();
+  const { addItem } = useCart();
+  const vendorDiscovery = searchParams.get("source") === "vendor";
+  const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
+  const outletSelectionRequired = shouldRequireOutletSelection(searchParams.get("source"), effectiveOutletCount);
+  const requestedOutletId = searchParams.get("outletId");
+  const initialOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
+    ? requestedOutletId
+    : initialActivity?.outletId ?? "";
+
+  const [activity] = useState<ComputedActivity | null>(initialActivity);
+  const [slots] = useState<BookingSlot[]>(initialSlots);
+  const [reviews] = useState<ProductReview[]>(initialReviews);
+  const [variantId, setVariantId] = useState<string>(initialActivity?.variants[0]?.id ?? "");
+  const [slotId, setSlotId] = useState<string>("");
+  const [qty, setQty] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  // Which outlet the customer is buying from. Price and stock are per-outlet,
+  // so this is required before the item can go in the cart.
+  const [outletId, setOutletId] = useState<string>(initialOutletId);
+
+  // §11.2.7 view signal: beacon dwell time on unmount (best-effort, ignored for guests).
+  useEffect(() => {
+    if (!activity || !currentUser) return;
+    const enteredAt = Date.now();
+    const productId = activity.id;
+    return () => {
+      const dwellMs = Date.now() - enteredAt;
+      const body = JSON.stringify({ event: "view", entityType: "product", entityId: productId, dwellMs });
+      // sendBeacon survives navigation; Blob keeps the JSON content-type.
+      navigator.sendBeacon?.("/api/interactions", new Blob([body], { type: "application/json" }));
+    };
+  }, [activity, currentUser]);
+
+  const selectedChoice = outletChoices.find((choice) => choice.outletId === outletId);
+  // Every outlet-scoped display (city, rating, verified badge, reviews…) reads
+  // from this, not from activity.outlet — activity.outlet is frozen to
+  // whichever outlet toComputed() picked (nearest, or cheapest), not the one
+  // the customer has selected on this page. Falls back to activity.outlet for
+  // the common single-outlet product, where outletChoices is empty.
+  const selectedOutlet = useMemo<OutletChoice | null>(() => {
+    if (selectedChoice) return selectedChoice;
+    if (!activity) return null;
+    return {
+      outletId: activity.outlet.id,
+      outletName: activity.outlet.name,
+      city: activity.outlet.city,
+      state: activity.outlet.state,
+      price: activity.price,
+      open: activity.outlet.open,
+      verified: activity.outlet.verified,
+      vendorId: activity.outlet.vendorId,
+      vendorName: activity.outlet.vendorName,
+      rating: activity.rating,
+      reviews: activity.reviews,
+    };
+  }, [activity, selectedChoice]);
+  // A trail can be a public place or a paid guide-led experience. Never expose
+  // commerce controls when the provider relationship is missing.
+  const placeBound = activity ? isPlaceBound(activity) : false;
+  const vendorBacked = activity ? getActivityCommerceMode(activity) === "vendor" : false;
+  const publicPlace = placeBound && !vendorBacked;
+  // Variant deltas are shared across outlets; only the base price differs.
+  const price = useMemo(() => {
+    if (!activity || publicPlace) return 0;
+    const base = unitPrice(activity, variantId);
+    return selectedChoice ? base - activity.price + selectedChoice.price : base;
+  }, [activity, publicPlace, variantId, selectedChoice]);
+  const selectedSlot = slots.find((s) => s.id === slotId);
+  const seatsLeft = selectedSlot ? selectedSlot.capacity - selectedSlot.booked : undefined;
+
+  // A slot switch can leave qty above the new slot's remaining seats — clamp down.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotId]);
+
+  const chips = useMemo(() => (activity ? getCategoryChips(activity, t) : []), [activity, t]);
+  // What varies by category lives in the body; everything around it is shared.
+  const body = getDetailBody(activity?.categorySlug);
+  const namesOutlet = activity ? !placeBound : true;
+  const returnTo = getCustomerReturnPath(searchParams.get("returnTo"));
+
+  if (activity === null) {
+    return <EmptyState title={t("ui.activity.notFound")} description={t("ui.activity.removed")} />;
+  }
+
+  async function handleAddToCart() {
+    if (adding) return; // double-submit guard
+    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
+    if (publicPlace) {
+      setAddError(t("ui.activity.noVendorBooking"));
+      return;
+    }
+    if (activity!.requiresBooking && !slotId) return;
+    // Sold at several outlets → the customer must pick one; price and stock
+    // belong to the outlet, not to the shared product.
+    if (effectiveOutletCount > 1 && !outletId) return;
+    if (!variantId && !slotId) {
+      setAddError(t("ui.activity.cartUnavailable"));
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    try {
+      await addItem({ activityId: activity!.id, variantId, slotId: slotId || undefined, outletId: outletId || activity!.outletId, qty });
+      setAdded(true);
+    } catch (error) {
+      setAdded(false);
+      setAddError(error instanceof Error && error.message === "cart_item_requires_variant_or_slot"
+        ? t("ui.activity.cartUnavailable")
+        : t("ui.activity.cartError"));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+
+  return (
+    // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
+    // only the reviews list scrolls internally; mobile keeps normal page scroll.
+    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
+      <div className="mb-4">
+        <Link href={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <ArrowLeft size={16} aria-hidden="true" /> {t("ui.actions.backToResults")}
+        </Link>
+      </div>
+
+      <div className="grid items-start gap-6 lg:h-full lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <div className="min-w-0 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
+      <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
+        {placeBound || activity.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={placeBound ? getPlaceActivityImage(activity) : activity.image!} alt={activity.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-secondary text-muted-foreground">
+            <ImageOff size={32} strokeWidth={1.5} aria-hidden="true" />
+          </div>
+        )}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
+        {activity.isHiddenGem && (
+          <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>
+            <Sparkles size={13} /> {t("ui.labels.hiddenGem")}
+          </div>
+        )}
+        {!placeBound && selectedOutlet!.verified && (
+          <div className="absolute bottom-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white bg-primary">
+            <CheckCircle size={13} /> {t("ui.labels.verifiedVendor")}
+          </div>
+        )}
+        {placeBound && (
+          <div className="absolute bottom-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white bg-[#163d69]">
+            <MapPin size={13} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience")}
+          </div>
+        )}
+      </div>
+
+      <section className="min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <div className="flex items-start justify-between gap-4 mb-4 flex-wrap shrink-0">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
+              {placeBound ? (
+                <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
+                  <MapPin size={14} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience")} · {[selectedOutlet!.city, selectedOutlet!.state].filter(Boolean).join(", ") || t("ui.labels.malaysia")}
+                  {vendorBacked && selectedOutlet!.vendorName ? <span className="font-normal text-muted-foreground">{t("ui.labels.guidedBy", { vendor: selectedOutlet!.vendorName })}</span> : null}
+                </p>
+              ) : vendorDiscovery ? (
+                <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
+                  <Store size={14} /> {t("ui.labels.offeredThrough", { vendor: selectedOutlet!.vendorName ?? t("ui.labels.localVendor") })}
+                </p>
+              ) : (
+                <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
+                  <Store size={14} /> {t("ui.labels.providedBy", { vendor: selectedOutlet!.vendorName ?? t("ui.labels.localVendor") })}
+                  {namesOutlet && (
+                    <>
+                      {" — "}{outletShortName(selectedOutlet!.outletName, selectedOutlet!.vendorName)} {t("ui.map.outlet")}
+                      <Link href={getOutletShopHref(selectedOutlet!.outletId)} className="underline underline-offset-2 hover:no-underline">
+                        {t("ui.actions.visitOutlet")}
+                      </Link>
+                    </>
+                  )}
+                </p>
+              )}
+              <div className="flex items-center gap-4 flex-wrap text-sm">
+                {outletSelectionRequired ? <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {t("strictMigration.activityDetail.availableAtOutlets", { count: effectiveOutletCount })}</div> : <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>}
+                {publicPlace ? <div className="font-semibold text-primary">{t("ui.labels.publicAccess")}</div> : <>
+                  <div className="flex items-center gap-1.5">
+                    <Star size={13} fill="var(--highlight-yellow)" stroke="none" />
+                    <span className="font-bold text-foreground">{selectedOutlet!.rating}</span>
+                    <span className="text-muted-foreground">{t("strictMigration.activityDetail.reviewCount", { count: selectedOutlet!.reviews })}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5" style={{ color: selectedOutlet!.open ? "var(--nature-green-ink)" : "#64748b" }}>
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedOutlet!.open ? "var(--nature-green)" : "#94a3b8" }} />
+                    {selectedOutlet!.open ? t("ui.labels.openNow") : t("ui.labels.currentlyClosed")}
+                  </div>
+                </>}
+              </div>
+        </div>
+      </div>
+
+      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+        <div className="shrink-0">
+          {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
+
+          <p className="text-sm leading-relaxed mb-6 text-foreground/80">{activity.description}</p>
+        </div>
+
+        <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+          <ActivityReviews productId={activity.id} outletId={selectedOutlet!.outletId} rating={selectedOutlet!.rating} totalReviews={selectedOutlet!.reviews} initialReviews={reviews} />
+        </div>
+      </div>
+
+      </section>
+      </div>
+
+      <aside className="lg:h-full lg:overflow-y-auto">
+        <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
+          <div className="mb-5 flex items-start justify-between gap-3 border-b border-border pb-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{t(body.panelKickerKey)}</p>
+              <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
+            </div>
+            <div className="text-right">
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">{formatMYR(price)}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
+            </div>
+          </div>
+
+           <div className="mb-4 flex items-center justify-between gap-2 border-b border-border pb-4 text-xs">
+             <span className="min-w-0 truncate text-muted-foreground">
+               {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
+               {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
+             </span>
+             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
+           </div>
+
+          {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : outletSelectionRequired ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
+            <p className="text-sm font-bold text-foreground">{t("ui.activity.chooseOutletContinue")}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("ui.activity.outletBookingDetails")}</p>
+            <div className="mt-4 flex flex-col gap-2">
+              {outletChoices.length > 0 ? outletChoices.map((choice) => (
+                <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
+                  <span className="min-w-0"><span className="block truncate text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="text-xs text-muted-foreground">{choice.city}{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</span></span>
+                  <span className="shrink-0 text-primary" aria-hidden="true">→</span>
+                </Link>
+              )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">{t("ui.cart.viewOutlet")} <span aria-hidden="true">→</span></Link>}
+            </div>
+          </div> : <>
+          {effectiveOutletCount > 1 && outletChoices.length > 0 && (
+            <div className="mb-4">
+              <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+                {t("strictMigration.activityDetail.availableAtChoose", { count: outletChoices.length })}
+              </label>
+              <div className="flex flex-col gap-2">
+                {outletChoices.map((choice) => {
+                  const selected = choice.outletId === outletId;
+                  return (
+                    <button
+                      key={choice.outletId}
+                      type="button"
+                      onClick={() => { setOutletId(choice.outletId); setAdded(false); }}
+                      aria-pressed={selected}
+                      className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors"
+                      style={{
+                        borderColor: selected ? "var(--primary)" : "var(--border)",
+                        backgroundColor: selected ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent",
+                      }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-foreground">{outletShortName(choice.outletName, choice.vendorName)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {choice.city}
+                          {!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
+                        {formatMYR(choice.price)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activity.variants.length > 1 && (
+            <div className="mb-4">
+            <label className="mb-2 block text-xs font-semibold text-muted-foreground">{t("ui.labels.package")}</label>
+              <div className="flex flex-wrap gap-2">
+                {activity.variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => { setVariantId(v.id); setAdded(false); }}
+                    aria-pressed={variantId === v.id}
+                    className="rounded-xl border px-3 py-2 text-xs font-semibold transition-colors"
+                    style={{
+                      borderColor: variantId === v.id ? "var(--primary)" : "var(--border)",
+                      backgroundColor: variantId === v.id ? "var(--primary)" : "transparent",
+                      color: variantId === v.id ? "white" : "var(--foreground)",
+                    }}
+                  >
+                        {v.label} {v.priceDelta !== 0 && `(${formatMYR(Math.abs(v.priceDelta))})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {body.Options && <body.Options activity={activity} slots={slots} slotId={slotId} onSlotChange={(nextSlotId) => { setSlotId(nextSlotId); setAdded(false); }} />}
+
+          <div className="mb-5 flex items-center justify-between rounded-2xl bg-muted px-3 py-2.5">
+            <label className="text-xs font-semibold text-muted-foreground">{t("ui.labels.quantity")}</label>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label={t("ui.activityDetail.decreaseQuantity")} className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
+              <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
+              <button
+                type="button"
+                onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
+                aria-label={t("ui.activityDetail.increaseQuantity")}
+                disabled={seatsLeft !== undefined && qty >= seatsLeft}
+                className="h-8 w-8 rounded-lg border border-border bg-card text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {seatsLeft !== undefined && <p className="-mt-3 mb-4 text-right text-[11px] text-muted-foreground">{t("ui.cart.seatsLeft", { count: seatsLeft })}</p>}
+           <Button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={adding || (activity.requiresBooking && !slotId)}
+            className="h-12 w-full rounded-full text-base"
+           >
+             {added ? t("ui.states.addedToCart") : activity.requiresBooking ? t("ui.actions.addBookingToCart") : t("ui.actions.addToCart")}
+           </Button>
+
+           {addError && <p role="alert" className="mt-3 rounded-2xl bg-destructive/10 p-3 text-center text-xs font-semibold text-destructive">{addError}</p>}
+
+           {added && (
+            <div role="status" aria-live="polite" className="mt-3 rounded-2xl bg-primary/5 p-3 text-center">
+              <p className="text-sm font-semibold text-primary">{t("ui.activity.addedPrompt")}</p>
+              <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs font-bold">
+                <Link href="/customer/cart" className="rounded-full bg-primary px-3 py-2 text-white">{t("ui.actions.viewCart")}</Link>
+                <Link href={returnTo} className="rounded-full border border-primary/20 px-3 py-2 text-primary">{t("ui.actions.continueExploring")}</Link>
+              </div>
+            </div>
+          )}
+
+          </>}
+          {!publicPlace && (
+            <div className="mt-3 flex justify-center">
+              <ShareButton
+                shareType="product"
+                contentId={activity.id}
+                title={activity.name}
+                leading={
+                  vendorBacked ? (
+                    <ProductChatButton
+                      outletId={selectedOutlet!.outletId}
+                      product={{ id: activity.id, name: activity.name, priceLabel: formatMYR(activity.price), imageUrl: activity.image ?? null }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-foreground transition hover:bg-secondary"
+                    >
+                      <MessageCircle size={18} />
+                    </ProductChatButton>
+                  ) : undefined
+                }
+              />
+            </div>
+          )}
+        </div>
+
+        {chips.length > 0 && (
+          <div className="mt-4 rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
+            <h2 className="mb-4 text-sm font-bold text-foreground">{t("ui.labels.details")}</h2>
+            <div className="space-y-3">
+              {chips.map((d) => {
+                const content = (
+                  <>
+                    <d.icon size={15} className="mt-0.5 shrink-0 text-teal" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{d.label}</p>
+                      <p className="text-sm font-semibold text-foreground">{d.value}</p>
+                    </div>
+                  </>
+                );
+                return d.href ? (
+                  <a key={d.label} href={d.href} className="flex items-start gap-2.5">{content}</a>
+                ) : (
+                  <div key={d.label} className="flex items-start gap-2.5">{content}</div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </aside>
+      </div>
+
+       {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
+            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{formatMYR(price * qty)}</p>
+          </div>
+          {added ? (
+            <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>
+          ) : (
+            <Button type="button" onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId)} className="h-11 flex-1 rounded-full">
+              {activity.requiresBooking ? t("ui.activityDetail.addBooking") : t("ui.actions.addToCart")}
+            </Button>
+          )}
+        </div>
+      </div>}
+    </div>
+  );
+}

@@ -1,0 +1,69 @@
+import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { outletShortName } from '@/lib/outlet-display';
+import { authorizeVendor } from '@/lib/vendor-authorization';
+
+interface Props { params: Promise<{ vendorId: string }> }
+
+export async function GET(request: Request, { params }: Props) {
+  const { vendorId } = await params;
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const service = access.access.serviceDb;
+  const url = new URL(request.url);
+  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
+  const rawQ = (url.searchParams.get('q') || '').trim().replace(/^#/, '');
+  const q = rawQ.replace(/[%(),]/g, ' ');
+  const status = url.searchParams.get('status');
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  const outletId = url.searchParams.get('outletId');
+  const productId = url.searchParams.get('productId');
+  const vendorOutletIds = access.access.outletIds;
+  const outletIds = outletId && vendorOutletIds.includes(outletId) ? [outletId] : vendorOutletIds;
+  if (!outletIds.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 }, stats: {} });
+
+  // Reservations are owned by order_items. Older bookings can reference a
+  // booking slot whose outlet was later rehomed, while the order item still
+  // retains the vendor/outlet that sold the reservation. Scope through the
+  // embedded order item so legacy and current bookings remain visible.
+  let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(product_name,quantity,line_total,slot_starts_at,product_id,vendor_id,outlet_id,products(name,cover_url),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' })
+    .eq('order_items.vendor_id', vendorId)
+    .in('order_items.outlet_id', outletIds);
+  if (productId) query = query.eq('order_items.product_id', productId);
+  if (from) query = query.gte('booking_slots.starts_at', from);
+  if (to) query = query.lte('booking_slots.starts_at', to);
+  if (status && status !== 'all') query = query.eq('status', status);
+
+  if (q) {
+    const [{ data: matchingUsers }, { data: matchingItems }, { data: bookingIds }] = await Promise.all([
+      service.from('users').select('id').or(`full_name.ilike.%${q}%,email.ilike.%${q}%`).limit(100),
+      service.from('order_items').select('id').eq('vendor_id', vendorId).in('outlet_id', vendorOutletIds).ilike('product_name', `%${q}%`).limit(100),
+      service.from('bookings').select('id').ilike('display_id', `%${q}%`).limit(100),
+    ]);
+    const userIds = (matchingUsers || []).map((item: { id: string }) => item.id);
+    const itemIds = (matchingItems || []).map((item: { id: string }) => item.id);
+    const matchingBookingIds = (bookingIds || []).map((item: { id: string }) => item.id);
+    const conditions = [];
+    if (userIds.length) conditions.push(`customer_id.in.(${userIds.join(',')})`);
+    if (itemIds.length) conditions.push(`order_item_id.in.(${itemIds.join(',')})`);
+    if (matchingBookingIds.length) conditions.push(`id.in.(${matchingBookingIds.join(',')})`);
+    if (!conditions.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 }, stats: {} });
+    query = query.or(conditions.join(','));
+  }
+
+  const { data, error, count } = await query.order('created_at', { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1);
+  if (error) return apiFail('DB_ERROR', error.message, 500);
+  const { data: statRows } = await service.from('bookings').select('status,order_items!inner(vendor_id,outlet_id)').eq('order_items.vendor_id', vendorId).in('order_items.outlet_id', vendorOutletIds);
+  const stats = (statRows || []).reduce((result: Record<string, number>, item: { status: string }) => {
+    result[item.status] = (result[item.status] || 0) + 1;
+    return result;
+  }, {});
+  const items = (data || []).map((booking: { users: unknown; order_items: unknown; booking_slots: unknown; [key: string]: unknown }) => ({
+    ...booking,
+    customer: Array.isArray(booking.users) ? booking.users[0] : booking.users,
+    orderItem: (() => { const item = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items; return item ? { ...item, outlets: item.outlets ? { ...item.outlets, full_name: item.outlets.name, name: outletShortName(item.outlets.name) } : item.outlets } : item; })(),
+    slot: (() => { const slot = Array.isArray(booking.booking_slots) ? booking.booking_slots[0] : booking.booking_slots; return slot ? { ...slot, outlets: slot.outlets ? { ...slot.outlets, full_name: slot.outlets.name, name: outletShortName(slot.outlets.name) } : slot.outlets } : slot; })(),
+  }));
+  return apiOk({ items, pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) }, stats });
+}

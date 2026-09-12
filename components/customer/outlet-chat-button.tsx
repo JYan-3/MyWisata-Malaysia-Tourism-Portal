@@ -1,0 +1,36 @@
+"use client";
+
+import { MessageCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { useSupportChat } from "@/components/providers/support-chat";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+
+export function OutletChatButton({ outletId }: { outletId: string }) {
+  const { t } = useTranslation("customer");
+  const gate = useCustomerCapabilityGate();
+  const { selectChat } = useSupportChat();
+
+  async function handleChat() {
+    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
+    const response = await fetch("/api/customer/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outletId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.data?.id) return;
+    selectChat({ kind: "vendor", threadId: payload.data.id });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleChat}
+      aria-label={t("ui.labels.contactViaChat")}
+      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary"
+    >
+      <MessageCircle size={15} aria-hidden="true" /> {t("ui.labels.contactViaChat")}
+    </button>
+  );
+}

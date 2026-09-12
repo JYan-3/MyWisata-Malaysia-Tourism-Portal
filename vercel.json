@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/wallet-maintenance",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/clear-affiliate-commissions",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/archive-chats",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/tng-mock-callbacks",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-toyyibpay-checkouts",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

@@ -1,0 +1,313 @@
+"use client";
+
+// P4 — Member 4: Share button. See CLAUDE.md Step 3, generalised per
+// CLAUDE-SHARE-SURFACES.md §12.1 to cover every shareable content type, not
+// just products. Same component, same sharing behaviour (native share sheet
+// + copy fallback, affiliate-code embedding, ?src= platform tagging,
+// share_events logging) — only what it points at changed.
+
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Share2, ImageDown } from "lucide-react";
+import { useAuth } from "@/components/providers/auth";
+import { createClient } from "@/lib/supabase/client";
+import { isAffiliateEligible } from "@/lib/affiliate/verification";
+import { useActionFeedback } from "@/components/providers/action-feedback";
+import { Button } from "@/components/ui/button";
+import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
+
+export type ShareType = "product" | "vendor" | "outlet" | "recommendation";
+
+interface ShareButtonProps {
+  shareType: ShareType;
+  contentId: string;
+  /** Used as the native share sheet's title. */
+  title: string;
+  /**
+   * The path segment for both the direct page URL and the affiliate
+   * redirect. Product shares can omit it — the component resolves the
+   * product's own slug (unchanged behaviour: Activity/ComputedActivity
+   * doesn't carry it — see resolveSlug below). Every other shareType has no
+   * shared "slug" table to look one up from generically, so callers must
+   * pass it themselves (outlets currently key by id, not a slug — see
+   * DIRECT_PATH).
+   */
+  slug?: string;
+  /**
+   * CLAUDE-SHARE-SURFACES.md Surface 3: listing cards need "an icon, not a
+   * big button" so a dense grid doesn't clutter up. Same sharing logic,
+   * different chrome — a small icon-only button (sized to match the
+   * existing wishlist heart icon) with feedback via the app's existing
+   * toast provider instead of inline status text, since a grid card has no
+   * room to reserve for it without causing layout shift.
+   */
+  compact?: boolean;
+  /**
+   * Forces plain-link behaviour regardless of the CURRENT USER's own
+   * affiliate eligibility — for shares where the viewer is the content's
+   * owner (e.g. a vendor sharing their own product on their products page).
+   * Without this, a vendor who also happens to carry an eligible
+   * verificationTier would get a real affiliate code embedded in a share of
+   * their OWN listing — a self-referral, not a normal share. Skips
+   * /api/affiliate/link entirely and never calls logShare() — no
+   * share_events row at all, not even a plain-link one.
+   */
+  plainOnly?: boolean;
+  /** Optional action(s) rendered in the same button row prior to the share actions. */
+  leading?: React.ReactNode;
+}
+
+// CLAUDE-SHARE-SURFACES.md Surface 4 (not yet built — see lib/affiliate/redirect.ts):
+// the redirect still only resolves product slugs today. A vendor/outlet/
+// recommendation share already logs correctly and still sets the
+// attribution cookie, but until the redirect learns the `type` param it
+// falls back to /customer/explore instead of landing on the right page.
+const DIRECT_PATH: Record<ShareType, (id: string) => string> = {
+  product: (id) => `/customer/activity/${id}`,
+  vendor: (id) => `/customer/vendor/${id}`,
+  outlet: (id) => `/customer/outlet/${id}`,
+  // No per-post detail route exists yet (Member 3's recommendations page is
+  // list-only) — points at the list until one exists.
+  recommendation: () => `/customer/recommendations`,
+};
+
+type ShareStatus = "idle" | "working" | "shared" | "copied" | "error";
+type ImageShareStatus = "idle" | "working" | "shared" | "downloaded" | "error";
+type SharePlatform = "native" | "copy_link" | "image_share" | "image_download";
+
+// CLAUDE-SHARE-IMAGE.md §12.2.3: /api/share-image/[type]/[id] only knows
+// product/vendor/outlet (real listing data to render) — there's no image for
+// a recommendation post, so that shareType has no "Share as image" button.
+const SHARE_IMAGE_TYPES: Partial<Record<ShareType, "product" | "vendor" | "outlet">> = {
+  product: "product",
+  vendor: "vendor",
+  outlet: "outlet",
+};
+
+export function ShareButton({ shareType, contentId, title, slug, compact = false, plainOnly = false, leading }: ShareButtonProps) {
+  const { t } = useTranslation("admin");
+  const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
+  const [status, setStatus] = useState<ShareStatus>("idle");
+  const [imageStatus, setImageStatus] = useState<ImageShareStatus>("idle");
+  // plainOnly folded in here (not just at the buildShareUrl call site) so
+  // every isVerified-gated bit of copy — the "Verify to earn" hint, the
+  // image-share caption wording — also goes quiet for a forced-plain share,
+  // with one flag instead of two to keep in sync.
+  const isVerified = !plainOnly && isAffiliateEligible(currentUser);
+  const imageType = SHARE_IMAGE_TYPES[shareType];
+
+  async function logShare(platform: SharePlatform) {
+    if (plainOnly) return; // no share_events row for a forced-plain share — not even a plain-link one
+    try {
+      await fetch("/api/shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shareType, contentId, platform }),
+      });
+    } catch {
+      // best-effort — a logging failure must never undo the share the user already completed
+    }
+  }
+
+  async function resolveSlug(): Promise<string | null> {
+    if (slug) return slug;
+    if (shareType !== "product") return null;
+    // Preserved from the original component: products has a public-read RLS
+    // policy, so the plain browser client can read it directly.
+    const supabase = createClient();
+    const { data: product } = await supabase.from("products").select("slug").eq("id", contentId).maybeSingle();
+    return product?.slug ?? null;
+  }
+
+  async function buildShareUrl(): Promise<string> {
+    const origin = window.location.origin;
+    const plainUrl = `${origin}${DIRECT_PATH[shareType](contentId)}`;
+    if (!isVerified) return plainUrl;
+
+    try {
+      const res = await fetch("/api/affiliate/link", { method: "POST" });
+      const body = (await res.json()) as { data: { affiliateCode: string } | null };
+      if (!res.ok || !body.data) return plainUrl;
+
+      const resolvedSlug = await resolveSlug();
+      const pathSegment = resolvedSlug ?? contentId; // outlets/recommendations key by id, not a slug
+      // Product stays exactly `/r/{code}/{slug}` — every product link already
+      // shared before this change must keep resolving the same way.
+      const typeParam = shareType === "product" ? "" : `?type=${shareType}`;
+      return `${origin}/r/${body.data.affiliateCode}/${pathSegment}${typeParam}`;
+    } catch {
+      return plainUrl;
+    }
+  }
+
+  // CLAUDE-FUNNEL-AI.md: tags the link with which share method produced it,
+  // so /r/[code] can record affiliate_clicks.source (migration 035) and the
+  // funnel's per-platform breakdown becomes real going forward. Values match
+  // logShare()'s own vocabulary — see lib/affiliate/funnel.ts for why this
+  // isn't per-social-network. lib/affiliate/redirect.ts's KNOWN_SHARE_SOURCES
+  // allowlist must include every value passed here, or it's silently dropped.
+  function withSrc(url: string, platform: SharePlatform): string {
+    return `${url}${url.includes("?") ? "&" : "?"}src=${platform}`;
+  }
+
+  async function handleShare(event?: React.MouseEvent<HTMLButtonElement>) {
+    // Compact instances sit as a sibling over a card's own <Link> (same
+    // pattern as the wishlist heart icon on ActivityCard) — stop the click
+    // reaching it. Harmless no-op for the standalone (non-card) usage.
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (status === "working") return; // double-press guard
+    setStatus("working");
+    const url = await buildShareUrl();
+
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title, url: withSrc(url, "native") });
+        setStatus("shared");
+        if (compact) showFeedback("success", t("share.actions.shared"));
+        await logShare("native");
+        setTimeout(() => setStatus("idle"), 2000);
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          setStatus("idle"); // user cancelled the native share sheet — leave it alone
+          return;
+        }
+        // any other failure (unsupported context, permission denied, etc.) falls through to copy
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(withSrc(url, "copy_link"));
+      setStatus("copied");
+      if (compact) showFeedback("success", t("share.actions.linkCopied"));
+      await logShare("copy_link");
+    } catch {
+      setStatus("error");
+      if (compact) showFeedback("error", t("share.actions.copyFailed"));
+    }
+    setTimeout(() => setStatus("idle"), 2000);
+  }
+
+  // CLAUDE-SHARE-IMAGE.md §12.2.3: the branded PNG can't carry an affiliate
+  // code (you can't click an image), so the referral link still has to
+  // travel via the Web Share `text` field or the clipboard alongside it —
+  // buildShareUrl() already degrades to the plain URL for unverified users,
+  // same as the plain-link share above.
+  async function handleShareImage(event?: React.MouseEvent<HTMLButtonElement>) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!imageType || imageStatus === "working") return;
+    setImageStatus("working");
+
+    try {
+      const res = await fetch(`/api/share-image/${imageType}/${contentId}`);
+      if (!res.ok) throw new Error(`share-image fetch failed: ${res.status}`);
+      const blob = await res.blob();
+      const fileName = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "mywisata"}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+      const url = await buildShareUrl();
+
+      if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title, text: `${title} — ${withSrc(url, "image_share")}` });
+          setImageStatus("shared");
+          showFeedback("success", isVerified ? t("share.actions.imageSharedWithReferral") : t("share.actions.shared"));
+          await logShare("image_share");
+          setTimeout(() => setImageStatus("idle"), 2500);
+          return;
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") {
+            setImageStatus("idle"); // user cancelled the native share sheet
+            return;
+          }
+          // any other failure falls through to the download fallback
+        }
+      }
+
+      // Desktop / unsupported: download the PNG so the user can post it
+      // manually, and copy the referral link alongside it — mandatory per
+      // spec, not optional, mirroring handleShare()'s copy fallback.
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+
+      try {
+        await navigator.clipboard.writeText(withSrc(url, "image_download"));
+        showFeedback(
+          "success",
+          isVerified ? t("share.actions.imageReadyWithReferral") : t("share.actions.imageDownloadedWithLink")
+        );
+      } catch {
+        showFeedback("success", t("share.actions.imageDownloaded"));
+      }
+      setImageStatus("downloaded");
+      await logShare("image_download");
+    } catch {
+      setImageStatus("error");
+      showFeedback("error", t("share.actions.imageCreateFailed"));
+    }
+    setTimeout(() => setImageStatus("idle"), 2500);
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={handleShare}
+        disabled={status === "working"}
+        aria-label={t("share.actions.shareTitle", { title })}
+        title={t("share.actions.share")}
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition disabled:cursor-wait disabled:opacity-70"
+      >
+        <Share2 size={14} stroke="#334155" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="inline-flex flex-col items-center gap-1">
+      <div className="flex items-center gap-2">
+        {leading}
+        <Button
+          variant="outline"
+          size="icon"
+          className="w-12 h-12 rounded-full border-2"
+          onClick={handleShare}
+          disabled={status === "working"}
+          title={t("share.actions.share")}
+        >
+          <Share2 size={18} />
+        </Button>
+        {imageType && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-12 h-12 rounded-full border-2"
+            onClick={handleShareImage}
+            disabled={imageStatus === "working"}
+            title={t("share.actions.shareAsImage")}
+            aria-label={t("share.actions.shareImageTitle", { title })}
+          >
+            <ImageDown size={18} />
+          </Button>
+        )}
+        {/* CLAUDE-P4-EXTRAS-2.md Extra 4: reuses buildShareUrl() as-is —
+            same eligibility check, same URL a click/copy would produce, so
+            an ineligible user's QR encodes the plain (non-affiliate) URL
+            exactly like the share button already does. */}
+        <AffiliateQrCode resolveUrl={buildShareUrl} label={title} variant="icon" />
+      </div>
+      {status === "shared" && <p className="text-xs text-primary">{t("share.actions.shared")}</p>}
+      {status === "copied" && <p className="text-xs text-primary">{t("share.actions.linkCopied")}</p>}
+      {status === "error" && <p className="text-xs text-destructive">{t("share.actions.copyFailed")}</p>}
+      {!isVerified && (status === "idle" || status === "working") && (
+        <p className="text-[0.625rem] text-muted-foreground text-center max-w-20">{t("share.actions.verifyToEarn")}</p>
+      )}
+    </div>
+  );
+}
