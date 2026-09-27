@@ -53,6 +53,11 @@ Run the teacher workflow manually once when both SHAs match and confirm a no-op 
 - Review the workflow's exact permissions, repository guard, divergence check and workflow-file guard once before the remote pushes.
 - Confirm source and target `main` SHAs after bootstrap and after the manual update test. Confirm the existing teacher backup branch remains unchanged.
 
+## Activation record
+
+- Bootstrap commit `949113af2041ecfec20e6cbccfd887f062b8c539` was pushed normally to both `main` branches; both remotes reported this SHA afterward.
+- The teacher repository recognized **Sync teacher repository main** as an active workflow. [Manual no-op run 36347757030](https://github.com/JYan-3/MyWisata-Malaysia-Tourism-Portal/actions/runs/36347757030) succeeded and logged that both `main` branches matched at `949113af`.
+
 ## Risks and limits
 
 - The caller can push to the teacher repository but cannot read its Actions policy settings. If its owner restricts workflow write permission, the real manual run will expose that and owner action will be required.
