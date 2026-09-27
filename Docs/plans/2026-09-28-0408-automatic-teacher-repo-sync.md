@@ -1,6 +1,6 @@
 # Automatic teacher repository sync
 
-**Status:** Approved for implementation on 2026-09-28. The user chose the recommended 15-minute check.
+**Status:** Implemented and verified on 2026-09-28. The user chose the recommended 15-minute check.
 
 ## Context
 
@@ -57,6 +57,8 @@ Run the teacher workflow manually once when both SHAs match and confirm a no-op 
 
 - Bootstrap commit `949113af2041ecfec20e6cbccfd887f062b8c539` was pushed normally to both `main` branches; both remotes reported this SHA afterward.
 - The teacher repository recognized **Sync teacher repository main** as an active workflow. [Manual no-op run 36347757030](https://github.com/JYan-3/MyWisata-Malaysia-Tourism-Portal/actions/runs/36347757030) succeeded and logged that both `main` branches matched at `949113af`.
+- Source-only documentation commit `06ca50fcf8f7934396c3358ee6554da58caeb2be` was pushed to the source `main`. [Manual sync run 36348128431](https://github.com/JYan-3/MyWisata-Malaysia-Tourism-Portal/actions/runs/36348128431) used the teacher repository's own token to fast-forward its `main` from `949113af` to `06ca50fc`; both remote SHAs matched afterward. The source CI runs for both commits succeeded.
+- Local verification: the workflow YAML parsed and its shell block passed `bash -n`; `npm run lint` exited 0 with 80 existing warnings and `npx tsc --noEmit` exited 0. The prior teacher initial commit `71a72585` remains on its backup branch, currently named `MyWisata-Malaysia-Tourism-Portal/backup-main-before-sync`.
 
 ## Risks and limits
 
