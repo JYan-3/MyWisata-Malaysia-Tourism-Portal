@@ -1,13 +1,15 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { AlertCircle } from "lucide-react";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useReferenceCurrency } from "@/components/providers/reference-currency";
 import { cn } from "@/components/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ReferenceRateSnapshot } from "@/lib/currency/rates";
 import {
   isReferenceCurrency,
   REFERENCE_CURRENCIES,
@@ -23,6 +25,21 @@ export const CURRENCY_FLAG_ASSETS: Record<ReferenceCurrency, string> = {
 };
 
 type CurrencyFetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+export function isReferenceRateUnavailable(
+  currency: ReferenceCurrency,
+  snapshot: ReferenceRateSnapshot | null,
+) {
+  return currency !== "MYR" && snapshot?.quote !== currency;
+}
+
+export function shouldNotifyRateUnavailable(
+  lastNotifiedCurrency: ReferenceCurrency | null,
+  currency: ReferenceCurrency,
+  rateUnavailable: boolean,
+) {
+  return rateUnavailable && lastNotifiedCurrency !== currency;
+}
 
 export async function saveCurrencyPreference(
   currency: ReferenceCurrency,
@@ -58,11 +75,27 @@ function CurrencyOption({ currency }: { currency: ReferenceCurrency }) {
 export function CurrencySwitcher({ compact = false, className }: { compact?: boolean; className?: string }) {
   const { t } = useTranslation("common");
   const { showFeedback } = useActionFeedback();
-  const { currency } = useReferenceCurrency();
+  const { currency, snapshot } = useReferenceCurrency();
   const router = useRouter();
   const id = useId();
+  const rateStatusId = `${id}-rate-status`;
+  const lastNotifiedUnavailableCurrency = useRef<ReferenceCurrency | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const rateUnavailable = isReferenceRateUnavailable(currency, snapshot);
+  const rateUnavailableMessage = rateUnavailable
+    ? t("currency.rateUnavailable", { currency })
+    : "";
+
+  useEffect(() => {
+    if (!rateUnavailable) {
+      lastNotifiedUnavailableCurrency.current = null;
+      return;
+    }
+    if (!shouldNotifyRateUnavailable(lastNotifiedUnavailableCurrency.current, currency, rateUnavailable)) return;
+    lastNotifiedUnavailableCurrency.current = currency;
+    showFeedback("error", rateUnavailableMessage, 8_000);
+  }, [currency, rateUnavailable, rateUnavailableMessage, showFeedback]);
 
   async function handleCurrencyChange(value: string) {
     if (saving || !isReferenceCurrency(value) || value === currency) return;
@@ -96,6 +129,7 @@ export function CurrencySwitcher({ compact = false, className }: { compact?: boo
         <SelectTrigger
           id={id}
           aria-label={t("currency.label")}
+          aria-describedby={rateUnavailable ? rateStatusId : undefined}
           aria-busy={saving}
           className={cn(
             "rounded-xl border border-border bg-background text-sm text-foreground transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 disabled:cursor-wait disabled:opacity-60",
@@ -117,6 +151,17 @@ export function CurrencySwitcher({ compact = false, className }: { compact?: boo
           ))}
         </SelectContent>
       </Select>
+      {rateUnavailable && (
+        <span
+          id={rateStatusId}
+          role="status"
+          title={rateUnavailableMessage}
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber-700"
+        >
+          <AlertCircle size={15} aria-hidden="true" />
+          <span className={compact ? "sr-only" : undefined}>{rateUnavailableMessage}</span>
+        </span>
+      )}
       <span className="sr-only" aria-live="polite">{status}</span>
     </div>
   );
