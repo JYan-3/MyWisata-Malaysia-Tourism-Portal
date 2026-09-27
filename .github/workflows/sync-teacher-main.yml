@@ -1,0 +1,49 @@
+name: Sync teacher repository main
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-teacher-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'JYan-3/MyWisata-Malaysia-Tourism-Portal'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout teacher repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fast-forward from source main
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags origin main
+          target_sha="$(git rev-parse FETCH_HEAD)"
+          git fetch --no-tags https://github.com/TanZhengYang0912/MyWisata-Malaysia-Tourism-Portal.git main
+          source_sha="$(git rev-parse FETCH_HEAD)"
+
+          if [[ "$target_sha" == "$source_sha" ]]; then
+            echo "Teacher main already matches source main: $source_sha"
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor "$target_sha" "$source_sha"; then
+            echo "::error::Teacher main diverged from source main; manual review is required."
+            exit 1
+          fi
+
+          if [[ -n "$(git diff --name-only "$target_sha" "$source_sha" -- .github/workflows/)" ]]; then
+            echo "::error::Source main changed GitHub workflow files; manual sync is required."
+            exit 1
+          fi
+
+          git push origin "$source_sha:refs/heads/main"
