@@ -1,22 +1,7 @@
 import { z } from "zod";
-import { databaseUuidSchema } from "@/lib/validation/schemas";
 import { PROMOTION_CAMPAIGN_STATUSES } from "./types";
 
 export const campaignSlugSchema = z.string().trim().min(3).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
-
-export const campaignOfferSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("voucher"),
-    voucherId: databaseUuidSchema,
-    position: z.number().int().min(0).max(99),
-  }).strict(),
-  z.object({
-    kind: z.literal("product"),
-    productId: databaseUuidSchema,
-    outletId: databaseUuidSchema,
-    position: z.number().int().min(0).max(99),
-  }).strict(),
-]);
 
 const campaignFieldsSchema = z.object({
   title: z.string().trim().min(3).max(120),
@@ -25,7 +10,8 @@ const campaignFieldsSchema = z.object({
   description: z.string().trim().min(10).max(5000),
   startsAt: z.string().datetime({ offset: true }),
   endsAt: z.string().datetime({ offset: true }),
-  offers: z.array(campaignOfferSchema).max(24),
+  posterUrl: z.string().url().max(2000).nullable(),
+  operatingHours: z.string().trim().min(3).max(200),
 }).strict();
 
 function validateCampaignDates(
@@ -37,23 +23,7 @@ function validateCampaignDates(
   }
 }
 
-function validateOfferPositions(
-  offers: Array<{ position: number }>,
-  context: z.RefinementCtx,
-) {
-  const positions = new Set<number>();
-  offers.forEach((offer, index) => {
-    if (positions.has(offer.position)) {
-      context.addIssue({ code: "custom", path: ["offers", index, "position"], message: "Offer positions must be unique" });
-    }
-    positions.add(offer.position);
-  });
-}
-
-export const campaignCreateSchema = campaignFieldsSchema.superRefine((value, context) => {
-  validateCampaignDates(value, context);
-  validateOfferPositions(value.offers, context);
-});
+export const campaignCreateSchema = campaignFieldsSchema.superRefine(validateCampaignDates);
 
 export const campaignTransitionSchema = z.object({
   action: z.enum(["submit", "approve", "reject", "pause", "resume", "archive"]),
@@ -67,10 +37,7 @@ export const campaignTransitionSchema = z.object({
 
 export const campaignDraftUpdateSchema = campaignFieldsSchema.extend({
   expectedUpdatedAt: z.string().datetime({ offset: true }),
-}).strict().superRefine((value, context) => {
-  validateCampaignDates(value, context);
-  validateOfferPositions(value.offers, context);
-});
+}).strict().superRefine(validateCampaignDates);
 
 export const campaignStatusSchema = z.enum(PROMOTION_CAMPAIGN_STATUSES);
 

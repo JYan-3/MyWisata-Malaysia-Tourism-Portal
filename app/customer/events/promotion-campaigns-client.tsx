@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Megaphone, RefreshCw } from "lucid
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
-import { PromotionCampaignOfferCard } from "@/components/customer/promotion-campaign-offer-card";
+import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
@@ -80,7 +80,7 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
         </div>
       ) : !error && <div className="space-y-8">{sortedCampaigns.map((campaign) => {
         const isLive = campaign.visibility === "live";
-        const previewOffers = campaign.offers.slice(0, 3);
+        const previewVendors = campaign.vendors.slice(0, 3);
         return (
           <section
             key={campaign.id}
@@ -101,7 +101,7 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
                     })}
                   </span>
                   <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-                    {t("ui.promotionCampaigns.offerCount", { count: campaign.offers.length })}
+                    {t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length })}
                   </span>
                 </div>
                 <h2
@@ -116,26 +116,26 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
               </div>
               <Button asChild className="min-h-11 w-full shrink-0 rounded-full sm:w-auto">
                 <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
-                  {t("ui.promotionCampaigns.viewAllOffers", { count: campaign.offers.length })}
+                  {t("ui.promotionCampaigns.viewAllVendors", { count: campaign.vendors.length })}
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               </Button>
             </div>
             <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {previewOffers.map((offer) => (
-                <PromotionCampaignOfferCard
-                  key={offer.id}
-                  offer={offer}
-                  campaign={campaign}
+              {previewVendors.map((vendor) => (
+                <PromotionCampaignVendorCard
+                  key={vendor.registrationId}
+                  vendor={vendor}
+                  campaignSlug={campaign.slug}
                   mode="preview"
                 />
               ))}
             </div>
-            {campaign.offers.length > 3 && (
+            {campaign.vendors.length > 3 && (
               <p className="mt-4 text-right text-sm font-medium text-muted-foreground">
-                {t("ui.promotionCampaigns.previewOfferCount", {
-                  shown: previewOffers.length,
-                  total: campaign.offers.length,
+                {t("ui.promotionCampaigns.previewVendorCount", {
+                  shown: previewVendors.length,
+                  total: campaign.vendors.length,
                 })}
               </p>
             )}

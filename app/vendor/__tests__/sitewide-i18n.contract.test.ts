@@ -8,8 +8,13 @@ const read = (file: string) =>
 /** The checked-in Task 8 scope. Keep this list in lockstep with task-8-brief.md. */
 export const VENDOR_I18N_FILES = [
   'app/vendor/analytics/page.tsx',
+  'app/vendor/announcements/page.tsx',
+  'app/vendor/announcements/[id]/page.tsx',
   'app/vendor/bookings/page.tsx',
   'app/vendor/dashboard/page.tsx',
+  'app/vendor/event-promotions/page.tsx',
+  'app/vendor/events/page.tsx',
+  'app/vendor/events/[id]/page.tsx',
   'app/vendor/inbox/page.tsx',
   'app/vendor/listings/page.tsx',
   'app/vendor/orders/page.tsx',
@@ -28,6 +33,7 @@ export const VENDOR_I18N_FILES = [
   'components/vendor/compact-thumbnail.tsx',
   'components/vendor/dashboard-filter.tsx',
   'components/vendor/dashboard-realtime.tsx',
+  'components/vendor/event-promotion-availability-calendar.tsx',
   'components/vendor/order-quick-action.tsx',
   'components/vendor/outlet-builder-canvas.tsx',
   'components/vendor/outlet-builder-editing.ts',

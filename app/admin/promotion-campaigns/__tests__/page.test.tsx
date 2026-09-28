@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => {
-  const t = (key: string) => key === "promotionCampaigns.form.vendorWide" ? "All eligible outlets" : key;
+  const t = (key: string) => key;
   return {
     useTranslation: () => ({ t, i18n: { resolvedLanguage: "en" } }),
   };
@@ -32,18 +32,11 @@ function campaignPayload(status: "draft" | "pending_approval" = "draft") {
   return response({ data: {
     campaigns: [{
       id: "campaign-1", slug: "heritage-walk-kl-current-offers", title: "Heritage Walk KL — Local Explorer Picks",
-      summary: "Offers from Heritage Walk KL", description: "Existing outlet products and voucher.", status,
+      summary: "Offers from Heritage Walk KL", description: "Existing outlet products and voucher.",
+      poster_url: "https://x/poster.jpg", operating_hours: "10:00 AM - 6:00 PM", status,
       starts_at: "2026-09-25T10:50:00.000Z", ends_at: "2027-03-12T23:00:00.000Z",
       created_by: "creator-1", updated_at: "2026-09-25T11:28:22.000Z", rejection_note: null,
-      offers: [
-        { id: "offer-product", product_id: "product-1", outlet_id: "outlet-1", voucher_id: null, position: 0 },
-        { id: "offer-voucher", product_id: null, outlet_id: null, voucher_id: "voucher-1", position: 1 },
-      ],
     }],
-    sources: {
-      products: [{ productId: "product-1", productName: "Chicken Rice Set", productType: "food", vendorId: "vendor-1", vendorName: "Heritage Walk KL", outletId: "outlet-1", outletName: "Heritage Walk KL Main Outlet", city: "Kuala Lumpur", state: "Kuala Lumpur", price: 110.88, imageUrl: null }],
-      vouchers: [{ voucherId: "voucher-1", name: "Local explorer welcome offer", voucherType: "percent", discountValue: 10, vendorId: "vendor-1", vendorName: "Heritage Walk KL", outletId: null, outletName: null, claimFrom: null, claimUntil: null, validFrom: "2026-08-14T00:00:00.000Z", validUntil: "2027-03-12T23:00:00.000Z", maxUses: 500, usesCount: 5 }],
-    },
   }, error: null });
 }
 
@@ -51,15 +44,6 @@ async function click(element: TestElement) {
   await act(async () => {
     element.dispatchEvent(new TestEvent("click", { bubbles: true }));
     await Promise.resolve();
-    await Promise.resolve();
-  });
-}
-
-async function selectValue(element: TestElement, value: string) {
-  await act(async () => {
-    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), "value")?.set;
-    setter?.call(element, value);
-    element.dispatchEvent(new TestEvent("change", { bubbles: true }));
     await Promise.resolve();
   });
 }
@@ -85,7 +69,7 @@ describe("Admin promotion campaign workbench", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders a localized loading state while staff campaigns and eligible sources load", () => {
+  it("renders a localized loading state while staff campaigns load", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignsPage />);
 
     expect(markup).toContain("promotionCampaigns.title");
@@ -94,7 +78,7 @@ describe("Admin promotion campaign workbench", () => {
     expect(markup).not.toContain("promotionCampaigns.form.saveDraft");
   });
 
-  it("does not offer self-review actions to the campaign creator", async () => {
+  it("offers review actions to the campaign creator now that self-approval is allowed", async () => {
     mocks.fetch.mockResolvedValue(campaignPayload("pending_approval"));
 
     await act(async () => {
@@ -105,8 +89,8 @@ describe("Admin promotion campaign workbench", () => {
     });
 
     expect(container.textContent).toContain("promotionCampaigns.status.pending_approval");
-    expect(container.textContent).not.toContain("promotionCampaigns.actions.approve");
-    expect(container.textContent).not.toContain("promotionCampaigns.actions.reject");
+    expect(container.textContent).toContain("promotionCampaigns.actions.approve");
+    expect(container.textContent).toContain("promotionCampaigns.actions.reject");
   });
 
   it("keeps review actions available to an independent campaign reviewer", async () => {
@@ -124,7 +108,7 @@ describe("Admin promotion campaign workbench", () => {
     expect(container.textContent).toContain("promotionCampaigns.actions.reject");
   });
 
-  it("keeps every selected offer labeled when switching the source type", async () => {
+  it("populates the edit form with the event's poster, hours, and copy — not an offers picker", async () => {
     await act(async () => {
       root.render(<PromotionCampaignsPage />);
       await Promise.resolve();
@@ -136,15 +120,14 @@ describe("Admin promotion campaign workbench", () => {
     const editDraft = findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit"));
     await click(editDraft);
 
-    expect(container.textContent).toContain("Heritage Walk KL · Chicken Rice Set · Heritage Walk KL Main Outlet, Kuala Lumpur · RM110.88");
-    expect(container.textContent).toContain("Heritage Walk KL · Local explorer welcome offer · All eligible outlets");
-    expect(container.textContent).not.toContain("promotionCampaigns.form.unavailableVoucher");
-
-    const offerType = findOne(container, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "promotionCampaigns.form.offerType");
-    await selectValue(offerType, "voucher");
-
-    expect(container.textContent).toContain("Heritage Walk KL · Chicken Rice Set · Heritage Walk KL Main Outlet, Kuala Lumpur · RM110.88");
-    expect(container.textContent).toContain("Heritage Walk KL · Local explorer welcome offer · All eligible outlets");
-    expect(container.textContent).not.toContain("promotionCampaigns.form.unavailableProduct");
+    const titleInput = findOne(container, (element) => element.tagName === "INPUT" && element.value === "Heritage Walk KL — Local Explorer Picks");
+    expect(titleInput).toBeDefined();
+    const hoursFromInput = findOne(container, (element) => element.tagName === "INPUT" && element.type === "time" && element.value === "10:00");
+    expect(hoursFromInput).toBeDefined();
+    const hoursToInput = findOne(container, (element) => element.tagName === "INPUT" && element.type === "time" && element.value === "18:00");
+    expect(hoursToInput).toBeDefined();
+    expect(container.textContent).toContain("promotionCampaigns.form.removePoster");
+    expect(container.textContent).not.toContain("promotionCampaigns.form.offerType");
+    expect(container.textContent).not.toContain("promotionCampaigns.form.chooseSource");
   });
 });

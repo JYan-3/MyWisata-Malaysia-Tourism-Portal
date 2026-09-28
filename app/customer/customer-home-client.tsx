@@ -76,12 +76,14 @@ export function CustomerHomeClient({
   popular,
   vendors,
   campaign,
+  campaigns,
   campaignUnavailable = false,
 }: {
   recommended: ComputedActivity[];
   popular: ComputedActivity[];
   vendors: DemoVendor[];
   campaign: PromotionCampaignPublic | null;
+  campaigns?: PromotionCampaignPublic[];
   campaignUnavailable?: boolean;
 }) {
   const { t } = useTranslation("customer");
@@ -231,7 +233,7 @@ export function CustomerHomeClient({
       </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <PromotionCampaignSpotlight campaign={campaign} unavailable={campaignUnavailable} />
+        <PromotionCampaignSpotlight campaign={campaign} campaigns={campaigns} unavailable={campaignUnavailable} />
 
         {/* 3. Recommended Experiences */}
         {recommendationItems.length > 0 && (

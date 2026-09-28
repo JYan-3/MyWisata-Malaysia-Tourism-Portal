@@ -9,16 +9,20 @@ const campaign: PromotionCampaignPublic = {
   title: "Sample campaign",
   summary: "A live campaign",
   description: "Campaign description",
+  posterUrl: "https://project.supabase.co/storage/v1/object/public/event-posters/campaigns/poster.jpg",
+  operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T00:00:00.000Z",
   endsAt: "2026-10-25T00:00:00.000Z",
   visibility: "live",
-  offers: [{
-    kind: "product",
-    id: "offer",
-    position: 0,
-    vendor: { id: "vendor", name: "Vendor", logoUrl: null },
-    outlet: { id: "outlet", name: "Outlet", city: null, state: null, imageUrl: null },
-    product: { id: "product", name: "Product", description: null, price: 10, imageUrl: "/assets/customer/products/product-real.jpg" },
+  vendors: [{
+    registrationId: "registration",
+    vendorId: "vendor",
+    vendorName: "Vendor",
+    vendorLogoUrl: null,
+    stallNumber: "A1",
+    stallDescription: "A stall description.",
+    stallPosterUrl: "https://project.supabase.co/storage/v1/object/public/event-posters/vendor/stall.jpg",
+    products: [{ id: "product", name: "Product", price: 10, imageUrl: "/assets/customer/products/product-real.jpg" }],
   }],
 };
 
@@ -29,26 +33,23 @@ describe("resolvePromotionCampaignImages", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
 
     const [resolved] = resolvePromotionCampaignImages([campaign]);
-    const offer = resolved.offers[0];
 
-    expect(offer.kind).toBe("product");
-    if (offer.kind === "product") {
-      expect(offer.product.imageUrl).toBe("https://project.supabase.co/storage/v1/object/public/product-images/products/product-real.jpg");
-    }
+    expect(resolved.vendors[0].products[0].imageUrl).toBe("https://project.supabase.co/storage/v1/object/public/product-images/products/product-real.jpg");
   });
 
   it("keeps missing and absolute source images unchanged", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
     const absolute = "https://project.supabase.co/storage/v1/object/public/product-images/products/product.jpg";
-    const value = {
+    const value: PromotionCampaignPublic = {
       ...campaign,
-      offers: campaign.offers.map((offer) => offer.kind === "product" ? { ...offer, product: { ...offer.product, imageUrl: absolute } } : offer),
-    } satisfies PromotionCampaignPublic;
+      vendors: campaign.vendors.map((vendor) => ({
+        ...vendor,
+        products: vendor.products.map((product) => ({ ...product, imageUrl: absolute })),
+      })),
+    };
 
     const [resolved] = resolvePromotionCampaignImages([value]);
-    const offer = resolved.offers[0];
 
-    expect(offer.kind).toBe("product");
-    if (offer.kind === "product") expect(offer.product.imageUrl).toBe(absolute);
+    expect(resolved.vendors[0].products[0].imageUrl).toBe(absolute);
   });
 });

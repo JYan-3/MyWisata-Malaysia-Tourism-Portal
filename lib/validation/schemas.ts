@@ -49,6 +49,57 @@ export const kycReviewSchema = z.object({
   }
 });
 
+// ── Vendor Event Promotion (admin review) ───────────────────
+// Submission/resubmission schemas live in lib/validation/vendor-schemas.ts —
+// vendor-facing input. This one is the admin decision.
+
+export const eventPromotionReviewSchema = z.object({
+  action: z.enum(['approve', 'reject', 'request_changes', 'pause', 'resume']),
+  note: z.string().trim().min(10).max(1000).optional(),
+}).strict().refine(
+  (data) => data.action === 'approve' || data.action === 'pause' || data.action === 'resume' || Boolean(data.note),
+  { message: 'A note of at least 10 characters is required for reject or request changes', path: ['note'] },
+);
+
+export type EventPromotionReview = z.infer<typeof eventPromotionReviewSchema>;
+
+export const eventPromotionSettingsPatchSchema = z.object({
+  costPerDaySen: z.number().int().min(0).max(100_000_00).optional(),
+  maxConcurrent: z.number().int().min(1).max(50).optional(),
+}).strict().refine(
+  (data) => data.costPerDaySen !== undefined || data.maxConcurrent !== undefined,
+  { message: 'At least one setting must be provided' },
+);
+
+export type EventPromotionSettingsPatch = z.infer<typeof eventPromotionSettingsPatchSchema>;
+
+// ── Vendor-Fair Event: campaign vendor registration (admin review) ──────
+// Submission/resubmission schemas live in lib/validation/vendor-schemas.ts —
+// vendor-facing input. This one is the admin decision. Same shape as
+// eventPromotionReviewSchema (approve/reject/request_changes + conditional
+// note) — kept as a separate export since it's a distinct governance flow.
+
+export const campaignRegistrationReviewSchema = z.object({
+  action: z.enum(['approve', 'reject', 'request_changes']),
+  note: z.string().trim().min(10).max(1000).optional(),
+}).strict().refine(
+  (data) => data.action === 'approve' || Boolean(data.note),
+  { message: 'A note of at least 10 characters is required for reject or request changes', path: ['note'] },
+);
+
+export type CampaignRegistrationReview = z.infer<typeof campaignRegistrationReviewSchema>;
+
+// ── Vendor-Fair Event: announcements (super admin -> vendors) ───────────
+
+export const vendorAnnouncementCreateSchema = z.object({
+  title: z.string().trim().min(3).max(160),
+  body: z.string().trim().min(10).max(5000),
+  senderCode: z.string().trim().min(1).max(20).default('ADMIN'),
+  campaignId: databaseUuidSchema.nullable().optional(),
+}).strict();
+
+export type VendorAnnouncementCreate = z.infer<typeof vendorAnnouncementCreateSchema>;
+
 // ── Vendor Recommendation ──────────────────────────────────
 
 export const recommendationSubmitSchema = z.object({

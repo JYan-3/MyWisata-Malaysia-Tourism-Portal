@@ -1,17 +1,33 @@
 import { createClient } from "@/lib/supabase/server";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
+import type { ReasonTag } from "@/backend/domains/recommend-score";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
 import { selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import type { ComputedActivity } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
-import { selectFeaturedPublicCampaign } from "@/lib/customer/promotion-campaigns";
+import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import { resolvePromotionCampaignImages } from "@/lib/promotion-campaigns/images";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 export default async function CustomerHomePage() {
   const db = await createClient();
+  const { t } = await getServerTranslation("customer");
+
+  // Localize the dominant recommendation reason for the request's language.
+  // Literal `customer:` keys so the i18n extractor attributes them correctly even
+  // though this helper is nested inside the component.
+  const reasonLabel = (reason: ReasonTag | null): string | undefined => {
+    switch (reason) {
+      case "near_you": return t("customer:ui.recommendationReasons.near_you");
+      case "interests": return t("customer:ui.recommendationReasons.interests");
+      case "similar": return t("customer:ui.recommendationReasons.similar");
+      case "hidden_gem": return t("customer:ui.recommendationReasons.hidden_gem");
+      default: return undefined;
+    }
+  };
   const [{ data: { user } }, activities, vendorRows, campaignResult] = await Promise.all([
     db.auth.getUser(),
     // Cached for 60 s — same data for all visitors, no user-specific filtering
@@ -42,7 +58,7 @@ export default async function CustomerHomePage() {
 
   const recommended = feed.map((item) => ({
     ...item.activity,
-    aiTag: item.reasonLabel ?? undefined,
+    aiTag: reasonLabel(item.reason),
   })) as ComputedActivity[];
 
   const mediaByVendorId = new Map<string, EntityMediaRow[]>();
@@ -69,7 +85,7 @@ export default async function CustomerHomePage() {
 
   const featuredVendors = rankFeaturedVendors(vendors, activities, 24);
   const publicCampaigns = resolvePromotionCampaignImages(Array.isArray(campaignResult.data) ? campaignResult.data as unknown as PromotionCampaignPublic[] : []);
-  const featuredCampaign = selectFeaturedPublicCampaign(publicCampaigns);
+  const featuredCampaigns = selectFeaturedPublicCampaigns(publicCampaigns);
 
-  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} campaign={featuredCampaign} campaignUnavailable={Boolean(campaignResult.error)} />;
+  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={Boolean(campaignResult.error)} />;
 }

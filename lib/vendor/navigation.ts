@@ -1,11 +1,14 @@
 import {
+  Bell,
   Building2,
   CalendarDays,
   ChartNoAxesCombined,
   ClipboardCheck,
   LayoutDashboard,
   MapPinned,
+  Megaphone,
   MessageCircle,
+  PartyPopper,
   ScanLine,
   ShoppingBag,
   Store,
@@ -53,11 +56,21 @@ const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
   },
   {
     labelKey: "communication",
-    items: [{ href: "/vendor/inbox", label: "Inbox", icon: MessageCircle }],
+    items: [
+      { href: "/vendor/inbox", label: "Inbox", icon: MessageCircle },
+      { href: "/vendor/announcements", label: "Announcements", icon: Bell },
+    ],
   },
   {
     labelKey: "insights",
     items: [{ href: "/vendor/analytics", label: "Analytics", icon: ChartNoAxesCombined }],
+  },
+  {
+    labelKey: "promotion",
+    items: [
+      { href: "/vendor/event-promotions", label: "Promotions", icon: Megaphone },
+      { href: "/vendor/events", label: "Events", icon: PartyPopper },
+    ],
   },
 ];
 
@@ -81,11 +94,21 @@ const OUTLET_MANAGER_SECTIONS: VendorNavigationSection[] = [
   },
   {
     labelKey: "communication",
-    items: [{ href: "/vendor/inbox", label: "Inbox", icon: MessageCircle }],
+    items: [
+      { href: "/vendor/inbox", label: "Inbox", icon: MessageCircle },
+      { href: "/vendor/announcements", label: "Announcements", icon: Bell },
+    ],
   },
   {
     labelKey: "insights",
     items: [{ href: "/vendor/analytics", label: "Analytics", icon: ChartNoAxesCombined }],
+  },
+  {
+    labelKey: "promotion",
+    items: [
+      { href: "/vendor/event-promotions", label: "Promotions", icon: Megaphone },
+      { href: "/vendor/events", label: "Events", icon: PartyPopper },
+    ],
   },
 ];
 

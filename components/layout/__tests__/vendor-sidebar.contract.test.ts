@@ -21,7 +21,10 @@ describe("Outlet Manager navigation", () => {
       "/vendor/orders",
       "/vendor/wallet",
       "/vendor/inbox",
+      "/vendor/announcements",
       "/vendor/analytics",
+      "/vendor/event-promotions",
+      "/vendor/events",
     ]);
     expect(getVendorNavigationSections(true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
       "/vendor/dashboard",
@@ -32,7 +35,10 @@ describe("Outlet Manager navigation", () => {
       "/vendor/vouchers",
       "/vendor/orders",
       "/vendor/inbox",
+      "/vendor/announcements",
       "/vendor/analytics",
+      "/vendor/event-promotions",
+      "/vendor/events",
     ]);
   });
 

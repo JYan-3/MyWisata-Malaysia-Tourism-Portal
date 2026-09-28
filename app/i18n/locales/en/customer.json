@@ -2325,7 +2325,15 @@
       "profileCityDistance": "Showing distances from your profile city.",
       "unlock": "Complete your profile and travel survey to unlock personalised suggestions.",
       "continueVerification": "Continue verification →",
-      "editPreferences": "Edit preferences →"
+      "editPreferences": "Edit preferences →",
+      "reasons": {
+        "interest": "Matches your {{category}} interest",
+        "interestsPlain": "Matches your interests",
+        "budget": "Within your budget",
+        "nearby": "{{km}} km away",
+        "accessible": "Fits your accessibility needs",
+        "generic": "Picked for you"
+      }
     },
     "notifications": {
       "description": "Updates about your bookings, wallet and account."
@@ -2511,7 +2519,7 @@
       "startsAt": "Starts {{date}}",
       "endsAt": "Ends {{date}}",
       "pageTitle": "Pop-up events & offers",
-      "pageDescription": "Explore scheduled partner campaigns backed by real vouchers and outlet offers.",
+      "pageDescription": "Explore scheduled vendor-fair events and the stalls joining them.",
       "home": "Home",
       "loadError": "Campaigns could not be loaded right now.",
       "loading": "Loading current campaigns…",
@@ -2519,59 +2527,48 @@
       "emptyDescription": "There are no published campaigns to show right now. Browse bookable sessions from the home page calendar while you plan your next visit.",
       "unavailableTitle": "Campaigns are temporarily unavailable",
       "unavailableDescription": "We could not refresh the campaign list. Please try again in a little while.",
-      "offerCount": "{{count}} selected offer",
-      "offerCount_one": "{{count}} selected offer",
-      "offerCount_other": "{{count}} selected offers",
+      "vendorCount": "{{count}} participating vendor",
+      "vendorCount_one": "{{count}} participating vendor",
+      "vendorCount_other": "{{count}} participating vendors",
       "exploreCampaign": "Explore event",
       "allCampaigns": "Browse all events",
       "viewCampaign": "View event details",
       "viewDetails": "View details",
-      "viewAllOffers": "View offer",
-      "viewAllOffers_one": "View offer",
-      "viewAllOffers_other": "View all {{count}} offers",
-      "moreOffers": "{{count}} more offers in this event",
-      "moreOffers_one": "{{count}} more offer in this event",
-      "moreOffers_other": "{{count}} more offers in this event",
-      "previewOfferCount": "Showing {{shown}} of {{total}} offers",
+      "viewAllVendors": "View vendor",
+      "viewAllVendors_one": "View vendor",
+      "viewAllVendors_other": "View all {{count}} vendors",
+      "previewVendorCount": "Showing {{shown}} of {{total}} vendors",
       "detailTitle": "Campaign details",
-      "detailDescription": "See the campaign period and participating offers.",
+      "detailDescription": "See the campaign period and participating vendors.",
       "backToEvents": "Back to events",
+      "backToEvent": "Back to {{title}}",
       "notFound": "This event is no longer available",
       "notFoundDescription": "It may have ended or the campaign is not published. Browse other current and upcoming events.",
       "tryAgainDescription": "Please check your connection and try again.",
-      "offerSection": "Offers in this event",
+      "vendorsSection": "Vendors joining this event",
       "campaignDetails": "Campaign details",
-      "upcomingNotice": "This is a preview. Offer actions will open when the campaign starts.",
-      "noOffers": "There are no eligible offers in this event right now.",
-      "voucher": "Voucher",
-      "product": "Product",
-      "percentOff": "{{value}}% off",
-      "fixedOff": "{{value}} off",
-      "buyOneGetOne": "Buy one, get one",
-      "remaining": "{{count}} remaining",
-      "remaining_one": "{{count}} remaining",
-      "remaining_other": "{{count}} remaining",
-      "voucherFrom": "Voucher from {{vendor}}",
-      "productFrom": "Offer from {{vendor}}",
-      "vendorWide": "Participating outlets",
-      "vendorOutlets": "Participating outlets from {{vendor}}",
-      "eligibleOutlets": "Available at {{count}} outlets",
-      "eligibleOutlets_one": "Available at {{count}} outlet",
-      "eligibleOutlets_other": "Available at {{count}} outlets",
-      "minimumSpend": "Minimum spend {{amount}}",
-      "offerValidUntil": "Voucher valid until {{date}}",
-      "eligibleProducts": "Eligible products",
-      "viewProduct": "See this outlet offer",
-      "availableAtStart": "Available when event starts",
-      "claimVoucher": "Claim voucher",
-      "claiming": "Claiming…",
-      "claimed": "Voucher saved to your account",
-      "viewMyVouchers": "View my vouchers",
-      "claimErrors": {
-        "limit": "This voucher has reached its claim limit.",
-        "notStarted": "Voucher claims have not opened yet.",
-        "closed": "This voucher is no longer available to claim.",
-        "generic": "We could not claim this voucher. Please try again."
+      "upcomingNotice": "This is a preview. Stalls will be visible when the event starts.",
+      "noVendors": "No vendors have been approved for this event yet.",
+      "stallNumber": "Stall {{number}}",
+      "stallProducts": "What this stall sells",
+      "productCount": "{{count}} item",
+      "productCount_one": "{{count}} item",
+      "productCount_other": "{{count}} items",
+      "viewStall": "View stall",
+      "previous": "Previous event",
+      "next": "Next event"
+    },
+    "recommendationReasons": {
+      "near_you": "Near you",
+      "interests": "Matches your interests",
+      "similar": "Popular with similar travellers",
+      "hidden_gem": "Hidden gem"
+    },
+    "eventPromotions": {
+      "rail": {
+        "eyebrow": "Featured",
+        "badge": "Featured",
+        "backToHome": "Back to home"
       }
     }
   },
@@ -3208,6 +3205,170 @@
       "viewAll": "View all {{count}}",
       "viewAll_one": "View all {{count}}",
       "viewAll_other": "View all {{count}}"
+    }
+  },
+  "help": {
+    "meta": {
+      "title": "Help Center",
+      "description": "Browse answers about booking, payments, wallet, verification, affiliate and more."
+    },
+    "hero": {
+      "title": "How can we help?",
+      "subtitle": "Browse our help articles or search for a topic."
+    },
+    "search": {
+      "placeholder": "Search help articles…",
+      "noResults": "No articles match your search."
+    },
+    "empty": "No help articles are available yet.",
+    "backToExplore": "Back to explore",
+    "backToHelp": "Back to Help Center",
+    "article": {
+      "topics": "Topics",
+      "stillNeedHelp": "Still need help?",
+      "contactSupport": "Contact support"
+    },
+    "notFound": {
+      "title": "Article not found",
+      "body": "That help article doesn't exist or has been removed."
+    },
+    "categories": {
+      "rewards": "Rewards",
+      "wallet": "Wallet",
+      "booking": "Booking",
+      "account": "Account",
+      "affiliate": "Affiliate",
+      "vendor": "Vendor",
+      "payment": "Payments",
+      "general": "General"
+    }
+  },
+  "legal": {
+    "updated": "Last updated: {{date}}",
+    "nav": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "data": "Data & KYC",
+      "about": "About",
+      "help": "Help Center"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "intro": "This policy explains what personal information MyLawatan collects, why we collect it, and the choices you have. MyLawatan is a final-year student project, so treat it as a prototype rather than a commercial service.",
+      "collect": {
+        "heading": "What we collect",
+        "body": "Account details you provide: your email, name, phone number, and optionally a display name, short bio, profile photo, and your city and country. If you choose to get verified, we also collect the identity documents described on the Data & KYC page. We record activity needed to run the service, such as orders, bookings, wallet transactions, chat messages, reviews, and affiliate clicks and shares."
+      },
+      "why": {
+        "heading": "Why we collect it",
+        "body": "We use this information to create your account, process bookings and payments, run the wallet, affiliate and rewards features, answer support requests, and keep the platform safe from fraud and abuse. We do not sell your personal information."
+      },
+      "cookies": {
+        "heading": "Cookies",
+        "body": "We use a small number of cookies. A sign-in session cookie keeps you logged in. A language cookie remembers your chosen language, and a currency preference remembers your display currency. Two affiliate cookies (a visitor id and a referral id) let us credit the right person when you open a shared link. We do not use third-party advertising cookies."
+      },
+      "sharing": {
+        "heading": "Who we share it with",
+        "body": "We share data only with the service providers we need to operate: Supabase (database, sign-in, and file storage), Stripe and ToyyibPay (payments), Twilio (one-time SMS codes), and Google (Gemini AI for the help assistant, and maps). Vendors you interact with can see the information needed to fulfil your order or booking. We may disclose information if required by law."
+      },
+      "retention": {
+        "heading": "How long we keep it",
+        "body": "We keep your account information for as long as your account is open. Closing your account is a soft close: transactional records such as orders and payments are retained where we need them for accounting and dispute resolution. Identity documents follow the retention described on the Data & KYC page."
+      },
+      "rights": {
+        "heading": "Your rights",
+        "body": "You can view and edit most of your profile information at any time from your profile settings. You can resubmit identity documents if a review is rejected, and you can close your account yourself. To ask a question about your data, contact us through the channels below."
+      },
+      "contact": {
+        "heading": "Contact",
+        "body": "For any privacy question, use the in-app support chat or open a support ticket from the Help Center. Because this is a student project, we respond on a best-effort basis."
+      }
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "intro": "These terms explain the rules for using MyLawatan. By using the platform you agree to them. Please read the prototype notice first.",
+      "prototype": {
+        "heading": "Prototype notice",
+        "body": "MyLawatan is a final-year academic project, not a commercial product. Some features are simulated for demonstration and no real goods, services, or payouts are guaranteed. Do not rely on it for real travel bookings."
+      },
+      "accounts": {
+        "heading": "Accounts and eligibility",
+        "body": "You are responsible for the accuracy of the information you provide and for keeping your login secure. Browsing is open to everyone; checkout and booking require a verified phone number, and withdrawing earnings requires identity verification."
+      },
+      "acceptableUse": {
+        "heading": "Acceptable use",
+        "body": "Do not misuse the platform: no fraud, no attempts to manipulate affiliate clicks or rewards, no abusive or unlawful content, and no interference with other users or with the service. We may suspend accounts that break these rules."
+      },
+      "payments": {
+        "heading": "Payments",
+        "body": "Card payments are handled by Stripe and bank/FPX payments by ToyyibPay. The Touch 'n Go and GrabPay options shown in checkout are simulators for demonstration only and move no real money. Prices are shown in Ringgit Malaysia (RM); any other currency shown is an approximate reference only."
+      },
+      "earnings": {
+        "heading": "Wallet, vouchers and affiliate",
+        "body": "Wallet balances, vouchers, affiliate commissions and rewards exist to demonstrate the platform. Commission rates and reward rules can change, and balances or attributions created for testing may be adjusted. Self-referral and other manipulation are not eligible for commission."
+      },
+      "content": {
+        "heading": "Content and reviews",
+        "body": "You keep ownership of content you submit, such as reviews and recommendations, but grant us permission to display it within the platform. Content must be honest and lawful; we may remove content that breaks these terms."
+      },
+      "liability": {
+        "heading": "Liability",
+        "body": "The platform is provided \"as is\" without warranties. As an academic prototype it may contain errors or downtime, and to the extent permitted by law we are not liable for losses arising from its use."
+      },
+      "changes": {
+        "heading": "Changes to these terms",
+        "body": "We may update these terms as the project develops. The date at the top shows when they were last changed, and continued use after a change means you accept the updated terms."
+      }
+    },
+    "data": {
+      "title": "Your Data & KYC",
+      "intro": "This page explains, in plain language, how MyLawatan handles identity verification (KYC) and the sensitive documents involved. It expands on the Privacy Policy for this specific area.",
+      "when": {
+        "heading": "When verification is required",
+        "body": "You do not need to upload any identity document to browse, save items, or make a booking. Identity verification (KYC) is only required for higher-trust actions, specifically withdrawing earnings from your wallet. You stay in control of when, or whether, you start it."
+      },
+      "collect": {
+        "heading": "What we collect for KYC",
+        "body": "When you choose to verify, we collect a government-issued identity document (such as an IC or passport) — an image of the front and back — and the identity number printed on it. We use an automated text scan (OCR) to read the document and speed up review."
+      },
+      "storage": {
+        "heading": "Where it is stored",
+        "body": "Document images are stored in a private storage bucket that is not publicly accessible. The identity number is not stored in plain text; it is converted into a one-way keyed hash so it can be checked for duplicates without keeping the raw number readable."
+      },
+      "access": {
+        "heading": "Who can view it",
+        "body": "Only authorised platform reviewers (an admin or approver) can open your documents to make an approval decision. Vendors and other customers can never see your identity documents. Access is limited to what is needed to review your submission."
+      },
+      "retention": {
+        "heading": "How long we keep it",
+        "body": "We keep verification records for as long as needed to support your verified status and any related withdrawals. If a submission is abandoned before it is completed, its uploaded evidence is removed. You can ask us to review or remove your documents through support."
+      },
+      "resubmit": {
+        "heading": "If your submission is rejected",
+        "body": "If a reviewer rejects your submission, you will see the reason and can submit again with a clearer or corrected document. There is no penalty for resubmitting, and a rejection does not affect your ability to browse or book."
+      },
+      "consent": {
+        "heading": "Withdrawing consent",
+        "body": "Verification is optional. If you do not want us to hold your identity documents, do not start KYC — you can still use the rest of the platform except withdrawals. You can also close your account, which is a soft close as described in the Privacy Policy."
+      }
+    },
+    "about": {
+      "title": "About MyLawatan",
+      "intro": "MyLawatan is a Malaysia-focused tourism marketplace built as a final-year project. It brings discovery, booking, payments, and traveller support together in one place.",
+      "what": {
+        "heading": "What MyLawatan is",
+        "body": "You can explore activities, food, stays, and hidden gems across Malaysia, book and pay in one cart, chat with vendors, and manage everything from a single account. Vendors manage their outlets, listings, bookings, and vouchers, while the platform keeps payments, verification, and rewards running behind the scenes."
+      },
+      "prototype": {
+        "heading": "A student prototype",
+        "body": "This is an academic project rather than a commercial service. Some features — including certain payment methods — are simulated for demonstration, and it is not intended for real-money travel bookings."
+      },
+      "contact": {
+        "heading": "Getting help",
+        "body": "The fastest way to get answers is the Help Center or the in-app assistant, which can create a support ticket for our team if it cannot answer your question."
+      },
+      "helpCta": "Visit Help Center",
+      "supportCta": "Contact support"
     }
   }
 }

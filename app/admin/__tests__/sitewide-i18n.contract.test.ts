@@ -17,6 +17,7 @@ function flattenStrings(value: unknown, prefix = "", result: Record<string, stri
 const INTENTIONAL_IDENTICAL_VALUES = {
   "zh-CN": new Set([
     "affiliate.noLimit",
+    "eventPromotions.settings.currencyPrefix",
     "kyc.documents.national_id",
     "navigation.KYC Review",
     "ui.table.kyc",
@@ -39,6 +40,8 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "chatReports.fields.status",
     "chatReports.reasons.spam",
     "chatReports.roles.vendor",
+    "eventPromotions.settings.currencyPrefix",
+    "eventRegistrations.filters.status",
     "kyc.documents.national_id",
     "navigation.KYC Review",
     "ui.support.sort.status",

@@ -2325,7 +2325,15 @@
       "profileCityDistance": "Jarak ditunjukkan dari bandar profil anda.",
       "unlock": "Lengkapkan profil dan tinjauan perjalanan untuk membuka cadangan diperibadikan.",
       "continueVerification": "Teruskan pengesahan →",
-      "editPreferences": "Edit pilihan →"
+      "editPreferences": "Edit pilihan →",
+      "reasons": {
+        "interest": "Sepadan dengan minat {{category}} anda",
+        "interestsPlain": "Sepadan dengan minat anda",
+        "budget": "Dalam bajet anda",
+        "nearby": "{{km}} km dari sini",
+        "accessible": "Menepati keperluan kebolehcapaian anda",
+        "generic": "Dipilih untuk anda"
+      }
     },
     "notifications": {
       "description": "Kemas kini tentang tempahan, dompet dan akaun anda."
@@ -2511,7 +2519,7 @@
       "startsAt": "Bermula {{date}}",
       "endsAt": "Tamat pada {{date}}",
       "pageTitle": "Acara pop-up & tawaran",
-      "pageDescription": "Terokai kempen rakan niaga berjadual yang disokong oleh baucar dan tawaran cawangan sebenar.",
+      "pageDescription": "Terokai acara pesta vendor berjadual dan gerai yang menyertainya.",
       "home": "Laman utama",
       "loadError": "Kempen tidak dapat dimuatkan sekarang.",
       "loading": "Memuatkan kempen semasa…",
@@ -2519,59 +2527,48 @@
       "emptyDescription": "Tiada kempen diterbitkan untuk dipaparkan sekarang. Semak sesi yang boleh ditempah melalui kalendar di laman utama sementara merancang lawatan anda.",
       "unavailableTitle": "Kempen tidak tersedia buat sementara waktu",
       "unavailableDescription": "Senarai kempen tidak dapat dikemas kini. Cuba lagi sebentar nanti.",
-      "offerCount": "{{count}} tawaran pilihan",
-      "offerCount_one": "{{count}} tawaran pilihan",
-      "offerCount_other": "{{count}} tawaran pilihan",
+      "vendorCount": "{{count}} vendor yang mengambil bahagian",
+      "vendorCount_one": "{{count}} vendor yang mengambil bahagian",
+      "vendorCount_other": "{{count}} vendor yang mengambil bahagian",
       "exploreCampaign": "Terokai acara",
       "allCampaigns": "Lihat semua acara",
       "viewCampaign": "Lihat butiran acara",
       "viewDetails": "Lihat butiran",
-      "viewAllOffers": "Lihat tawaran",
-      "viewAllOffers_one": "Lihat tawaran",
-      "viewAllOffers_other": "Lihat semua {{count}} tawaran",
-      "moreOffers": "{{count}} lagi tawaran dalam acara ini",
-      "moreOffers_one": "{{count}} lagi tawaran dalam acara ini",
-      "moreOffers_other": "{{count}} lagi tawaran dalam acara ini",
-      "previewOfferCount": "Menunjukkan {{shown}} daripada {{total}} tawaran",
+      "viewAllVendors": "Lihat vendor",
+      "viewAllVendors_one": "Lihat vendor",
+      "viewAllVendors_other": "Lihat semua {{count}} vendor",
+      "previewVendorCount": "Menunjukkan {{shown}} daripada {{total}} vendor",
       "detailTitle": "Butiran kempen",
-      "detailDescription": "Lihat tempoh kempen dan tawaran yang mengambil bahagian.",
+      "detailDescription": "Lihat tempoh kempen dan vendor yang mengambil bahagian.",
       "backToEvents": "Kembali ke acara",
+      "backToEvent": "Kembali ke {{title}}",
       "notFound": "Acara ini tidak lagi tersedia",
       "notFoundDescription": "Acara mungkin telah tamat atau belum diterbitkan. Lihat acara semasa dan akan datang yang lain.",
       "tryAgainDescription": "Semak sambungan anda dan cuba lagi.",
-      "offerSection": "Tawaran dalam acara ini",
+      "vendorsSection": "Vendor yang menyertai acara ini",
       "campaignDetails": "Butiran kempen",
-      "upcomingNotice": "Ini ialah pratonton. Tindakan tawaran akan dibuka apabila kempen bermula.",
-      "noOffers": "Tiada tawaran yang layak dalam acara ini sekarang.",
-      "voucher": "Baucar",
-      "product": "Produk",
-      "percentOff": "Diskaun {{value}}%",
-      "fixedOff": "Diskaun {{value}}",
-      "buyOneGetOne": "Beli satu, percuma satu",
-      "remaining": "Baki {{count}}",
-      "remaining_one": "Baki {{count}}",
-      "remaining_other": "Baki {{count}}",
-      "voucherFrom": "Baucar daripada {{vendor}}",
-      "productFrom": "Tawaran daripada {{vendor}}",
-      "vendorWide": "Cawangan yang mengambil bahagian",
-      "vendorOutlets": "Cawangan {{vendor}} yang mengambil bahagian",
-      "eligibleOutlets": "Tersedia di {{count}} cawangan",
-      "eligibleOutlets_one": "Tersedia di {{count}} cawangan",
-      "eligibleOutlets_other": "Tersedia di {{count}} cawangan",
-      "minimumSpend": "Belanja minimum {{amount}}",
-      "offerValidUntil": "Baucar sah sehingga {{date}}",
-      "eligibleProducts": "Produk yang layak",
-      "viewProduct": "Lihat tawaran cawangan",
-      "availableAtStart": "Tersedia apabila acara bermula",
-      "claimVoucher": "Tuntut baucar",
-      "claiming": "Sedang menuntut…",
-      "claimed": "Baucar disimpan dalam akaun anda",
-      "viewMyVouchers": "Lihat baucar saya",
-      "claimErrors": {
-        "limit": "Had tuntutan baucar ini telah dicapai.",
-        "notStarted": "Tuntutan baucar belum dibuka.",
-        "closed": "Baucar ini tidak lagi tersedia untuk dituntut.",
-        "generic": "Baucar tidak dapat dituntut. Cuba lagi."
+      "upcomingNotice": "Ini ialah pratonton. Gerai akan kelihatan apabila acara bermula.",
+      "noVendors": "Belum ada vendor yang diluluskan untuk acara ini.",
+      "stallNumber": "Gerai {{number}}",
+      "stallProducts": "Apa yang dijual gerai ini",
+      "productCount": "{{count}} item",
+      "productCount_one": "{{count}} item",
+      "productCount_other": "{{count}} item",
+      "viewStall": "Lihat gerai",
+      "previous": "Acara sebelumnya",
+      "next": "Acara seterusnya"
+    },
+    "recommendationReasons": {
+      "near_you": "Berdekatan",
+      "interests": "Sepadan dengan minat anda",
+      "similar": "Popular dalam kalangan pengembara seperti anda",
+      "hidden_gem": "Permata tersembunyi"
+    },
+    "eventPromotions": {
+      "rail": {
+        "eyebrow": "Pilihan",
+        "badge": "Pilihan",
+        "backToHome": "Kembali ke laman utama"
       }
     }
   },
@@ -3208,6 +3205,170 @@
       "viewAll": "Lihat semua {{count}}",
       "viewAll_one": "Lihat semua {{count}}",
       "viewAll_other": "Lihat semua {{count}}"
+    }
+  },
+  "help": {
+    "meta": {
+      "title": "Pusat Bantuan",
+      "description": "Cari jawapan tentang tempahan, pembayaran, dompet, pengesahan, afiliasi dan banyak lagi."
+    },
+    "hero": {
+      "title": "Bagaimana kami boleh membantu?",
+      "subtitle": "Layari artikel bantuan kami atau cari topik."
+    },
+    "search": {
+      "placeholder": "Cari artikel bantuan…",
+      "noResults": "Tiada artikel sepadan dengan carian anda."
+    },
+    "empty": "Tiada artikel bantuan tersedia lagi.",
+    "backToExplore": "Kembali ke jelajah",
+    "backToHelp": "Kembali ke Pusat Bantuan",
+    "article": {
+      "topics": "Topik",
+      "stillNeedHelp": "Masih perlukan bantuan?",
+      "contactSupport": "Hubungi sokongan"
+    },
+    "notFound": {
+      "title": "Artikel tidak dijumpai",
+      "body": "Artikel bantuan itu tidak wujud atau telah dialih keluar."
+    },
+    "categories": {
+      "rewards": "Ganjaran",
+      "wallet": "Dompet",
+      "booking": "Tempahan",
+      "account": "Akaun",
+      "affiliate": "Afiliasi",
+      "vendor": "Vendor",
+      "payment": "Pembayaran",
+      "general": "Umum"
+    }
+  },
+  "legal": {
+    "updated": "Kemas kini terakhir: {{date}}",
+    "nav": {
+      "privacy": "Privasi",
+      "terms": "Terma",
+      "data": "Data & KYC",
+      "about": "Perihal",
+      "help": "Pusat Bantuan"
+    },
+    "privacy": {
+      "title": "Dasar Privasi",
+      "intro": "Dasar ini menerangkan maklumat peribadi yang dikumpul oleh MyLawatan, sebab kami mengumpulnya, dan pilihan yang anda ada. MyLawatan ialah projek pelajar tahun akhir, jadi anggap ia sebagai prototaip dan bukan perkhidmatan komersial.",
+      "collect": {
+        "heading": "Apa yang kami kumpul",
+        "body": "Butiran akaun yang anda berikan: e-mel, nama, nombor telefon, dan secara pilihan nama paparan, bio ringkas, foto profil, serta bandar dan negara anda. Jika anda memilih untuk disahkan, kami turut mengumpul dokumen pengenalan seperti yang diterangkan dalam halaman Data & KYC. Kami merekod aktiviti yang diperlukan untuk menjalankan perkhidmatan, seperti pesanan, tempahan, transaksi dompet, mesej sembang, ulasan, serta klik dan perkongsian afiliasi."
+      },
+      "why": {
+        "heading": "Mengapa kami mengumpulnya",
+        "body": "Kami menggunakan maklumat ini untuk mencipta akaun anda, memproses tempahan dan pembayaran, menjalankan ciri dompet, afiliasi dan ganjaran, menjawab permintaan sokongan, dan memastikan platform selamat daripada penipuan dan penyalahgunaan. Kami tidak menjual maklumat peribadi anda."
+      },
+      "cookies": {
+        "heading": "Kuki",
+        "body": "Kami menggunakan sebilangan kecil kuki. Kuki sesi log masuk memastikan anda kekal log masuk. Kuki bahasa mengingati bahasa pilihan anda, dan keutamaan mata wang mengingati mata wang paparan anda. Dua kuki afiliasi (id pelawat dan id rujukan) membolehkan kami mengkreditkan orang yang betul apabila anda membuka pautan yang dikongsi. Kami tidak menggunakan kuki pengiklanan pihak ketiga."
+      },
+      "sharing": {
+        "heading": "Dengan siapa kami berkongsi",
+        "body": "Kami berkongsi data hanya dengan penyedia perkhidmatan yang kami perlukan untuk beroperasi: Supabase (pangkalan data, log masuk, dan storan fail), Stripe dan ToyyibPay (pembayaran), Twilio (kod SMS sekali guna), dan Google (AI Gemini untuk pembantu bantuan, dan peta). Vendor yang anda berurusan boleh melihat maklumat yang diperlukan untuk memenuhi pesanan atau tempahan anda. Kami mungkin mendedahkan maklumat jika dikehendaki oleh undang-undang."
+      },
+      "retention": {
+        "heading": "Berapa lama kami menyimpannya",
+        "body": "Kami menyimpan maklumat akaun anda selagi akaun anda dibuka. Menutup akaun anda ialah penutupan lembut: rekod transaksi seperti pesanan dan pembayaran dikekalkan di mana kami memerlukannya untuk perakaunan dan penyelesaian pertikaian. Dokumen pengenalan mengikut pengekalan yang diterangkan dalam halaman Data & KYC."
+      },
+      "rights": {
+        "heading": "Hak anda",
+        "body": "Anda boleh melihat dan menyunting kebanyakan maklumat profil anda pada bila-bila masa daripada tetapan profil. Anda boleh menghantar semula dokumen pengenalan jika semakan ditolak, dan anda boleh menutup akaun anda sendiri. Untuk bertanya tentang data anda, hubungi kami melalui saluran di bawah."
+      },
+      "contact": {
+        "heading": "Hubungi",
+        "body": "Untuk sebarang soalan privasi, gunakan sembang sokongan dalam aplikasi atau buka tiket sokongan daripada Pusat Bantuan. Kerana ini projek pelajar, kami membalas atas dasar usaha terbaik."
+      }
+    },
+    "terms": {
+      "title": "Terma Perkhidmatan",
+      "intro": "Terma ini menerangkan peraturan menggunakan MyLawatan. Dengan menggunakan platform ini anda bersetuju dengannya. Sila baca notis prototaip dahulu.",
+      "prototype": {
+        "heading": "Notis prototaip",
+        "body": "MyLawatan ialah projek akademik tahun akhir, bukan produk komersial. Sesetengah ciri disimulasikan untuk tujuan demonstrasi dan tiada barangan, perkhidmatan atau bayaran sebenar dijamin. Jangan bergantung padanya untuk tempahan perjalanan sebenar."
+      },
+      "accounts": {
+        "heading": "Akaun dan kelayakan",
+        "body": "Anda bertanggungjawab atas ketepatan maklumat yang anda berikan dan menjaga keselamatan log masuk anda. Melayari terbuka kepada semua orang; pembayaran dan tempahan memerlukan nombor telefon yang disahkan, dan pengeluaran pendapatan memerlukan pengesahan identiti."
+      },
+      "acceptableUse": {
+        "heading": "Penggunaan yang dibenarkan",
+        "body": "Jangan salah guna platform: tiada penipuan, tiada percubaan memanipulasi klik afiliasi atau ganjaran, tiada kandungan kesat atau menyalahi undang-undang, dan tiada gangguan terhadap pengguna lain atau perkhidmatan. Kami boleh menggantung akaun yang melanggar peraturan ini."
+      },
+      "payments": {
+        "heading": "Pembayaran",
+        "body": "Pembayaran kad dikendalikan oleh Stripe dan pembayaran bank/FPX oleh ToyyibPay. Pilihan Touch 'n Go dan GrabPay yang ditunjukkan semasa pembayaran ialah simulator untuk demonstrasi sahaja dan tidak melibatkan wang sebenar. Harga ditunjukkan dalam Ringgit Malaysia (RM); sebarang mata wang lain yang ditunjukkan hanyalah rujukan anggaran."
+      },
+      "earnings": {
+        "heading": "Dompet, baucar dan afiliasi",
+        "body": "Baki dompet, baucar, komisen afiliasi dan ganjaran wujud untuk mempamerkan platform. Kadar komisen dan peraturan ganjaran boleh berubah, dan baki atau atribusi yang dicipta untuk ujian mungkin diselaraskan. Rujukan sendiri dan manipulasi lain tidak layak untuk komisen."
+      },
+      "content": {
+        "heading": "Kandungan dan ulasan",
+        "body": "Anda mengekalkan pemilikan kandungan yang anda hantar, seperti ulasan dan cadangan, tetapi memberi kami kebenaran untuk memaparkannya dalam platform. Kandungan mesti jujur dan sah; kami boleh mengeluarkan kandungan yang melanggar terma ini."
+      },
+      "liability": {
+        "heading": "Liabiliti",
+        "body": "Platform ini disediakan \"sebagaimana adanya\" tanpa jaminan. Sebagai prototaip akademik, ia mungkin mengandungi ralat atau gangguan, dan setakat yang dibenarkan undang-undang, kami tidak bertanggungjawab atas kerugian akibat penggunaannya."
+      },
+      "changes": {
+        "heading": "Perubahan terma",
+        "body": "Kami mungkin mengemas kini terma ini apabila projek berkembang. Tarikh di atas menunjukkan bila ia terakhir diubah, dan penggunaan berterusan selepas perubahan bermakna anda menerima terma yang dikemas kini."
+      }
+    },
+    "data": {
+      "title": "Data & KYC Anda",
+      "intro": "Halaman ini menerangkan, dalam bahasa mudah, cara MyLawatan mengendalikan pengesahan identiti (KYC) dan dokumen sensitif yang terlibat. Ia memperincikan Dasar Privasi untuk bidang khusus ini.",
+      "when": {
+        "heading": "Bila pengesahan diperlukan",
+        "body": "Anda tidak perlu memuat naik sebarang dokumen identiti untuk melayari, menyimpan item, atau membuat tempahan. Pengesahan identiti (KYC) hanya diperlukan untuk tindakan amanah tinggi, khususnya mengeluarkan pendapatan daripada dompet anda. Anda mengawal bila, atau sama ada, anda memulakannya."
+      },
+      "collect": {
+        "heading": "Apa yang kami kumpul untuk KYC",
+        "body": "Apabila anda memilih untuk disahkan, kami mengumpul dokumen identiti dikeluarkan kerajaan (seperti IC atau pasport) — imej bahagian depan dan belakang — dan nombor identiti yang tercetak padanya. Kami menggunakan imbasan teks automatik (OCR) untuk membaca dokumen dan mempercepat semakan."
+      },
+      "storage": {
+        "heading": "Di mana ia disimpan",
+        "body": "Imej dokumen disimpan dalam baldi storan peribadi yang tidak boleh diakses awam. Nombor identiti tidak disimpan dalam teks biasa; ia ditukar kepada cincang sehala berkunci supaya boleh disemak untuk pertindihan tanpa menyimpan nombor asal yang boleh dibaca."
+      },
+      "access": {
+        "heading": "Siapa yang boleh melihatnya",
+        "body": "Hanya penyemak platform yang dibenarkan (admin atau pelulus) boleh membuka dokumen anda untuk membuat keputusan kelulusan. Vendor dan pelanggan lain tidak sekali-kali boleh melihat dokumen identiti anda. Akses terhad kepada apa yang diperlukan untuk menyemak penyerahan anda."
+      },
+      "retention": {
+        "heading": "Berapa lama kami menyimpannya",
+        "body": "Kami menyimpan rekod pengesahan selagi diperlukan untuk menyokong status disahkan anda dan sebarang pengeluaran berkaitan. Jika penyerahan ditinggalkan sebelum selesai, bukti yang dimuat naik akan dikeluarkan. Anda boleh meminta kami menyemak atau mengeluarkan dokumen anda melalui sokongan."
+      },
+      "resubmit": {
+        "heading": "Jika penyerahan anda ditolak",
+        "body": "Jika penyemak menolak penyerahan anda, anda akan melihat sebabnya dan boleh menghantar semula dengan dokumen yang lebih jelas atau dibetulkan. Tiada penalti untuk menghantar semula, dan penolakan tidak menjejaskan keupayaan anda untuk melayari atau menempah."
+      },
+      "consent": {
+        "heading": "Menarik balik keizinan",
+        "body": "Pengesahan adalah pilihan. Jika anda tidak mahu kami menyimpan dokumen identiti anda, jangan mulakan KYC — anda masih boleh menggunakan platform selebihnya kecuali pengeluaran. Anda juga boleh menutup akaun anda, iaitu penutupan lembut seperti diterangkan dalam Dasar Privasi."
+      }
+    },
+    "about": {
+      "title": "Perihal MyLawatan",
+      "intro": "MyLawatan ialah pasar pelancongan tertumpu Malaysia yang dibina sebagai projek tahun akhir. Ia menggabungkan penemuan, tempahan, pembayaran, dan sokongan pelancong dalam satu tempat.",
+      "what": {
+        "heading": "Apa itu MyLawatan",
+        "body": "Anda boleh meneroka aktiviti, makanan, penginapan, dan permata tersembunyi di seluruh Malaysia, menempah dan membayar dalam satu troli, bersembang dengan vendor, dan menguruskan segalanya daripada satu akaun. Vendor menguruskan cawangan, penyenaraian, tempahan, dan baucar mereka, manakala platform mengendalikan pembayaran, pengesahan, dan ganjaran di belakang tabir."
+      },
+      "prototype": {
+        "heading": "Prototaip pelajar",
+        "body": "Ini ialah projek akademik dan bukan perkhidmatan komersial. Sesetengah ciri — termasuk kaedah pembayaran tertentu — disimulasikan untuk demonstrasi, dan ia tidak bertujuan untuk tempahan perjalanan wang sebenar."
+      },
+      "contact": {
+        "heading": "Mendapatkan bantuan",
+        "body": "Cara terpantas untuk mendapatkan jawapan ialah Pusat Bantuan atau pembantu dalam aplikasi, yang boleh mencipta tiket sokongan untuk pasukan kami jika ia tidak dapat menjawab soalan anda."
+      },
+      "helpCta": "Lawati Pusat Bantuan",
+      "supportCta": "Hubungi sokongan"
     }
   }
 }

@@ -2325,7 +2325,15 @@
       "profileCityDistance": "距离以个人资料中的城市为起点。",
       "unlock": "完成个人资料和旅行问卷以解锁个性化建议。",
       "continueVerification": "继续验证 →",
-      "editPreferences": "编辑偏好 →"
+      "editPreferences": "编辑偏好 →",
+      "reasons": {
+        "interest": "符合您的{{category}}兴趣",
+        "interestsPlain": "符合您的兴趣",
+        "budget": "在您的预算之内",
+        "nearby": "距离 {{km}} 公里",
+        "accessible": "符合您的无障碍需求",
+        "generic": "为您精选"
+      }
     },
     "notifications": {
       "description": "接收有关预订、钱包和账户的更新。"
@@ -2511,7 +2519,7 @@
       "startsAt": "开始时间：{{date}}",
       "endsAt": "截止时间：{{date}}",
       "pageTitle": "快闪活动与优惠",
-      "pageDescription": "浏览由真实优惠券和门店商品支持的限时合作活动。",
+      "pageDescription": "浏览已排期的商家市集活动，以及参与的摊位。",
       "home": "首页",
       "loadError": "暂时无法加载活动。",
       "loading": "正在加载活动…",
@@ -2519,59 +2527,48 @@
       "emptyDescription": "目前没有已发布的活动。规划行程时，可以先通过首页日历浏览可预约时段。",
       "unavailableTitle": "活动暂时无法使用",
       "unavailableDescription": "暂时无法更新活动列表，请稍后再试。",
-      "offerCount": "{{count}} 项精选优惠",
-      "offerCount_one": "{{count}} 项精选优惠",
-      "offerCount_other": "{{count}} 项精选优惠",
+      "vendorCount": "{{count}} 个参与商家",
+      "vendorCount_one": "{{count}} 个参与商家",
+      "vendorCount_other": "{{count}} 个参与商家",
       "exploreCampaign": "查看活动",
       "allCampaigns": "浏览全部活动",
       "viewCampaign": "查看活动详情",
       "viewDetails": "查看详情",
-      "viewAllOffers": "查看优惠",
-      "viewAllOffers_one": "查看优惠",
-      "viewAllOffers_other": "查看全部 {{count}} 项优惠",
-      "moreOffers": "此活动还有 {{count}} 项优惠",
-      "moreOffers_one": "此活动还有 {{count}} 项优惠",
-      "moreOffers_other": "此活动还有 {{count}} 项优惠",
-      "previewOfferCount": "显示 {{shown}} / 共 {{total}} 项优惠",
+      "viewAllVendors": "查看商家",
+      "viewAllVendors_one": "查看商家",
+      "viewAllVendors_other": "查看全部 {{count}} 个商家",
+      "previewVendorCount": "显示 {{shown}} / 共 {{total}} 个商家",
       "detailTitle": "活动详情",
-      "detailDescription": "查看活动时间及参与优惠。",
+      "detailDescription": "查看活动时间及参与商家。",
       "backToEvents": "返回活动列表",
+      "backToEvent": "返回 {{title}}",
       "notFound": "该活动已不可用",
       "notFoundDescription": "活动可能已经结束或尚未发布。你可以浏览其他正在进行或即将开始的活动。",
       "tryAgainDescription": "请检查网络连接后重试。",
-      "offerSection": "活动优惠",
+      "vendorsSection": "参与此活动的商家",
       "campaignDetails": "活动说明",
-      "upcomingNotice": "这是活动预览。活动开始后才能使用优惠操作。",
-      "noOffers": "目前此活动没有符合条件的优惠。",
-      "voucher": "优惠券",
-      "product": "商品",
-      "percentOff": "优惠 {{value}}%",
-      "fixedOff": "优惠 {{value}}",
-      "buyOneGetOne": "买一送一",
-      "remaining": "剩余 {{count}} 份",
-      "remaining_one": "剩余 {{count}} 份",
-      "remaining_other": "剩余 {{count}} 份",
-      "voucherFrom": "{{vendor}} 提供的优惠券",
-      "productFrom": "{{vendor}} 提供的商品",
-      "vendorWide": "参与活动的门店",
-      "vendorOutlets": "{{vendor}} 的参与门店",
-      "eligibleOutlets": "适用于 {{count}} 家门店",
-      "eligibleOutlets_one": "适用于 {{count}} 家门店",
-      "eligibleOutlets_other": "适用于 {{count}} 家门店",
-      "minimumSpend": "最低消费 {{amount}}",
-      "offerValidUntil": "优惠券有效期至 {{date}}",
-      "eligibleProducts": "适用商品",
-      "viewProduct": "查看此门店商品",
-      "availableAtStart": "活动开始后开放",
-      "claimVoucher": "领取优惠券",
-      "claiming": "正在领取…",
-      "claimed": "优惠券已保存到账户",
-      "viewMyVouchers": "查看我的优惠券",
-      "claimErrors": {
-        "limit": "此优惠券的领取数量已达上限。",
-        "notStarted": "优惠券尚未开放领取。",
-        "closed": "此优惠券已无法领取。",
-        "generic": "无法领取此优惠券，请重试。"
+      "upcomingNotice": "这是活动预览。活动开始后才能查看摊位。",
+      "noVendors": "此活动尚未有获批的商家。",
+      "stallNumber": "摊位 {{number}}",
+      "stallProducts": "此摊位售卖的商品",
+      "productCount": "{{count}} 件商品",
+      "productCount_one": "{{count}} 件商品",
+      "productCount_other": "{{count}} 件商品",
+      "viewStall": "查看摊位",
+      "previous": "上一个活动",
+      "next": "下一个活动"
+    },
+    "recommendationReasons": {
+      "near_you": "在您附近",
+      "interests": "符合您的兴趣",
+      "similar": "相似旅客的热门之选",
+      "hidden_gem": "隐藏珍宝"
+    },
+    "eventPromotions": {
+      "rail": {
+        "eyebrow": "精选",
+        "badge": "精选",
+        "backToHome": "返回首页"
       }
     }
   },
@@ -3208,6 +3205,170 @@
       "viewAll": "查看全部 {{count}}",
       "viewAll_one": "查看全部 {{count}}",
       "viewAll_other": "查看全部 {{count}}"
+    }
+  },
+  "help": {
+    "meta": {
+      "title": "帮助中心",
+      "description": "浏览有关预订、付款、钱包、验证、联盟推广等常见问题的解答。"
+    },
+    "hero": {
+      "title": "有什么可以帮您？",
+      "subtitle": "浏览帮助文章或搜索主题。"
+    },
+    "search": {
+      "placeholder": "搜索帮助文章…",
+      "noResults": "没有符合搜索条件的文章。"
+    },
+    "empty": "暂无帮助文章。",
+    "backToExplore": "返回探索",
+    "backToHelp": "返回帮助中心",
+    "article": {
+      "topics": "相关主题",
+      "stillNeedHelp": "仍需要帮助？",
+      "contactSupport": "联系客服"
+    },
+    "notFound": {
+      "title": "找不到文章",
+      "body": "该帮助文章不存在或已被移除。"
+    },
+    "categories": {
+      "rewards": "奖励",
+      "wallet": "钱包",
+      "booking": "预订",
+      "account": "账户",
+      "affiliate": "联盟推广",
+      "vendor": "商家",
+      "payment": "支付",
+      "general": "通用"
+    }
+  },
+  "legal": {
+    "updated": "最后更新：{{date}}",
+    "nav": {
+      "privacy": "隐私",
+      "terms": "条款",
+      "data": "数据与 KYC",
+      "about": "关于",
+      "help": "帮助中心"
+    },
+    "privacy": {
+      "title": "隐私政策",
+      "intro": "本政策说明 MyLawatan 收集哪些个人信息、为何收集，以及您拥有的选择。MyLawatan 是一个毕业设计项目，请将其视为原型而非商业服务。",
+      "collect": {
+        "heading": "我们收集什么",
+        "body": "您提供的账户信息：电子邮件、姓名、电话号码，以及可选的显示名称、简短介绍、头像和您的城市与国家。如果您选择进行验证，我们还会收集“数据与 KYC”页面所述的身份证件。我们会记录运行服务所需的活动，例如订单、预订、钱包交易、聊天消息、评价，以及联盟推广的点击和分享。"
+      },
+      "why": {
+        "heading": "我们为何收集",
+        "body": "我们使用这些信息来创建您的账户、处理预订和付款、运行钱包、联盟推广和奖励功能、回复支持请求，并保护平台免受欺诈和滥用。我们不会出售您的个人信息。"
+      },
+      "cookies": {
+        "heading": "Cookie",
+        "body": "我们使用少量 Cookie。登录会话 Cookie 让您保持登录状态。语言 Cookie 记住您选择的语言，货币偏好记住您的显示货币。两个联盟推广 Cookie（访客 ID 和推荐 ID）让我们在您打开分享链接时归功于正确的人。我们不使用第三方广告 Cookie。"
+      },
+      "sharing": {
+        "heading": "我们与谁共享",
+        "body": "我们仅与运营所需的服务提供商共享数据：Supabase（数据库、登录和文件存储）、Stripe 和 ToyyibPay（支付）、Twilio（一次性短信验证码），以及 Google（用于帮助助手的 Gemini AI 和地图）。与您互动的商家可以看到履行您订单或预订所需的信息。如法律要求，我们可能会披露信息。"
+      },
+      "retention": {
+        "heading": "我们保留多久",
+        "body": "只要您的账户处于开启状态，我们就会保留您的账户信息。关闭账户为软关闭：订单和付款等交易记录会在我们出于会计和争议解决需要时予以保留。身份证件按“数据与 KYC”页面所述的期限保留。"
+      },
+      "rights": {
+        "heading": "您的权利",
+        "body": "您可以随时在个人资料设置中查看和编辑大部分资料信息。如果审核被拒，您可以重新提交身份证件，也可以自行关闭账户。如需就您的数据提问，请通过下方渠道联系我们。"
+      },
+      "contact": {
+        "heading": "联系我们",
+        "body": "如有任何隐私问题，请使用应用内支持聊天或在帮助中心提交支持工单。由于这是学生项目，我们会尽力回复。"
+      }
+    },
+    "terms": {
+      "title": "服务条款",
+      "intro": "本条款说明使用 MyLawatan 的规则。使用本平台即表示您同意这些条款。请先阅读原型声明。",
+      "prototype": {
+        "heading": "原型声明",
+        "body": "MyLawatan 是毕业学术项目，而非商业产品。部分功能为演示而模拟，不保证任何真实商品、服务或付款。请勿依赖它进行真实的旅行预订。"
+      },
+      "accounts": {
+        "heading": "账户与资格",
+        "body": "您需对所提供信息的准确性负责，并妥善保管您的登录凭据。浏览对所有人开放；结账和预订需要经过验证的电话号码，提取收益需要身份验证。"
+      },
+      "acceptableUse": {
+        "heading": "可接受的使用",
+        "body": "请勿滥用平台：不得欺诈，不得试图操纵联盟推广点击或奖励，不得发布辱骂或违法内容，不得干扰其他用户或服务。我们可能会暂停违反这些规则的账户。"
+      },
+      "payments": {
+        "heading": "支付",
+        "body": "银行卡支付由 Stripe 处理，银行/FPX 支付由 ToyyibPay 处理。结账中显示的 Touch 'n Go 和 GrabPay 选项仅为演示用的模拟器，不涉及真实资金。价格以马来西亚令吉（RM）显示；显示的任何其他货币仅为近似参考。"
+      },
+      "earnings": {
+        "heading": "钱包、优惠券与联盟推广",
+        "body": "钱包余额、优惠券、联盟佣金和奖励用于展示平台。佣金费率和奖励规则可能变动，为测试而创建的余额或归因可能会被调整。自我推荐和其他操纵行为无资格获得佣金。"
+      },
+      "content": {
+        "heading": "内容与评价",
+        "body": "您保留所提交内容（如评价和推荐）的所有权，但授权我们在平台内展示这些内容。内容必须真实合法；我们可能会移除违反本条款的内容。"
+      },
+      "liability": {
+        "heading": "责任",
+        "body": "本平台按“现状”提供，不作任何保证。作为学术原型，它可能存在错误或停机，在法律允许的范围内，我们不对因使用本平台而产生的损失负责。"
+      },
+      "changes": {
+        "heading": "条款变更",
+        "body": "随着项目发展，我们可能会更新这些条款。顶部的日期显示最后修改时间，变更后继续使用即表示您接受更新后的条款。"
+      }
+    },
+    "data": {
+      "title": "您的数据与 KYC",
+      "intro": "本页面以通俗的语言说明 MyLawatan 如何处理身份验证（KYC）及所涉及的敏感证件。它是隐私政策在这一特定领域的补充。",
+      "when": {
+        "heading": "何时需要验证",
+        "body": "浏览、收藏项目或进行预订都无需上传任何身份证件。身份验证（KYC）仅在更高信任级别的操作时才需要，具体是从钱包提取收益。您可以自行掌控何时开始，或是否开始。"
+      },
+      "collect": {
+        "heading": "KYC 收集什么",
+        "body": "当您选择验证时，我们会收集政府签发的身份证件（如身份证或护照）的正反面图像，以及证件上印制的身份号码。我们使用自动文字扫描（OCR）读取证件以加快审核。"
+      },
+      "storage": {
+        "heading": "存储在何处",
+        "body": "证件图像存储在不对外公开的私有存储桶中。身份号码不以明文存储；它会被转换为单向带密钥的哈希值，以便在不保留可读原始号码的情况下检查重复。"
+      },
+      "access": {
+        "heading": "谁可以查看",
+        "body": "只有获授权的平台审核人员（管理员或审批员）才能打开您的证件以做出审批决定。商家和其他客户永远无法看到您的身份证件。访问权限仅限于审核您提交内容所需的范围。"
+      },
+      "retention": {
+        "heading": "我们保留多久",
+        "body": "我们会在支持您的已验证状态及相关提现所需的期间内保留验证记录。如果提交在完成前被放弃，其上传的证据将被移除。您可以通过支持渠道要求我们审查或移除您的证件。"
+      },
+      "resubmit": {
+        "heading": "如果您的提交被拒",
+        "body": "如果审核人员拒绝您的提交，您将看到原因，并可使用更清晰或更正后的证件重新提交。重新提交不会有任何惩罚，被拒也不会影响您浏览或预订的能力。"
+      },
+      "consent": {
+        "heading": "撤回同意",
+        "body": "验证是可选的。如果您不希望我们保存您的身份证件，请不要开始 KYC——除提现外，您仍可使用平台的其余功能。您也可以关闭账户，这是隐私政策中所述的软关闭。"
+      }
+    },
+    "about": {
+      "title": "关于 MyLawatan",
+      "intro": "MyLawatan 是一个专注马来西亚的旅游市场平台，作为毕业设计项目构建。它将发现、预订、支付和旅客支持整合在一处。",
+      "what": {
+        "heading": "MyLawatan 是什么",
+        "body": "您可以探索马来西亚各地的活动、美食、住宿和隐藏景点，在一个购物车中预订并付款，与商家聊天，并在单一账户中管理一切。商家管理其门店、商品、预订和优惠券，而平台在幕后运行支付、验证和奖励。"
+      },
+      "prototype": {
+        "heading": "学生原型",
+        "body": "这是学术项目而非商业服务。部分功能——包括某些支付方式——为演示而模拟，并非用于真实资金的旅行预订。"
+      },
+      "contact": {
+        "heading": "获取帮助",
+        "body": "获取答案最快的方式是帮助中心或应用内助手；如果助手无法回答您的问题，它可以为我们的团队创建支持工单。"
+      },
+      "helpCta": "访问帮助中心",
+      "supportCta": "联系客服"
     }
   }
 }

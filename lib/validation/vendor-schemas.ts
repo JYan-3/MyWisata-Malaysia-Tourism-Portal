@@ -2,6 +2,7 @@
 // EVERY API route in this domain MUST pass request body through .parse() or .safeParse()
 
 import { z } from 'zod';
+import { databaseUuidSchema } from '@/lib/validation/schemas';
 import { TICKET_ENTRY_POLICIES } from '@/lib/tickets/product-ticket-policy';
 import { validateMalaysianPhone } from '@/lib/phone/normalize';
 import { parseInternationalPhone } from '@/lib/phone/international';
@@ -316,6 +317,51 @@ export const contentReviewSchema = z.object({
   }
 });
 
+// ── Vendor event promotions ─────────────────────────────────
+
+export const eventPromotionSubmitSchema = z.object({
+  title: z.string().trim().min(3).max(120),
+  details: z.string().trim().min(10).max(2000),
+  startDate: z.string().date(),
+  endDate: z.string().date(),
+  posterUrl: z.string().url().max(2000),
+}).strict().refine(
+  (data) => data.endDate >= data.startDate,
+  { message: 'End date must be on or after the start date', path: ['endDate'] },
+);
+
+// Resubmit carries the same fields — the RPC only accepts them when the
+// entry is currently changes_requested or approved (awaiting payment) — see
+// 20260928030000 migration. (The admin review schema for this feature lives
+// in lib/validation/schemas.ts, alongside kycReviewSchema, since it's admin-
+// not vendor-facing input.)
+export const eventPromotionResubmitSchema = eventPromotionSubmitSchema;
+
+// ── Vendor-Fair Event: campaign registration (a vendor joining an event) ─
+// Each product entry either picks an existing catalog product (by id) or
+// defines a new-for-this-event item (name+price+optional photo) — the
+// latter is never written into the vendor's real /vendor/products catalog,
+// it only ever exists on the registration. See 20260928180000 migration.
+
+export const campaignRegistrationProductSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('existing'), productId: databaseUuidSchema }).strict(),
+  z.object({
+    kind: z.literal('new'),
+    name: z.string().trim().min(2).max(120),
+    price: z.number().min(0).max(999_999.99),
+    imageUrl: z.string().url().max(2000).nullable(),
+  }).strict(),
+]);
+
+export const campaignRegistrationSubmitSchema = z.object({
+  stallNumber: z.string().trim().min(1).max(40),
+  stallDescription: z.string().trim().min(10).max(2000),
+  stallPosterUrl: z.string().url().max(2000),
+  products: z.array(campaignRegistrationProductSchema).min(1).max(30),
+}).strict();
+
+export const campaignRegistrationResubmitSchema = campaignRegistrationSubmitSchema;
+
 // ── Export inferred types ──────────────────────────────────
 
 export type VendorRegister = z.infer<typeof vendorRegisterSchema>;
@@ -338,3 +384,8 @@ export type PriceRuleUpdate = z.infer<typeof priceRuleUpdateSchema>;
 export type VoucherValidate = z.infer<typeof voucherValidateSchema>;
 export type FulfilUpdate = z.infer<typeof fulfilSchema>;
 export type VendorBatch = z.infer<typeof vendorBatchSchema>;
+export type EventPromotionSubmit = z.infer<typeof eventPromotionSubmitSchema>;
+export type EventPromotionResubmit = z.infer<typeof eventPromotionResubmitSchema>;
+export type CampaignRegistrationProduct = z.infer<typeof campaignRegistrationProductSchema>;
+export type CampaignRegistrationSubmit = z.infer<typeof campaignRegistrationSubmitSchema>;
+export type CampaignRegistrationResubmit = z.infer<typeof campaignRegistrationResubmitSchema>;

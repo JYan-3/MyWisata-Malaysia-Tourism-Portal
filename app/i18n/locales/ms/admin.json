@@ -40,7 +40,10 @@
     "Access Control": "Kawalan akses",
     "Sponsored Placements": "Ditaja",
     "Promotion Campaigns": "Kempen",
-    "Orders": "Pesanan"
+    "Orders": "Pesanan",
+    "Event Promos": "Promo Acara",
+    "Event Registrations": "Pendaftaran",
+    "Announcements": "Pengumuman"
   },
   "navigationSections": {
     "workspace": "Ruang kerja",
@@ -3009,7 +3012,15 @@
     "searchPlaceholder": "Tampal ID pesanan penuh",
     "search": "Cari",
     "status": "Status pesanan",
-    "statuses": { "all": "Semua status", "pending_payment": "Menunggu pembayaran", "paid": "Dibayar", "completed": "Selesai", "cancelled": "Dibatalkan", "failed": "Gagal", "refunded": "Dibayar balik" },
+    "statuses": {
+      "all": "Semua status",
+      "pending_payment": "Menunggu pembayaran",
+      "paid": "Dibayar",
+      "completed": "Selesai",
+      "cancelled": "Dibatalkan",
+      "failed": "Gagal",
+      "refunded": "Dibayar balik"
+    },
     "loading": "Memuatkan pesanan semasa…",
     "empty": "Tiada pesanan sepadan dengan penapis ini.",
     "order": "Pesanan",
@@ -3024,7 +3035,9 @@
     "count": "{{total}} pesanan",
     "previous": "Sebelumnya",
     "next": "Seterusnya",
-    "errors": { "load": "Tidak dapat memuatkan pesanan. Cuba lagi." }
+    "errors": {
+      "load": "Tidak dapat memuatkan pesanan. Cuba lagi."
+    }
   },
   "moderationWords": {
     "eyebrow": "Moderasi",
@@ -3068,53 +3081,42 @@
   },
   "promotionCampaigns": {
     "eyebrow": "Acara pelanggan",
-    "title": "Pengurus kempen pop-up",
-    "description": "Jadualkan baucar rakan niaga dan tawaran cawangan sebenar, kemudian hantar untuk kelulusan bebas.",
+    "title": "Pengurus acara pesta vendor",
+    "description": "Sediakan acara pesta vendor dan terbitkannya — vendor mendaftar gerai mereka sendiri apabila acara sudah diterbitkan.",
     "refresh": "Muat semula",
     "form": {
-      "title": "Cipta draf kempen",
-      "editTitle": "Edit draf kempen",
-      "guidance": "Pastikan kandungan dan tarikh kempen sepadan dengan tawaran yang dipautkan. Tiada diskaun atau kuantiti dicipta di sini.",
-      "name": "Nama kempen",
+      "title": "Cipta acara",
+      "editTitle": "Edit acara",
+      "guidance": "Ini ialah acara itu sendiri — vendor menyertai dengan mendaftar gerai mereka sendiri selepas diterbitkan.",
+      "name": "Nama acara",
       "slug": "Alamat halaman",
       "summary": "Penerangan ringkas",
       "description": "Penerangan penuh",
       "startsAt": "Bermula",
       "endsAt": "Berakhir",
+      "operatingHours": "Waktu operasi",
+      "operatingHoursFrom": "Buka",
+      "operatingHoursTo": "Tutup",
       "timezone": "Semua waktu menggunakan waktu Malaysia (UTC+08:00).",
       "invalidRange": "Waktu tamat mesti selepas waktu mula.",
-      "offers": "Tawaran yang mengambil bahagian",
-      "offerGuidance": "Pilih tawaran sedia ada yang diluluskan. Pilihan produk sentiasa merangkumi cawangan yang tepat.",
-      "offerCount": "{{count}} dipilih",
-      "offerCount_one": "{{count}} dipilih",
-      "offerCount_other": "{{count}} dipilih",
-      "offerType": "Jenis tawaran",
-      "product": "Produk cawangan",
-      "voucher": "Baucar",
-      "source": "Tawaran",
-      "chooseSource": "Pilih tawaran yang layak",
-      "vendorWide": "Semua cawangan yang layak",
-      "addOffer": "Tambah tawaran",
-      "noSources": "Tiada tawaran jenis ini yang layak.",
-      "unavailableVoucher": "Baucar ini tidak lagi layak. Buang dan pilih yang lain.",
-      "unavailableProduct": "Produk dan cawangan ini tidak lagi layak. Buang dan pilih yang lain.",
-      "removeOffer": "Buang {{name}}",
-      "saveChanges": "Simpan perubahan draf",
-      "saveDraft": "Simpan sebagai draf",
+      "poster": "Poster acara",
+      "choosePoster": "Pilih imej",
+      "removePoster": "Buang poster",
+      "saveChanges": "Terbitkan perubahan",
+      "saveDraft": "Terbitkan acara",
       "cancelEdit": "Batal edit"
     },
     "list": {
-      "title": "Aliran kerja kempen",
-      "description": "{{count}} kempen dalam senarai semasa",
-      "description_one": "{{count}} kempen dalam senarai semasa",
-      "description_other": "{{count}} kempen dalam senarai semasa",
-      "linkedOffers": "tawaran dipautkan",
+      "title": "Aliran kerja acara",
+      "description": "{{count}} acara dalam senarai semasa",
+      "description_one": "{{count}} acara dalam senarai semasa",
+      "description_other": "{{count}} acara dalam senarai semasa",
       "rejection": "Nota semakan"
     },
     "states": {
-      "loading": "Memuatkan kempen dan tawaran yang layak…",
-      "empty": "Belum ada kempen",
-      "emptyDescription": "Cipta draf, tambah tawaran rakan niaga sebenar dan hantar untuk semakan."
+      "loading": "Memuatkan acara…",
+      "empty": "Belum ada acara",
+      "emptyDescription": "Cipta acara, tambah poster dan waktu operasi, kemudian terbitkannya."
     },
     "status": {
       "draft": "Draf",
@@ -3126,7 +3128,7 @@
     },
     "actions": {
       "edit": "Edit draf",
-      "submit": "Hantar untuk semakan",
+      "submit": "Terbitkan",
       "approve": "Luluskan",
       "reject": "Minta perubahan",
       "pause": "Jeda",
@@ -3136,17 +3138,183 @@
     "prompts": {
       "rejectReason": "Terangkan perubahan yang diperlukan dalam sekurang-kurangnya 10 aksara.",
       "confirm": {
-        "submit": "Hantar kempen ini untuk kelulusan?",
+        "submit": "Terbitkan acara ini sekarang? Ia akan terus dilihat oleh pelanggan dan terbuka untuk pendaftaran vendor.",
         "approve": "Luluskan kempen ini untuk diterbitkan?",
         "pause": "Jeda kempen ini sekarang?",
         "archive": "Arkibkan kempen ini?"
       }
     },
     "errors": {
-      "load": "Tidak dapat memuatkan kempen dan tawaran yang layak.",
+      "load": "Tidak dapat memuatkan acara.",
       "forbidden": "Anda tiada kebenaran untuk mengurus kempen promosi.",
-      "save": "Tidak dapat menyimpan draf kempen.",
-      "transition": "Tidak dapat mengemas kini kempen ini."
+      "save": "Tidak dapat menyimpan draf acara.",
+      "transition": "Tidak dapat mengemas kini acara ini.",
+      "upload": "Tidak dapat memuat naik poster."
+    }
+  },
+  "eventRegistrations": {
+    "eyebrow": "Governans",
+    "title": "Pendaftaran Acara",
+    "description": "Semak pendaftaran gerai vendor untuk acara pesta vendor sebelum ia disiarkan.",
+    "loading": "Memuatkan…",
+    "backToQueue": "Kembali ke barisan",
+    "reviewHeading": "Keputusan semakan",
+    "notePlaceholder": "Terangkan keputusan anda (diperlukan untuk minta perubahan atau tolak)",
+    "noteRequired": "Nota sekurang-kurangnya 10 aksara diperlukan untuk tindakan ini.",
+    "rejectionNote": "Ditolak: {{note}}",
+    "changesRequestedNote": "Perubahan diminta: {{note}}",
+    "stallLabel": "Gerai {{number}}",
+    "productsHeading": "Apa yang dijual gerai ini",
+    "confirm": {
+      "approveTitle": "Luluskan pendaftaran gerai ini?",
+      "approveDescription": "Gerai vendor akan dipaparkan di halaman acara awam.",
+      "requestChangesTitle": "Minta perubahan daripada vendor?",
+      "requestChangesDescription": "Vendor akan melihat nota anda dan boleh menyunting serta menghantar semula.",
+      "rejectTitle": "Tolak pendaftaran gerai ini?",
+      "rejectDescription": "Vendor akan melihat nota anda. Tindakan ini tidak boleh dibatalkan."
+    },
+    "errors": {
+      "load": "Tidak dapat memuatkan pendaftaran acara.",
+      "notFound": "Pendaftaran tidak dijumpai.",
+      "review": "Tidak dapat merekod keputusan semakan."
+    },
+    "metrics": {
+      "pending": "Menunggu semakan",
+      "changesRequested": "Perubahan diminta",
+      "approved": "Diluluskan",
+      "total": "Jumlah pendaftaran"
+    },
+    "filters": {
+      "search": "Cari vendor, acara, atau gerai",
+      "status": "Status",
+      "allStatuses": "Semua status"
+    },
+    "status": {
+      "pending": "Menunggu",
+      "changesRequested": "Perubahan diminta",
+      "approved": "Diluluskan",
+      "rejected": "Ditolak"
+    },
+    "empty": {
+      "title": "Tiada pendaftaran acara",
+      "description": "Pendaftaran gerai vendor akan dipaparkan di sini untuk semakan."
+    },
+    "actions": {
+      "approve": "Luluskan",
+      "requestChanges": "Minta perubahan",
+      "reject": "Tolak",
+      "approveSuccess": "Pendaftaran diluluskan.",
+      "request_changesSuccess": "Perubahan diminta daripada vendor.",
+      "rejectSuccess": "Pendaftaran ditolak."
+    }
+  },
+  "announcements": {
+    "eyebrow": "Governans",
+    "title": "Pengumuman",
+    "description": "Hantar pengumuman kepada vendor — jemputan acara atau apa-apa sahaja yang lain.",
+    "loading": "Memuatkan…",
+    "saved": "Pengumuman dihantar.",
+    "errors": {
+      "load": "Tidak dapat memuatkan pengumuman.",
+      "save": "Tidak dapat menghantar pengumuman ini."
+    },
+    "form": {
+      "title": "Pengumuman baharu",
+      "announcementTitle": "Tajuk",
+      "body": "Mesej",
+      "senderCode": "Label penghantar",
+      "linkedCampaign": "Pautkan ke acara (pilihan)",
+      "noCampaign": "Tiada acara dipautkan",
+      "send": "Hantar pengumuman"
+    },
+    "list": {
+      "title": "Pengumuman dihantar"
+    },
+    "empty": {
+      "title": "Belum ada pengumuman",
+      "description": "Pengumuman yang anda hantar kepada vendor akan dipaparkan di sini."
+    }
+  },
+  "eventPromotions": {
+    "eyebrow": "Governans",
+    "title": "Promosi Acara",
+    "description": "Semak promosi acara luaran yang dihantar vendor sebelum ia disiarkan.",
+    "loading": "Memuatkan…",
+    "backToQueue": "Kembali ke barisan",
+    "reviewHeading": "Keputusan semakan",
+    "notePlaceholder": "Terangkan keputusan anda (diperlukan untuk minta perubahan atau tolak)",
+    "noteRequired": "Nota sekurang-kurangnya 10 aksara diperlukan untuk tindakan ini.",
+    "confirm": {
+      "approveTitle": "Luluskan promosi acara ini?",
+      "approveDescription": "Vendor akan dimaklumkan dan boleh membayar untuk menyiarkannya.",
+      "requestChangesTitle": "Minta perubahan daripada vendor?",
+      "requestChangesDescription": "Vendor akan melihat nota anda dan boleh menyunting serta menghantar semula.",
+      "rejectTitle": "Tolak promosi acara ini?",
+      "rejectDescription": "Vendor akan melihat nota anda. Tindakan ini tidak boleh dibatalkan.",
+      "pauseTitle": "Jeda promosi ini?",
+      "pauseDescription": "Ia akan disembunyikan daripada pelanggan serta-merta. Anda boleh menyiarkannya semula pada bila-bila masa sebelum tarikh tamat.",
+      "resumeTitle": "Siarkan semula promosi ini?",
+      "resumeDescription": "Ia akan kelihatan kepada pelanggan semula serta-merta, tertakluk kepada had kapasiti harian."
+    },
+    "rejectionNote": "Ditolak: {{note}}",
+    "changesRequestedNote": "Perubahan diminta: {{note}}",
+    "awaitingPayment": "Diluluskan — menunggu pembayaran vendor.",
+    "paidNote": "Dibayar {{amount}} melalui {{method}}.",
+    "pausedNote": "Dijeda — disembunyikan daripada pelanggan. Siarkan semula untuk menjadikannya kelihatan.",
+    "visibilityHeading": "Keterlihatan",
+    "paymentMethods": {
+      "wallet": "pendapatan wallet",
+      "stripe": "kad"
+    },
+    "settings": {
+      "currencyPrefix": "RM",
+      "costPerDay": "Kos promosi sehari",
+      "maxConcurrent": "Had maksimum promosi serentak sehari",
+      "save": "Simpan",
+      "saved": "Kos sehari dikemas kini.",
+      "saveError": "Tidak dapat mengemas kini kos sehari.",
+      "invalid": "Masukkan amaun sah yang tidak negatif."
+    },
+    "errors": {
+      "load": "Tidak dapat memuatkan promosi acara.",
+      "notFound": "Promosi acara tidak dijumpai.",
+      "review": "Tidak dapat merekod keputusan semakan."
+    },
+    "metrics": {
+      "pending": "Menunggu semakan",
+      "changesRequested": "Perubahan diminta",
+      "approved": "Diluluskan",
+      "paid": "Dibayar",
+      "total": "Jumlah penyerahan"
+    },
+    "filters": {
+      "search": "Cari tajuk atau vendor",
+      "status": "Status permohonan",
+      "allStatuses": "Semua status"
+    },
+    "status": {
+      "pending": "Menunggu",
+      "changesRequested": "Perubahan diminta",
+      "approved": "Diluluskan",
+      "paid": "Dibayar",
+      "rejected": "Ditolak",
+      "paused": "Dijeda"
+    },
+    "empty": {
+      "title": "Tiada promosi acara",
+      "description": "Promosi acara yang dihantar vendor akan dipaparkan di sini untuk semakan."
+    },
+    "actions": {
+      "approve": "Luluskan",
+      "requestChanges": "Minta perubahan",
+      "reject": "Tolak",
+      "pause": "Jeda",
+      "resume": "Siarkan",
+      "approveSuccess": "Promosi acara diluluskan.",
+      "request_changesSuccess": "Perubahan diminta daripada vendor.",
+      "rejectSuccess": "Promosi acara ditolak.",
+      "pauseSuccess": "Promosi dijeda — disembunyikan daripada pelanggan.",
+      "resumeSuccess": "Promosi disiarkan — kelihatan kepada pelanggan semula."
     }
   }
 }

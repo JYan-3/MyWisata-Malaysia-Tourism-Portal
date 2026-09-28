@@ -1,16 +1,27 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import type { PromotionCampaignPublic, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }),
 }));
 
-vi.mock("@/components/customer/promotion-campaign-offer-card", () => ({
-  PromotionCampaignOfferCard: () => <article data-testid="campaign-offer-card">Offer card</article>,
+vi.mock("@/components/customer/promotion-campaign-vendor-card", () => ({
+  PromotionCampaignVendorCard: () => <article data-testid="campaign-vendor-card">Vendor card</article>,
 }));
 
 import { PromotionCampaignDetailClient } from "@/app/customer/events/[slug]/promotion-campaign-detail-client";
+
+const vendor: PromotionCampaignPublicVendor = {
+  registrationId: "22222222-2222-4222-8222-222222222222",
+  vendorId: "4f774340-2bce-de7d-dc27-8208f1286b59",
+  vendorName: "Heritage Walk KL",
+  vendorLogoUrl: null,
+  stallNumber: "A1",
+  stallDescription: "A real outlet stall.",
+  stallPosterUrl: "https://x/stall.jpg",
+  products: [{ id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Jalan Alor Heritage & Food Walk", price: 105.6, imageUrl: null }],
+};
 
 const campaign: PromotionCampaignPublic = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -18,21 +29,16 @@ const campaign: PromotionCampaignPublic = {
   title: "Heritage Walk KL — Local Explorer Picks",
   summary: "Duplicate summary that should not be repeated on the detail page.",
   description: "Full campaign terms including voucher eligibility and unchanged prices.",
+  posterUrl: null,
+  operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T12:00:00.000Z",
   endsAt: "2026-10-25T12:00:00.000Z",
   visibility: "live",
-  offers: [{
-    kind: "product",
-    id: "22222222-2222-4222-8222-222222222222",
-    position: 0,
-    vendor: { id: "4f774340-2bce-de7d-dc27-8208f1286b59", name: "Heritage Walk KL", logoUrl: null },
-    outlet: { id: "3d30edce-2a66-d3c8-1835-5bcdc7f54f8a", name: "Heritage Walk KL", city: "George Town", state: "Penang", imageUrl: null },
-    product: { id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Jalan Alor Heritage & Food Walk", description: "A real outlet offer.", price: 105.6, imageUrl: null },
-  }],
+  vendors: [vendor],
 };
 
 describe("PromotionCampaignDetailClient", () => {
-  it("reduces repeated campaign copy while keeping the full description and offer cards available", () => {
+  it("reduces repeated campaign copy while keeping the full description and vendor cards available", () => {
     const markup = renderToStaticMarkup(
       <PromotionCampaignDetailClient slug={campaign.slug} initialCampaign={campaign} initialError={null} />,
     );
@@ -42,7 +48,7 @@ describe("PromotionCampaignDetailClient", () => {
     expect(markup).toContain("<details");
     expect(markup).toContain("ui.promotionCampaigns.campaignDetails");
     expect(markup).toContain(campaign.description);
-    expect(markup).toContain('data-testid="campaign-offer-card"');
+    expect(markup).toContain('data-testid="campaign-vendor-card"');
 
     const details = markup.match(/<details([^>]*)>([\s\S]*?)<\/details>/);
     expect(details).not.toBeNull();

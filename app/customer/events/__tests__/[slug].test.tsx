@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import type { PromotionCampaignPublic, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 
 const mocks = vi.hoisted(() => ({ getPublicPromotionCampaigns: vi.fn(), notFound: vi.fn() }));
 
@@ -14,23 +14,29 @@ vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
 
 import CustomerEventDetailPage from "@/app/customer/events/[slug]/page";
 
+const vendor: PromotionCampaignPublicVendor = {
+  registrationId: "22222222-2222-4222-8222-222222222222",
+  vendorId: "4f774340-2bce-de7d-dc27-8208f1286b59",
+  vendorName: "Heritage Walk KL",
+  vendorLogoUrl: null,
+  stallNumber: "A1",
+  stallDescription: "A real outlet stall.",
+  stallPosterUrl: "https://x/stall.jpg",
+  products: [{ id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Jalan Alor Heritage & Food Walk", price: 105.6, imageUrl: null }],
+};
+
 const campaign: PromotionCampaignPublic = {
   id: "11111111-1111-4111-8111-111111111111",
   slug: "heritage-walk-kl-current-offers",
   title: "Heritage Walk KL — Local Explorer Picks",
   summary: "Explore real Heritage Walk KL offers.",
   description: "Current products and voucher from Heritage Walk KL.",
+  posterUrl: null,
+  operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T12:00:00.000Z",
   endsAt: "2026-10-25T12:00:00.000Z",
   visibility: "live",
-  offers: [{
-    kind: "product",
-    id: "22222222-2222-4222-8222-222222222222",
-    position: 0,
-    vendor: { id: "4f774340-2bce-de7d-dc27-8208f1286b59", name: "Heritage Walk KL", logoUrl: null },
-    outlet: { id: "3d30edce-2a66-d3c8-1835-5bcdc7f54f8a", name: "Heritage Walk KL", city: "George Town", state: "Penang", imageUrl: null },
-    product: { id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Jalan Alor Heritage & Food Walk", description: "A real outlet offer.", price: 105.6, imageUrl: null },
-  }],
+  vendors: [vendor],
 };
 
 describe("customer promotion campaign detail", () => {
@@ -39,14 +45,13 @@ describe("customer promotion campaign detail", () => {
     mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [campaign], error: false });
   });
 
-  it("renders campaign, exact outlet and offer link in the initial server response", async () => {
+  it("renders campaign and a link to the participating vendor's stall in the initial server response", async () => {
     const page = await CustomerEventDetailPage({ params: Promise.resolve({ slug: campaign.slug }) });
     const markup = renderToStaticMarkup(page);
 
     expect(markup).toContain(campaign.title);
-    expect(markup).toContain("Jalan Alor Heritage &amp; Food Walk");
-    expect(markup).toContain("George Town");
-    expect(markup).toContain('href="/customer/activity/a2880dc7-4c89-b498-131e-964430c836a9?outletId=3d30edce-2a66-d3c8-1835-5bcdc7f54f8a"');
+    expect(markup).toContain("Heritage Walk KL");
+    expect(markup).toContain(`href="/customer/events/${campaign.slug}/${vendor.vendorId}"`);
     expect(markup).not.toContain("ui.promotionCampaigns.loading");
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledWith(campaign.slug);
   });

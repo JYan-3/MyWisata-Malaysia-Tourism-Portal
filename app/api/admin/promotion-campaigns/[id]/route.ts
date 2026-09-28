@@ -13,11 +13,8 @@ function databaseFailure(error: { message?: string; code?: string } | null) {
   }
   if (message.includes("not_found")) return apiFail("NOT_FOUND", "Campaign was not found", 404);
   if (message.includes("stale") || message.includes("changed")) return apiFail("CONFLICT", "This campaign changed. Refresh it and try again.", 409);
-  if (message.includes("self_approval") || message.includes("creator_cannot_approve")) {
-    return apiFail("FORBIDDEN", "The campaign creator cannot approve their own campaign", 403);
-  }
-  if (message.includes("invalid_state") || message.includes("not_eligible") || message.includes("no_offers")) {
-    return apiFail("INVALID_CAMPAIGN", "The campaign or one of its selected offers is no longer eligible", 409);
+  if (message.includes("poster_required")) {
+    return apiFail("POSTER_REQUIRED", "Upload an event poster before submitting or approving this campaign", 409);
   }
   return apiFail("CAMPAIGN_UNAVAILABLE", "Unable to update this campaign", 503);
 }
@@ -44,7 +41,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         p_description: parsed.data.campaign.description,
         p_starts_at: parsed.data.campaign.startsAt,
         p_ends_at: parsed.data.campaign.endsAt,
-        p_offers: parsed.data.campaign.offers,
+        p_poster_url: parsed.data.campaign.posterUrl,
+        p_operating_hours: parsed.data.campaign.operatingHours,
       });
   } else {
     result = await auth.db.rpc("transition_promotion_campaign", {

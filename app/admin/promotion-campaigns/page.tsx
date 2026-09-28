@@ -1,41 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Megaphone, Plus, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { CalendarClock, ImagePlus, Loader2, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAppDialog } from "@/components/providers/app-dialog";
-import { useAuth } from "@/components/providers/auth";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getMalaysiaDateTimeRangeDefaults } from "@/lib/datetime/date-input";
 import { isInvalidDateTimeRange, malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
-import type { PromotionCampaignOfferInput, PromotionCampaignStatus } from "@/lib/promotion-campaigns/types";
+import type { PromotionCampaignStatus } from "@/lib/promotion-campaigns/types";
 
-type ProductSource = {
-  productId: string; productName: string; productType: string | null; vendorId: string;
-  vendorName: string; outletId: string; outletName: string; city: string | null;
-  state: string | null; price: number; imageUrl: string | null;
-};
-type VoucherSource = {
-  voucherId: string; name: string; voucherType: "percent" | "fixed" | "bogo";
-  discountValue: number; vendorId: string; vendorName: string; outletId: string | null;
-  outletName: string | null; claimFrom: string | null; claimUntil: string | null;
-  validFrom: string | null; validUntil: string | null; maxUses: number | null; usesCount: number;
-};
-type CampaignOfferRow = { id: string; voucher_id: string | null; product_id: string | null; outlet_id: string | null; position: number };
 type CampaignRow = {
   id: string; slug: string; title: string; summary: string; description: string;
+  poster_url: string | null; operating_hours: string | null;
   status: PromotionCampaignStatus; starts_at: string; ends_at: string;
-  created_by: string; updated_at: string; rejection_note: string | null; offers: CampaignOfferRow[];
+  created_by: string; updated_at: string; rejection_note: string | null;
 };
 type DraftForm = {
   title: string; slug: string; summary: string; description: string;
-  startsAt: string; endsAt: string; offers: PromotionCampaignOfferInput[];
+  startsAt: string; endsAt: string; posterUrl: string | null; operatingHours: string;
 };
-type SourceData = { products: ProductSource[]; vouchers: VoucherSource[] };
-type OfferSourceChoice = { key: string; label: string; offer: PromotionCampaignOfferInput };
 
 function malaysiaLocalDateTime(value: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -48,11 +35,29 @@ function malaysiaLocalDateTime(value: string) {
 
 function initialForm(): DraftForm {
   const defaults = getMalaysiaDateTimeRangeDefaults();
-  return { title: "", slug: "", summary: "", description: "", startsAt: defaults.from, endsAt: defaults.to, offers: [] };
+  return { title: "", slug: "", summary: "", description: "", startsAt: defaults.from, endsAt: defaults.to, posterUrl: null, operatingHours: "" };
 }
 
-function sourceChoiceKey(offer: PromotionCampaignOfferInput) {
-  return offer.kind === "voucher" ? `voucher:${offer.voucherId}` : `product:${offer.productId}:${offer.outletId}`;
+function formatTimeOfDay(hhmm: string): string {
+  const [hour, minute] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return "";
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(2000, 0, 1, hour, minute));
+}
+
+function composeOperatingHours(from: string, to: string): string {
+  if (!from || !to) return "";
+  return `${formatTimeOfDay(from)} – ${formatTimeOfDay(to)} daily`;
+}
+
+function parseOperatingHours(text: string): { from: string; to: string } | null {
+  const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return null;
+  const to24 = (hourText: string, minuteText: string, meridiem: string) => {
+    let hour = Number(hourText) % 12;
+    if (meridiem.toUpperCase() === "PM") hour += 12;
+    return `${String(hour).padStart(2, "0")}:${minuteText}`;
+  };
+  return { from: to24(match[1], match[2], match[3]), to: to24(match[4], match[5], match[6]) };
 }
 
 function actionForStatus(status: PromotionCampaignStatus) {
@@ -65,19 +70,19 @@ function actionForStatus(status: PromotionCampaignStatus) {
 
 export default function PromotionCampaignsPage() {
   const { t, i18n } = useTranslation("admin");
-  const { currentUser } = useAuth();
   const { confirm, prompt } = useAppDialog();
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
-  const [sources, setSources] = useState<SourceData>({ products: [], vouchers: [] });
   const [form, setForm] = useState<DraftForm>(initialForm);
   const [editing, setEditing] = useState<CampaignRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sourceKind, setSourceKind] = useState<"product" | "voucher">("product");
-  const [sourceKey, setSourceKey] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [hoursFrom, setHoursFrom] = useState("");
+  const [hoursTo, setHoursTo] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -89,7 +94,6 @@ export default function PromotionCampaignsPage() {
       }
       if (!response.ok) throw new Error(payload.error?.message || t("promotionCampaigns.errors.load"));
       setCampaigns(payload.data?.campaigns ?? []);
-      setSources({ products: payload.data?.sources?.products ?? [], vouchers: payload.data?.sources?.vouchers ?? [] });
       setForbidden(false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("promotionCampaigns.errors.load"));
@@ -104,28 +108,14 @@ export default function PromotionCampaignsPage() {
     await load();
   }, [load]);
 
-  // load only updates component state after the campaign API request resolves.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
-
-  const allChoices = useMemo<OfferSourceChoice[]>(() => [
-    ...sources.products.map<OfferSourceChoice>((source) => ({
-      key: `product:${source.productId}:${source.outletId}`,
-      label: `${source.vendorName} · ${source.productName} · ${source.outletName}${source.city ? `, ${source.city}` : ""} · RM${Number(source.price).toFixed(2)}`,
-      offer: { kind: "product", productId: source.productId, outletId: source.outletId, position: 0 },
-    })),
-    ...sources.vouchers.map<OfferSourceChoice>((source) => ({
-      key: `voucher:${source.voucherId}`,
-      label: `${source.vendorName} · ${source.name} · ${source.outletName ?? t("promotionCampaigns.form.vendorWide")}`,
-      offer: { kind: "voucher", voucherId: source.voucherId, position: 0 },
-    })),
-  ], [sources, t]);
-  const choices = useMemo(() => allChoices.filter((choice) => choice.offer.kind === sourceKind), [allChoices, sourceKind]);
 
   function resetForm() {
     setForm(initialForm());
     setEditing(null);
-    setSourceKey("");
+    setHoursFrom("");
+    setHoursTo("");
   }
 
   function editCampaign(campaign: CampaignRow) {
@@ -137,22 +127,57 @@ export default function PromotionCampaignsPage() {
       description: campaign.description,
       startsAt: malaysiaLocalDateTime(campaign.starts_at),
       endsAt: malaysiaLocalDateTime(campaign.ends_at),
-      offers: campaign.offers.map((offer) => offer.voucher_id
-        ? { kind: "voucher", voucherId: offer.voucher_id, position: offer.position }
-        : { kind: "product", productId: offer.product_id!, outletId: offer.outlet_id!, position: offer.position }),
+      posterUrl: campaign.poster_url,
+      operatingHours: campaign.operating_hours ?? "",
     });
-    setSourceKey("");
+    const parsedHours = parseOperatingHours(campaign.operating_hours ?? "");
+    setHoursFrom(parsedHours?.from ?? "");
+    setHoursTo(parsedHours?.to ?? "");
   }
 
-  function addOffer() {
-    const choice = choices.find((item) => item.key === sourceKey);
-    if (!choice || form.offers.some((offer) => sourceChoiceKey(offer) === choice.key) || form.offers.length >= 24) return;
-    setForm((current) => ({ ...current, offers: [...current.offers, { ...choice.offer, position: current.offers.length }] }));
-    setSourceKey("");
+  function updateOperatingHours(nextFrom: string, nextTo: string) {
+    setHoursFrom(nextFrom);
+    setHoursTo(nextTo);
+    setForm((prev) => ({ ...prev, operatingHours: composeOperatingHours(nextFrom, nextTo) }));
   }
 
-  function removeOffer(index: number) {
-    setForm((current) => ({ ...current, offers: current.offers.filter((_, itemIndex) => itemIndex !== index).map((offer, position) => ({ ...offer, position })) }));
+  async function handlePosterChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/admin/promotion-campaigns/upload", { method: "POST", body: formData });
+      const body = await response.json() as { data?: { url?: string }; error?: { message?: string } };
+      if (!response.ok || !body.data?.url) throw new Error(body.error?.message ?? t("promotionCampaigns.errors.upload"));
+      setForm((prev) => ({ ...prev, posterUrl: body.data!.url! }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("promotionCampaigns.errors.upload"));
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  }
+
+  function removePoster() {
+    setForm((prev) => ({ ...prev, posterUrl: null }));
+  }
+
+  async function publishCampaign(campaignId: string, updatedAt: string) {
+    const submitResponse = await fetch(`/api/admin/promotion-campaigns/${campaignId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "submit", expectedUpdatedAt: updatedAt }),
+    });
+    const submitPayload = await submitResponse.json();
+    if (!submitResponse.ok) throw new Error(submitPayload.error?.message || t("promotionCampaigns.errors.transition"));
+
+    const approveResponse = await fetch(`/api/admin/promotion-campaigns/${campaignId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", expectedUpdatedAt: submitPayload.data.updated_at }),
+    });
+    const approvePayload = await approveResponse.json();
+    if (!approveResponse.ok) throw new Error(approvePayload.error?.message || t("promotionCampaigns.errors.transition"));
   }
 
   async function saveDraft(event: React.FormEvent<HTMLFormElement>) {
@@ -161,16 +186,22 @@ export default function PromotionCampaignsPage() {
     setBusy(true);
     setError(null);
     try {
+      const campaignPayload = {
+        title: form.title, slug: form.slug, summary: form.summary, description: form.description,
+        startsAt: malaysiaDateTimeLocalToIso(form.startsAt), endsAt: malaysiaDateTimeLocalToIso(form.endsAt),
+        posterUrl: form.posterUrl, operatingHours: form.operatingHours,
+      };
       const response = await fetch(editing ? `/api/admin/promotion-campaigns/${editing.id}` : "/api/admin/promotion-campaigns", {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editing ? {
-          action: "save_draft",
-          campaign: { ...form, startsAt: malaysiaDateTimeLocalToIso(form.startsAt), endsAt: malaysiaDateTimeLocalToIso(form.endsAt), expectedUpdatedAt: editing.updated_at },
-        } : { ...form, startsAt: malaysiaDateTimeLocalToIso(form.startsAt), endsAt: malaysiaDateTimeLocalToIso(form.endsAt) }),
+        body: JSON.stringify(editing ? { action: "save_draft", campaign: { ...campaignPayload, expectedUpdatedAt: editing.updated_at } } : campaignPayload),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || t("promotionCampaigns.errors.save"));
+      const saved = payload.data as CampaignRow;
+      if (saved.status === "draft" || saved.status === "rejected") {
+        await publishCampaign(saved.id, saved.updated_at);
+      }
       resetForm();
       await reload();
     } catch (reason) {
@@ -205,6 +236,9 @@ export default function PromotionCampaignsPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || t("promotionCampaigns.errors.transition"));
+      if (action === "submit") {
+        await publishCampaign(campaign.id, payload.data.updated_at);
+      }
       await reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("promotionCampaigns.errors.transition"));
@@ -239,34 +273,56 @@ export default function PromotionCampaignsPage() {
               <label className="text-sm font-semibold text-foreground md:col-span-2">{t("promotionCampaigns.form.description")}<textarea required minLength={10} maxLength={5000} rows={4} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 font-normal" /></label>
               <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.startsAt")}<input required type="datetime-local" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
               <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.endsAt")}<input required type="datetime-local" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
-            </div>
-            <div className="rounded-2xl border border-border bg-secondary/40 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold text-foreground">{t("promotionCampaigns.form.offers")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("promotionCampaigns.form.offerGuidance")}</p></div><span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.form.offerCount", { count: form.offers.length })}</span></div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)_auto]">
-                <select aria-label={t("promotionCampaigns.form.offerType")} value={sourceKind} onChange={(event) => { setSourceKind(event.target.value as "product" | "voucher"); setSourceKey(""); }} className="h-10 rounded-lg border border-input bg-background px-3 text-sm"><option value="product">{t("promotionCampaigns.form.product")}</option><option value="voucher">{t("promotionCampaigns.form.voucher")}</option></select>
-                <select aria-label={t("promotionCampaigns.form.source")} value={sourceKey} onChange={(event) => setSourceKey(event.target.value)} className="h-10 min-w-0 rounded-lg border border-input bg-background px-3 text-sm"><option value="">{t("promotionCampaigns.form.chooseSource")}</option>{choices.map((choice) => <option key={choice.key} value={choice.key}>{choice.label}</option>)}</select>
-                <Button type="button" variant="outline" onClick={addOffer} disabled={!sourceKey || form.offers.length >= 24}><Plus size={15} /> {t("promotionCampaigns.form.addOffer")}</Button>
+              <div className="md:col-span-2">
+                <span className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.operatingHours")}</span>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.form.operatingHoursFrom")}<input required type="time" value={hoursFrom} onChange={(event) => updateOperatingHours(event.target.value, hoursTo)} className="mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal text-foreground" /></label>
+                  <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.form.operatingHoursTo")}<input required type="time" value={hoursTo} min={hoursFrom || undefined} onChange={(event) => updateOperatingHours(hoursFrom, event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal text-foreground" /></label>
+                </div>
+                {form.operatingHours && <p className="mt-1.5 text-xs text-muted-foreground">{form.operatingHours}</p>}
               </div>
-              {choices.length === 0 && <p className="mt-3 text-sm text-muted-foreground">{t("promotionCampaigns.form.noSources")}</p>}
-              {form.offers.length > 0 && <ol className="mt-4 space-y-2">{form.offers.map((offer, index) => {
-                const choice = allChoices.find((item) => item.key === sourceChoiceKey(offer));
-                const staleLabel = offer.kind === "voucher" ? t("promotionCampaigns.form.unavailableVoucher") : t("promotionCampaigns.form.unavailableProduct");
-                return <li key={sourceChoiceKey(offer)} className="flex min-w-0 items-start justify-between gap-3 rounded-xl bg-background p-3 text-sm"><span className="min-w-0 break-words">{index + 1}. {choice?.label ?? staleLabel}</span><Button type="button" variant="ghost" size="sm" aria-label={t("promotionCampaigns.form.removeOffer", { name: choice?.label ?? staleLabel })} onClick={() => removeOffer(index)}><X size={14} /></Button></li>;
-              })}</ol>}
+            </div>
+            <div>
+              <span className="mb-1 block text-sm font-semibold text-foreground">{t("promotionCampaigns.form.poster")}</span>
+              {form.posterUrl ? (
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => setPreviewUrl(form.posterUrl)} className="rounded-lg border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.posterUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                  </button>
+                  <Button type="button" variant="destructive" size="sm" onClick={removePoster}><X size={14} aria-hidden="true" /> {t("promotionCampaigns.form.removePoster")}</Button>
+                </div>
+              ) : (
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">
+                  {uploading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}
+                  {t("promotionCampaigns.form.choosePoster")}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handlePosterChange(event)} disabled={uploading} />
+                </label>
+              )}
             </div>
             {isInvalidDateTimeRange(form.startsAt, form.endsAt) && <p role="alert" className="text-sm text-destructive">{t("promotionCampaigns.form.invalidRange")}</p>}
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || isInvalidDateTimeRange(form.startsAt, form.endsAt)}><Save size={15} /> {editing ? t("promotionCampaigns.form.saveChanges") : t("promotionCampaigns.form.saveDraft")}</Button><span className="self-center text-xs text-muted-foreground">{t("promotionCampaigns.form.timezone")}</span></div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || uploading || isInvalidDateTimeRange(form.startsAt, form.endsAt)}><Send size={15} /> {editing ? t("promotionCampaigns.form.saveChanges") : t("promotionCampaigns.form.saveDraft")}</Button><span className="self-center text-xs text-muted-foreground">{t("promotionCampaigns.form.timezone")}</span></div>
           </form>
 
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <div className="border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{t("promotionCampaigns.list.title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.list.description", { count: campaigns.length })}</p></div>
             {campaigns.length === 0 ? <div className="p-8 text-center"><CalendarClock size={24} className="mx-auto text-muted-foreground" /><p className="mt-3 font-semibold text-foreground">{t("promotionCampaigns.states.empty")}</p><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.states.emptyDescription")}</p></div> : <div className="divide-y divide-border">{campaigns.map((campaign) => <article key={campaign.id} className="grid gap-4 p-5 xl:grid-cols-[minmax(220px,1fr)_220px_130px_minmax(260px,auto)] xl:items-center">
-              <div className="min-w-0"><h3 className="break-words font-semibold text-foreground">{campaign.title}</h3><p className="mt-1 break-all text-xs text-muted-foreground">/customer/events/{campaign.slug}</p><p className="mt-2 flex flex-wrap items-center gap-1 text-xs text-muted-foreground"><span>{campaign.offers.length}</span><span aria-hidden="true">·</span><span>{t("promotionCampaigns.list.linkedOffers")}</span></p>{campaign.rejection_note && <p className="mt-2 break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span></p>}</div>
+              <div className="min-w-0"><h3 className="break-words font-semibold text-foreground">{campaign.title}</h3><p className="mt-1 break-all text-xs text-muted-foreground">/customer/events/{campaign.slug}</p>{campaign.rejection_note && <p className="mt-2 break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span></p>}</div>
               <div className="text-xs text-muted-foreground"><p><span>{t("promotionCampaigns.form.startsAt")}</span><span aria-hidden="true">: </span><span>{formatDateTime(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p><p className="mt-1"><span>{t("promotionCampaigns.form.endsAt")}</span><span aria-hidden="true">: </span><span>{formatDateTime(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p></div>
               <span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
-              <div className="flex flex-wrap gap-2 xl:justify-end">{(campaign.status === "draft" || campaign.status === "rejected") && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).filter((action) => !(campaign.status === "pending_approval" && campaign.created_by === currentUser?.id && (action === "approve" || action === "reject"))).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
+              <div className="flex flex-wrap gap-2 xl:justify-end">{(campaign.status === "draft" || campaign.status === "rejected") && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
             </article>)}</div>}
           </section>
+
+          <Dialog open={Boolean(previewUrl)} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>
+            <DialogContent className="sm:max-w-xl">
+              <DialogTitle className="sr-only">{t("promotionCampaigns.form.poster")}</DialogTitle>
+              {previewUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={previewUrl} alt="" className="w-full rounded-lg object-contain" />
+              )}
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </AdminPageShell>

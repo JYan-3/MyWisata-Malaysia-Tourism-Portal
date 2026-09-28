@@ -9,8 +9,9 @@ import { PromotionCampaignSpotlight } from "@/components/customer/promotion-camp
 const campaign: PromotionCampaignPublic = {
   id: "campaign", slug: "sample-event", title: "Sample event",
   summary: "A real campaign summary.", description: "Campaign details",
+  posterUrl: null, operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T12:00:00.000Z", endsAt: "2026-09-26T12:00:00.000Z",
-  visibility: "upcoming", offers: [],
+  visibility: "upcoming", vendors: [],
 };
 
 function getPanelActions(markup: string, labels: string[]) {
@@ -56,21 +57,29 @@ describe("promotion campaign home spotlight", () => {
     expect(getPanelActions(empty, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
   });
 
-  it("renders a remote vendor image without requiring a global image host allowlist", () => {
-    const voucherCampaign: PromotionCampaignPublic = {
+  it("shows external prev/next controls beside the card only when more than one campaign is eligible", () => {
+    const second: PromotionCampaignPublic = { ...campaign, id: "campaign-2", slug: "second-event", title: "Second event" };
+
+    const single = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign]} />);
+    expect(single).not.toContain("ui.promotionCampaigns.previous");
+    expect(single).not.toContain("ui.promotionCampaigns.next");
+
+    const multiple = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign, second]} />);
+    expect(multiple).toContain("ui.promotionCampaigns.previous");
+    expect(multiple).toContain("ui.promotionCampaigns.next");
+    expect(multiple).toContain("Sample event");
+    expect(multiple).not.toContain("Second event");
+  });
+
+  it("renders the event poster without requiring a global image host allowlist", () => {
+    const posterCampaign: PromotionCampaignPublic = {
       ...campaign,
-      offers: [{
-        kind: "voucher", id: "voucher-offer", position: 0,
-        vendor: { id: "vendor", name: "Vendor", logoUrl: "https://thumb.wikimedia.org/vendor-logo.jpg" },
-        outlet: null, eligibleOutlets: [],
-        voucher: { id: "voucher", name: "Voucher", voucherType: "percent", discountValue: 10, minSpend: 0, validFrom: null, validUntil: null, maxUses: 10, usesCount: 0, redemptionMode: "online" },
-        eligibleProducts: [],
-      }],
+      posterUrl: "https://thumb.wikimedia.org/event-poster.jpg",
     };
 
-    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={voucherCampaign} />);
+    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={posterCampaign} />);
 
-    expect(markup).toContain('src="https://thumb.wikimedia.org/vendor-logo.jpg"');
-    expect(markup.indexOf('src="https://thumb.wikimedia.org/vendor-logo.jpg"')).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
+    expect(markup).toContain('src="https://thumb.wikimedia.org/event-poster.jpg"');
+    expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
   });
 });

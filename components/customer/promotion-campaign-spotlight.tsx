@@ -3,22 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, CalendarDays, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { selectFeaturedPublicCampaign } from "@/lib/customer/promotion-campaigns";
+import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
-export function PromotionCampaignSpotlight({ campaign, unavailable = false }: { campaign: PromotionCampaignPublic | null; unavailable?: boolean }) {
+export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = false }: { campaign: PromotionCampaignPublic | null; campaigns?: PromotionCampaignPublic[]; unavailable?: boolean }) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const [recoveredCampaign, setRecoveredCampaign] = useState<PromotionCampaignPublic | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [recoveredCampaigns, setRecoveredCampaigns] = useState<PromotionCampaignPublic[]>([]);
   const [loadFailed, setLoadFailed] = useState(unavailable && !campaign);
   const [retrying, setRetrying] = useState(false);
   const attemptedRecovery = useRef(false);
-  const displayCampaign = campaign ?? recoveredCampaign;
+
+  const providedList = campaigns && campaigns.length > 0 ? campaigns : (campaign ? [campaign] : []);
+  const list = providedList.length > 0 ? providedList : recoveredCampaigns;
+  const displayCampaign = list.length > 0 ? list[activeIndex % list.length] : null;
 
   const refresh = useCallback(async () => {
     setRetrying(true);
@@ -26,7 +30,8 @@ export function PromotionCampaignSpotlight({ campaign, unavailable = false }: { 
       const response = await fetch("/api/customer/promotion-campaigns", { cache: "no-store" });
       const payload = await response.json() as { data?: { campaigns?: PromotionCampaignPublic[] } };
       if (!response.ok || !Array.isArray(payload.data?.campaigns)) throw new Error("campaigns_unavailable");
-      setRecoveredCampaign(selectFeaturedPublicCampaign(payload.data.campaigns));
+      setRecoveredCampaigns(selectFeaturedPublicCampaigns(payload.data.campaigns));
+      setActiveIndex(0);
       setLoadFailed(false);
     } catch {
       setLoadFailed(true);
@@ -36,23 +41,25 @@ export function PromotionCampaignSpotlight({ campaign, unavailable = false }: { 
   }, []);
 
   useEffect(() => {
-    if (unavailable && !campaign && !recoveredCampaign && !attemptedRecovery.current) {
+    if (unavailable && !campaign && recoveredCampaigns.length === 0 && !attemptedRecovery.current) {
       attemptedRecovery.current = true;
       void refresh();
     }
-  }, [campaign, recoveredCampaign, refresh, unavailable]);
+  }, [campaign, recoveredCampaigns, refresh, unavailable]);
 
-  const image = displayCampaign?.offers[0]?.kind === "product"
-    ? displayCampaign.offers[0].product.imageUrl
-    : displayCampaign?.offers[0]?.kind === "voucher"
-      ? displayCampaign.offers[0].outlet?.imageUrl ?? displayCampaign.offers[0].vendor.logoUrl
-      : null;
+  function move(direction: -1 | 1) {
+    if (list.length === 0) return;
+    setActiveIndex((index) => (index + direction + list.length) % list.length);
+  }
+
+  const image = displayCampaign?.posterUrl ?? null;
   const live = displayCampaign?.visibility === "live";
+  const hasMultiple = list.length > 1;
 
-  return (
+  const spotlight = (
     <section
       aria-labelledby="promotion-campaign-spotlight-title"
-      className="my-10 overflow-hidden rounded-[28px] border border-border bg-card text-card-foreground sm:my-14"
+      className={hasMultiple ? "min-w-0 flex-1 overflow-hidden rounded-[28px] border border-border bg-card text-card-foreground" : "my-10 overflow-hidden rounded-[28px] border border-border bg-card text-card-foreground sm:my-14"}
     >
       <div className="grid min-w-0 lg:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
         <div
@@ -107,7 +114,7 @@ export function PromotionCampaignSpotlight({ campaign, unavailable = false }: { 
                 {displayCampaign.summary}
               </p>
               <p className="mt-4 text-sm font-semibold text-primary/75">
-                {t("ui.promotionCampaigns.offerCount", { count: displayCampaign.offers.length })}
+                {t("ui.promotionCampaigns.vendorCount", { count: displayCampaign.vendors.length })}
               </p>
             </>
           ) : (
@@ -159,5 +166,29 @@ export function PromotionCampaignSpotlight({ campaign, unavailable = false }: { 
         </div>
       </div>
     </section>
+  );
+
+  if (!hasMultiple) return spotlight;
+
+  return (
+    <div className="my-10 flex items-center gap-3 sm:my-14">
+      <button
+        type="button"
+        onClick={() => move(-1)}
+        aria-label={t("ui.promotionCampaigns.previous")}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-primary transition hover:border-primary hover:bg-primary/5"
+      >
+        <ChevronLeft size={18} aria-hidden="true" />
+      </button>
+      {spotlight}
+      <button
+        type="button"
+        onClick={() => move(1)}
+        aria-label={t("ui.promotionCampaigns.next")}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-primary transition hover:border-primary hover:bg-primary/5"
+      >
+        <ChevronRight size={18} aria-hidden="true" />
+      </button>
+    </div>
   );
 }

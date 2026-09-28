@@ -26,14 +26,18 @@
     "Inbox": "收件箱",
     "Analytics": "分析",
     "Operations": "运营",
-    "Shop page": "店铺"
+    "Shop page": "店铺",
+    "Promotions": "推广",
+    "Announcements": "公告",
+    "Events": "活动"
   },
   "navigationSections": {
     "workspace": "工作区",
     "operations": "运营",
     "finance": "财务",
     "communication": "沟通",
-    "insights": "数据洞察"
+    "insights": "数据洞察",
+    "promotion": "推广"
   },
   "filters": {
     "searchByName": "按名称搜索…",
@@ -772,7 +776,10 @@
       "foodDineInCheckedIn": "已确认顾客堂食到店，订单仍待上餐。",
       "voucherKind": "优惠券",
       "ticketKind": "入场门票",
-      "customerFoodMode": { "dine_in": "堂食", "takeaway": "打包" },
+      "customerFoodMode": {
+        "dine_in": "堂食",
+        "takeaway": "打包"
+      },
       "reviewBeforeConfirm": "确认前请检查",
       "discount": "优惠",
       "remaining": "剩余入场次数",
@@ -1441,6 +1448,121 @@
     },
     "actions": {
       "save": "保存"
+    },
+    "eventPromotions": {
+      "title": "活动推广",
+      "description": "推广您参与但并非由我们创建的活动——提交后将进入审核，获批后会显示在网站上。",
+      "newHeading": "提交新活动",
+      "editHeading": "修改并重新提交",
+      "loading": "加载中…",
+      "myPromotions": "我的提交",
+      "empty": "您尚未提交任何活动推广。",
+      "loadError": "无法加载您的活动推广。",
+      "uploadError": "无法上传图片。",
+      "imageRequired": "请先上传图片再提交。",
+      "submitError": "无法提交活动推广。",
+      "submitSuccess": "活动推广已提交审核。",
+      "resubmitSuccess": "活动推广已重新提交审核。",
+      "noVendor": "此会话未找到商家账户。",
+      "rejectionNote": "已拒绝：{{note}}",
+      "changesRequestedNote": "需要修改：{{note}}",
+      "payError": "无法处理付款。",
+      "paySuccess": "付款成功——您的推广现已上线。",
+      "paidNote": "已通过{{method}}支付{{amount}}。此推广已确认，不能再修改。",
+      "paymentMethods": {
+        "wallet": "钱包收益",
+        "stripe": "银行卡"
+      },
+      "calendar": {
+        "today": "今天",
+        "hint": "红色日期不可选——已过去或已满。在管理员审核您的提交之前，可用情况仍可能变化。"
+      },
+      "fields": {
+        "title": "活动名称",
+        "details": "详情",
+        "duration": "推广时长",
+        "selectedSingleDay": "已选择：{{date}}",
+        "selectedRange": "已选择：{{start}} – {{end}}",
+        "costPreview": "{{days}} 天 · {{cost}}",
+        "image": "图片",
+        "chooseImage": "选择图片",
+        "removeImage": "移除图片"
+      },
+      "actions": {
+        "submit": "提交审核",
+        "resubmit": "重新提交审核",
+        "cancel": "取消",
+        "editAndResubmit": "修改并重新提交",
+        "pay": "付款",
+        "modify": "修改"
+      }
+    },
+    "announcements": {
+      "title": "公告",
+      "description": "来自超级管理员的消息，包括加入商家市集活动的邀请。",
+      "unreadCount": "（{{count}} 条未读）",
+      "unreadCount_one": "（{{count}} 条未读）",
+      "unreadCount_other": "（{{count}} 条未读）",
+      "loading": "加载中…",
+      "empty": "暂无公告。",
+      "loadError": "无法加载公告。",
+      "noVendor": "此会话未找到商家账户。",
+      "backToInbox": "返回收件箱",
+      "notFound": "未找到该公告。",
+      "viewEvent": "查看活动",
+      "columns": {
+        "title": "标题",
+        "sender": "发件人",
+        "date": "日期"
+      }
+    },
+    "events": {
+      "title": "活动",
+      "description": "您可以加入的商家市集活动——注册摊位即可参加。",
+      "loading": "加载中…",
+      "empty": "目前没有开放注册的活动。",
+      "loadError": "无法加载活动。",
+      "noVendor": "此会话未找到商家账户。",
+      "notFound": "未找到该活动。",
+      "backToEvents": "返回活动列表",
+      "registerCta": "注册",
+      "yourRegistration": "您的注册",
+      "editHeading": "修改并重新提交",
+      "registerHeading": "注册您的摊位",
+      "uploadError": "无法上传图片。",
+      "posterRequired": "请先上传摊位图片再提交。",
+      "productsRequired": "请先添加至少一件商品再提交。",
+      "submitError": "无法提交注册。",
+      "submitSuccess": "注册已提交审核。",
+      "resubmitSuccess": "注册已重新提交审核。",
+      "rejectionNote": "已拒绝：{{note}}",
+      "changesRequestedNote": "需要修改：{{note}}",
+      "draftFound": "您有一份此注册的未保存草稿。",
+      "fields": {
+        "stallNumber": "摊位号",
+        "stallDescription": "摊位说明",
+        "poster": "摊位图片",
+        "chooseImage": "选择图片",
+        "removeImage": "移除图片",
+        "products": "商品",
+        "searchProducts": "搜索您的商品",
+        "noProductsFound": "没有匹配的商品。",
+        "addNewProduct": "为此活动添加新商品",
+        "productName": "商品名称",
+        "productPrice": "价格（RM）",
+        "addPhoto": "添加照片",
+        "newForEvent": "此活动新增"
+      },
+      "actions": {
+        "register": "注册",
+        "editAndResubmit": "修改并重新提交",
+        "submitRegistration": "提交注册",
+        "resubmit": "重新提交审核",
+        "cancel": "取消",
+        "addProduct": "添加商品",
+        "resumeDraft": "继续编辑草稿",
+        "discardDraft": "放弃草稿"
+      }
     }
   },
   "address": {

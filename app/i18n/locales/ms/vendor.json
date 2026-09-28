@@ -26,14 +26,18 @@
     "Inbox": "Peti masuk",
     "Analytics": "Analitik",
     "Operations": "Operasi",
-    "Shop page": "Kedai"
+    "Shop page": "Kedai",
+    "Promotions": "Promosi",
+    "Announcements": "Pengumuman",
+    "Events": "Acara"
   },
   "navigationSections": {
     "workspace": "Ruang kerja",
     "operations": "Operasi",
     "finance": "Kewangan",
     "communication": "Komunikasi",
-    "insights": "Analitik"
+    "insights": "Analitik",
+    "promotion": "Promosi"
   },
   "filters": {
     "searchByName": "Cari mengikut nama…",
@@ -772,7 +776,10 @@
       "foodDineInCheckedIn": "Ketibaan pelanggan makan di sini disahkan. Pesanan masih menunggu hidangan.",
       "voucherKind": "Baucar",
       "ticketKind": "Tiket kemasukan",
-      "customerFoodMode": { "dine_in": "Makan di sini", "takeaway": "Bungkus" },
+      "customerFoodMode": {
+        "dine_in": "Makan di sini",
+        "takeaway": "Bungkus"
+      },
       "reviewBeforeConfirm": "Semak sebelum sahkan",
       "discount": "Tawaran",
       "remaining": "Kemasukan berbaki",
@@ -1441,6 +1448,121 @@
     },
     "actions": {
       "save": "Simpan"
+    },
+    "eventPromotions": {
+      "title": "Promosi Acara",
+      "description": "Promosikan acara yang anda sertai tetapi bukan dicipta oleh kami — hantar untuk semakan dan ia akan muncul di laman selepas diluluskan.",
+      "newHeading": "Hantar acara baharu",
+      "editHeading": "Sunting dan hantar semula",
+      "loading": "Memuatkan…",
+      "myPromotions": "Penyerahan saya",
+      "empty": "Anda belum menghantar sebarang promosi acara.",
+      "loadError": "Tidak dapat memuatkan promosi acara anda.",
+      "uploadError": "Tidak dapat memuat naik imej.",
+      "imageRequired": "Muat naik imej sebelum menghantar.",
+      "submitError": "Tidak dapat menghantar promosi acara.",
+      "submitSuccess": "Promosi acara dihantar untuk semakan.",
+      "resubmitSuccess": "Promosi acara dihantar semula untuk semakan.",
+      "noVendor": "Tiada akaun vendor dijumpai untuk sesi ini.",
+      "rejectionNote": "Ditolak: {{note}}",
+      "changesRequestedNote": "Perubahan diminta: {{note}}",
+      "payError": "Tidak dapat memproses pembayaran.",
+      "paySuccess": "Pembayaran berjaya — promosi anda kini aktif.",
+      "paidNote": "Dibayar {{amount}} melalui {{method}}. Promosi ini disahkan dan tidak boleh diubah lagi.",
+      "paymentMethods": {
+        "wallet": "pendapatan wallet",
+        "stripe": "kad"
+      },
+      "calendar": {
+        "today": "Hari ini",
+        "hint": "Hari berwarna merah tidak tersedia — sudah berlalu atau sudah penuh. Ketersediaan masih boleh berubah sebelum admin menyemak penyerahan anda."
+      },
+      "fields": {
+        "title": "Nama acara",
+        "details": "Butiran",
+        "duration": "Tempoh promosi",
+        "selectedSingleDay": "Dipilih: {{date}}",
+        "selectedRange": "Dipilih: {{start}} – {{end}}",
+        "costPreview": "{{days}} hari · {{cost}}",
+        "image": "Imej",
+        "chooseImage": "Pilih imej",
+        "removeImage": "Buang imej"
+      },
+      "actions": {
+        "submit": "Hantar untuk semakan",
+        "resubmit": "Hantar semula untuk semakan",
+        "cancel": "Batal",
+        "editAndResubmit": "Sunting & hantar semula",
+        "pay": "Bayar",
+        "modify": "Ubah suai"
+      }
+    },
+    "announcements": {
+      "title": "Pengumuman",
+      "description": "Mesej daripada Super Admin, termasuk jemputan untuk menyertai acara pesta vendor.",
+      "unreadCount": "({{count}} belum dibaca)",
+      "unreadCount_one": "({{count}} belum dibaca)",
+      "unreadCount_other": "({{count}} belum dibaca)",
+      "loading": "Memuatkan…",
+      "empty": "Belum ada pengumuman.",
+      "loadError": "Tidak dapat memuatkan pengumuman.",
+      "noVendor": "Tiada akaun vendor dijumpai untuk sesi ini.",
+      "backToInbox": "Kembali ke peti masuk",
+      "notFound": "Pengumuman tidak dijumpai.",
+      "viewEvent": "Lihat acara",
+      "columns": {
+        "title": "Tajuk",
+        "sender": "Penghantar",
+        "date": "Tarikh"
+      }
+    },
+    "events": {
+      "title": "Acara",
+      "description": "Acara pesta vendor yang boleh anda sertai — daftar gerai untuk mengambil bahagian.",
+      "loading": "Memuatkan…",
+      "empty": "Tiada acara dibuka untuk pendaftaran sekarang.",
+      "loadError": "Tidak dapat memuatkan acara.",
+      "noVendor": "Tiada akaun vendor dijumpai untuk sesi ini.",
+      "notFound": "Acara tidak dijumpai.",
+      "backToEvents": "Kembali ke acara",
+      "registerCta": "Daftar",
+      "yourRegistration": "Pendaftaran anda",
+      "editHeading": "Sunting dan hantar semula",
+      "registerHeading": "Daftar gerai anda",
+      "uploadError": "Tidak dapat memuat naik imej.",
+      "posterRequired": "Muat naik imej gerai sebelum menghantar.",
+      "productsRequired": "Tambah sekurang-kurangnya satu produk sebelum menghantar.",
+      "submitError": "Tidak dapat menghantar pendaftaran.",
+      "submitSuccess": "Pendaftaran dihantar untuk semakan.",
+      "resubmitSuccess": "Pendaftaran dihantar semula untuk semakan.",
+      "rejectionNote": "Ditolak: {{note}}",
+      "changesRequestedNote": "Perubahan diminta: {{note}}",
+      "draftFound": "Anda mempunyai draf belum disimpan untuk pendaftaran ini.",
+      "fields": {
+        "stallNumber": "Nombor gerai",
+        "stallDescription": "Penerangan gerai",
+        "poster": "Imej gerai",
+        "chooseImage": "Pilih imej",
+        "removeImage": "Buang imej",
+        "products": "Produk",
+        "searchProducts": "Cari produk anda",
+        "noProductsFound": "Tiada produk sepadan.",
+        "addNewProduct": "Tambah produk baharu untuk acara ini",
+        "productName": "Nama produk",
+        "productPrice": "Harga (RM)",
+        "addPhoto": "Tambah foto",
+        "newForEvent": "baharu untuk acara ini"
+      },
+      "actions": {
+        "register": "Daftar",
+        "editAndResubmit": "Sunting & hantar semula",
+        "submitRegistration": "Hantar pendaftaran",
+        "resubmit": "Hantar semula untuk semakan",
+        "cancel": "Batal",
+        "addProduct": "Tambah produk",
+        "resumeDraft": "Sambung draf",
+        "discardDraft": "Buang draf"
+      }
     }
   },
   "address": {

@@ -40,7 +40,10 @@
     "Access Control": "访问控制",
     "Sponsored Placements": "赞助",
     "Promotion Campaigns": "活动",
-    "Orders": "订单"
+    "Orders": "订单",
+    "Event Promos": "活动推广",
+    "Event Registrations": "报名审核",
+    "Announcements": "公告"
   },
   "navigationSections": {
     "workspace": "工作区",
@@ -3009,7 +3012,15 @@
     "searchPlaceholder": "粘贴完整订单 ID",
     "search": "搜索",
     "status": "状态",
-    "statuses": { "all": "全部状态", "pending_payment": "待付款", "paid": "已付款", "completed": "已完成", "cancelled": "已取消", "failed": "失败", "refunded": "已退款" },
+    "statuses": {
+      "all": "全部状态",
+      "pending_payment": "待付款",
+      "paid": "已付款",
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "failed": "失败",
+      "refunded": "已退款"
+    },
     "loading": "正在加载实时订单…",
     "empty": "没有符合筛选条件的订单。",
     "order": "订单",
@@ -3024,7 +3035,9 @@
     "count": "{{total}} 个订单",
     "previous": "上一页",
     "next": "下一页",
-    "errors": { "load": "无法加载订单，请重试。" }
+    "errors": {
+      "load": "无法加载订单，请重试。"
+    }
   },
   "moderationWords": {
     "eyebrow": "内容审核",
@@ -3068,39 +3081,29 @@
   },
   "promotionCampaigns": {
     "eyebrow": "顾客活动",
-    "title": "快闪活动管理",
-    "description": "安排真实商家优惠券和门店商品，并提交给另一位管理员审批。",
+    "title": "商家市集活动管理",
+    "description": "设置商家市集活动并发布——活动发布后，商家自行注册摊位加入。",
     "refresh": "刷新",
     "form": {
-      "title": "创建活动草稿",
-      "editTitle": "编辑活动草稿",
-      "guidance": "活动文案和时间应与关联优惠一致；这里不会创建折扣或虚构库存。",
+      "title": "创建活动",
+      "editTitle": "编辑活动",
+      "guidance": "这是活动本身——商家在活动发布后通过注册自己的摊位加入。",
       "name": "活动标题",
       "slug": "页面地址",
       "summary": "简短介绍",
       "description": "详细介绍",
       "startsAt": "开始时间",
       "endsAt": "结束时间",
+      "operatingHours": "营业时间",
+      "operatingHoursFrom": "开始营业",
+      "operatingHoursTo": "结束营业",
       "timezone": "所有时间均为马来西亚时间（UTC+08:00）。",
       "invalidRange": "结束时间必须晚于开始时间。",
-      "offers": "参与优惠",
-      "offerGuidance": "选择现有且已审核的优惠。商品选项会明确显示所属门店。",
-      "offerCount": "已选择 {{count}} 项",
-      "offerCount_one": "已选择 {{count}} 项",
-      "offerCount_other": "已选择 {{count}} 项",
-      "offerType": "优惠类型",
-      "product": "门店商品",
-      "voucher": "优惠券",
-      "source": "优惠项目",
-      "chooseSource": "选择符合条件的优惠",
-      "vendorWide": "所有符合条件的门店",
-      "addOffer": "添加优惠",
-      "noSources": "当前没有符合条件的此类优惠。",
-      "unavailableVoucher": "此优惠券已不符合条件，请移除并选择其他优惠。",
-      "unavailableProduct": "此商品或门店已不符合条件，请移除并选择其他优惠。",
-      "removeOffer": "移除 {{name}}",
-      "saveChanges": "保存草稿更改",
-      "saveDraft": "保存为草稿",
+      "poster": "活动海报",
+      "choosePoster": "选择图片",
+      "removePoster": "移除海报",
+      "saveChanges": "发布更改",
+      "saveDraft": "发布活动",
       "cancelEdit": "取消编辑"
     },
     "list": {
@@ -3108,13 +3111,12 @@
       "description": "当前列表有 {{count}} 个活动",
       "description_one": "当前列表有 {{count}} 个活动",
       "description_other": "当前列表有 {{count}} 个活动",
-      "linkedOffers": "项关联优惠",
       "rejection": "审核备注"
     },
     "states": {
-      "loading": "正在加载活动和符合条件的优惠…",
+      "loading": "正在加载活动…",
       "empty": "还没有活动",
-      "emptyDescription": "创建草稿，添加真实商家优惠，然后提交审核。"
+      "emptyDescription": "创建活动，添加海报和营业时间，然后发布。"
     },
     "status": {
       "draft": "草稿",
@@ -3126,7 +3128,7 @@
     },
     "actions": {
       "edit": "编辑草稿",
-      "submit": "提交审核",
+      "submit": "发布",
       "approve": "批准",
       "reject": "要求修改",
       "pause": "暂停",
@@ -3136,17 +3138,183 @@
     "prompts": {
       "rejectReason": "请说明需要修改的内容（至少10个字符）。",
       "confirm": {
-        "submit": "确定提交此活动进行审批吗？",
+        "submit": "确定立即发布此活动吗？发布后顾客将立即可见，商家也可以开始注册。",
         "approve": "确定批准发布此活动吗？",
         "pause": "确定立即暂停此活动吗？",
         "archive": "确定归档此活动吗？"
       }
     },
     "errors": {
-      "load": "无法加载活动和符合条件的优惠。",
+      "load": "无法加载活动。",
       "forbidden": "你没有管理促销活动的权限。",
       "save": "无法保存活动草稿。",
-      "transition": "无法更新此活动。"
+      "transition": "无法更新此活动。",
+      "upload": "无法上传海报。"
+    }
+  },
+  "eventRegistrations": {
+    "eyebrow": "治理",
+    "title": "活动摊位注册",
+    "description": "在上线前审核商家市集活动的摊位注册。",
+    "loading": "加载中…",
+    "backToQueue": "返回队列",
+    "reviewHeading": "审核决定",
+    "notePlaceholder": "说明您的决定（要求修改或拒绝时必填）",
+    "noteRequired": "此操作需要至少 10 个字符的备注。",
+    "rejectionNote": "已拒绝：{{note}}",
+    "changesRequestedNote": "需要修改：{{note}}",
+    "stallLabel": "摊位 {{number}}",
+    "productsHeading": "此摊位售卖的商品",
+    "confirm": {
+      "approveTitle": "批准此摊位注册？",
+      "approveDescription": "商家的摊位将显示在活动公开页面上。",
+      "requestChangesTitle": "要求商家修改？",
+      "requestChangesDescription": "商家将看到您的备注，并可修改后重新提交。",
+      "rejectTitle": "拒绝此摊位注册？",
+      "rejectDescription": "商家将看到您的备注。此操作无法撤销。"
+    },
+    "errors": {
+      "load": "无法加载活动注册。",
+      "notFound": "未找到该注册。",
+      "review": "无法记录审核决定。"
+    },
+    "metrics": {
+      "pending": "待审核",
+      "changesRequested": "需要修改",
+      "approved": "已批准",
+      "total": "注册总数"
+    },
+    "filters": {
+      "search": "搜索商家、活动或摊位",
+      "status": "状态",
+      "allStatuses": "所有状态"
+    },
+    "status": {
+      "pending": "待处理",
+      "changesRequested": "需要修改",
+      "approved": "已批准",
+      "rejected": "已拒绝"
+    },
+    "empty": {
+      "title": "暂无活动注册",
+      "description": "商家的摊位注册将显示在此处以供审核。"
+    },
+    "actions": {
+      "approve": "批准",
+      "requestChanges": "要求修改",
+      "reject": "拒绝",
+      "approveSuccess": "注册已批准。",
+      "request_changesSuccess": "已向商家要求修改。",
+      "rejectSuccess": "注册已拒绝。"
+    }
+  },
+  "announcements": {
+    "eyebrow": "治理",
+    "title": "公告",
+    "description": "向商家发布公告——活动邀请或其他任何内容。",
+    "loading": "加载中…",
+    "saved": "公告已发送。",
+    "errors": {
+      "load": "无法加载公告。",
+      "save": "无法发送此公告。"
+    },
+    "form": {
+      "title": "新公告",
+      "announcementTitle": "标题",
+      "body": "内容",
+      "senderCode": "发件人标签",
+      "linkedCampaign": "关联活动（可选）",
+      "noCampaign": "不关联活动",
+      "send": "发送公告"
+    },
+    "list": {
+      "title": "已发送公告"
+    },
+    "empty": {
+      "title": "暂无公告",
+      "description": "您发送给商家的公告将显示在此处。"
+    }
+  },
+  "eventPromotions": {
+    "eyebrow": "治理",
+    "title": "活动推广",
+    "description": "在上线前审核商家提交的外部活动推广。",
+    "loading": "加载中…",
+    "backToQueue": "返回队列",
+    "reviewHeading": "审核决定",
+    "notePlaceholder": "说明您的决定（要求修改或拒绝时必填）",
+    "noteRequired": "此操作需要至少 10 个字符的备注。",
+    "confirm": {
+      "approveTitle": "批准此活动推广？",
+      "approveDescription": "商家将收到通知，之后可付款使其上线。",
+      "requestChangesTitle": "要求商家修改？",
+      "requestChangesDescription": "商家将看到您的备注，并可修改后重新提交。",
+      "rejectTitle": "拒绝此活动推广？",
+      "rejectDescription": "商家将看到您的备注。此操作无法撤销。",
+      "pauseTitle": "暂停此推广吗？",
+      "pauseDescription": "它将立即对顾客隐藏。您可以在活动日期结束前随时重新发布。",
+      "resumeTitle": "重新发布此推广吗？",
+      "resumeDescription": "它将立即对顾客重新可见，前提是当日名额未满。"
+    },
+    "rejectionNote": "已拒绝：{{note}}",
+    "changesRequestedNote": "需要修改：{{note}}",
+    "awaitingPayment": "已批准——等待商家付款。",
+    "paidNote": "已通过{{method}}支付{{amount}}。",
+    "pausedNote": "已暂停——对顾客隐藏。重新发布即可恢复可见。",
+    "visibilityHeading": "可见性",
+    "paymentMethods": {
+      "wallet": "钱包收益",
+      "stripe": "银行卡"
+    },
+    "settings": {
+      "currencyPrefix": "RM",
+      "costPerDay": "每日推广费用",
+      "maxConcurrent": "每日最多同时推广数",
+      "save": "保存",
+      "saved": "每日费用已更新。",
+      "saveError": "无法更新每日费用。",
+      "invalid": "请输入有效的非负金额。"
+    },
+    "errors": {
+      "load": "无法加载活动推广。",
+      "notFound": "未找到该活动推广。",
+      "review": "无法记录审核决定。"
+    },
+    "metrics": {
+      "pending": "待审核",
+      "changesRequested": "需要修改",
+      "approved": "已批准",
+      "paid": "已付款",
+      "total": "提交总数"
+    },
+    "filters": {
+      "search": "搜索标题或商家",
+      "status": "状态",
+      "allStatuses": "所有状态"
+    },
+    "status": {
+      "pending": "待处理",
+      "changesRequested": "需要修改",
+      "approved": "已批准",
+      "paid": "已付款",
+      "rejected": "已拒绝",
+      "paused": "已暂停"
+    },
+    "empty": {
+      "title": "暂无活动推广",
+      "description": "商家提交的活动推广将显示在此处供审核。"
+    },
+    "actions": {
+      "approve": "批准",
+      "requestChanges": "要求修改",
+      "reject": "拒绝",
+      "pause": "暂停",
+      "resume": "发布",
+      "approveSuccess": "活动推广已批准。",
+      "request_changesSuccess": "已要求商家修改。",
+      "rejectSuccess": "活动推广已拒绝。",
+      "pauseSuccess": "推广已暂停——已对顾客隐藏。",
+      "resumeSuccess": "推广已发布——顾客可重新看到。"
     }
   }
 }

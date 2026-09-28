@@ -26,14 +26,18 @@
     "Inbox": "Inbox",
     "Analytics": "Analytics",
     "Operations": "Operations",
-    "Shop page": "Shop"
+    "Shop page": "Shop",
+    "Promotions": "Promotions",
+    "Announcements": "Announcements",
+    "Events": "Events"
   },
   "navigationSections": {
     "workspace": "Workspace",
     "operations": "Operations",
     "finance": "Finance",
     "communication": "Communication",
-    "insights": "Insights"
+    "insights": "Insights",
+    "promotion": "Promotion"
   },
   "filters": {
     "searchByName": "Search by name…",
@@ -772,7 +776,10 @@
       "foodDineInCheckedIn": "Dine-in arrival confirmed. The order is still awaiting service.",
       "voucherKind": "Voucher",
       "ticketKind": "Admission ticket",
-      "customerFoodMode": { "dine_in": "Dine in", "takeaway": "Takeaway" },
+      "customerFoodMode": {
+        "dine_in": "Dine in",
+        "takeaway": "Takeaway"
+      },
       "reviewBeforeConfirm": "Review before confirming",
       "discount": "Offer",
       "remaining": "Entries remaining",
@@ -1441,6 +1448,121 @@
     },
     "actions": {
       "save": "Save"
+    },
+    "eventPromotions": {
+      "title": "Event Promotions",
+      "description": "Promote an event you're joining that wasn't created by us — submit it for review and it'll appear on the site once approved.",
+      "newHeading": "Submit a new event",
+      "editHeading": "Edit and resubmit",
+      "loading": "Loading…",
+      "myPromotions": "My submissions",
+      "empty": "You haven't submitted any event promotions yet.",
+      "loadError": "Unable to load your event promotions.",
+      "uploadError": "Unable to upload the image.",
+      "imageRequired": "Upload an image before submitting.",
+      "submitError": "Unable to submit the event promotion.",
+      "submitSuccess": "Event promotion submitted for review.",
+      "resubmitSuccess": "Event promotion resubmitted for review.",
+      "noVendor": "No vendor account found for this session.",
+      "rejectionNote": "Rejected: {{note}}",
+      "changesRequestedNote": "Changes requested: {{note}}",
+      "payError": "Unable to process payment.",
+      "paySuccess": "Payment successful — your promotion is now live.",
+      "paidNote": "Paid {{amount}} via {{method}}. This promotion is confirmed and can no longer be modified.",
+      "paymentMethods": {
+        "wallet": "wallet earnings",
+        "stripe": "card"
+      },
+      "calendar": {
+        "today": "Today",
+        "hint": "Red days are unavailable — already passed or already full. Availability can still change before an admin reviews your submission."
+      },
+      "fields": {
+        "title": "Event name",
+        "details": "Details",
+        "duration": "Promotion duration",
+        "selectedSingleDay": "Selected: {{date}}",
+        "selectedRange": "Selected: {{start}} – {{end}}",
+        "costPreview": "{{days}} day(s) · {{cost}}",
+        "image": "Image",
+        "chooseImage": "Choose image",
+        "removeImage": "Remove image"
+      },
+      "actions": {
+        "submit": "Submit for review",
+        "resubmit": "Resubmit for review",
+        "cancel": "Cancel",
+        "editAndResubmit": "Edit & resubmit",
+        "pay": "Pay",
+        "modify": "Modify"
+      }
+    },
+    "announcements": {
+      "title": "Announcements",
+      "description": "Messages from Super Admin, including invitations to join vendor-fair events.",
+      "unreadCount": "({{count}} unread)",
+      "unreadCount_one": "({{count}} unread)",
+      "unreadCount_other": "({{count}} unread)",
+      "loading": "Loading…",
+      "empty": "No announcements yet.",
+      "loadError": "Unable to load announcements.",
+      "noVendor": "No vendor account found for this session.",
+      "backToInbox": "Back to inbox",
+      "notFound": "Announcement not found.",
+      "viewEvent": "View event",
+      "columns": {
+        "title": "Title",
+        "sender": "Sender",
+        "date": "Date"
+      }
+    },
+    "events": {
+      "title": "Events",
+      "description": "Vendor-fair events you can join — register a stall to take part.",
+      "loading": "Loading…",
+      "empty": "No events are open for registration right now.",
+      "loadError": "Unable to load events.",
+      "noVendor": "No vendor account found for this session.",
+      "notFound": "Event not found.",
+      "backToEvents": "Back to events",
+      "registerCta": "Register",
+      "yourRegistration": "Your registration",
+      "editHeading": "Edit and resubmit",
+      "registerHeading": "Register your stall",
+      "uploadError": "Unable to upload the image.",
+      "posterRequired": "Upload a stall image before submitting.",
+      "productsRequired": "Add at least one product before submitting.",
+      "submitError": "Unable to submit the registration.",
+      "submitSuccess": "Registration submitted for review.",
+      "resubmitSuccess": "Registration resubmitted for review.",
+      "rejectionNote": "Rejected: {{note}}",
+      "changesRequestedNote": "Changes requested: {{note}}",
+      "draftFound": "You have an unsaved draft for this registration.",
+      "fields": {
+        "stallNumber": "Stall number",
+        "stallDescription": "Stall description",
+        "poster": "Stall image",
+        "chooseImage": "Choose image",
+        "removeImage": "Remove image",
+        "products": "Products",
+        "searchProducts": "Search your products",
+        "noProductsFound": "No matching products.",
+        "addNewProduct": "Add a new product for this event",
+        "productName": "Product name",
+        "productPrice": "Price (RM)",
+        "addPhoto": "Add photo",
+        "newForEvent": "new for this event"
+      },
+      "actions": {
+        "register": "Register",
+        "editAndResubmit": "Edit & resubmit",
+        "submitRegistration": "Submit registration",
+        "resubmit": "Resubmit for review",
+        "cancel": "Cancel",
+        "addProduct": "Add product",
+        "resumeDraft": "Resume draft",
+        "discardDraft": "Discard draft"
+      }
     }
   },
   "address": {

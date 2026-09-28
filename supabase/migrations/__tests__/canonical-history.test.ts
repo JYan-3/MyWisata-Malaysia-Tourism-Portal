@@ -76,6 +76,14 @@ const approvedForwardMigrations = [
   "20260926020403_add_review_and_variant_product_indexes.sql",
   "20260926062706_optimize_unread_counts_and_auth.sql",
   "20260926063036_use_invoker_for_unread_counts.sql",
+  "20260928030000_vendor_event_promotions.sql",
+  "20260928050000_vendor_event_promotion_capacity.sql",
+  "20260928180000_vendor_fair_event_participation.sql",
+  "20260928190000_fix_campaign_public_offer_price.sql",
+  "20260928200000_grant_service_role_announcement_reads.sql",
+  "20260928210000_allow_campaign_self_approval.sql",
+  "20260928220000_vendor_event_promotion_pause_resume.sql",
+  "20260928230000_grant_service_role_announcements_insert.sql",
 ];
 
 function migrationFiles() {
