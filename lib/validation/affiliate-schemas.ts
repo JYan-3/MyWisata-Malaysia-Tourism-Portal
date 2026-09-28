@@ -2,8 +2,12 @@
 // EVERY API route in this domain MUST pass request body through .parse() or .safeParse()
 
 import { z } from 'zod';
+import { databaseUuidSchema } from '@/lib/validation/schemas';
 
-const uuid = z.string().uuid();
+// z.string().uuid() enforces the RFC4122 version nibble, which this
+// project's seeded product/vendor/outlet ids don't follow — databaseUuidSchema
+// (lib/validation/schemas.ts) is the existing project-wide fix for that.
+const uuid = databaseUuidSchema;
 
 // ── Share tracking (Step 3, generalised per CLAUDE-SHARE-SURFACES.md) ────
 
