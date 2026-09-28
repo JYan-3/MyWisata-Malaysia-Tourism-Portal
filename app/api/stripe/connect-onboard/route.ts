@@ -6,10 +6,15 @@ import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail } from '@/lib/validation/schemas';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { log } from '@/lib/log';
+import { getRequestId } from '@/lib/request-id';
 
 export const dynamic = 'force-dynamic';
 
-function stripeFailure(error: unknown) {
+// Note: `details.requestId` below is Stripe's OWN SDK request id (correlates one
+// call to Stripe's API), distinct from `requestId` (our app's request id, from
+// lib/request-id.ts) logged alongside it — both are kept for full correlation.
+function stripeFailure(error: unknown, requestId: string) {
   const details = error as {
     type?: string;
     code?: string;
@@ -18,36 +23,40 @@ function stripeFailure(error: unknown) {
     requestId?: string;
     statusCode?: number;
   };
-  console.error('[stripe-connect-onboard] Stripe request failed', {
+  log('error', '[stripe-connect-onboard] Stripe request failed', {
+    requestId,
     type: details?.type ?? 'unknown',
     code: details?.code ?? null,
     param: details?.param ?? null,
     message: details?.message ?? 'unknown',
-    requestId: details?.requestId ?? null,
+    stripeRequestId: details?.requestId ?? null,
     statusCode: details?.statusCode ?? null,
   });
-  return NextResponse.json({ error: 'Unable to start Stripe onboarding' }, { status: 502 });
+  return NextResponse.json({ error: 'Unable to start Stripe onboarding', requestId }, { status: 502 });
 }
 
-function accountStatusFailure(error: unknown) {
+function accountStatusFailure(error: unknown, requestId: string) {
   const details = error as {
     message?: string;
     requestId?: string;
     statusCode?: number;
   };
-  console.error('[stripe-connect-onboard] Stripe account status failed', {
+  log('error', '[stripe-connect-onboard] Stripe account status failed', {
+    requestId,
     message: details?.message ?? 'unknown',
-    requestId: details?.requestId ?? null,
+    stripeRequestId: details?.requestId ?? null,
     statusCode: details?.statusCode ?? null,
   });
   return apiFail(
     'STRIPE_ACCOUNT_UNAVAILABLE',
     'We could not verify your Stripe payout account. Please try again.',
     503,
+    { requestId },
   );
 }
 
 export async function POST(req: Request) {
+  const requestId = getRequestId(req);
   const db = await createClient();
   const { data: { user: authUser } } = await db.auth.getUser();
   if (!authUser) return customerCapabilityFailure(
@@ -95,7 +104,7 @@ export async function POST(req: Request) {
     try {
       status = await retrieveConnectAccountStatus(accountId);
     } catch (error) {
-      return accountStatusFailure(error);
+      return accountStatusFailure(error, requestId);
     }
 
     const { error: syncError } = await db.rpc('update_connect_status', {
@@ -104,13 +113,15 @@ export async function POST(req: Request) {
     });
 
     if (syncError) {
-      console.error('[stripe-connect-onboard] Failed to sync payout status', {
+      log('error', '[stripe-connect-onboard] Failed to sync payout status', {
+        requestId,
         code: syncError.code ?? null,
       });
       return apiFail(
         'STRIPE_ACCOUNT_UNAVAILABLE',
         'We could not verify your Stripe payout account. Please try again.',
         503,
+        { requestId },
       );
     }
 
@@ -142,7 +153,7 @@ export async function POST(req: Request) {
       });
       accountId = account.id;
     } catch (error) {
-      return stripeFailure(error);
+      return stripeFailure(error, requestId);
     }
 
     const { error: updateError } = await db
@@ -154,10 +165,11 @@ export async function POST(req: Request) {
       .eq('id', authUser.id);
 
     if (updateError) {
-      console.error('[stripe-connect-onboard] Failed to persist account ID', {
+      log('error', '[stripe-connect-onboard] Failed to persist account ID', {
+        requestId,
         code: updateError.code ?? null,
       });
-      return NextResponse.json({ error: 'Unable to save Stripe onboarding state' }, { status: 502 });
+      return NextResponse.json({ error: 'Unable to save Stripe onboarding state', requestId }, { status: 502 });
     }
   }
 
@@ -175,6 +187,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: accountLink.url });
   } catch (error) {
-    return stripeFailure(error);
+    return stripeFailure(error, requestId);
   }
 }

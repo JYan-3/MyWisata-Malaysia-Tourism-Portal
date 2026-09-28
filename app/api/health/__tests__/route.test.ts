@@ -15,14 +15,16 @@ describe('GET /api/health', () => {
   });
 
   it('returns readiness without exposing secrets', async () => {
-    const response = await GET();
+    const response = await GET(new Request('https://example.com/api/health'));
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ status: 'ok', checks: { database: 'ok', cron: 'configured' } });
+    const body = await response.json();
+    expect(body).toMatchObject({ status: 'ok', checks: { database: 'ok', cron: 'configured' } });
+    expect(typeof body.requestId).toBe('string');
   });
 
   it('returns 503 when the database is unavailable', async () => {
     mocks.limit.mockResolvedValue({ error: { message: 'database unavailable' } });
-    const response = await GET();
+    const response = await GET(new Request('https://example.com/api/health'));
     expect(response.status).toBe(503);
   });
 });

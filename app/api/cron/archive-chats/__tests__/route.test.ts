@@ -34,6 +34,6 @@ describe("Chat archive cron", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledWith("archive_inactive_chats", { days: 90 });
-    await expect(response.json()).resolves.toEqual({ archived: 4, thresholdDays: 90 });
+    await expect(response.json()).resolves.toMatchObject({ archived: 4, thresholdDays: 90 });
   });
 });

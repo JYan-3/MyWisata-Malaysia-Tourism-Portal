@@ -43,7 +43,8 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ claimed: 1, purged: 1, failed: 0 });
+    expect(body).toMatchObject({ claimed: 1, purged: 1, failed: 0 });
+    expect(typeof body.requestId).toBe('string');
     expect(JSON.stringify(body)).not.toContain(path);
     expect(remove).toHaveBeenCalledWith([path]);
     expect(rpc).toHaveBeenCalledWith('confirm_purged_kyc_evidence', {
@@ -65,7 +66,7 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ claimed: 1, purged: 0, failed: 1 });
+    expect(await response.json()).toMatchObject({ claimed: 1, purged: 0, failed: 1 });
     expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

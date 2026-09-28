@@ -6,20 +6,23 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueUserTransactionEmail, enqueueWithdrawalEmail } from '@/lib/email/events';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 import { normalizeProviderFailure } from '@/lib/payouts/failures';
+import { log } from '@/lib/log';
+import { getRequestId } from '@/lib/request-id';
 
 export const dynamic = 'force-dynamic';
 
-async function approvedVendorIds(db: ReturnType<typeof createServiceClient>, ownerId: string): Promise<string[]> {
+async function approvedVendorIds(db: ReturnType<typeof createServiceClient>, ownerId: string, requestId: string): Promise<string[]> {
   try {
     const { data } = await db.from('vendors').select('id').eq('owner_id', ownerId).eq('status', 'approved');
     return (data ?? []).map((vendor: { id: string }) => vendor.id);
   } catch (error) {
-    console.error('[connect-webhook] vendor lookup failed:', error);
+    log('error', '[connect-webhook] vendor lookup failed', { requestId, error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
 
 export async function POST(req: Request) {
+  const requestId = getRequestId(req);
   const body = await req.text();
   const headersList = await headers();
   const sig    = headersList.get('stripe-signature');
@@ -55,8 +58,8 @@ export async function POST(req: Request) {
       p_status: 'paid',
     });
     if (error) {
-      console.error('[connect-webhook] complete_withdrawal_payout paid:', error);
-      return NextResponse.json({ error: 'Failed to complete withdrawal' }, { status: 500 });
+      log('error', '[connect-webhook] complete_withdrawal_payout paid', { requestId, error: error.message });
+      return NextResponse.json({ error: 'Failed to complete withdrawal', requestId }, { status: 500 });
     }
     try {
       await enqueueWithdrawalEmail({
@@ -66,9 +69,9 @@ export async function POST(req: Request) {
         amountRm: Number(withdrawal.amount),
       });
     } catch (emailError) {
-      console.error('[connect-webhook] paid email enqueue failed:', emailError);
+      log('error', '[connect-webhook] paid email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
     }
-    for (const vendorId of await approvedVendorIds(db, withdrawal.user_id)) {
+    for (const vendorId of await approvedVendorIds(db, withdrawal.user_id, requestId)) {
       void emitVendorNotification({
         eventKey: `vendor:payout:paid:${payout.id}:${vendorId}`,
         vendorId,
@@ -82,7 +85,7 @@ export async function POST(req: Request) {
         reference: 'Payout completed',
         metadata: { amount: Number(withdrawal.amount), status: 'paid' },
         serviceDb: db,
-      }).catch((notificationError) => console.error('[vendor-notifications] payout paid event failed', notificationError));
+      }).catch((notificationError) => log('error', '[vendor-notifications] payout paid event failed', { requestId, error: notificationError instanceof Error ? notificationError.message : String(notificationError) }));
     }
   }
 
@@ -97,8 +100,8 @@ export async function POST(req: Request) {
       p_status: 'failed',
     });
     if (error) {
-      console.error('[connect-webhook] complete_withdrawal_payout failed:', error);
-      return NextResponse.json({ error: 'Failed to handle payout failure' }, { status: 500 });
+      log('error', '[connect-webhook] complete_withdrawal_payout failed', { requestId, error: error.message });
+      return NextResponse.json({ error: 'Failed to handle payout failure', requestId }, { status: 500 });
     }
     const failure = normalizeProviderFailure({
       provider: 'stripe_connect',
@@ -115,8 +118,8 @@ export async function POST(req: Request) {
       p_retryable: failure.retryable,
     });
     if (failureRecordError) {
-      console.error('[connect-webhook] record_withdrawal_payout_failure:', failureRecordError);
-      return NextResponse.json({ error: 'Failed to record payout failure details' }, { status: 500 });
+      log('error', '[connect-webhook] record_withdrawal_payout_failure', { requestId, error: failureRecordError.message });
+      return NextResponse.json({ error: 'Failed to record payout failure details', requestId }, { status: 500 });
     }
     try {
       await enqueueWithdrawalEmail({
@@ -126,9 +129,9 @@ export async function POST(req: Request) {
         amountRm: Number(withdrawal.amount),
       });
     } catch (emailError) {
-      console.error('[connect-webhook] failed email enqueue failed:', emailError);
+      log('error', '[connect-webhook] failed email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
     }
-    for (const vendorId of await approvedVendorIds(db, withdrawal.user_id)) {
+    for (const vendorId of await approvedVendorIds(db, withdrawal.user_id, requestId)) {
       void emitVendorNotification({
         eventKey: `vendor:payout:failed:${payout.id}:${vendorId}`,
         vendorId,
@@ -142,7 +145,7 @@ export async function POST(req: Request) {
         reference: 'Payout failed',
         metadata: { amount: Number(withdrawal.amount), status: 'failed' },
         serviceDb: db,
-      }).catch((notificationError) => console.error('[vendor-notifications] payout failed event failed', notificationError));
+      }).catch((notificationError) => log('error', '[vendor-notifications] payout failed event failed', { requestId, error: notificationError instanceof Error ? notificationError.message : String(notificationError) }));
     }
   }
 
@@ -161,7 +164,7 @@ export async function POST(req: Request) {
       p_payouts_enabled:    payoutsEnabled,
     });
     if (error) {
-      console.error('[connect-webhook] update_connect_status:', error);
+      log('error', '[connect-webhook] update_connect_status', { requestId, error: error.message });
     } else if (userRow && previousPayoutsEnabled !== payoutsEnabled) {
       const eventType = payoutsEnabled ? 'payout_account_connected' : 'payout_account_disconnected';
       const title = payoutsEnabled ? 'Payout account connected' : 'Payout account needs attention';
@@ -188,9 +191,9 @@ export async function POST(req: Request) {
           occurredAt: new Date(event.created * 1000).toISOString(),
         });
       } catch (emailError) {
-        console.error('[connect-webhook] payout account email enqueue failed:', emailError);
+        log('error', '[connect-webhook] payout account email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
       }
-      for (const vendorId of await approvedVendorIds(db, userRow.id)) {
+      for (const vendorId of await approvedVendorIds(db, userRow.id, requestId)) {
         void emitVendorNotification({
           eventKey: `vendor:payout-account:${account.id}:${event.id}:${vendorId}`,
           vendorId,
@@ -204,7 +207,7 @@ export async function POST(req: Request) {
           reference: 'Payout account status',
           metadata: { status: payoutsEnabled ? 'connected' : 'disconnected' },
           serviceDb: db,
-        }).catch((notificationError) => console.error('[vendor-notifications] payout account event failed', notificationError));
+        }).catch((notificationError) => log('error', '[vendor-notifications] payout account event failed', { requestId, error: notificationError instanceof Error ? notificationError.message : String(notificationError) }));
       }
     }
   }

@@ -337,6 +337,6 @@ describe('POST /api/stripe/connect-onboard', () => {
     const response = await POST(request());
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: 'Unable to start Stripe onboarding' });
+    expect(await response.json()).toMatchObject({ error: 'Unable to start Stripe onboarding' });
   });
 });

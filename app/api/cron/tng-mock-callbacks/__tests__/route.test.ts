@@ -55,7 +55,7 @@ describe('GET /api/cron/tng-mock-callbacks', () => {
 
     expect(response.status).toBe(200);
     expect(order).toEqual(['reconcile', 'process']);
-    expect(body).toEqual({
+    expect(body).toMatchObject({
       reconciled: 2,
       inserted: 1,
       released: 1,
@@ -64,6 +64,7 @@ describe('GET /api/cron/tng-mock-callbacks', () => {
       retried: 1,
       exhausted: 0,
     });
+    expect(typeof body.requestId).toBe('string');
     expect(JSON.stringify(body)).not.toMatch(/withdrawal|payout|event|outbox|user/i);
   });
 
@@ -74,7 +75,8 @@ describe('GET /api/cron/tng-mock-callbacks', () => {
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body).toEqual({ error: 'callback_processing_unavailable' });
+    expect(body).toMatchObject({ error: 'callback_processing_unavailable' });
+    expect(typeof body.requestId).toBe('string');
     expect(JSON.stringify(body)).not.toContain('secret-value');
   });
 });

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { log } from '@/lib/log';
+import { getRequestId } from '@/lib/request-id';
 
 /**
  * POST /api/cron/clear-earnings
@@ -12,21 +14,22 @@ import { createServiceClient } from '@/lib/supabase/service';
  * commissions from pending_earnings_sen → earnings_sen.
  */
 export async function POST(req: Request) {
+  const requestId = getRequestId(req);
   const auth = req.headers.get('authorization') ?? '';
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'unauthorized', requestId }, { status: 401 });
   }
 
   const service = createServiceClient();
   const { data, error } = await service.rpc('confirm_pending_earnings');
 
   if (error) {
-    console.error('[cron/clear-earnings]', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    log('error', '[cron/clear-earnings] confirm_pending_earnings failed', { requestId, error: error.message });
+    return NextResponse.json({ error: error.message, requestId }, { status: 500 });
   }
 
-  console.log(`[cron/clear-earnings] confirmed=${data}`);
-  return NextResponse.json({ confirmed: data });
+  log('info', '[cron/clear-earnings] confirmed', { requestId, confirmed: data });
+  return NextResponse.json({ confirmed: data, requestId });
 }

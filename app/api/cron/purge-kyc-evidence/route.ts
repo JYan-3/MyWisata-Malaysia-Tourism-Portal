@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { log } from '@/lib/log';
+import { getRequestId } from '@/lib/request-id';
 
 const BUCKET = 'kyc-documents';
 
@@ -14,19 +16,22 @@ type PurgeWorkItem = {
  *
  * Claims expired KYC evidence through the service-only RPC, removes each
  * private object, then confirms successful deletions. The response contains
- * aggregate counts only; object paths and identifiers never leave the job.
+ * aggregate counts only; object paths and identifiers never leave the job —
+ * that also holds for logging below: only error.message is logged, never
+ * item.storage_path or item.submission_id.
  */
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'unauthorized', requestId }, { status: 401 });
   }
 
   const service = createServiceClient();
   const { data, error } = await service.rpc('purge_expired_kyc_evidence');
   if (error) {
-    console.error('[cron/purge-kyc-evidence] claim failed', error.message);
-    return NextResponse.json({ error: 'purge_unavailable' }, { status: 500 });
+    log('error', '[cron/purge-kyc-evidence] claim failed', { requestId, error: error.message });
+    return NextResponse.json({ error: 'purge_unavailable', requestId }, { status: 500 });
   }
 
   const worklist = Array.isArray(data) ? (data as PurgeWorkItem[]) : [];
@@ -43,7 +48,7 @@ export async function POST(request: Request) {
     const { error: removeError } = await service.storage.from(BUCKET).remove([item.storage_path]);
     if (removeError) {
       failed += 1;
-      console.error('[cron/purge-kyc-evidence] object removal failed', removeError.message);
+      log('error', '[cron/purge-kyc-evidence] object removal failed', { requestId, error: removeError.message });
       continue;
     }
 
@@ -53,11 +58,11 @@ export async function POST(request: Request) {
     });
     if (confirmError || confirmed !== true) {
       failed += 1;
-      if (confirmError) console.error('[cron/purge-kyc-evidence] confirmation failed', confirmError.message);
+      if (confirmError) log('error', '[cron/purge-kyc-evidence] confirmation failed', { requestId, error: confirmError.message });
       continue;
     }
     purged += 1;
   }
 
-  return NextResponse.json({ claimed: worklist.length, purged, failed });
+  return NextResponse.json({ claimed: worklist.length, purged, failed, requestId });
 }
