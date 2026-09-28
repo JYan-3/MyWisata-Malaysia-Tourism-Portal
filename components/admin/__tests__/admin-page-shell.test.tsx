@@ -16,10 +16,10 @@ describe("Admin page-shell presentation", () => {
     expect(markup).toContain("bg-background");
     expect(markup).toContain("px-4");
     expect(markup).toContain("sm:px-6");
-    expect(markup).toContain("sm:py-8");
+    expect(markup).toContain("sm:py-6");
     expect(markup).toContain("xl:px-8");
     expect(markup).toContain("page-specific-class");
-    expect(markup).toContain("space-y-6");
+    expect(markup).toContain("space-y-5");
     expect(markup).toContain("Queue content");
   });
 
@@ -36,7 +36,7 @@ describe("Admin page-shell presentation", () => {
     expect(markup).toContain("<header");
     expect(markup).toContain("flex-col");
     expect(markup).toContain("lg:flex-row");
-    expect(markup).toContain("lg:items-end");
+    expect(markup).toContain("lg:items-center");
     expect(markup).toContain("<h1");
     expect(markup.indexOf("Operations")).toBeLessThan(markup.indexOf("Review queue"));
     expect(markup.indexOf("Review queue")).toBeLessThan(markup.indexOf("Prioritize open cases."));
@@ -56,7 +56,7 @@ describe("Admin page-shell presentation", () => {
       />,
     );
 
-    expect(markup).toContain('class="mb-2 inline-flex items-center gap-2');
+    expect(markup).toContain('class="mb-1 inline-flex items-center gap-2');
     expect(markup.indexOf("<svg")).toBeLessThan(markup.indexOf("Malaysia Vendor Network"));
   });
 

@@ -86,12 +86,12 @@ export function PortalSidebar({
         </div>
       </div>
 
-      <nav aria-label={navigationLabel} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 max-lg:min-w-0 max-lg:overflow-hidden max-lg:px-2 max-lg:py-2">
+      <nav aria-label={navigationLabel} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 pb-8 max-lg:min-w-0 max-lg:overflow-hidden max-lg:px-2 max-lg:py-2">
         <div className="max-lg:w-full max-lg:min-w-0 max-lg:overflow-x-auto max-lg:overscroll-contain">
           <div className="max-lg:flex max-lg:w-max max-lg:min-w-full">
             {visibleSections.map((section, sectionIndex) => (
-              <div key={sectionIndex} data-sidebar-section={sectionIndex === 0 ? "first" : "group"} className="first:pt-0 pt-5 max-lg:flex max-lg:shrink-0 max-lg:items-center max-lg:pt-0">
-                <p className="px-3 pb-2 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-slate-500 max-lg:hidden">{section.label}</p>
+              <div key={sectionIndex} data-sidebar-section={sectionIndex === 0 ? "first" : "group"} className="first:pt-0 pt-4 max-lg:flex max-lg:shrink-0 max-lg:items-center max-lg:pt-0">
+                <p className="px-3 pb-1.5 text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-slate-500 max-lg:hidden">{section.label}</p>
                 <div className="space-y-1 max-lg:flex max-lg:gap-1">
               {section.items.map((item) => {
                 const active = isActive(pathname, item);
@@ -101,7 +101,7 @@ export function PortalSidebar({
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "group relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 max-lg:shrink-0",
+                      "group relative flex min-h-9 items-center gap-3 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 max-lg:shrink-0",
                       active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
                     )}
                   >

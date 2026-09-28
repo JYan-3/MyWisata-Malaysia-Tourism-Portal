@@ -417,7 +417,7 @@ export default function AdminVendorsPage() {
                   <th className="px-3 py-4">{t('ui.table.kyc')}</th>
                   <th className="px-3 py-4">{t('ui.table.status')}</th>
                   <th className="px-3 py-4">{t('ui.table.submitted')}</th>
-                  <th className="px-5 py-4 text-right">{t('ui.table.action')}</th>
+                  <th className="px-5 py-4 text-center">{t('ui.table.action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -445,7 +445,7 @@ export default function AdminVendorsPage() {
                         {vendor.status === 'approved' && vendor.approval_email_sent_at && <span className="ml-1.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">· {t('ui.vendors.status.welcomed')}</span>}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 align-top text-xs text-muted-foreground">{format(new Date(vendor.created_at), 'd MMM yyyy')}</td>
-                      <td className="px-5 py-4 align-top text-right"><button type="button" onClick={() => setActiveVendor(vendor)} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground opacity-70 transition hover:border-ring hover:text-primary group-hover:opacity-100">{t('ui.actions.review')} <ChevronRight size={14} /></button></td>
+                      <td className="px-5 py-4 align-top text-center"><button type="button" onClick={() => setActiveVendor(vendor)} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground opacity-70 transition hover:border-ring hover:text-primary group-hover:opacity-100">{t('ui.actions.review')} <ChevronRight size={14} /></button></td>
                     </tr>
                   );
                 })}

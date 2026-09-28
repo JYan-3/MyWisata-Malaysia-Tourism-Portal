@@ -9,9 +9,9 @@ const componentSource = readFileSync(
 
 describe('admin filter bar presentation', () => {
   it('provides a responsive card wrapper for filter controls', () => {
-    expect(componentSource).toContain('rounded-2xl border border-border bg-card');
+    expect(componentSource).toContain('rounded-xl border border-border bg-card');
     expect(componentSource).toContain('flex flex-wrap');
-    expect(componentSource).toContain('gap-3');
+    expect(componentSource).toContain('gap-2.5');
   });
 
   it('exports a shared native control class with the standard dimensions', () => {

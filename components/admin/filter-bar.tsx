@@ -11,8 +11,8 @@ type Props = {
 /** Shared presentation for Admin search and filter controls. */
 export function AdminFilterBar({ children, className = '' }: Props) {
   return (
-    <section className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${className}`.trim()}>
-      <div className="flex flex-wrap items-center gap-3">
+    <section className={`rounded-xl border border-border bg-card p-3 ${className}`.trim()}>
+      <div className="flex flex-wrap items-center gap-2.5">
         {children}
       </div>
     </section>
