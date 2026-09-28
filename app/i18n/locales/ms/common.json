@@ -328,5 +328,20 @@
         "daysAgo_other": "{{count}}h lalu"
       }
     }
+  },
+  "appShell": {
+    "notFound": {
+      "title": "Halaman tidak dijumpai",
+      "body": "Halaman yang anda cari tidak wujud atau mungkin telah dialihkan.",
+      "explore": "Kembali ke jelajah",
+      "help": "Lawati Pusat Bantuan"
+    },
+    "error": {
+      "title": "Sesuatu tidak kena",
+      "body": "Ralat tidak dijangka berlaku. Anda boleh cuba lagi, atau kembali dan teruskan melayari.",
+      "retry": "Cuba lagi",
+      "home": "Ke halaman utama",
+      "reference": "Rujukan ralat: {{digest}}"
+    }
   }
 }
