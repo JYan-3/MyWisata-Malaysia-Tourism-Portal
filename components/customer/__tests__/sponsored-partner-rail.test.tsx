@@ -1,6 +1,7 @@
 import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiscoveryResult } from "@/backend/core/types";
+import type { FeaturedEventPromotion } from "@/lib/customer/event-promotions";
 import {
   TestEvent,
   findElements,
@@ -33,7 +34,9 @@ vi.mock("react-i18next", () => ({
       "ui.labels.operatingHours": "Operating hours",
       "ui.search.providedBy": `By ${options?.vendor ?? ""}`,
       "ui.actions.viewDetails": "View experience",
+      "ui.eventPromotions.rail.eyebrow": "Featured",
     } as Record<string, string>)[key] ?? key,
+    i18n: { resolvedLanguage: "en" },
   }),
 }));
 
@@ -73,6 +76,19 @@ function advertisement(id: string, placementId = "11111111-1111-4111-8111-111111
       reviews: 24,
     },
     sponsorship: { placementId, label: "Sponsored" },
+  };
+}
+
+function eventPromotion(id: string): FeaturedEventPromotion {
+  return {
+    id,
+    vendorId: `vendor-${id}`,
+    vendorName: `Vendor ${id}`,
+    title: `Event ${id}`,
+    details: "Join us for this event.",
+    startDate: "2027-01-15",
+    endDate: "2027-01-17",
+    posterUrl: `/posters/${id}.jpg`,
   };
 }
 
@@ -410,5 +426,35 @@ describe("SponsoredPartnerRail", () => {
         body: JSON.stringify({ eventType: "click", productId: "activity-2" }),
       }),
     );
+  });
+
+  it("leads with event promotion slides before sponsored ad slides", async () => {
+    await render(root, <SponsoredPartnerRail
+      advertisements={[advertisement("activity-1")]}
+      eventPromotions={[eventPromotion("evt-1")]}
+    />);
+
+    expect(container.textContent).toContain("Event evt-1");
+    expect(container.textContent).toContain("Vendor evt-1");
+    expect(container.textContent).not.toContain("Advertisement activity-1");
+    expect(findOne(container, (element) => element.tagName === "A").getAttribute("href")).toBe("/customer/event-promotions/evt-1");
+
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
+    expect(container.textContent).toContain("Advertisement activity-1");
+  });
+
+  it("renders event slides with no eligible ads at all", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[]} eventPromotions={[eventPromotion("evt-1")]} />);
+    expect(container.textContent).toContain("Event evt-1");
+  });
+
+  it("does not send sponsored-placement tracking calls for an event slide", async () => {
+    await render(root, <SponsoredPartnerRail
+      advertisements={[advertisement("activity-1")]}
+      eventPromotions={[eventPromotion("evt-1")]}
+    />);
+    expect(observedTargets).toHaveLength(0);
+    await click(findOne(container, (element) => element.tagName === "A"));
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 });

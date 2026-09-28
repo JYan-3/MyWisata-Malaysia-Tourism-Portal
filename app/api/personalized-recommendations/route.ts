@@ -68,9 +68,10 @@ export async function POST(request: Request) {
     preferredRadiusKm: survey?.preferred_radius_km ?? 20,
   };
   const ranked = rankPersonalizedActivities(activities, preferences).slice(0, 6);
-  const cards = await Promise.all(ranked.map(async ({ activity, score, whyItFits }) => ({
+  const cards = await Promise.all(ranked.map(async ({ activity, score, whyItFits, reasons }) => ({
     activity,
     score,
+    reasons,
     whyItFits: await describeFit({ preferences, activity }),
     fallbackWhyItFits: whyItFits,
   })));

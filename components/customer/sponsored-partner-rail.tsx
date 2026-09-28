@@ -3,36 +3,50 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Building2, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Calendar, MapPin } from "lucide-react";
 import type { DiscoveryResult } from "@/backend/core/types";
+import type { FeaturedEventPromotion } from "@/lib/customer/event-promotions";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
+import { formatDate } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 function placementIdFor(advertisement: DiscoveryResult): string | null {
   return advertisement.sponsorship?.placementId ?? null;
 }
 
+// Vendor-submitted event promotions render as slides in this same carousel
+// (not a separate rail) so they share one "Featured recommendations" surface
+// with sponsored ads — same card chrome, same autoplay/nav, just a different
+// content template per slide kind.
+type Slide =
+  | { kind: "ad"; id: string; ad: DiscoveryResult }
+  | { kind: "event"; id: string; event: FeaturedEventPromotion };
+
 const AUTOPLAY_INTERVAL_MS = 3000;
 
-export function SponsoredPartnerRail({ advertisements }: { advertisements: DiscoveryResult[] }) {
-  const { t } = useTranslation("customer");
+export function SponsoredPartnerRail({ advertisements, eventPromotions = [] }: { advertisements: DiscoveryResult[]; eventPromotions?: FeaturedEventPromotion[] }) {
+  const { t, i18n } = useTranslation("customer");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const articleRef = useRef<HTMLElement | null>(null);
   const movementDirection = useRef<-1 | 1>(1);
   const impressedPlacementIds = useRef(new Set<string>());
+
   const eligibleAdvertisements = useMemo(
     () => advertisements.filter((advertisement) => placementIdFor(advertisement) !== null),
     [advertisements],
   );
-  const eligiblePlacementIds = useMemo(
-    () => eligibleAdvertisements.map((advertisement) => placementIdFor(advertisement) as string),
-    [eligibleAdvertisements],
-  );
-  const placementSignature = eligiblePlacementIds.join("|");
-  const [activePlacementId, setActivePlacementId] = useState<string | null>(
-    () => eligiblePlacementIds[0] ?? null,
-  );
-  const [previousPlacementSignature, setPreviousPlacementSignature] = useState(placementSignature);
+
+  const slides = useMemo<Slide[]>(() => [
+    ...eventPromotions.map((event): Slide => ({ kind: "event", id: `event-${event.id}`, event })),
+    ...eligibleAdvertisements.map((ad): Slide => ({ kind: "ad", id: `ad-${placementIdFor(ad)}`, ad })),
+  ], [eventPromotions, eligibleAdvertisements]);
+
+  const slideIds = useMemo(() => slides.map((slide) => slide.id), [slides]);
+  const slideSignature = slideIds.join("|");
+  const [activeSlideId, setActiveSlideId] = useState<string | null>(() => slideIds[0] ?? null);
+  const [previousSlideSignature, setPreviousSlideSignature] = useState(slideSignature);
   const [isPointerPaused, setIsPointerPaused] = useState(false);
   const [isFocusPaused, setIsFocusPaused] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
@@ -41,18 +55,16 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [autoplayEpoch, setAutoplayEpoch] = useState(0);
 
-  if (previousPlacementSignature !== placementSignature) {
-    setPreviousPlacementSignature(placementSignature);
-    if (!activePlacementId || !eligiblePlacementIds.includes(activePlacementId)) {
-      setActivePlacementId(eligiblePlacementIds[0] ?? null);
+  if (previousSlideSignature !== slideSignature) {
+    setPreviousSlideSignature(slideSignature);
+    if (!activeSlideId || !slideIds.includes(activeSlideId)) {
+      setActiveSlideId(slideIds[0] ?? null);
     }
   }
 
-  const requestedActiveIndex = eligibleAdvertisements.findIndex(
-    (advertisement) => placementIdFor(advertisement) === activePlacementId,
-  );
+  const requestedActiveIndex = slides.findIndex((slide) => slide.id === activeSlideId);
   const normalizedActiveIndex = requestedActiveIndex >= 0 ? requestedActiveIndex : 0;
-  const activeAdvertisement = eligibleAdvertisements[normalizedActiveIndex] ?? null;
+  const activeSlide = slides[normalizedActiveIndex] ?? null;
 
   const recordEvent = useCallback((advertisement: DiscoveryResult, eventType: "impression" | "click") => {
     const placementId = placementIdFor(advertisement);
@@ -86,22 +98,20 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
 
   const moveBy = useCallback((direction: -1 | 1, manual = false) => {
     movementDirection.current = direction;
-    setActivePlacementId((currentPlacementId) => {
-      const count = eligibleAdvertisements.length;
+    setActiveSlideId((currentSlideId) => {
+      const count = slides.length;
       if (count === 0) return null;
-      const currentIndex = eligibleAdvertisements.findIndex(
-        (advertisement) => placementIdFor(advertisement) === currentPlacementId,
-      );
+      const currentIndex = slides.findIndex((slide) => slide.id === currentSlideId);
       const normalizedCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
       const nextIndex = (normalizedCurrentIndex + direction + count) % count;
-      return placementIdFor(eligibleAdvertisements[nextIndex]);
+      return slides[nextIndex].id;
     });
     if (manual) setAutoplayEpoch((current) => current + 1);
-  }, [eligibleAdvertisements]);
+  }, [slides]);
 
   useEffect(() => {
     if (
-      eligibleAdvertisements.length < 2
+      slides.length < 2
       || isPointerPaused
       || isFocusPaused
       || !isDocumentVisible
@@ -112,7 +122,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
     return () => clearInterval(intervalId);
   }, [
     autoplayEpoch,
-    eligibleAdvertisements.length,
+    slides.length,
     isDocumentVisible,
     isFocusPaused,
     isPointerPaused,
@@ -121,9 +131,9 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
   ]);
 
   useEffect(() => {
-    if (!activeAdvertisement || typeof IntersectionObserver === "undefined") return;
+    if (!activeSlide || activeSlide.kind !== "ad" || typeof IntersectionObserver === "undefined") return;
     const article = articleRef.current;
-    const placementId = placementIdFor(activeAdvertisement);
+    const placementId = placementIdFor(activeSlide.ad);
     if (!article || !placementId) return;
 
     const observer = new IntersectionObserver((entries) => {
@@ -132,13 +142,13 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
         && !impressedPlacementIds.current.has(placementId)
       ) {
         impressedPlacementIds.current.add(placementId);
-        recordEvent(activeAdvertisement, "impression");
+        recordEvent(activeSlide.ad, "impression");
       }
     }, { threshold: 0.5 });
 
     observer.observe(article);
     return () => observer.disconnect();
-  }, [activeAdvertisement, recordEvent]);
+  }, [activeSlide, recordEvent]);
 
   useEffect(() => {
     const article = articleRef.current;
@@ -148,16 +158,11 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
       { opacity: 1, transform: "translateX(0)" },
     ], { duration: 360, easing: "ease-out" });
     return () => animation.cancel();
-  }, [activeAdvertisement, prefersReducedMotion]);
+  }, [activeSlide, prefersReducedMotion]);
 
-  if (!activeAdvertisement) return null;
+  if (!activeSlide) return null;
 
-  const placementId = placementIdFor(activeAdvertisement);
-  if (!placementId) return null;
-  const image = activeAdvertisement.outlet.coverUrl?.trim() || null;
-  const location = [activeAdvertisement.outlet.city, activeAdvertisement.outlet.state].filter(Boolean).join(", ");
-  const categoryKey = getOptionalDiscoveryCategoryLabelKey(activeAdvertisement.categorySlug);
-  const hasMultipleAdvertisements = eligibleAdvertisements.length > 1;
+  const hasMultipleSlides = slides.length > 1;
 
   return (
     <section
@@ -186,55 +191,97 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
           className="group/carousel relative w-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"
           aria-roledescription={t("ui.search.featuredCarousel")}
         >
-          <article
-            key={placementId}
-            ref={articleRef}
-            data-placement-id={placementId}
-            className="group w-full overflow-hidden bg-card"
-          >
-            <Link
-              href={`/customer/activity/${activeAdvertisement.id}`}
-              onClick={() => recordEvent(activeAdvertisement, "click")}
-              className="grid min-h-[320px] w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary/20 md:grid-cols-[52%_48%]"
-            >
-              <div className="relative min-h-60 overflow-hidden bg-secondary md:min-h-[340px]">
-                {image && <>
-                  {/* Outlet photos come from its published Hero or curated outlet gallery. */}
+          {activeSlide.kind === "event" ? (
+            <article key={activeSlide.id} ref={articleRef} className="group w-full overflow-hidden bg-card">
+              <Link
+                href={`/customer/event-promotions/${activeSlide.event.id}`}
+                className="grid min-h-[320px] w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary/20 md:grid-cols-[52%_48%]"
+              >
+                <div className="relative min-h-60 overflow-hidden bg-secondary md:min-h-[340px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image} alt={activeAdvertisement.outlet.name} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <img src={activeSlide.event.posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                </>}
-                <span className="absolute left-5 top-5 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-950 shadow-sm">
-                  {t("ui.labels.featured")}
-                </span>
-                <span className={`absolute bottom-5 left-5 inline-flex max-w-[calc(100%-2.5rem)] items-start gap-1.5 break-words whitespace-normal text-sm font-semibold ${image ? "text-white" : "text-muted-foreground"}`}>
-                  <MapPin size={15} aria-hidden="true" /> {location}
-                </span>
-              </div>
-              <div className="flex min-h-[300px] flex-col px-8 py-9 md:min-h-[340px] md:px-12 md:py-11">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-                  {categoryKey ? t(categoryKey) : activeAdvertisement.category}
-                </p>
-                <h3 className="mt-3 break-words whitespace-normal font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl">
-                  {activeAdvertisement.name}
-                </h3>
-                <p className="mt-4 max-w-xl break-words whitespace-normal text-base leading-7 text-muted-foreground">{activeAdvertisement.description}</p>
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
-                  <span className="inline-flex min-w-0 items-start gap-2 break-words whitespace-normal">
-                    <Building2 size={16} className="shrink-0" aria-hidden="true" />
-                    {t("ui.search.providedBy", { vendor: activeAdvertisement.outlet.vendorName })}
+                  <span className="absolute left-5 top-5 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-950 shadow-sm">
+                    {t("ui.labels.featured")}
                   </span>
-                  <ReferencePrice amountMYR={Number(activeAdvertisement.price)} className="shrink-0 text-base font-bold text-foreground" />
                 </div>
-                {activeAdvertisement.outlet.operatingHours ? <div className="mt-3"><OperatingHoursSummary hours={activeAdvertisement.outlet.operatingHours} currentlyOpen={activeAdvertisement.outlet.currentlyOpen ?? activeAdvertisement.outlet.open} /></div> : activeAdvertisement.outlet.hours && <p className="mt-3 text-sm text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {activeAdvertisement.outlet.hours}</p>}
-                <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-bold text-primary">
-                  {t("ui.actions.viewDetails")} <ArrowRight size={16} aria-hidden="true" />
-                </span>
-              </div>
-            </Link>
-          </article>
+                <div className="flex min-h-[300px] flex-col px-8 py-9 md:min-h-[340px] md:px-12 md:py-11">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.eventPromotions.rail.eyebrow")}</p>
+                  <h3 className="mt-3 break-words whitespace-normal font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl">
+                    {activeSlide.event.title}
+                  </h3>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                    <span className="inline-flex min-w-0 items-start gap-2 break-words whitespace-normal">
+                      <Building2 size={16} className="shrink-0" aria-hidden="true" />
+                      {t("ui.search.providedBy", { vendor: activeSlide.event.vendorName })}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar size={15} aria-hidden="true" />
+                      {activeSlide.event.startDate === activeSlide.event.endDate
+                        ? formatDate(activeSlide.event.startDate, locale)
+                        : `${formatDate(activeSlide.event.startDate, locale)} – ${formatDate(activeSlide.event.endDate, locale)}`}
+                    </span>
+                  </div>
+                  <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-bold text-primary">
+                    {t("ui.actions.viewDetails")} <ArrowRight size={16} aria-hidden="true" />
+                  </span>
+                </div>
+              </Link>
+            </article>
+          ) : (() => {
+            const ad = activeSlide.ad;
+            const placementId = placementIdFor(ad);
+            if (!placementId) return null;
+            const image = ad.outlet.coverUrl?.trim() || null;
+            const location = [ad.outlet.city, ad.outlet.state].filter(Boolean).join(", ");
+            const categoryKey = getOptionalDiscoveryCategoryLabelKey(ad.categorySlug);
+            return (
+              <article key={activeSlide.id} ref={articleRef} data-placement-id={placementId} className="group w-full overflow-hidden bg-card">
+                <Link
+                  href={`/customer/activity/${ad.id}`}
+                  onClick={() => recordEvent(ad, "click")}
+                  className="grid min-h-[320px] w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary/20 md:grid-cols-[52%_48%]"
+                >
+                  <div className="relative min-h-60 overflow-hidden bg-secondary md:min-h-[340px]">
+                    {image && <>
+                      {/* Outlet photos come from its published Hero or curated outlet gallery. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={image} alt={ad.outlet.name} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                    </>}
+                    <span className="absolute left-5 top-5 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-950 shadow-sm">
+                      {t("ui.labels.featured")}
+                    </span>
+                    <span className={`absolute bottom-5 left-5 inline-flex max-w-[calc(100%-2.5rem)] items-start gap-1.5 break-words whitespace-normal text-sm font-semibold ${image ? "text-white" : "text-muted-foreground"}`}>
+                      <MapPin size={15} aria-hidden="true" /> {location}
+                    </span>
+                  </div>
+                  <div className="flex min-h-[300px] flex-col px-8 py-9 md:min-h-[340px] md:px-12 md:py-11">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                      {categoryKey ? t(categoryKey) : ad.category}
+                    </p>
+                    <h3 className="mt-3 break-words whitespace-normal font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl">
+                      {ad.name}
+                    </h3>
+                    <p className="mt-4 max-w-xl break-words whitespace-normal text-base leading-7 text-muted-foreground">{ad.description}</p>
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
+                      <span className="inline-flex min-w-0 items-start gap-2 break-words whitespace-normal">
+                        <Building2 size={16} className="shrink-0" aria-hidden="true" />
+                        {t("ui.search.providedBy", { vendor: ad.outlet.vendorName })}
+                      </span>
+                      <ReferencePrice amountMYR={Number(ad.price)} className="shrink-0 text-base font-bold text-foreground" />
+                    </div>
+                    {ad.outlet.operatingHours ? <div className="mt-3"><OperatingHoursSummary hours={ad.outlet.operatingHours} currentlyOpen={ad.outlet.currentlyOpen ?? ad.outlet.open} /></div> : ad.outlet.hours && <p className="mt-3 text-sm text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {ad.outlet.hours}</p>}
+                    <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-bold text-primary">
+                      {t("ui.actions.viewDetails")} <ArrowRight size={16} aria-hidden="true" />
+                    </span>
+                  </div>
+                </Link>
+              </article>
+            );
+          })()}
 
-          {hasMultipleAdvertisements ? (
+          {hasMultipleSlides ? (
             <>
             <button
               type="button"

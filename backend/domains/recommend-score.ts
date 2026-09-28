@@ -123,6 +123,9 @@ export function scoreActivity(a: ComputedActivity, prefs: UserPrefs, ctx: ScoreC
   return { activity: a, score, reason };
 }
 
+// English-only fallback labels. Superseded for display by the localized
+// `ui.recommendationReasons.*` keys resolved from the `reason` code at the render
+// site (see app/customer/page.tsx); kept for the FeedItem contract and tests.
 export const REASON_LABELS: Record<ReasonTag, string> = {
   near_you: "Near you",
   interests: "Matches your interests",

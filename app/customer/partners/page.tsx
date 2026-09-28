@@ -8,6 +8,7 @@ import type { SponsoredPlacement } from "@/backend/core/types";
 import { attachSponsoredOutletGalleryCovers } from "@/lib/customer/partner-directory";
 import { SearchClient } from "../search/search-client";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { getFeaturedEventPromotions } from "@/lib/customer/event-promotions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
@@ -25,11 +26,12 @@ export default async function PartnersPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  const [results, vendors, recommendationFeed, placementsResult] = await Promise.all([
+  const [results, vendors, recommendationFeed, placementsResult, eventPromotions] = await Promise.all([
     searchActivities({ q: q || undefined }, db),
     getVendors(db),
     q ? Promise.resolve([]) : getRecommendedFeed(user?.id ?? null, { limit: 12 }, db),
     db.rpc("list_active_sponsored_discovery_placements"),
+    getFeaturedEventPromotions(db).catch(() => []),
   ]);
   const approvedVendors = vendors.filter((vendor) => vendor.status === "approved");
   const personalizedVendors = rankVendorsByPersonalizedFeed(approvedVendors, recommendationFeed);
@@ -88,6 +90,7 @@ export default async function PartnersPage({ searchParams }: Props) {
       initialVendors={approvedVendors}
       recommendedVendors={recommendedVendors}
       sponsoredPlacements={sponsoredPlacements}
+      eventPromotions={q ? [] : eventPromotions}
     />
   );
 }

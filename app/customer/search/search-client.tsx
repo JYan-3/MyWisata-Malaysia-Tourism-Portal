@@ -22,6 +22,7 @@ import {
   type PartnerView,
 } from "@/lib/customer/partner-directory";
 import { SponsoredPartnerRail } from "@/components/customer/sponsored-partner-rail";
+import type { FeaturedEventPromotion } from "@/lib/customer/event-promotions";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import { isOperatingHoursAtAvailable, isOperatingHoursWindowAvailable } from "@/lib/customer/operating-hours";
 
@@ -90,7 +91,7 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   );
 }
 
-export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, sponsoredPlacements }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; sponsoredPlacements: SponsoredPlacement[] }) {
+export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, sponsoredPlacements, eventPromotions = [] }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; sponsoredPlacements: SponsoredPlacement[]; eventPromotions?: FeaturedEventPromotion[] }) {
   const { t } = useTranslation("customer");
   const [filters, setFilters] = useState<DiscoveryQuery>(() => ({
     q: initialQuery,
@@ -283,7 +284,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
         </div>
       </section>
 
-      <SponsoredPartnerRail advertisements={advertisements} />
+      <SponsoredPartnerRail advertisements={advertisements} eventPromotions={eventPromotions} />
 
       {/* All Vendors */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
