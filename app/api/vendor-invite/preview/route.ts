@@ -30,31 +30,15 @@ function category(value: RecommendationRow['categories']) {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-export async function POST(request: Request) {
-  const parsed = await parseBody(request, previewSchema);
-  if (!parsed.ok) return parsed.response;
-
-  const service = createServiceClient();
-  const resolution = await resolveActiveVendorInvite(service, parsed.data.token);
-  if (!resolution.ok) return apiFail(resolution.error.code, resolution.error.message, resolution.error.status);
-  const { invite } = resolution;
-
-  const { data: recommendation, error: recommendationError } = await service
-    .from('vendor_recommendations')
-    .select('id,vendor_name,status,description,why_recommend,location_name,formatted_address,vendor_address,contact_email,contact_phone,category_id,latitude,longitude,categories(id,name,slug)')
-    .eq('id', invite.recommendationId)
-    .maybeSingle();
-  if (recommendationError || !recommendation || !['approved', 'invited'].includes(recommendation.status)) {
-    return apiFail('RECOMMENDATION_NOT_READY', 'This recommendation is not ready for vendor claim.', 409);
-  }
-
+/** Whether the signed-in user is the invitee, and their verified phone if so. */
+async function resolveInviteAccount(inviteEmail: string) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   const authenticated = Boolean(user);
   const emailMatched = Boolean(
     user?.email
-    && invite.email
-    && user.email.trim().toLowerCase() === invite.email.trim().toLowerCase(),
+    && inviteEmail
+    && user.email.trim().toLowerCase() === inviteEmail.trim().toLowerCase(),
   );
   let phoneVerified = false;
   let verifiedPhone: string | null = null;
@@ -66,6 +50,52 @@ export async function POST(request: Request) {
       .maybeSingle();
     phoneVerified = Boolean(profile?.phone_verified_at);
     verifiedPhone = phoneVerified ? profile?.phone ?? null : null;
+  }
+  return { authenticated, emailMatched, phoneVerified, verifiedPhone };
+}
+
+export async function POST(request: Request) {
+  const parsed = await parseBody(request, previewSchema);
+  if (!parsed.ok) return parsed.response;
+
+  const service = createServiceClient();
+  const resolution = await resolveActiveVendorInvite(service, parsed.data.token);
+  if (!resolution.ok) return apiFail(resolution.error.code, resolution.error.message, resolution.error.status);
+  const { invite } = resolution;
+  const account = await resolveInviteAccount(invite.email);
+
+  if (invite.vendorKind === 'event') {
+    // Event invites are issued by admin: no recommendation, photos or categories to show.
+    return apiOk(buildVendorInvitePreview({
+      vendorKind: 'event',
+      inviteEmail: invite.email,
+      ...account,
+      categories: [],
+      recommendation: {
+        vendorName: invite.businessName,
+        description: null,
+        whyRecommend: null,
+        categoryId: null,
+        categoryName: null,
+        locationName: null,
+        formattedAddress: null,
+        fallbackAddress: null,
+        latitude: null,
+        longitude: null,
+        contactEmail: null,
+        contactPhone: null,
+      },
+      images: [],
+    }));
+  }
+
+  const { data: recommendation, error: recommendationError } = await service
+    .from('vendor_recommendations')
+    .select('id,vendor_name,status,description,why_recommend,location_name,formatted_address,vendor_address,contact_email,contact_phone,category_id,latitude,longitude,categories(id,name,slug)')
+    .eq('id', invite.recommendationId)
+    .maybeSingle();
+  if (recommendationError || !recommendation || !['approved', 'invited'].includes(recommendation.status)) {
+    return apiFail('RECOMMENDATION_NOT_READY', 'This recommendation is not ready for vendor claim.', 409);
   }
 
   const { data: categories } = await service
@@ -95,10 +125,7 @@ export async function POST(request: Request) {
 
   return apiOk(buildVendorInvitePreview({
     inviteEmail: invite.email,
-    authenticated,
-    emailMatched,
-    phoneVerified,
-    verifiedPhone,
+    ...account,
     categories: (categories ?? []) as Array<{ id: string; name: string; slug: string }>,
     recommendation: {
       vendorName: row.vendor_name,

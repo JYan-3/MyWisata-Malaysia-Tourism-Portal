@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   ChartNoAxesCombined,
+  ClipboardList,
   ClipboardCheck,
   LayoutDashboard,
   MapPinned,
@@ -70,6 +71,7 @@ const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
     items: [
       { href: "/vendor/event-promotions", label: "Promotions", icon: Megaphone },
       { href: "/vendor/events", label: "Events", icon: PartyPopper },
+      { href: "/vendor/event-orders", label: "Reservations", icon: ClipboardList },
     ],
   },
 ];
@@ -112,6 +114,30 @@ const OUTLET_MANAGER_SECTIONS: VendorNavigationSection[] = [
   },
 ];
 
-export function getVendorNavigationSections(isOutletManager: boolean): VendorNavigationSection[] {
+// Event vendors: no outlets, catalogue, bookings or paid promotions.
+const EVENT_VENDOR_SECTIONS: VendorNavigationSection[] = [
+  {
+    labelKey: "workspace",
+    items: [{ href: "/vendor/events", label: "Events", icon: PartyPopper }],
+  },
+  {
+    labelKey: "operations",
+    items: [
+      { href: "/vendor/event-orders", label: "Reservations", icon: ClipboardList },
+      { href: "/vendor/scanner", label: "Scanner", icon: ScanLine },
+    ],
+  },
+  {
+    labelKey: "finance",
+    items: [{ href: "/vendor/wallet", label: "Wallet", icon: Wallet }],
+  },
+  {
+    labelKey: "communication",
+    items: [{ href: "/vendor/announcements", label: "Announcements", icon: Bell }],
+  },
+];
+
+export function getVendorNavigationSections(isOutletManager: boolean, isEventVendor = false): VendorNavigationSection[] {
+  if (isEventVendor) return EVENT_VENDOR_SECTIONS;
   return isOutletManager ? OUTLET_MANAGER_SECTIONS : VENDOR_OWNER_SECTIONS;
 }

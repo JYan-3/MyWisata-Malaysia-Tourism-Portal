@@ -10,6 +10,7 @@ export type Role =
   | "customer"
   | "vendor_owner"
   | "outlet_manager"
+  | "event_vendor"
   | "admin"
   | "approver"
   | "staff"
@@ -57,6 +58,8 @@ export interface VendorSummary {
   status: string; // "pending" | "approved" | "rejected"
   logoUrl: string | null;
   coverUrl: string | null;
+  /** "event" vendors sell only at events: never in normal partner lists, only as "Event partners". Absent = shop. */
+  kind?: "shop" | "event";
   outlets: {
     id: string;
     name: string;

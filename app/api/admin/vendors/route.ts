@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 
     let vendorQuery = service
       .from('vendors')
-      .select('id,name,slug,status,created_at,description,business_type,logo_url,cover_url,approved_at,approval_email_sent_at,rejection_reason,users!vendors_owner_id_fkey(full_name,email,kyc_status),outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)', { count: 'exact' })
+      .select('id,name,slug,status,kind,created_at,description,business_type,logo_url,cover_url,approved_at,approval_email_sent_at,rejection_reason,users!vendors_owner_id_fkey(full_name,email,kyc_status),outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 

@@ -10,7 +10,8 @@ const ROLE_PRIORITY: Record<Role, number> = {
   staff: 3,
   vendor_owner: 4,
   outlet_manager: 5,
-  customer: 6,
+  event_vendor: 6,
+  customer: 7,
 };
 
 function relationName(relation: RoleRelation) {

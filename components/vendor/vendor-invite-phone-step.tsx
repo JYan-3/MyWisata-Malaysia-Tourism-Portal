@@ -245,8 +245,12 @@ export function VendorInvitePhoneStep({
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <div><dt className="font-semibold text-muted-foreground">{t('invite.phone.ownerAccount')}</dt><dd className="mt-1 text-foreground">{t('invite.phone.signedInInvitationEmail')}</dd><dd className="mt-1 font-semibold text-green-700">{t('invite.phone.mobileVerified')} {preview.account.maskedVerifiedPhone ? `· ${preview.account.maskedVerifiedPhone}` : ''}</dd></div>
         <div><dt className="font-semibold text-muted-foreground">{t('invite.phone.vendor')}</dt><dd className="mt-1 text-foreground">{draft.businessName}</dd><dd className="mt-1 text-muted-foreground">{draft.legalBusinessName}</dd></div>
-        <div><dt className="font-semibold text-muted-foreground">{t('invite.fields.category')}</dt><dd className="mt-1 text-foreground">{categoryName}</dd></div>
-        <div><dt className="font-semibold text-muted-foreground">{t('invite.phone.firstOutlet')}</dt><dd className="mt-1 text-foreground">{draft.outletName}</dd><dd className="mt-1 text-muted-foreground">{draft.businessAddress}</dd></div>
+        {preview.vendorKind === 'event' ? (
+          <div><dt className="font-semibold text-muted-foreground">{t('invite.fields.businessAddress')}</dt><dd className="mt-1 text-foreground">{draft.businessAddress}</dd></div>
+        ) : <>
+          <div><dt className="font-semibold text-muted-foreground">{t('invite.fields.category')}</dt><dd className="mt-1 text-foreground">{categoryName}</dd></div>
+          <div><dt className="font-semibold text-muted-foreground">{t('invite.phone.firstOutlet')}</dt><dd className="mt-1 text-foreground">{draft.outletName}</dd><dd className="mt-1 text-muted-foreground">{draft.businessAddress}</dd></div>
+        </>}
         <div className="sm:col-span-2"><dt className="font-semibold text-muted-foreground">{t('invite.phone.applicationStatus')}</dt><dd className="mt-1 text-foreground">{t('invite.phone.pendingReview')}</dd></div>
       </dl>
 

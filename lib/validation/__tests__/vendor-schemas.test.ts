@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { contentReviewSchema, vendorRegisterSchema, voucherCreateSchema, voucherValidateSchema } from '@/lib/validation/vendor-schemas';
+import {
+  campaignListingUpdateSchema,
+  campaignRegistrationProductSchema,
+  contentReviewSchema,
+  pickupSlotSchema,
+  vendorRegisterSchema,
+  voucherCreateSchema,
+  voucherValidateSchema,
+} from '@/lib/validation/vendor-schemas';
 
 const validId = '11111111-1111-4111-8111-111111111111';
 
@@ -91,5 +99,44 @@ describe('voucherValidateSchema', () => {
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.intent).toBe('view');
+  });
+});
+
+describe('event listing schemas', () => {
+  const listing = { price: 12.5, dailyQuantity: 20, itemKind: 'product' as const };
+
+  it('requires price, daily quantity and type on every event item', () => {
+    expect(campaignRegistrationProductSchema.safeParse({ kind: 'existing', productId: validId, ...listing }).success).toBe(true);
+    expect(campaignRegistrationProductSchema.safeParse({ kind: 'new', name: 'Kuih lapis', imageUrl: null, ...listing, price: 0, itemKind: 'service' }).success).toBe(true);
+    expect(campaignRegistrationProductSchema.safeParse({ kind: 'existing', productId: validId }).success).toBe(false);
+  });
+
+  it('rejects negative prices, fractional or oversized quantities and unknown types', () => {
+    const base = { kind: 'existing', productId: validId, ...listing };
+    expect(campaignRegistrationProductSchema.safeParse({ ...base, price: -1 }).success).toBe(false);
+    expect(campaignRegistrationProductSchema.safeParse({ ...base, dailyQuantity: 1.5 }).success).toBe(false);
+    expect(campaignRegistrationProductSchema.safeParse({ ...base, dailyQuantity: 10_001 }).success).toBe(false);
+    expect(campaignRegistrationProductSchema.safeParse({ ...base, itemKind: 'ticket' }).success).toBe(false);
+  });
+
+  it('lets a vendor change only stock and on/off after submission', () => {
+    expect(campaignListingUpdateSchema.safeParse({ dailyQuantity: 0, active: false }).success).toBe(true);
+    expect(campaignListingUpdateSchema.safeParse({ dailyQuantity: 5, active: true, price: 1 }).success).toBe(false);
+  });
+});
+
+describe('pickupSlotSchema', () => {
+  const slot = { registrationId: validId, slotDate: null, startsAt: '10:00', endsAt: '11:30', capacity: 20 };
+
+  it('accepts an every-day window and an extra window on one date', () => {
+    expect(pickupSlotSchema.safeParse(slot).success).toBe(true);
+    expect(pickupSlotSchema.safeParse({ ...slot, slotDate: '2026-10-05' }).success).toBe(true);
+  });
+
+  it('rejects windows that end before they start, bad times and bad limits', () => {
+    expect(pickupSlotSchema.safeParse({ ...slot, endsAt: '09:00' }).success).toBe(false);
+    expect(pickupSlotSchema.safeParse({ ...slot, startsAt: '25:00' }).success).toBe(false);
+    expect(pickupSlotSchema.safeParse({ ...slot, capacity: 0 }).success).toBe(false);
+    expect(pickupSlotSchema.safeParse({ ...slot, slotDate: '5/10/2026' }).success).toBe(false);
   });
 });

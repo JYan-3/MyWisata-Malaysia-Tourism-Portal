@@ -7,7 +7,8 @@
     "trip": "Perjalanan",
     "chat": "Sembang",
     "activity": "Aktiviti saya",
-    "wishlist": "Disimpan"
+    "wishlist": "Disimpan",
+    "events": "Acara"
   },
   "accountGroups": {
     "Account": "Akaun & Keutamaan",
@@ -1581,7 +1582,28 @@
       "activeOutletCount_one": "{{count}} cawangan aktif",
       "activeOutletCount_other": "{{count}} cawangan aktif",
       "reviewCount_one": "{{count}} ulasan",
-      "reviewCount_other": "{{count}} ulasan"
+      "reviewCount_other": "{{count}} ulasan",
+      "eventItems": {
+        "eventPartner": "Rakan acara",
+        "eyebrow": "Di acara",
+        "title": "Item acara",
+        "description": "Apa yang vendor ini tawarkan di setiap lokasi acara, dengan tarikh dan waktu untuk mengambilnya.",
+        "caption": "Item acara mengikut lokasi, tarikh dan masa",
+        "item": "Item acara",
+        "location": "Lokasi",
+        "date": "Tarikh",
+        "time": "Masa",
+        "price": "Harga",
+        "reserve": "Tempah",
+        "free": "Percuma",
+        "stall": "Gerai {{stall}}",
+        "kinds": {
+          "product": "Produk",
+          "service": "Pengalaman / perkhidmatan"
+        },
+        "noUpcomingEvent": "Tiada acara akan datang",
+        "noUpcomingEventHint": "Vendor ini tidak menyertai sebarang acara sekarang. Semak semula apabila acara seterusnya diumumkan."
+      }
     },
     "wallet": {
       "emptyTitle": "Dompet anda kosong",
@@ -2556,7 +2578,23 @@
       "productCount_other": "{{count}} item",
       "viewStall": "Lihat gerai",
       "previous": "Acara sebelumnya",
-      "next": "Acara seterusnya"
+      "next": "Acara seterusnya",
+      "locationCount": "{{count}} lokasi",
+      "locationCount_one": "{{count}} lokasi",
+      "locationCount_other": "{{count}} lokasi",
+      "locationsSection": "Lokasi",
+      "locationsSection_one": "Lokasi",
+      "locationsSection_other": "Lokasi ({{count}})",
+      "addressTba": "Alamat akan diumumkan",
+      "views": {
+        "label": "Pilih cara melihat acara",
+        "list": "Senarai",
+        "calendar": "Kalendar",
+        "map": "Peta",
+        "calendarEmpty": "Tiada lokasi acara dalam tempoh ini.",
+        "unpinned_one": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya.",
+        "unpinned_other": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya."
+      }
     },
     "recommendationReasons": {
       "near_you": "Berdekatan",
@@ -2569,6 +2607,58 @@
         "eyebrow": "Pilihan",
         "badge": "Pilihan",
         "backToHome": "Kembali ke laman utama"
+      }
+    },
+    "eventPartners": {
+      "eyebrow": "Di acara kami",
+      "title": "Rakan acara",
+      "description": "Vendor yang hanya berniaga di acara kami. Item mereka boleh ditempah semasa mereka menyertai acara.",
+      "badge": "Rakan acara",
+      "next": "Seterusnya: {{event}} di {{location}}, {{dates}}",
+      "noUpcoming": "Tiada acara akan datang",
+      "view": "Lihat item"
+    },
+    "reserve": {
+      "open": "Tempah",
+      "ended": "Tamat",
+      "title": "Tempah {{item}}",
+      "description": "Ambil di {{location}}. Pilih tarikh dan masa pengambilan.",
+      "signInHint": "Log masuk untuk menempah dan membayar item acara.",
+      "signIn": "Log masuk untuk menempah",
+      "date": "Tarikh pengambilan",
+      "time": "Masa pengambilan",
+      "loading": "Menyemak ketersediaan…",
+      "noSlots": "Tiada masa pengambilan pada tarikh ini. Cuba tarikh lain.",
+      "full": "Penuh",
+      "left_one": "Tinggal {{count}}",
+      "left_other": "Tinggal {{count}}",
+      "soldOutDay": "Habis dijual pada tarikh ini.",
+      "quantity": "Kuantiti",
+      "free": "Percuma",
+      "payment": "Kaedah pembayaran",
+      "qrNote": "Anda akan menerima kod QR dalam Pesanan Saya. Tunjukkannya di gerai pada tarikh pengambilan.",
+      "submitting": "Menempah…",
+      "confirmFree": "Sahkan tempahan",
+      "pay": "Bayar {{amount}}",
+      "errors": {
+        "load": "Ketersediaan tidak dapat dimuatkan. Sila cuba lagi.",
+        "generic": "Tempahan tidak dapat diselesaikan. Sila cuba lagi.",
+        "EVENT_SOLD_OUT": "Item ini habis dijual untuk tarikh yang dipilih.",
+        "EVENT_SLOT_FULL": "Masa pengambilan ini baru sahaja penuh. Pilih masa lain.",
+        "EVENT_SLOT_INVALID": "Masa pengambilan ini tidak lagi tersedia.",
+        "EVENT_DATE_INVALID": "Pilih tarikh dalam tempoh acara.",
+        "EVENT_ITEM_UNAVAILABLE": "Item ini tidak lagi boleh ditempah.",
+        "WALLET_INSUFFICIENT": "Baki dompet anda tidak mencukupi untuk tempahan ini."
+      }
+    },
+    "eventPickup": {
+      "title": "Pengambilan acara",
+      "description": "Tunjukkan kod ini di gerai pada tarikh pengambilan anda.",
+      "qrAlt": "Kod pengambilan untuk {{date}}",
+      "validOn": "Sah hanya pada {{date}}",
+      "status": {
+        "pending": "Sedia untuk diambil",
+        "collected": "Telah diambil"
       }
     }
   },

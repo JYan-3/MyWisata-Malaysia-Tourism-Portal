@@ -30,12 +30,14 @@ export interface CommandItem {
 interface Props {
   scope: 'admin' | 'vendor';
   isOutletManager?: boolean;
+  /** Event vendors see only their event pages — no shop actions. */
+  isEventVendor?: boolean;
   navigationItems?: CommandItem[];
   triggerOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function GlobalCommandPalette({ scope, isOutletManager = false, navigationItems = [], triggerOpen, onOpenChange }: Props) {
+export function GlobalCommandPalette({ scope, isOutletManager = false, isEventVendor = false, navigationItems = [], triggerOpen, onOpenChange }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -105,7 +107,7 @@ export function GlobalCommandPalette({ scope, isOutletManager = false, navigatio
       return adminItems;
     }
 
-    const vendorNavigationItems = getVendorNavigationSections(isOutletManager).flatMap((section) => section.items.map((item) => ({
+    const vendorNavigationItems = getVendorNavigationSections(isOutletManager, isEventVendor).flatMap((section) => section.items.map((item) => ({
       id: `vendor-navigation-${item.href}`,
       title: tVendor(`navigation.${item.label}`),
       category: tVendor(`navigationSections.${section.labelKey}`),
@@ -113,7 +115,7 @@ export function GlobalCommandPalette({ scope, isOutletManager = false, navigatio
       icon: item.icon,
       keywords: [item.label, section.labelKey],
     })));
-    const vendorActions: CommandItem[] = [
+    const vendorActions: CommandItem[] = isEventVendor ? [] : [
       ...(isOutletManager ? [{
         id: 'vendor-action-product',
         title: tVendor('ui.products.addProduct'),
@@ -152,7 +154,7 @@ export function GlobalCommandPalette({ scope, isOutletManager = false, navigatio
         keywords: ['theme', 'dark', 'light', 'mode'],
       },
     ];
-  }, [scope, isOutletManager, navigationItems, tVendor, tCommon, theme, setTheme]);
+  }, [scope, isOutletManager, isEventVendor, navigationItems, tVendor, tCommon, theme, setTheme]);
 
   // Filtered items
   const filtered = useMemo(() => {

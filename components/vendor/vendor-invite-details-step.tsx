@@ -15,6 +15,8 @@ const inputClass = 'mt-1 w-full rounded-xl border border-border bg-background px
 
 export function VendorInviteDetailsStep({ preview, draft, update, onContinue }: VendorInviteDetailsStepProps) {
   const { t } = useTranslation('vendor');
+  // Event vendors sell only at events: no category, and no outlet of their own.
+  const isEvent = preview.vendorKind === 'event';
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onContinue();
@@ -38,7 +40,7 @@ export function VendorInviteDetailsStep({ preview, draft, update, onContinue }: 
           <label className="block text-sm font-semibold text-foreground">{t('invite.fields.vendorDescription')}
             <textarea value={draft.description} onChange={(event) => update('description', event.target.value)} rows={4} className={inputClass} />
           </label>
-          <fieldset>
+          {!isEvent && <fieldset>
             <legend className="text-sm font-semibold text-foreground">{t('invite.fields.category')}</legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {preview.categories.map((category) => (
@@ -48,20 +50,20 @@ export function VendorInviteDetailsStep({ preview, draft, update, onContinue }: 
                 </label>
               ))}
             </div>
-          </fieldset>
+          </fieldset>}
         </div>
       </section>
 
       <section aria-labelledby="first-outlet-heading" className="border-t border-border pt-6">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('invite.details.location')}</p>
-          <h2 id="first-outlet-heading" className="mt-2 text-xl font-bold text-foreground">{t('invite.details.firstOutlet')}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{t('invite.details.firstOutletDescription')}</p>
+          <h2 id="first-outlet-heading" className="mt-2 text-xl font-bold text-foreground">{isEvent ? t('invite.event.contactTitle') : t('invite.details.firstOutlet')}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{isEvent ? t('invite.event.contactDescription') : t('invite.details.firstOutletDescription')}</p>
         </div>
         <div className="mt-5 space-y-4">
-          <label className="block text-sm font-semibold text-foreground">{t('invite.fields.firstOutletName')}
+          {!isEvent && <label className="block text-sm font-semibold text-foreground">{t('invite.fields.firstOutletName')}
             <input required value={draft.outletName} onChange={(event) => update('outletName', event.target.value)} className={inputClass} />
-          </label>
+          </label>}
           <label className="block text-sm font-semibold text-foreground">{t('invite.fields.businessAddress')}
             <textarea required value={draft.businessAddress} onChange={(event) => update('businessAddress', event.target.value)} rows={3} className={inputClass} />
           </label>

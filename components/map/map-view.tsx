@@ -42,6 +42,8 @@ export function MapView(props: {
   routeDashed?: boolean;
   focusRequest?: { pin: MapPin; token: number } | null;
   onMapMovingChange?: (moving: boolean) => void;
+  /** "pin" draws places and the draggable marker as large red pins instead of dots. */
+  markerStyle?: "default" | "pin";
   children?: ReactNode;
 }) {
   const { t } = useTranslation("customer");

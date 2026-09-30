@@ -7,12 +7,19 @@ export type VendorInviteErrorCode =
   | 'INVITE_CANCELLED'
   | 'INVITE_ALREADY_CLAIMED';
 
+/** Shop invites come from a customer recommendation; event invites carry the business name admin entered. */
+export type ResolvedVendorInvite =
+  | { vendorKind: 'shop'; recommendationId: string; businessName: null; email: string }
+  | { vendorKind: 'event'; recommendationId: null; businessName: string; email: string };
+
 export type VendorInviteResolution =
-  | { ok: true; invite: { recommendationId: string; email: string } }
+  | { ok: true; invite: ResolvedVendorInvite }
   | { ok: false; error: { code: VendorInviteErrorCode; message: string; status: number } };
 
 type VendorInviteRow = {
   recommendation_id: unknown;
+  vendor_kind?: unknown;
+  business_name?: unknown;
   email: unknown;
   status: unknown;
   expires_at: unknown;
@@ -28,17 +35,20 @@ export async function resolveActiveVendorInvite(
 ): Promise<VendorInviteResolution> {
   const { data, error } = await service
     .from('vendor_recommendation_invites')
-    .select('recommendation_id,email,status,expires_at')
+    .select('recommendation_id,email,status,expires_at,vendor_kind,business_name')
     .eq('token_hash', hashRecommendationInviteToken(token))
     .maybeSingle();
   const invite = data as VendorInviteRow | null;
   const expiresAt = typeof invite?.expires_at === 'string' ? new Date(invite.expires_at).getTime() : NaN;
+  const isEvent = invite?.vendor_kind === 'event';
+  const hasSource = isEvent
+    ? typeof invite?.business_name === 'string' && Boolean(invite.business_name.trim())
+    : typeof invite?.recommendation_id === 'string' && Boolean(invite.recommendation_id.trim());
 
   if (
     error
     || !invite
-    || typeof invite.recommendation_id !== 'string'
-    || !invite.recommendation_id.trim()
+    || !hasSource
     || typeof invite.email !== 'string'
     || !invite.email.trim()
     || typeof invite.status !== 'string'
@@ -57,11 +67,11 @@ export async function resolveActiveVendorInvite(
     return fail('INVITE_EXPIRED', 'This vendor invitation has expired.', 409);
   }
 
+  const email = invite.email.trim().toLowerCase();
   return {
     ok: true,
-    invite: {
-      recommendationId: invite.recommendation_id,
-      email: invite.email.trim().toLowerCase(),
-    },
+    invite: isEvent
+      ? { vendorKind: 'event', recommendationId: null, businessName: String(invite.business_name).trim(), email }
+      : { vendorKind: 'shop', recommendationId: String(invite.recommendation_id), businessName: null, email },
   };
 }

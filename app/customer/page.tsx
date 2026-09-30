@@ -36,6 +36,7 @@ export default async function CustomerHomePage() {
       .from("vendors")
       .select("id,name,description,logo_url,cover_url,business_type,outlets(id,name,city,state,status,review_status)")
       .eq("status", "approved")
+      .eq("kind", "shop")
       .order("name")
       .limit(24),
     db.rpc("get_public_promotion_campaigns", { p_slug: null }),

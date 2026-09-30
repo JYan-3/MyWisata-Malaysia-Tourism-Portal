@@ -2,23 +2,30 @@
 // See Docs/plans/2026-09-28-1732-vendor-fair-event-participation.md.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CampaignRegistrationResubmit, CampaignRegistrationSubmit } from '@/lib/validation/vendor-schemas';
+import { apiFail } from '@/lib/validation/schemas';
+import type { CampaignListingUpdate, CampaignRegistrationResubmit, CampaignRegistrationSubmit, PickupSlotInput } from '@/lib/validation/vendor-schemas';
 
-export type CampaignRegistrationStatus = 'pending' | 'approved' | 'rejected' | 'changes_requested';
+export type CampaignRegistrationStatus = 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'withdrawn' | 'removed';
 
 export interface VendorCampaignProduct {
   id: string;
   name: string;
+  /** The listing's own event price. */
   price: number;
   imageUrl: string | null;
-  /** null for a picked existing catalog product, the source product id otherwise absent — see productId below. */
+  /** The referenced catalog product, or null for an item that exists only for this event. */
   productId: string | null;
+  itemKind: 'product' | 'service';
+  dailyQuantity: number;
+  active: boolean;
 }
 
 export interface VendorCampaignRegistration {
   id: string;
   campaignId: string;
   campaignTitle: string;
+  locationId: string;
+  locationName: string;
   vendorId: string;
   stallNumber: string;
   stallDescription: string;
@@ -27,12 +34,25 @@ export interface VendorCampaignRegistration {
   rejectionReason: string | null;
   changesRequestedReason: string | null;
   products: VendorCampaignProduct[];
+  /** Pickup windows customers choose from when reserving at this location. */
+  pickupSlots: VendorPickupSlot[];
   createdAt: string;
+}
+
+export interface VendorPickupSlot {
+  id: string;
+  /** null = offered every day of the location; a date = extra slot on that day only. */
+  slotDate: string | null;
+  startsAt: string;
+  endsAt: string;
+  /** Maximum items across all reservations in this slot on one day. */
+  capacity: number;
 }
 
 type RegistrationRow = {
   id: string;
   campaign_id: string;
+  event_location_id: string;
   vendor_id: string;
   stall_number: string;
   stall_description: string;
@@ -42,6 +62,7 @@ type RegistrationRow = {
   changes_requested_reason: string | null;
   created_at: string;
   promotion_campaigns: { title: string } | { title: string }[] | null;
+  location: { name: string } | { name: string }[] | null;
 };
 
 type ProductRow = {
@@ -52,6 +73,9 @@ type ProductRow = {
   price: number | null;
   image_url: string | null;
   position: number;
+  item_kind: 'product' | 'service';
+  daily_quantity: number;
+  active: boolean;
   products: { name: string; base_price: number; cover_url: string | null } | { name: string; base_price: number; cover_url: string | null }[] | null;
 };
 
@@ -59,17 +83,20 @@ function single<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-const REGISTRATION_COLUMNS = 'id,campaign_id,vendor_id,stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,created_at,promotion_campaigns(title)';
-const PRODUCT_COLUMNS = 'id,registration_id,product_id,name,price,image_url,position,products(name,base_price,cover_url)';
+const REGISTRATION_COLUMNS = 'id,campaign_id,event_location_id,vendor_id,stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,created_at,promotion_campaigns(title),location:promotion_campaign_locations(name)';
+const PRODUCT_COLUMNS = 'id,registration_id,product_id,name,price,image_url,position,item_kind,daily_quantity,active,products(name,base_price,cover_url)';
 
 function toProduct(row: ProductRow): VendorCampaignProduct {
   const product = single(row.products);
   return {
     id: row.id,
     name: product?.name ?? row.name ?? '',
-    price: product?.base_price ?? row.price ?? 0,
+    price: Number(row.price ?? product?.base_price ?? 0),
     imageUrl: product?.cover_url ?? row.image_url,
     productId: row.product_id,
+    itemKind: row.item_kind,
+    dailyQuantity: row.daily_quantity,
+    active: row.active,
   };
 }
 
@@ -89,11 +116,32 @@ async function loadProducts(db: SupabaseClient, registrationIds: string[]): Prom
   return byRegistration;
 }
 
-function toRegistration(row: RegistrationRow, products: VendorCampaignProduct[]): VendorCampaignRegistration {
+type PickupSlotRow = { id: string; registration_id: string; slot_date: string | null; starts_at: string; ends_at: string; capacity: number };
+
+async function loadPickupSlots(db: SupabaseClient, registrationIds: string[]): Promise<Map<string, VendorPickupSlot[]>> {
+  const byRegistration = new Map<string, VendorPickupSlot[]>();
+  if (registrationIds.length === 0) return byRegistration;
+  const { data, error } = await db.from('promotion_campaign_pickup_slots')
+    .select('id,registration_id,slot_date,starts_at,ends_at,capacity')
+    .in('registration_id', registrationIds)
+    .order('slot_date', { ascending: true, nullsFirst: true })
+    .order('starts_at', { ascending: true });
+  if (error) throw new Error(`Failed to load pickup slots: ${error.message}`);
+  for (const row of (data ?? []) as PickupSlotRow[]) {
+    const list = byRegistration.get(row.registration_id) ?? [];
+    list.push({ id: row.id, slotDate: row.slot_date, startsAt: row.starts_at.slice(0, 5), endsAt: row.ends_at.slice(0, 5), capacity: row.capacity });
+    byRegistration.set(row.registration_id, list);
+  }
+  return byRegistration;
+}
+
+function toRegistration(row: RegistrationRow, products: VendorCampaignProduct[], pickupSlots: VendorPickupSlot[] = []): VendorCampaignRegistration {
   return {
     id: row.id,
     campaignId: row.campaign_id,
     campaignTitle: single(row.promotion_campaigns)?.title ?? '',
+    locationId: row.event_location_id,
+    locationName: single(row.location)?.name ?? '',
     vendorId: row.vendor_id,
     stallNumber: row.stall_number,
     stallDescription: row.stall_description,
@@ -102,6 +150,7 @@ function toRegistration(row: RegistrationRow, products: VendorCampaignProduct[])
     rejectionReason: row.rejection_reason,
     changesRequestedReason: row.changes_requested_reason,
     products,
+    pickupSlots,
     createdAt: row.created_at,
   };
 }
@@ -114,14 +163,18 @@ export async function getMyCampaignRegistrations(db: SupabaseClient, vendorId: s
     .order('created_at', { ascending: false });
   if (error) throw new Error(`Failed to load campaign registrations: ${error.message}`);
   const rows = (data ?? []) as unknown as RegistrationRow[];
-  const productsByRegistration = await loadProducts(db, rows.map((row) => row.id));
-  return rows.map((row) => toRegistration(row, productsByRegistration.get(row.id) ?? []));
+  const ids = rows.map((row) => row.id);
+  const [productsByRegistration, slotsByRegistration] = await Promise.all([loadProducts(db, ids), loadPickupSlots(db, ids)]);
+  return rows.map((row) => toRegistration(row, productsByRegistration.get(row.id) ?? [], slotsByRegistration.get(row.id) ?? []));
 }
 
 function toProductPayload(products: CampaignRegistrationSubmit['products']) {
-  return products.map((product) => product.kind === 'existing'
-    ? { productId: product.productId }
-    : { name: product.name, price: product.price, imageUrl: product.imageUrl });
+  return products.map((product) => {
+    const listing = { price: product.price, dailyQuantity: product.dailyQuantity, itemKind: product.itemKind };
+    return product.kind === 'existing'
+      ? { productId: product.productId, ...listing }
+      : { name: product.name, imageUrl: product.imageUrl, ...listing };
+  });
 }
 
 /**
@@ -132,12 +185,12 @@ function toProductPayload(products: CampaignRegistrationSubmit['products']) {
  */
 export async function submitCampaignRegistration(
   authDb: SupabaseClient,
-  campaignId: string,
+  locationId: string,
   vendorId: string,
   input: CampaignRegistrationSubmit,
 ): Promise<{ ok: true; id: string } | { ok: false; code: 'forbidden' | 'campaign_not_open' | 'already_registered' | 'invalid' | 'unknown' }> {
   const { data, error } = await authDb.rpc('submit_campaign_vendor_registration', {
-    p_campaign_id: campaignId,
+    p_location_id: locationId,
     p_vendor_id: vendorId,
     p_stall_number: input.stallNumber,
     p_stall_description: input.stallDescription,
@@ -170,4 +223,73 @@ export async function resubmitCampaignRegistration(
   if (error.message.includes('forbidden')) return { ok: false, code: 'forbidden' };
   if (error.message.includes('invalid') || error.message.includes('required') || error.message.includes('not_owned')) return { ok: false, code: 'invalid' };
   return { ok: false, code: 'unknown' };
+}
+
+/** Stock and on/off only; the RPC checks ownership and that the registration is pending or approved. */
+export async function updateCampaignListing(
+  authDb: SupabaseClient,
+  listingId: string,
+  input: CampaignListingUpdate,
+): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'forbidden' | 'not_editable' | 'invalid' | 'unknown' }> {
+  const { error } = await authDb.rpc('update_campaign_listing', {
+    p_listing_id: listingId,
+    p_daily_quantity: input.dailyQuantity,
+    p_active: input.active,
+  });
+  if (!error) return { ok: true };
+  if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
+  if (error.message.includes('forbidden')) return { ok: false, code: 'forbidden' };
+  if (error.message.includes('not_editable')) return { ok: false, code: 'not_editable' };
+  if (error.message.includes('invalid')) return { ok: false, code: 'invalid' };
+  return { ok: false, code: 'unknown' };
+}
+
+export type PickupSlotFailure = 'not_found' | 'forbidden' | 'not_editable' | 'invalid' | 'outside_hours' | 'outside_dates' | 'duplicate' | 'in_use' | 'unknown';
+
+function pickupSlotFailure(message: string): PickupSlotFailure {
+  if (message.includes('not_found')) return 'not_found';
+  if (message.includes('forbidden')) return 'forbidden';
+  if (message.includes('not_editable')) return 'not_editable';
+  if (message.includes('pickup_slot_outside_hours')) return 'outside_hours';
+  if (message.includes('pickup_slot_outside_dates')) return 'outside_dates';
+  if (message.includes('pickup_slot_duplicate')) return 'duplicate';
+  if (message.includes('pickup_slot_in_use')) return 'in_use';
+  if (message.includes('pickup_slot_invalid')) return 'invalid';
+  return 'unknown';
+}
+
+export async function saveEventPickupSlot(
+  authDb: SupabaseClient,
+  input: PickupSlotInput,
+): Promise<{ ok: true } | { ok: false; code: PickupSlotFailure }> {
+  const { error } = await authDb.rpc('save_event_pickup_slot', {
+    p_registration_id: input.registrationId,
+    p_slot_id: input.slotId ?? null,
+    p_slot_date: input.slotDate,
+    p_starts_at: input.startsAt,
+    p_ends_at: input.endsAt,
+    p_capacity: input.capacity,
+  });
+  return error ? { ok: false, code: pickupSlotFailure(error.message) } : { ok: true };
+}
+
+export async function deleteEventPickupSlot(
+  authDb: SupabaseClient,
+  slotId: string,
+): Promise<{ ok: true } | { ok: false; code: PickupSlotFailure }> {
+  const { error } = await authDb.rpc('delete_event_pickup_slot', { p_slot_id: slotId });
+  return error ? { ok: false, code: pickupSlotFailure(error.message) } : { ok: true };
+}
+
+/** Maps a pickup-slot RPC failure to the vendor API response. */
+export function pickupSlotFailureResponse(code: PickupSlotFailure) {
+  if (code === 'not_found') return apiFail('NOT_FOUND', 'Pickup time not found', 404);
+  if (code === 'forbidden') return apiFail('FORBIDDEN', 'You do not have access to this stall', 403);
+  if (code === 'not_editable') return apiFail('INVALID_STATE', 'This stall can no longer be changed', 409);
+  if (code === 'outside_hours') return apiFail('OUTSIDE_HOURS', 'Pickup times must be within the location hours', 422);
+  if (code === 'outside_dates') return apiFail('OUTSIDE_DATES', 'The date must be within the location dates', 422);
+  if (code === 'duplicate') return apiFail('DUPLICATE', 'This pickup time already exists', 409);
+  if (code === 'in_use') return apiFail('IN_USE', 'Customers have reserved this pickup time', 409);
+  if (code === 'invalid') return apiFail('VALIDATION_FAILED', 'The pickup time is invalid', 422);
+  return apiFail('DB_ERROR', 'The pickup time could not be saved', 500);
 }

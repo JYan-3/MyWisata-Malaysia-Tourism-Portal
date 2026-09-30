@@ -1,4 +1,5 @@
 import { requireStaffPermission } from "@/lib/staff-permissions/server";
+import { processRefundsAfterArchive } from "@/lib/events/cancellations";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { campaignAdminPatchSchema } from "@/lib/promotion-campaigns/validation";
 import { databaseUuidSchema } from "@/lib/validation/schemas";
@@ -15,6 +16,9 @@ function databaseFailure(error: { message?: string; code?: string } | null) {
   if (message.includes("stale") || message.includes("changed")) return apiFail("CONFLICT", "This campaign changed. Refresh it and try again.", 409);
   if (message.includes("poster_required")) {
     return apiFail("POSTER_REQUIRED", "Upload an event poster before submitting or approving this campaign", 409);
+  }
+  if (message.includes("location_required")) {
+    return apiFail("LOCATION_REQUIRED", "Add at least one location before publishing this event", 409);
   }
   return apiFail("CAMPAIGN_UNAVAILABLE", "Unable to update this campaign", 503);
 }
@@ -55,5 +59,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const { data, error } = result;
   if (error) return databaseFailure(error);
+  // Archiving cancels the event's reservations in SQL; refund the automatic ones now.
+  if ("action" in parsed.data && parsed.data.action === "archive") await processRefundsAfterArchive();
   return apiOk(data);
 }

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   if (scope === 'vendor') {
     const vendorId = url.searchParams.get('vendorId');
     if (!vendorId || !VENDOR_ID.test(vendorId)) return apiFail('INVALID_VENDOR', 'A valid vendorId is required for vendor notifications', 400);
-    const authorization = await authorizeVendor(vendorId);
+    const authorization = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
     if (!authorization.ok) return authorization.response;
     scopedVendor = authorization.access;
     queryDb = authorization.access.serviceDb as typeof db;

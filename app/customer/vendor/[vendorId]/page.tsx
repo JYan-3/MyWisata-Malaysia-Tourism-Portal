@@ -20,6 +20,10 @@ import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from '@/lib/customer/entity-media';
 import type { GalleryItem } from '@/lib/vendor/outlet-page-schema';
+import { EventItemsTable } from '@/components/customer/event-items-table';
+import { getMalaysiaDateInputValue } from '@/lib/datetime/date-input';
+import { getPublicPromotionCampaigns } from '@/lib/promotion-campaigns/public';
+import { vendorEventItems } from '@/lib/promotion-campaigns/vendor-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,13 +79,15 @@ async function getVendor(vendorId: string) {
     cover_url: string | null;
     business_type: string | null;
     featured_product_ids?: string[] | null;
+    /** 'event' vendors sell only at events and are shown as event partners. */
+    kind?: 'shop' | 'event';
   };
 
   let vendor: VendorDetail | null = null;
 
   const { data: vendorWithFeatured, error: featuredErr } = await db
     .from('vendors')
-    .select('id,name,slug,description,logo_url,cover_url,business_type,featured_product_ids')
+    .select('id,name,slug,description,logo_url,cover_url,business_type,featured_product_ids,kind')
     .eq('id', vendorId)
     .eq('status', 'approved')
     .maybeSingle();
@@ -89,7 +95,7 @@ async function getVendor(vendorId: string) {
   if (featuredErr || !vendorWithFeatured) {
     const { data: standardVendor } = await db
       .from('vendors')
-      .select('id,name,slug,description,logo_url,cover_url,business_type')
+      .select('id,name,slug,description,logo_url,cover_url,business_type,kind')
       .eq('id', vendorId)
       .eq('status', 'approved')
       .maybeSingle();
@@ -279,7 +285,7 @@ function SingleLocationSummary({ location, vendorId, t }: { location: LocationSu
 }
 
 export default async function VendorBrandPage({ params }: { params: Promise<{ vendorId: string }> }) {
-  const result = await getVendor((await params).vendorId);
+  const [result, publicEvents] = await Promise.all([getVendor((await params).vendorId), getPublicPromotionCampaigns()]);
   if (!result) notFound();
   const { t } = await getServerTranslation('customer');
   const { vendor, vendorGallery, locations, catalogue, featuredProducts, reviewSummary, reviews } = result;
@@ -288,6 +294,8 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const visibleVendorGallery = vendorGallery.filter((item) => item.url !== heroImage);
   const vendorType = formatBusinessType(vendor.business_type, t);
   const hasMultipleLocations = locations.length > 1;
+  const isEventVendor = vendor.kind === 'event';
+  const eventItems = vendorEventItems(publicEvents.campaigns, vendor.id, getMalaysiaDateInputValue());
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
 
   return <main className="min-h-screen bg-background text-foreground">
@@ -302,7 +310,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground">{vendor.name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground/60">
-            {t('ui.labels.verifiedVendor')}
+            {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : t('ui.labels.verifiedVendor')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -336,7 +344,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
           </div>}
           <div className="relative mx-auto flex min-h-[280px] max-w-7xl flex-col justify-end px-6 py-12 text-left sm:min-h-[340px] sm:py-14 lg:min-h-[360px] lg:py-16">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
-              {t('ui.outlet.verifiedMyWisata')} • {vendorType}
+              {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : <>{t('ui.outlet.verifiedMyWisata')} • {vendorType}</>}
             </p>
             <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">
               {vendor.name}
@@ -354,7 +362,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
     {/* Public Content Container (matching Image 2's outlet-public-content) */}
     <div className="outlet-public-content mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
       {/* Visit / Partner Summary Card (matching Image 2's VisitSummary) */}
-      <section className="relative z-10 -mt-8 mb-8 rounded-3xl border border-border bg-card p-5 shadow-lg sm:p-6" aria-label={t('ui.vendor.information')}>
+      {!isEventVendor && <section className="relative z-10 -mt-8 mb-8 rounded-3xl border border-border bg-card p-5 shadow-lg sm:p-6" aria-label={t('ui.vendor.information')}>
         <div className="grid gap-5 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
           <div className="flex items-start gap-3">
             <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
@@ -424,13 +432,23 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
             {t('ui.labels.locations', 'Locations')} <ArrowUpRight size={15} aria-hidden="true" />
           </a>
         </div>
-      </section>
+      </section>}
       {visibleVendorGallery.length > 0 && <div className="mb-8">
         <MediaGallery items={visibleVendorGallery} label={t('ui.vendor.galleryLabel', { vendor: vendor.name })} previousLabel={t('ui.vendor.previousGallery')} nextLabel={t('ui.vendor.nextGallery')} slideLabel={t('ui.vendor.gallerySlide')} roleDescription={t('ui.accessibility.carousel')} />
       </div>}
 
       {/* Content Sections */}
-      <div className="space-y-16">
+      <div className={isEventVendor ? 'mt-10 space-y-16' : 'space-y-16'}>
+        {(isEventVendor || eventItems.length > 0) && (
+          <section id="event-items" aria-labelledby="event-items-heading">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.eventItems.eyebrow')}</p>
+            <h2 id="event-items-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.eventItems.title')}</h2>
+            <p className="mb-6 mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.eventItems.description')}</p>
+            <EventItemsTable items={eventItems} />
+          </section>
+        )}
+
+        {!isEventVendor && <>
         <section id="experiences" aria-labelledby="experiences-heading">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -502,6 +520,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
             </a>
           </div>
         </section>
+        </>}
 
         {reviewSummary.reviews > 0 && (
           <section aria-labelledby="reviews-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">

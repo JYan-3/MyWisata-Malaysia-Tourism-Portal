@@ -11,6 +11,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/ui/badge";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface AdminCampaignProduct {
@@ -18,19 +19,24 @@ interface AdminCampaignProduct {
   name: string;
   price: number;
   imageUrl: string | null;
+  itemKind: "product" | "service";
+  dailyQuantity: number;
+  active: boolean;
 }
 
 interface AdminCampaignRegistrationDetail {
   id: string;
   campaignId: string;
   campaignTitle: string;
+  locationName: string;
   vendorId: string;
   vendorName: string;
   stallNumber: string;
   stallDescription: string;
   stallPosterUrl: string;
-  status: "pending" | "approved" | "rejected" | "changes_requested";
+  status: "pending" | "approved" | "rejected" | "changes_requested" | "withdrawn" | "removed";
   rejectionReason: string | null;
+  closedReason?: string | null;
   changesRequestedReason: string | null;
   products: AdminCampaignProduct[];
   createdAt: string;
@@ -49,6 +55,9 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
   const [submittingAction, setSubmittingAction] = useState<ReviewAction | null>(null);
   const [pendingAction, setPendingAction] = useState<ReviewAction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const { prompt } = useAppDialog();
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +76,31 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
+
+  async function removeFromLocation() {
+    const reason = await prompt(t("eventRegistrations.removePrompt"));
+    if (reason === null) return;
+    if (reason.trim().length < 5) {
+      showFeedback("error", t("eventRegistrations.removeReasonRequired"));
+      return;
+    }
+    setRemoving(true);
+    try {
+      const response = await fetch(`/api/admin/event-registrations/${id}/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? t("eventRegistrations.removeError"));
+      showFeedback("success", t("eventRegistrations.removed"));
+      await load();
+    } catch (err) {
+      showFeedback("error", err instanceof Error ? err.message : t("eventRegistrations.removeError"));
+    } finally {
+      setRemoving(false);
+    }
+  }
 
   function requestReview(action: ReviewAction) {
     if (submittingAction) return;
@@ -121,7 +155,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
         <>
           <AdminPageHeader
             title={detail.vendorName}
-            description={`${detail.campaignTitle} · ${t("eventRegistrations.stallLabel", { number: detail.stallNumber })}`}
+            description={`${detail.campaignTitle} · ${detail.locationName} · ${t("eventRegistrations.stallLabel", { number: detail.stallNumber })}`}
             actions={<StatusBadge status={detail.status} />}
           />
 
@@ -149,8 +183,15 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
                         ) : (
                           <div className="h-12 w-12 shrink-0 rounded-lg bg-secondary" />
                         )}
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{product.name}</span>
-                        <span className="shrink-0 text-sm font-semibold text-foreground">{formatMYR(product.price)}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-foreground">{product.name}</span>
+                          <span className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                            <span>{t(`eventRegistrations.itemKinds.${product.itemKind}`)}</span>
+                            <span>{t("eventRegistrations.dailyQuantity", { count: product.dailyQuantity })}</span>
+                            {!product.active && <span className="text-destructive">{t("eventRegistrations.itemOff")}</span>}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-sm font-semibold text-foreground">{product.price === 0 ? t("eventRegistrations.free") : formatMYR(product.price)}</span>
                       </li>
                     ))}
                   </ul>
@@ -159,6 +200,9 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
 
               {detail.status === "rejected" && detail.rejectionReason && (
                 <p className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive">{t("eventRegistrations.rejectionNote", { note: detail.rejectionReason })}</p>
+              )}
+              {(detail.status === "withdrawn" || detail.status === "removed") && (
+                <p className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive">{t(`eventRegistrations.closedNote.${detail.status}`, { note: detail.closedReason ?? "" })}</p>
               )}
               {detail.status === "changes_requested" && detail.changesRequestedReason && (
                 <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-900/20 dark:text-amber-300">{t("eventRegistrations.changesRequestedNote", { note: detail.changesRequestedReason })}</p>
@@ -187,6 +231,16 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
                   {t("eventRegistrations.actions.reject")}
                 </Button>
               </div>
+            </section>
+          )}
+
+          {detail.status === "approved" && (
+            <section className="space-y-2 rounded-xl border border-destructive/30 bg-card p-5">
+              <h2 className="text-sm font-semibold text-foreground">{t("eventRegistrations.removeHeading")}</h2>
+              <p className="text-xs text-muted-foreground">{t("eventRegistrations.removeDescription")}</p>
+              <Button type="button" variant="destructive" size="sm" disabled={removing} onClick={() => void removeFromLocation()}>
+                {t("eventRegistrations.actions.remove")}
+              </Button>
             </section>
           )}
 

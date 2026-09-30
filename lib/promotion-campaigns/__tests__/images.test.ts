@@ -14,15 +14,20 @@ const campaign: PromotionCampaignPublic = {
   startsAt: "2026-09-25T00:00:00.000Z",
   endsAt: "2026-10-25T00:00:00.000Z",
   visibility: "live",
+  locations: [],
   vendors: [{
-    registrationId: "registration",
     vendorId: "vendor",
     vendorName: "Vendor",
     vendorLogoUrl: null,
-    stallNumber: "A1",
-    stallDescription: "A stall description.",
-    stallPosterUrl: "https://project.supabase.co/storage/v1/object/public/event-posters/vendor/stall.jpg",
-    products: [{ id: "product", name: "Product", price: 10, imageUrl: "/assets/customer/products/product-real.jpg" }],
+    vendorKind: "shop",
+    stalls: [{
+      registrationId: "registration",
+      locationId: "location",
+      stallNumber: "A1",
+      stallDescription: "A stall description.",
+      stallPosterUrl: "https://project.supabase.co/storage/v1/object/public/event-posters/vendor/stall.jpg",
+      products: [{ id: "product", name: "Product", kind: "product", price: 10, imageUrl: "/assets/customer/products/product-real.jpg" }],
+    }],
   }],
 };
 
@@ -34,7 +39,7 @@ describe("resolvePromotionCampaignImages", () => {
 
     const [resolved] = resolvePromotionCampaignImages([campaign]);
 
-    expect(resolved.vendors[0].products[0].imageUrl).toBe("https://project.supabase.co/storage/v1/object/public/product-images/products/product-real.jpg");
+    expect(resolved.vendors[0].stalls[0].products[0].imageUrl).toBe("https://project.supabase.co/storage/v1/object/public/product-images/products/product-real.jpg");
   });
 
   it("keeps missing and absolute source images unchanged", () => {
@@ -44,12 +49,15 @@ describe("resolvePromotionCampaignImages", () => {
       ...campaign,
       vendors: campaign.vendors.map((vendor) => ({
         ...vendor,
-        products: vendor.products.map((product) => ({ ...product, imageUrl: absolute })),
+        stalls: vendor.stalls.map((stall) => ({
+          ...stall,
+          products: stall.products.map((product) => ({ ...product, imageUrl: absolute })),
+        })),
       })),
     };
 
     const [resolved] = resolvePromotionCampaignImages([value]);
 
-    expect(resolved.vendors[0].products[0].imageUrl).toBe(absolute);
+    expect(resolved.vendors[0].stalls[0].products[0].imageUrl).toBe(absolute);
   });
 });

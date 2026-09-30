@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, ImagePlus, Loader2, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
+import { useActionFeedback } from "@/components/providers/action-feedback";
+import { CalendarClock, ImagePlus, Loader2, MapPin, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,29 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getMalaysiaDateTimeRangeDefaults } from "@/lib/datetime/date-input";
 import { isInvalidDateTimeRange, malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
 import type { PromotionCampaignStatus } from "@/lib/promotion-campaigns/types";
+import { EventLocationsEditor, toLocationPayload, type EditableLocation, type LocationDefaults } from "./event-locations-editor";
 
+type LocationRow = {
+  id: string; name: string; address: string | null; lat: number | null; lng: number | null;
+  starts_on: string; ends_on: string; opens_at: string; closes_at: string; status?: string;
+};
 type CampaignRow = {
   id: string; slug: string; title: string; summary: string; description: string;
   poster_url: string | null; operating_hours: string | null;
   status: PromotionCampaignStatus; starts_at: string; ends_at: string;
   created_by: string; updated_at: string; rejection_note: string | null;
+  locations?: LocationRow[];
 };
+
+function toEditableLocations(rows: LocationRow[] | undefined): EditableLocation[] {
+  return [...(rows ?? [])]
+    .sort((left, right) => left.starts_on.localeCompare(right.starts_on))
+    .map((row) => ({
+      id: row.id, key: row.id, name: row.name, address: row.address ?? "", lat: row.lat, lng: row.lng,
+      startsOn: row.starts_on, endsOn: row.ends_on, opensAt: row.opens_at.slice(0, 5), closesAt: row.closes_at.slice(0, 5),
+      status: row.status === "cancelled" ? "cancelled" as const : "active" as const,
+    }));
+}
 type DraftForm = {
   title: string; slug: string; summary: string; description: string;
   startsAt: string; endsAt: string; posterUrl: string | null; operatingHours: string;
@@ -75,6 +92,7 @@ export default function PromotionCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [form, setForm] = useState<DraftForm>(initialForm);
   const [editing, setEditing] = useState<CampaignRow | null>(null);
+  const { showFeedback } = useActionFeedback();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -83,6 +101,8 @@ export default function PromotionCampaignsPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [hoursFrom, setHoursFrom] = useState("");
   const [hoursTo, setHoursTo] = useState("");
+  const [formLocations, setFormLocations] = useState<EditableLocation[]>([]);
+  const [openLocationsFor, setOpenLocationsFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -116,6 +136,12 @@ export default function PromotionCampaignsPage() {
     setEditing(null);
     setHoursFrom("");
     setHoursTo("");
+    setFormLocations([]);
+  }
+
+  // New locations start on the event's dates and default hours; the admin adjusts per stop.
+  function locationDefaultsFor(startsAt: string, endsAt: string): LocationDefaults {
+    return { startsOn: startsAt.slice(0, 10), endsOn: endsAt.slice(0, 10), opensAt: hoursFrom || "10:00", closesAt: hoursTo || "22:00" };
   }
 
   function editCampaign(campaign: CampaignRow) {
@@ -183,6 +209,10 @@ export default function PromotionCampaignsPage() {
   async function saveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isInvalidDateTimeRange(form.startsAt, form.endsAt)) return;
+    if (!editing && formLocations.length === 0) {
+      setError(t("promotionCampaigns.locations.required"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -199,9 +229,29 @@ export default function PromotionCampaignsPage() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || t("promotionCampaigns.errors.save"));
       const saved = payload.data as CampaignRow;
+      if (!editing) {
+        // The event exists now. If a location fails to save, it stays a draft:
+        // clear the form so a retry can't create a duplicate event, and point
+        // the admin at the row's Locations panel.
+        for (const location of formLocations) {
+          const locationResponse = await fetch(`/api/admin/promotion-campaigns/${saved.id}/locations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(toLocationPayload(location)),
+          });
+          if (!locationResponse.ok) {
+            const locationPayload = await locationResponse.json().catch(() => ({}));
+            resetForm();
+            await reload();
+            setError(`${locationPayload.error?.message ?? t("promotionCampaigns.locations.saveError")} ${t("promotionCampaigns.locations.savedAsDraft")}`);
+            return;
+          }
+        }
+      }
       if (saved.status === "draft" || saved.status === "rejected") {
         await publishCampaign(saved.id, saved.updated_at);
       }
+      if (editing) showFeedback("success", t("promotionCampaigns.form.changesSaved"));
       resetForm();
       await reload();
     } catch (reason) {
@@ -300,6 +350,15 @@ export default function PromotionCampaignsPage() {
                 </label>
               )}
             </div>
+            <div className="rounded-xl border border-border p-4">
+              <EventLocationsEditor
+                campaignId={editing?.id ?? null}
+                locations={editing ? toEditableLocations(campaigns.find((campaign) => campaign.id === editing.id)?.locations) : formLocations}
+                defaults={locationDefaultsFor(form.startsAt, form.endsAt)}
+                onLocalChange={setFormLocations}
+                onSaved={load}
+              />
+            </div>
             {isInvalidDateTimeRange(form.startsAt, form.endsAt) && <p role="alert" className="text-sm text-destructive">{t("promotionCampaigns.form.invalidRange")}</p>}
             <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || uploading || isInvalidDateTimeRange(form.startsAt, form.endsAt)}><Send size={15} /> {editing ? t("promotionCampaigns.form.saveChanges") : t("promotionCampaigns.form.saveDraft")}</Button><span className="self-center text-xs text-muted-foreground">{t("promotionCampaigns.form.timezone")}</span></div>
           </form>
@@ -307,10 +366,21 @@ export default function PromotionCampaignsPage() {
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <div className="border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{t("promotionCampaigns.list.title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.list.description", { count: campaigns.length })}</p></div>
             {campaigns.length === 0 ? <div className="p-8 text-center"><CalendarClock size={24} className="mx-auto text-muted-foreground" /><p className="mt-3 font-semibold text-foreground">{t("promotionCampaigns.states.empty")}</p><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.states.emptyDescription")}</p></div> : <div className="divide-y divide-border">{campaigns.map((campaign) => <article key={campaign.id} className="grid gap-4 p-5 xl:grid-cols-[minmax(220px,1fr)_220px_130px_minmax(260px,auto)] xl:items-center">
+              {openLocationsFor === campaign.id && (
+                <div className="order-last rounded-xl border border-border bg-background p-4 xl:col-span-4">
+                  <EventLocationsEditor
+                    campaignId={campaign.id}
+                    locations={toEditableLocations(campaign.locations)}
+                    defaults={locationDefaultsFor(malaysiaLocalDateTime(campaign.starts_at), malaysiaLocalDateTime(campaign.ends_at))}
+                    onSaved={load}
+                    disabled={campaign.status === "archived"}
+                  />
+                </div>
+              )}
               <div className="min-w-0"><h3 className="break-words font-semibold text-foreground">{campaign.title}</h3><p className="mt-1 break-all text-xs text-muted-foreground">/customer/events/{campaign.slug}</p>{campaign.rejection_note && <p className="mt-2 break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span></p>}</div>
               <div className="text-xs text-muted-foreground"><p><span>{t("promotionCampaigns.form.startsAt")}</span><span aria-hidden="true">: </span><span>{formatDateTime(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p><p className="mt-1"><span>{t("promotionCampaigns.form.endsAt")}</span><span aria-hidden="true">: </span><span>{formatDateTime(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p></div>
               <span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
-              <div className="flex flex-wrap gap-2 xl:justify-end">{(campaign.status === "draft" || campaign.status === "rejected") && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
+              <div className="flex flex-wrap gap-2 xl:justify-end"><Button type="button" variant="outline" size="sm" aria-expanded={openLocationsFor === campaign.id} onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}><MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}</Button>{(campaign.status === "draft" || campaign.status === "rejected") && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
             </article>)}</div>}
           </section>
 

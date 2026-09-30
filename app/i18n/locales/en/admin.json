@@ -1905,7 +1905,8 @@
       },
       "errors": {
         "action": "Action failed",
-        "load": "Unable to load vendors"
+        "load": "Unable to load vendors",
+        "ownerKycRequired": "The owner must pass identity verification (KYC) before an event vendor can be approved."
       },
       "export": "Export view",
       "eyebrow": "Malaysia vendor network",
@@ -1985,6 +1986,23 @@
         "cancel": "Cancel",
         "error": "Could not draft a reason right now — write one manually.",
         "close": "Close"
+      },
+      "eventVendor": {
+        "open": "Create event vendor",
+        "title": "Create event vendor",
+        "description": "Invite the owner by email. Their event vendor account is created when they accept.",
+        "businessName": "Business name",
+        "ownerEmail": "Owner email",
+        "message": "Message to include (optional)",
+        "kycNote": "They sign in with this email, verify their phone and complete KYC. You approve them here after that.",
+        "cancel": "Cancel",
+        "send": "Send invite",
+        "sending": "Sending…",
+        "sent": "Event vendor invite sent to {{email}}.",
+        "badge": "Event vendor",
+        "ownerHasVendor": "This email already owns a vendor. Event vendors need their own login.",
+        "emailFailed": "The invitation email could not be sent. Please try again.",
+        "error": "Could not create the event vendor invite."
       }
     },
     "walletApprovers": {
@@ -3104,7 +3122,46 @@
       "removePoster": "Remove poster",
       "saveChanges": "Publish changes",
       "saveDraft": "Publish event",
-      "cancelEdit": "Cancel editing"
+      "cancelEdit": "Cancel editing",
+      "changesSaved": "Changes saved."
+    },
+    "locations": {
+      "title": "Locations",
+      "description": "Each location has its own dates and daily hours. Vendors register per location.",
+      "empty": "No locations yet. Add at least one before publishing.",
+      "add": "Add location",
+      "edit": "Edit",
+      "remove": "Remove",
+      "save": "Save location",
+      "cancel": "Cancel",
+      "name": "Location name",
+      "address": "Address",
+      "startsOn": "First day",
+      "endsOn": "Last day",
+      "opensAt": "Opens",
+      "closesAt": "Closes",
+      "pin": "Map pin",
+      "pinHint": "Drag the marker to the exact spot (optional).",
+      "pinSet": "Pinned at {{latitude}}, {{longitude}}",
+      "clearPin": "Clear pin",
+      "addressTba": "Address to be announced",
+      "confirmRemove": "Remove this location?",
+      "toggle": "Locations ({{count}})",
+      "toggle_one": "Location ({{count}})",
+      "toggle_other": "Locations ({{count}})",
+      "required": "Add at least one location before publishing.",
+      "invalid": "Check the location: it needs a name, the last day can't be before the first day, and closing must be after opening.",
+      "saveError": "Unable to save this location.",
+      "savedAsDraft": "The event was saved as a draft. Add its locations from the list below, then publish it.",
+      "cancelLocation": "Cancel location",
+      "cancelled": "Cancelled",
+      "cancelPrompt": "Why is {{name}} cancelled? Paid reservations will be refunded — automatically if the event hasn't started, otherwise through the refund queue.",
+      "cancelReasonRequired": "Give a reason of at least 5 characters.",
+      "cancelError": "The location could not be cancelled.",
+      "changesSaved": "Changes saved.",
+      "search": "Search for a place",
+      "searchPlaceholder": "Search a place or address, or drag the red pin",
+      "searchEmpty": "No places found. Try a different name."
     },
     "list": {
       "title": "Event workflow",
@@ -3205,7 +3262,26 @@
       "reject": "Reject",
       "approveSuccess": "Registration approved.",
       "request_changesSuccess": "Changes requested from the vendor.",
-      "rejectSuccess": "Registration rejected."
+      "rejectSuccess": "Registration rejected.",
+      "remove": "Remove from location"
+    },
+    "itemKinds": {
+      "product": "Product",
+      "service": "Experience / service"
+    },
+    "dailyQuantity_one": "{{count}} per day",
+    "dailyQuantity_other": "{{count}} per day",
+    "itemOff": "Switched off",
+    "free": "Free",
+    "removeHeading": "Remove from this location",
+    "removeDescription": "Takes the vendor off this location. Their paid reservations here are refunded — automatically before the event starts, otherwise through the refund queue.",
+    "removePrompt": "Why is this vendor being removed?",
+    "removeReasonRequired": "Give a reason of at least 5 characters.",
+    "removeError": "The vendor could not be removed.",
+    "removed": "Vendor removed. Affected reservations were cancelled.",
+    "closedNote": {
+      "withdrawn": "The vendor withdrew: {{note}}",
+      "removed": "Removed from this location: {{note}}"
     }
   },
   "announcements": {

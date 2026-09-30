@@ -2,13 +2,14 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Clock, Megaphone, RefreshCw } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock, MapPin, Megaphone, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { formatEventDateRange, formatEventHours } from "@/lib/promotion-campaigns/locations";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 type Props = {
@@ -72,11 +73,24 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
               <span className="text-sm text-muted-foreground">
                 {formatDateTime(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {formatDateTime(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
               </span>
-              {campaign.operatingHours && <>
-                <Clock size={14} className="ml-2 text-primary" />
-                <span className="text-sm text-muted-foreground">{campaign.operatingHours}</span>
-              </>}
             </div>
+            {campaign.locations.length > 0 && (
+              <section aria-labelledby="event-locations-heading" className="mt-5">
+                <h2 id="event-locations-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
+                  {t("ui.promotionCampaigns.locationsSection", { count: campaign.locations.length })}
+                </h2>
+                <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {campaign.locations.map((location) => (
+                    <li key={location.id} className="rounded-2xl border border-border bg-card/80 p-4">
+                      <p className="flex items-start gap-2 font-semibold text-foreground"><MapPin size={15} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{location.name}</p>
+                      <p className="mt-1 break-words pl-6 text-xs text-muted-foreground">{location.address ?? t("ui.promotionCampaigns.addressTba")}</p>
+                      <p className="mt-2 flex items-center gap-2 pl-6 text-xs text-muted-foreground"><CalendarDays size={13} aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</p>
+                      <p className="mt-1 flex items-center gap-2 pl-6 text-xs text-muted-foreground"><Clock size={13} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             <h2 className="mt-4 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
               {t("ui.promotionCampaigns.vendorsSection")}
             </h2>
@@ -95,7 +109,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             )}
           </div>
         </section>
-        <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">{campaign.vendors.map((vendor) => <PromotionCampaignVendorCard key={vendor.registrationId} vendor={vendor} campaignSlug={campaign.slug} mode="detail" />)}</div>
+        <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">{campaign.vendors.map((vendor) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} mode="detail" />)}</div>
         {campaign.vendors.length === 0 && <p className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.noVendors")}</p>}
       </>}
     </CustomerPageShell>

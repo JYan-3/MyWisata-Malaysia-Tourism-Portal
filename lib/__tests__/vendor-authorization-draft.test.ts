@@ -33,3 +33,34 @@ describe('authorizeVendor draft owner access', () => {
     if (result.ok) expect(result.access.isOwner).toBe(true);
   });
 });
+
+describe('authorizeVendor event vendors', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null });
+    mocks.createServiceClient.mockReturnValue({});
+  });
+
+  function eventVendor() {
+    const vendor = chain({ data: { id: 'vendor-1', owner_id: 'owner-1', status: 'approved', kind: 'event' }, error: null });
+    const outlets = chain({ data: [], error: null });
+    mocks.from.mockImplementation((table: string) => table === 'vendors' ? vendor : outlets);
+  }
+
+  it('rejects the owner of an event vendor on routes that do not opt in', async () => {
+    eventVendor();
+    const result = await authorizeVendor('vendor-1');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.response.status).toBe(403);
+      expect((await result.response.json()).error.code).toBe('EVENT_VENDOR_FORBIDDEN');
+    }
+  });
+
+  it('allows the owner of an event vendor on opted-in routes', async () => {
+    eventVendor();
+    const result = await authorizeVendor('vendor-1', undefined, { allowEventVendor: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.access.isOwner).toBe(true);
+  });
+});

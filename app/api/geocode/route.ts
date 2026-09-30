@@ -9,7 +9,17 @@ export const dynamic = "force-dynamic";
 //  • Nominatim (OpenStreetMap) as a no-key fallback.
 // Returns up to 5 ranked suggestions so the client can validate-as-you-type.
 export async function GET(request: Request) {
-  const q = new URL(request.url).searchParams.get("q")?.trim();
+  const params = new URL(request.url).searchParams;
+  // Reverse lookup (?lat=&lng=): the place name under a dragged map pin.
+  const lat = Number(params.get("lat"));
+  const lng = Number(params.get("lng"));
+  if (params.has("lat") && params.has("lng")) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return apiOk({ results: [] as GeoHit[] });
+    const hit = await reverseViaNominatim(lat, lng);
+    return apiOk({ results: hit ? [hit] : [] });
+  }
+
+  const q = params.get("q")?.trim();
   if (!q || q.length < 3) return apiOk({ results: [] as GeoHit[] });
 
   const key = process.env.ORS_API_KEY;
@@ -43,6 +53,20 @@ async function geocodeViaNominatim(q: string): Promise<GeoHit[] | null> {
     return hits
       .map((h) => (h.lat && h.lon ? { label: h.display_name ?? q, lat: Number(h.lat), lng: Number(h.lon) } : null))
       .filter((h): h is GeoHit => h !== null);
+  } catch {
+    return null;
+  }
+}
+
+async function reverseViaNominatim(lat: number, lng: number): Promise<GeoHit | null> {
+  try {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: "json", zoom: "18" });
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+      headers: { "User-Agent": "MyLawatan/1.0 (tourism-portal)" }, // Nominatim policy requires an identifying UA.
+    });
+    if (!res.ok) return null;
+    const hit = (await res.json()) as { display_name?: string };
+    return hit.display_name ? { label: hit.display_name, lat, lng } : null;
   } catch {
     return null;
   }

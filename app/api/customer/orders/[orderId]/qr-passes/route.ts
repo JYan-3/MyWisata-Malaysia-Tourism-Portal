@@ -2,6 +2,7 @@ import { apiFail, apiOk } from "@/lib/validation/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { signTicketPassToken } from "@/lib/tickets/tokens";
 import { signFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
+import { signEventPickupToken } from "@/lib/events/event-pickup-token";
 
 interface Props { params: Promise<{ orderId: string }> }
 
@@ -94,7 +95,7 @@ export async function GET(_request: Request, { params }: Props) {
   if (isMissingFoodFulfilmentColumn(itemError)) {
     // Ticket QR passes are independent of the optional food fulfilment schema.
     // Keep them available while an environment is waiting for that migration.
-    return apiOk({ tickets, foodOrders: [] });
+    return apiOk({ tickets, foodOrders: [], eventPickups: await loadEventPickups(db, orderId) });
   }
   if (itemError) return apiFail("DB_ERROR", itemError.message, 500);
 
@@ -141,5 +142,59 @@ export async function GET(_request: Request, { params }: Props) {
     status: allFulfilled ? "fulfilled" : group.mode === "dine_in" && allScanned ? "checked_in" : "pending",
     foodToken: signFoodFulfilmentToken({ orderId, outletId: group.outletId, issuedAt: Date.now() }),
   }));
-  return apiOk({ tickets, foodOrders });
+  return apiOk({ tickets, foodOrders, eventPickups: await loadEventPickups(db, orderId) });
+}
+
+type EventPickupRow = {
+  vendor_id: string;
+  event_location_id: string;
+  pickup_date: string;
+  product_name: string;
+  variant_name: string | null;
+  quantity: number;
+  fulfil_status: string;
+  vendors: { name: string } | { name: string }[] | null;
+};
+
+/** One pickup code per vendor, event location and pickup date; valid only on that date. */
+async function loadEventPickups(db: Awaited<ReturnType<typeof createClient>>, orderId: string) {
+  const { data, error } = await db
+    .from("order_items")
+    .select("vendor_id,event_location_id,pickup_date,product_name,variant_name,quantity,fulfil_status,vendors(name)")
+    .eq("order_id", orderId);
+  if (error) return [];
+  const groups = new Map<string, {
+    vendorName: string;
+    pickupDate: string;
+    pickupLabels: string[];
+    allFulfilled: boolean;
+    items: { name: string; quantity: number }[];
+    token: string;
+  }>();
+  for (const row of (data ?? []) as EventPickupRow[]) {
+    // Only event reservations carry a location and pickup date.
+    if (!row.event_location_id || !row.pickup_date || row.fulfil_status === "cancelled") continue;
+    const key = `${row.vendor_id}:${row.event_location_id}:${row.pickup_date}`;
+    let group = groups.get(key);
+    if (!group) {
+      const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+      group = {
+        vendorName: vendor?.name ?? "",
+        pickupDate: row.pickup_date,
+        pickupLabels: [],
+        allFulfilled: true,
+        items: [],
+        token: signEventPickupToken({ orderId, vendorId: row.vendor_id, locationId: row.event_location_id, pickupDate: row.pickup_date, issuedAt: Date.now() }),
+      };
+      groups.set(key, group);
+    }
+    if (row.variant_name && !group.pickupLabels.includes(row.variant_name)) group.pickupLabels.push(row.variant_name);
+    if (row.fulfil_status !== "fulfilled") group.allFulfilled = false;
+    group.items.push({ name: row.product_name, quantity: row.quantity });
+  }
+  return [...groups.values()].map(({ allFulfilled, token, ...group }) => ({
+    ...group,
+    status: allFulfilled ? "collected" : "pending",
+    eventToken: token,
+  }));
 }

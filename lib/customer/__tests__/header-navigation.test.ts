@@ -15,6 +15,7 @@ describe("customer header navigation", () => {
     expect(CUSTOMER_NAV.map((item) => item.href)).toEqual([
       "/customer",
       "/customer/explore",
+      "/customer/events",
       "/customer/partners",
       "/customer/trip",
     ]);

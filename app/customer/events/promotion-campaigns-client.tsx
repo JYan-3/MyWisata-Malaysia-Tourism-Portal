@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CalendarDays, Megaphone, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, List, Map as MapIcon, Megaphone, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
@@ -13,12 +14,29 @@ import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 type Props = { initialCampaigns: PromotionCampaignPublic[]; initialError: boolean };
 
+const VIEWS = [
+  { id: "list", icon: List },
+  { id: "calendar", icon: CalendarDays },
+  { id: "map", icon: MapIcon },
+] as const;
+type EventsView = (typeof VIEWS)[number]["id"];
+
+function ViewLoading() {
+  const { t } = useTranslation("customer");
+  return <p role="status" className="py-12 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.loading")}</p>;
+}
+
+// FullCalendar and the map are heavy — load them only when their view is opened.
+const EventsCalendar = dynamic(() => import("./events-calendar").then((m) => m.EventsCalendar), { ssr: false, loading: () => <ViewLoading /> });
+const EventsMap = dynamic(() => import("./events-map").then((m) => m.EventsMap), { ssr: false, loading: () => <ViewLoading /> });
+
 export function PromotionCampaignsClient({ initialCampaigns, initialError }: Props) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError);
+  const [view, setView] = useState<EventsView>("list");
 
   const load = useCallback(async () => {
     try {
@@ -65,6 +83,21 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
           </Button>
         </div>
       )}
+      {!loading && !error && sortedCampaigns.length > 0 && (
+        <div role="group" aria-label={t("ui.promotionCampaigns.views.label")} className="mb-6 inline-flex rounded-full border border-border bg-card p-1">
+          {VIEWS.map(({ id, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={view === id}
+              onClick={() => setView(id)}
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${view === id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Icon size={15} aria-hidden="true" /> {t(`ui.promotionCampaigns.views.${id}`)}
+            </button>
+          ))}
+        </div>
+      )}
       {loading ? <p role="status" className="py-12 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.loading")}</p> : !error && sortedCampaigns.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <CalendarDays size={30} className="mx-auto text-primary" />
@@ -78,7 +111,9 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
             <Link href="/customer">{t("ui.promotionCampaigns.home")}</Link>
           </Button>
         </div>
-      ) : !error && <div className="space-y-8">{sortedCampaigns.map((campaign) => {
+      ) : !error && view === "calendar" ? <EventsCalendar campaigns={sortedCampaigns} />
+        : !error && view === "map" ? <EventsMap campaigns={sortedCampaigns} />
+        : !error && <div className="space-y-8">{sortedCampaigns.map((campaign) => {
         const isLive = campaign.visibility === "live";
         const previewVendors = campaign.vendors.slice(0, 3);
         return (
@@ -124,7 +159,7 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
             <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {previewVendors.map((vendor) => (
                 <PromotionCampaignVendorCard
-                  key={vendor.registrationId}
+                  key={vendor.vendorId}
                   vendor={vendor}
                   campaignSlug={campaign.slug}
                   mode="preview"

@@ -24,12 +24,13 @@ const REVIEW_METRICS_BATCH_SIZE = 100;
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
 export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
-  const { data, error } = await db.from("vendors").select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
+  const { data, error } = await db.from("vendors").select("id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
   if (error) throw error;
   return (data ?? []).map((v) => ({
     id: v.id,
     name: v.name,
     status: v.status,
+    kind: v.kind === "event" ? "event" : "shop",
     logoUrl: v.logo_url,
     coverUrl: v.cover_url,
     outlets: (v.outlets ?? []).filter((outlet) =>

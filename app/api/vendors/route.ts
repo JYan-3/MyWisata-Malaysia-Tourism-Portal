@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('vendors')
-    .select('*, outlets(id, name, city, lat, lng, status)')
+    .select('id,name,slug,description,logo_url,cover_url,business_type,status,kind,created_at, outlets(id, name, city, lat, lng, status)')
     .eq('status', status ?? 'approved');
 
   if (q) query = query.ilike('name', `%${q}%`);
@@ -241,6 +241,6 @@ export async function POST(request: Request) {
   }
 
   const { vendor_id: vendorId } = created as { vendor_id: string };
-  const { data } = await supabase.from('vendors').select('*').eq('id', vendorId).single();
+  const { data } = await supabase.from('vendors').select('id,name,slug,description,logo_url,cover_url,business_type,status,kind,created_at').eq('id', vendorId).single();
   return apiOk(data, { status: 201 });
 }

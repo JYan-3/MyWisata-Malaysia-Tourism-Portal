@@ -199,6 +199,50 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     expect(mocks.stripeCreate).not.toHaveBeenCalled();
   });
 
+  it('starts a Stripe card session for the full order total', async () => {
+    mocks.stripeCreate.mockResolvedValue({ id: 'cs_test_1', url: 'https://checkout.stripe.test/cs_test_1' });
+
+    const response = await POST(new Request('http://localhost/api/checkout/prepare', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ paymentMethod: 'stripe_card', idempotencyKey: 'stripe-checkout-key-123456' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({ checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, stripeUrl: 'https://checkout.stripe.test/cs_test_1' });
+    expect(mocks.stripeCreate).toHaveBeenCalledWith(expect.objectContaining({
+      line_items: [expect.objectContaining({ price_data: expect.objectContaining({ currency: 'myr', unit_amount: 5000 }) })],
+      metadata: expect.objectContaining({ checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, payment_kind: 'order' }),
+      success_url: 'http://localhost:3000/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}',
+    }));
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('payments');
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('checkout_sessions');
+  });
+
+  it('charges only the external remainder to Stripe for a wallet split', async () => {
+    mocks.stripeCreate.mockResolvedValue({ id: 'cs_test_2', url: 'https://checkout.stripe.test/cs_test_2' });
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
+      if (name === 'reserve_wallet_split_checkout') return { data: { wallet_amount_sen: 2000, external_amount_sen: 3000, status: 'reserved' }, error: null };
+      return { data: null, error: null };
+    });
+
+    const response = await POST(new Request('http://localhost/api/checkout/prepare', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ paymentMethod: 'wallet_split', idempotencyKey: 'split-checkout-key-123456' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({ p_payment_method: 'stripe_card' }));
+    expect(mocks.stripeCreate).toHaveBeenCalledWith(expect.objectContaining({
+      line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 3000 }) })],
+    }));
+    expect(body.data).toMatchObject({ walletAmountSen: 2000, externalAmountSen: 3000, stripeUrl: 'https://checkout.stripe.test/cs_test_2' });
+  });
+
   it('prepares a multi-outlet product with the outlet selected on the cart row', async () => {
     productOutletId = null;
     outletOfferRows = [{ product_id: PRODUCT_ID, outlet_id: OUTLET_ID, price: 37.5, status: 'active' }];

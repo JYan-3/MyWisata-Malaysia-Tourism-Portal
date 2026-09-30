@@ -5,6 +5,7 @@ const HOME_BY_ROLE: Record<Role, string> = {
   customer: "/customer",
   vendor_owner: "/vendor/dashboard",
   outlet_manager: "/vendor/dashboard",
+  event_vendor: "/vendor/events",
   admin: "/admin/dashboard",
   approver: "/admin/withdrawals",
   staff: "/staff",
@@ -20,7 +21,7 @@ export function isWalletApproverPath(pathname: string): boolean {
 
 function rolePrefix(role: Role): string {
   if (role === "customer") return "/customer";
-  if (role === "vendor_owner" || role === "outlet_manager") return "/vendor";
+  if (role === "vendor_owner" || role === "outlet_manager" || role === "event_vendor") return "/vendor";
   if (role === "staff") return "/staff";
   return "/admin";
 }

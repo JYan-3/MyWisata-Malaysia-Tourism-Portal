@@ -13,6 +13,7 @@ interface AdminCampaignRegistration {
   id: string;
   campaignId: string;
   campaignTitle: string;
+  locationName: string;
   vendorId: string;
   vendorName: string;
   stallNumber: string;
@@ -53,7 +54,7 @@ export default function EventRegistrationsPage() {
   const approved = registrations.filter((r) => r.status === "approved");
   const visible = registrations.filter((registration) => {
     const matchesStatus = statusFilter === "all" || registration.status === statusFilter;
-    const searchText = `${registration.vendorName} ${registration.campaignTitle} ${registration.stallNumber}`.toLowerCase();
+    const searchText = `${registration.vendorName} ${registration.campaignTitle} ${registration.locationName} ${registration.stallNumber}`.toLowerCase();
     return matchesStatus && (!search.trim() || searchText.includes(search.trim().toLowerCase()));
   });
 
@@ -102,7 +103,7 @@ export default function EventRegistrationsPage() {
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-foreground">{registration.vendorName}</p>
-                  <p className="text-xs text-muted-foreground">{registration.campaignTitle} · {t("eventRegistrations.stallLabel", { number: registration.stallNumber })}</p>
+                  <p className="text-xs text-muted-foreground">{registration.campaignTitle} · {registration.locationName} · {t("eventRegistrations.stallLabel", { number: registration.stallNumber })}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <StatusBadge status={registration.status} />

@@ -15,6 +15,7 @@ vi.mock("react-i18next", () => {
   };
 });
 vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ confirm: vi.fn(), prompt: vi.fn() }) }));
+vi.mock("@/components/providers/action-feedback", () => ({ useActionFeedback: () => ({ showFeedback: vi.fn() }) }));
 vi.mock("@/components/providers/auth", () => ({ useAuth: () => ({ currentUser: mocks.currentUser }) }));
 
 import PromotionCampaignsPage from "@/app/admin/promotion-campaigns/page";

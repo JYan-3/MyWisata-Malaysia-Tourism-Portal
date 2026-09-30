@@ -9,7 +9,8 @@
     "roles": {
       "outletManager": "门店经理",
       "vendorOwner": "商家所有者",
-      "teamMember": "商家团队成员"
+      "teamMember": "商家团队成员",
+      "eventVendor": "活动伙伴"
     }
   },
   "navigation": {
@@ -29,7 +30,8 @@
     "Shop page": "店铺",
     "Promotions": "推广",
     "Announcements": "公告",
-    "Events": "活动"
+    "Events": "活动",
+    "Reservations": "预订"
   },
   "navigationSections": {
     "workspace": "工作区",
@@ -208,7 +210,22 @@
       "description": "此商家邀请已不再有效。如需帮助，请联系 MyLawatan 客服。"
     },
     "setupLabel": "商家邀请设置",
-    "step": "第 {{current}} 步，共 {{total}} 步"
+    "step": "第 {{current}} 步，共 {{total}} 步",
+    "event": {
+      "eyebrow": "活动伙伴邀请",
+      "title": "{{business}} 受邀在活动中销售",
+      "description": "设置您的活动商家账户。您只在所参加的活动中销售，无需店铺或门店。",
+      "howItWorks": "流程说明",
+      "stepAccount": "使用受邀邮箱登录并验证手机号码。",
+      "stepKyc": "完成账户所有人的身份验证（KYC）。",
+      "stepReview": "我们的团队审核并批准您的商家。",
+      "stepEvents": "通过邀请加入活动，并设置您要带来的商品。",
+      "kycNotice": "顾客会提前向活动商家付款，因此批准前必须先验证所有人的身份。",
+      "contactTitle": "商家联系方式",
+      "contactDescription": "我们联系您商家的方式。活动地点按每场活动设置。",
+      "submittedKyc": "下一步，请验证您的身份。只有在所有人的 KYC 获批后，活动商家才能获得批准。",
+      "startKyc": "开始身份验证"
+    }
   },
   "registration": {
     "title": "注册成为商家",
@@ -805,7 +822,12 @@
       "ticketsAdmitted": "门票入场数",
       "vouchersUsed": "优惠券核销数",
       "stationActive": "准备就绪",
-      "viewHistory": "查看完整记录"
+      "viewHistory": "查看完整记录",
+      "eventPickupCollected": "已记录领取，请交付商品。",
+      "eventPickupsOnly": "活动领取",
+      "eventPickupKind": "活动领取",
+      "eventPickupTitle": "预订 {{order}}",
+      "pickupDate": "领取日期"
     },
     "redemptions": {
       "eyebrow": "门店核销记录",
@@ -1562,7 +1584,101 @@
         "addProduct": "添加商品",
         "resumeDraft": "继续编辑草稿",
         "discardDraft": "放弃草稿"
+      },
+      "locations": {
+        "title": "活动地点",
+        "description": "请分别为每个想参加的地点注册。",
+        "empty": "此活动还没有地点。",
+        "addressTba": "地址待公布",
+        "ended": "已结束",
+        "notRegistered": "未注册",
+        "selected": "您在{{name}}的摊位",
+        "endedNote": "此地点已结束，不再接受新的注册。",
+        "count": "{{count}} 个地点",
+        "count_one": "{{count}} 个地点",
+        "count_other": "{{count}} 个地点",
+        "joined": "已参加 {{joined}}/{{total}}"
+      },
+      "listing": {
+        "price": "活动价格 (RM)",
+        "perDay": "每日数量",
+        "perDayFor": "{{name}} 的每日数量",
+        "kind": "类型",
+        "kinds": {
+          "product": "商品",
+          "service": "体验 / 服务"
+        },
+        "freeHint": "RM0 表示免费预约。",
+        "free": "免费",
+        "remove": "移除 {{name}}",
+        "incomplete": "请为每个项目设置价格，且每日数量至少为 1。",
+        "manageTitle": "此地点的项目",
+        "manageHint": "可修改每日带来的数量或下架项目。修改价格需要重新提交。",
+        "save": "保存",
+        "saved": "项目已更新。",
+        "saveError": "无法更新项目。",
+        "quantityInvalid": "每日数量必须是 0 到 10,000 之间的整数。",
+        "turnOff": "下架",
+        "turnOn": "上架"
+      },
+      "pickup": {
+        "title": "领取时间",
+        "hint": "顾客预订时从这些时段中选择。上限按每天该时段内所有预订的商品数量计算。",
+        "none": "请至少添加一个领取时间，否则顾客无法预订。",
+        "everyDay": "每天",
+        "extraDates": "特定日期额外时段",
+        "when": "适用",
+        "onDate": "指定日期",
+        "date": "日期",
+        "from": "开始",
+        "to": "结束",
+        "max": "最多商品数",
+        "add": "添加时间",
+        "remove": "删除领取时间",
+        "confirmRemove": "删除此领取时间？",
+        "saved": "领取时间已保存。",
+        "removed": "领取时间已删除。",
+        "capacity_one": "最多 {{count}} 件",
+        "capacity_other": "最多 {{count}} 件",
+        "errors": {
+          "invalid": "请检查时间和上限。",
+          "saveFailed": "无法保存领取时间。",
+          "removeFailed": "无法删除领取时间。",
+          "outsideHours": "领取时间必须在地点营业时间内。",
+          "outsideDates": "日期必须在地点的活动日期内。",
+          "duplicate": "该领取时间已存在。",
+          "inUse": "已有顾客预订此时间，无法删除。"
+        }
+      },
+      "withdraw": {
+        "action": "退出此地点",
+        "prompt": "您为何退出？在此预订的顾客将获得退款。",
+        "reasonRequired": "请填写至少 5 个字符的原因。",
+        "error": "无法退出此地点。",
+        "done": "您已退出，受影响的预订已取消并退款。",
+        "closed": {
+          "withdrawn": "您已退出此地点。",
+          "removed": "主办方已将您从此地点移除。"
+        }
       }
+    },
+    "eventOrders": {
+      "title": "活动预订",
+      "description": "顾客将到您的摊位领取的已付款预订。",
+      "date": "领取日期",
+      "upcoming": "全部即将到来",
+      "scan": "扫描领取",
+      "loading": "正在加载预订…",
+      "loadError": "无法加载预订。",
+      "empty": "此期间没有预订。",
+      "order": "订单",
+      "pickup": "领取",
+      "item": "商品",
+      "total": "合计",
+      "status": "状态",
+      "free": "免费",
+      "collected": "已领取",
+      "toCollect": "待领取"
     }
   },
   "address": {

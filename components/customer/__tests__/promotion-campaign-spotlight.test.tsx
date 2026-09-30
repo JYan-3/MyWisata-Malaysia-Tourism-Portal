@@ -11,7 +11,7 @@ const campaign: PromotionCampaignPublic = {
   summary: "A real campaign summary.", description: "Campaign details",
   posterUrl: null, operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T12:00:00.000Z", endsAt: "2026-09-26T12:00:00.000Z",
-  visibility: "upcoming", vendors: [],
+  visibility: "upcoming", locations: [], vendors: [],
 };
 
 function getPanelActions(markup: string, labels: string[]) {

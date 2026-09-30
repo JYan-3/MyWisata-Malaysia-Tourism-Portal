@@ -13,14 +13,18 @@ vi.mock("@/components/customer/promotion-campaign-vendor-card", () => ({
 import { PromotionCampaignDetailClient } from "@/app/customer/events/[slug]/promotion-campaign-detail-client";
 
 const vendor: PromotionCampaignPublicVendor = {
-  registrationId: "22222222-2222-4222-8222-222222222222",
   vendorId: "4f774340-2bce-de7d-dc27-8208f1286b59",
   vendorName: "Heritage Walk KL",
   vendorLogoUrl: null,
-  stallNumber: "A1",
-  stallDescription: "A real outlet stall.",
-  stallPosterUrl: "https://x/stall.jpg",
-  products: [{ id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Jalan Alor Heritage & Food Walk", price: 105.6, imageUrl: null }],
+  vendorKind: "shop",
+  stalls: [{
+    registrationId: "22222222-2222-4222-8222-222222222222",
+    locationId: "33333333-3333-4333-8333-333333333333",
+    stallNumber: "A1",
+    stallDescription: "A real outlet stall.",
+    stallPosterUrl: "https://x/stall.jpg",
+    products: [{ id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Jalan Alor Heritage & Food Walk", kind: "product", price: 105.6, imageUrl: null }],
+  }],
 };
 
 const campaign: PromotionCampaignPublic = {
@@ -34,6 +38,10 @@ const campaign: PromotionCampaignPublic = {
   startsAt: "2026-09-25T12:00:00.000Z",
   endsAt: "2026-10-25T12:00:00.000Z",
   visibility: "live",
+  locations: [{
+    id: "33333333-3333-4333-8333-333333333333", name: "Petaling Street", address: "Jalan Petaling, Kuala Lumpur",
+    lat: 3.1439, lng: 101.6977, startsOn: "2026-09-25", endsOn: "2026-10-25", opensAt: "10:00", closesAt: "18:00",
+  }],
   vendors: [vendor],
 };
 

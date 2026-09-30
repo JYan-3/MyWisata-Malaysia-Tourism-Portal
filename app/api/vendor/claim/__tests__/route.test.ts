@@ -7,6 +7,14 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   maybeSingle: vi.fn(),
   rpc: vi.fn(),
+  inviteKind: vi.fn(),
+}));
+
+// The route reads the invite's kind with the service client to pick the claim RPC.
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: () => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: mocks.inviteKind }) }) }),
+  }),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,6 +59,35 @@ describe('POST /api/vendor/claim', () => {
     mocks.select.mockReturnValue({ eq: mocks.eq });
     mocks.eq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
     mocks.maybeSingle.mockResolvedValue({ data: { phone_verified_at: '2026-07-22T00:00:00.000Z' }, error: null });
+    mocks.inviteKind.mockResolvedValue({ data: { vendor_kind: 'shop' }, error: null });
+  });
+
+  it('claims an event vendor invite without a category or outlet', async () => {
+    mocks.inviteKind.mockResolvedValue({ data: { vendor_kind: 'event' }, error: null });
+    mocks.rpc.mockResolvedValue({ data: { vendor_id: 'vendor-9', status: 'pending', kind: 'event' }, error: null });
+    const eventBody: Record<string, unknown> = { ...validBody };
+    for (const field of ['categoryId', 'outletName', 'latitude', 'longitude']) delete eventBody[field];
+
+    const response = await POST(request(eventBody));
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_event_vendor_invite', {
+      p_token_hash: hashRecommendationInviteToken(validBody.token),
+      p_business_name: validBody.businessName,
+      p_legal_business_name: validBody.legalBusinessName,
+      p_description: validBody.description,
+      p_contact_email: validBody.contactEmail,
+      p_contact_phone: null,
+      p_business_address: validBody.businessAddress,
+    });
+  });
+
+  it('still requires a category and outlet for shop invites', async () => {
+    const withoutCategory: Record<string, unknown> = { ...validBody };
+    delete withoutCategory.categoryId;
+    const response = await POST(request(withoutCategory));
+    expect(response.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('claims an approved recommendation through the atomic RPC', async () => {

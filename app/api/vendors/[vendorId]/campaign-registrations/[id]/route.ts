@@ -7,7 +7,7 @@ interface Props { params: Promise<{ vendorId: string; id: string }> }
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, id } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
 
   const parsed = await parseBody(request, campaignRegistrationResubmitSchema);

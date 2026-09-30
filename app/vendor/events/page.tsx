@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, PartyPopper } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { StatusBadge } from '@/components/ui/badge';
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
 
 interface RegistrationSummary { campaignId: string; status: string }
@@ -66,16 +65,18 @@ export default function VendorEventsPage() {
       ) : (
         <ul className="space-y-3">
           {campaigns.map((campaign) => {
-            const registration = registrations.find((r) => r.campaignId === campaign.id);
+            const joined = registrations.filter((r) => r.campaignId === campaign.id).length;
             return (
               <li key={campaign.id}>
                 <Link href={`/vendor/events/${campaign.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 hover:bg-secondary/40">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-foreground">{campaign.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{campaign.startsAt.slice(0, 10)} – {campaign.endsAt.slice(0, 10)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{campaign.startsAt.slice(0, 10)} – {campaign.endsAt.slice(0, 10)} · {t('ui.events.locations.count', { count: campaign.locations.length })}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    {registration ? <StatusBadge status={registration.status} /> : <span className="text-xs font-semibold text-primary">{t('ui.events.registerCta')}</span>}
+                    {joined > 0
+                      ? <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">{t('ui.events.locations.joined', { joined, total: campaign.locations.length })}</span>
+                      : <span className="text-xs font-semibold text-primary">{t('ui.events.registerCta')}</span>}
                     <ArrowRight size={16} className="text-muted-foreground" aria-hidden="true" />
                   </div>
                 </Link>

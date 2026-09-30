@@ -126,7 +126,8 @@ type OrderItemRow = {
   slot_starts_at: string | null;
   unit_price: number;
   quantity: number;
-  outlet_id: string;
+  /** null for event reservations, which are collected at an event location. */
+  outlet_id: string | null;
   products?: { cover_url: string | null } | null;
 };
 
@@ -139,7 +140,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
     slotStartsAt: row.slot_starts_at ?? undefined,
     unitPrice: Number(row.unit_price),
     qty: row.quantity,
-    outletId: row.outlet_id,
+    outletId: row.outlet_id ?? "",
   };
 }
 

@@ -11,7 +11,7 @@ import { getVendorNavigationSections } from '@/lib/vendor/navigation';
 export default function VendorSidebar() {
   const { t: tVendor } = useTranslation('vendor');
   const supabase = useMemo(() => createClient(), []);
-  const { user, isOutletManager, isVendorOwner } = useAuth();
+  const { user, isOutletManager, isVendorOwner, isEventVendor } = useAuth();
   const [unreadChats, setUnreadChats] = useState(0);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function VendorSidebar() {
     };
   }, [supabase, user?.id]);
 
-  const navSections = getVendorNavigationSections(isOutletManager)
+  const navSections = getVendorNavigationSections(isOutletManager, isEventVendor)
     .map<PortalSidebarSection>((section) => ({
       label: tVendor(`navigationSections.${section.labelKey}`),
       items: section.items.map((item) => ({
@@ -50,7 +50,9 @@ export default function VendorSidebar() {
     }))
     .filter((section) => section.items.length > 0);
 
-  const contextLabel = isOutletManager
+  const contextLabel = isEventVendor
+    ? tVendor('shell.roles.eventVendor')
+    : isOutletManager
     ? tVendor('shell.roles.outletManager')
     : isVendorOwner
       ? tVendor('shell.roles.vendorOwner')

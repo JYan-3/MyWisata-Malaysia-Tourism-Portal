@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Check, ImagePlus, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, Clock, ImagePlus, Loader2, MapPin, Plus, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
@@ -12,28 +12,42 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import { useAppDialog } from '@/components/providers/app-dialog';
 import { formatMYR } from '@/lib/i18n/format';
+import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import { formatEventDateRange, formatEventHours } from '@/lib/promotion-campaigns/locations';
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
+import { EventListingsManager, type RegistrationListing } from './event-listings-manager';
+import { PickupSlotsManager, type PickupSlot } from './pickup-slots-manager';
+
+type ItemKind = 'product' | 'service';
 
 interface ProductPick {
   key: string;
   kind: 'existing' | 'new';
   productId: string | null;
   name: string;
+  /** Event price for this location; NaN while the input is empty. */
   price: number;
   imageUrl: string | null;
+  itemKind: ItemKind;
+  /** How many the vendor brings per day; NaN while the input is empty. */
+  dailyQuantity: number;
 }
 
 interface Registration {
   id: string;
   campaignId: string;
+  locationId: string;
   stallNumber: string;
   stallDescription: string;
   stallPosterUrl: string;
-  status: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'withdrawn' | 'removed';
+  closedReason?: string | null;
   rejectionReason: string | null;
   changesRequestedReason: string | null;
-  products: { id: string; name: string; price: number; imageUrl: string | null }[];
+  products: RegistrationListing[];
+  pickupSlots: PickupSlot[];
 }
 
 interface ProductSearchResult {
@@ -52,21 +66,42 @@ interface RegistrationDraft {
   newProductImage: string | null;
 }
 
-function eventDraftStorageKey(vendorId: string, campaignId: string) {
-  return `vendor-event-registration-draft:${vendorId}:${campaignId}`;
+/** JSON turns empty (NaN) inputs into null, and older drafts lack type and daily quantity. */
+function normalizePick(pick: ProductPick): ProductPick {
+  return {
+    ...pick,
+    price: pick.price ?? Number.NaN,
+    itemKind: pick.itemKind ?? 'product',
+    dailyQuantity: pick.dailyQuantity ?? Number.NaN,
+  };
+}
+
+const isWholeQuantity = (value: number) => Number.isInteger(value) && value >= 1 && value <= 10000;
+
+function eventDraftStorageKey(vendorId: string, campaignId: string, locationId: string) {
+  return `vendor-event-registration-draft:${vendorId}:${campaignId}:${locationId}`;
+}
+
+/** Today's date in Malaysia (YYYY-MM-DD), to tell which locations have already ended. */
+function malaysiaToday() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date());
 }
 
 const EMPTY_FORM = { stallNumber: '', stallDescription: '', stallPosterUrl: '' as string | null };
 
 export default function VendorEventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { t } = useTranslation('vendor');
-  const { user } = useAuth();
+  const { t, i18n } = useTranslation('vendor');
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
+  const { user, isEventVendor } = useAuth();
   const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
 
   const [campaign, setCampaign] = useState<PromotionCampaignPublic | null>(null);
-  const [registration, setRegistration] = useState<Registration | null>(null);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const registration = registrations.find((entry) => entry.locationId === selectedLocationId) ?? null;
+  const selectedLocation = campaign?.locations.find((location) => location.id === selectedLocationId) ?? null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -74,6 +109,8 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
   const [picks, setPicks] = useState<ProductPick[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const { prompt } = useAppDialog();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,8 +138,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
       setCampaign(found);
 
       const registrationsBody = await registrationsResponse.json() as { data?: { registrations?: Registration[] } };
-      const myRegistration = registrationsResponse.ok ? (registrationsBody.data?.registrations ?? []).find((r) => r.campaignId === id) ?? null : null;
-      setRegistration(myRegistration);
+      setRegistrations(registrationsResponse.ok ? (registrationsBody.data?.registrations ?? []).filter((r) => r.campaignId === id) : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('ui.events.loadError'));
     } finally {
@@ -113,54 +149,73 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
   useEffect(() => { (async () => { await load(); })(); }, [load]);
 
   useEffect(() => {
-    if (!vendorId) return;
-    const raw = window.localStorage.getItem(eventDraftStorageKey(vendorId, id));
+    if (!vendorId || !selectedLocationId) return;
+    const raw = window.localStorage.getItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as RegistrationDraft;
       if (parsed?.savedAt) setDraftBanner({ savedAt: parsed.savedAt });
     } catch {
-      window.localStorage.removeItem(eventDraftStorageKey(vendorId, id));
+      window.localStorage.removeItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
     }
-  }, [vendorId, id]);
+  }, [vendorId, id, selectedLocationId]);
 
   useEffect(() => {
-    if (!vendorId || !editing) return;
+    if (!vendorId || !editing || !selectedLocationId) return;
     if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current);
     draftSaveTimeoutRef.current = setTimeout(() => {
       const draft: RegistrationDraft = { savedAt: new Date().toISOString(), form, picks, newProductName, newProductPrice, newProductImage };
-      window.localStorage.setItem(eventDraftStorageKey(vendorId, id), JSON.stringify(draft));
+      window.localStorage.setItem(eventDraftStorageKey(vendorId, id, selectedLocationId), JSON.stringify(draft));
     }, 600);
     return () => { if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current); };
-  }, [vendorId, id, editing, form, picks, newProductName, newProductPrice, newProductImage]);
+  }, [vendorId, id, selectedLocationId, editing, form, picks, newProductName, newProductPrice, newProductImage]);
 
   function resumeDraft() {
-    if (!vendorId) return;
-    const raw = window.localStorage.getItem(eventDraftStorageKey(vendorId, id));
+    if (!vendorId || !selectedLocationId) return;
+    const raw = window.localStorage.getItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
     setDraftBanner(null);
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as RegistrationDraft;
       setForm(parsed.form ?? EMPTY_FORM);
-      setPicks(parsed.picks ?? []);
+      setPicks((parsed.picks ?? []).map(normalizePick));
       setNewProductName(parsed.newProductName ?? '');
       setNewProductPrice(parsed.newProductPrice ?? '');
       setNewProductImage(parsed.newProductImage ?? null);
       setEditing(true);
     } catch {
-      window.localStorage.removeItem(eventDraftStorageKey(vendorId, id));
+      window.localStorage.removeItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
     }
   }
 
+  function clearDraft() {
+    if (vendorId && selectedLocationId) window.localStorage.removeItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
+  }
+
   function discardDraft() {
-    if (vendorId) window.localStorage.removeItem(eventDraftStorageKey(vendorId, id));
+    clearDraft();
+    setDraftBanner(null);
+  }
+
+  function selectLocation(locationId: string) {
+    setSelectedLocationId(locationId);
+    setEditing(false);
     setDraftBanner(null);
   }
 
   function startForm(existing?: Registration) {
     if (existing) {
       setForm({ stallNumber: existing.stallNumber, stallDescription: existing.stallDescription, stallPosterUrl: existing.stallPosterUrl });
-      setPicks(existing.products.map((product) => ({ key: product.id, kind: 'new', productId: null, name: product.name, price: product.price, imageUrl: product.imageUrl })));
+      setPicks(existing.products.map((product) => ({
+        key: product.id,
+        kind: product.productId ? 'existing' : 'new',
+        productId: product.productId,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        itemKind: product.itemKind,
+        dailyQuantity: product.dailyQuantity,
+      })));
     } else {
       setForm(EMPTY_FORM);
       setPicks([]);
@@ -229,13 +284,13 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
 
   function addExistingProduct(product: ProductSearchResult) {
     if (picks.some((pick) => pick.productId === product.id)) return;
-    setPicks((prev) => [...prev, { key: `existing-${product.id}`, kind: 'existing', productId: product.id, name: product.name, price: product.base_price, imageUrl: product.cover_url }]);
+    setPicks((prev) => [...prev, { key: `existing-${product.id}`, kind: 'existing', productId: product.id, name: product.name, price: Number(product.base_price), imageUrl: product.cover_url, itemKind: 'product', dailyQuantity: Number.NaN }]);
   }
 
   function addNewProduct() {
     const price = Number(newProductPrice);
     if (!newProductName.trim() || !Number.isFinite(price) || price < 0) return;
-    setPicks((prev) => [...prev, { key: `new-${Date.now()}`, kind: 'new', productId: null, name: newProductName.trim(), price, imageUrl: newProductImage }]);
+    setPicks((prev) => [...prev, { key: `new-${Date.now()}`, kind: 'new', productId: null, name: newProductName.trim(), price, imageUrl: newProductImage, itemKind: 'product', dailyQuantity: Number.NaN }]);
     setNewProductName('');
     setNewProductPrice('');
     setNewProductImage(null);
@@ -245,9 +300,39 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
     setPicks((prev) => prev.filter((pick) => pick.key !== key));
   }
 
+  function updatePick(key: string, patch: Partial<ProductPick>) {
+    setPicks((prev) => prev.map((pick) => (pick.key === key ? { ...pick, ...patch } : pick)));
+  }
+
+  async function withdraw(registrationId: string) {
+    if (!vendorId) return;
+    const reason = await prompt(t('ui.events.withdraw.prompt'));
+    if (reason === null) return;
+    if (reason.trim().length < 5) {
+      showFeedback('error', t('ui.events.withdraw.reasonRequired'));
+      return;
+    }
+    setWithdrawing(true);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/campaign-registrations/${registrationId}/withdraw`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const body = await response.json().catch(() => ({})) as { error?: { message?: string } };
+      if (!response.ok) throw new Error(body.error?.message ?? t('ui.events.withdraw.error'));
+      showFeedback('success', t('ui.events.withdraw.done'));
+      await load();
+    } catch (err) {
+      showFeedback('error', err instanceof Error ? err.message : t('ui.events.withdraw.error'));
+    } finally {
+      setWithdrawing(false);
+    }
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!vendorId || submitting) return;
+    if (!vendorId || !selectedLocationId || submitting) return;
     if (!form.stallPosterUrl) {
       showFeedback('error', t('ui.events.posterRequired'));
       return;
@@ -256,11 +341,18 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
       showFeedback('error', t('ui.events.productsRequired'));
       return;
     }
+    if (picks.some((pick) => !Number.isFinite(pick.price) || pick.price < 0 || !isWholeQuantity(pick.dailyQuantity))) {
+      showFeedback('error', t('ui.events.listing.incomplete'));
+      return;
+    }
     setSubmitting(true);
     try {
-      const products = picks.map((pick) => pick.kind === 'existing'
-        ? { kind: 'existing' as const, productId: pick.productId! }
-        : { kind: 'new' as const, name: pick.name, price: pick.price, imageUrl: pick.imageUrl });
+      const products = picks.map((pick) => {
+        const listing = { price: Math.round(pick.price * 100) / 100, dailyQuantity: pick.dailyQuantity, itemKind: pick.itemKind };
+        return pick.kind === 'existing'
+          ? { kind: 'existing' as const, productId: pick.productId!, ...listing }
+          : { kind: 'new' as const, name: pick.name, imageUrl: pick.imageUrl, ...listing };
+      });
       const payload = {
         stallNumber: form.stallNumber.trim(),
         stallDescription: form.stallDescription.trim(),
@@ -272,12 +364,12 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         })
         : await fetch(`/api/vendors/${vendorId}/campaign-registrations`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, campaignId: id }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, locationId: selectedLocationId }),
         });
       const body = await response.json() as { error?: { message?: string } };
       if (!response.ok) throw new Error(body.error?.message ?? t('ui.events.submitError'));
       showFeedback('success', registration ? t('ui.events.resubmitSuccess') : t('ui.events.submitSuccess'));
-      if (vendorId) window.localStorage.removeItem(eventDraftStorageKey(vendorId, id));
+      clearDraft();
       setEditing(false);
       await load();
     } catch (err) {
@@ -312,9 +404,53 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
             <p className="mt-2 text-sm text-muted-foreground">{campaign.description}</p>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
               <span>{campaign.startsAt.slice(0, 10)} – {campaign.endsAt.slice(0, 10)}</span>
-              {campaign.operatingHours && <span>{campaign.operatingHours}</span>}
             </div>
           </div>
+
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">{t('ui.events.locations.title')}</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t('ui.events.locations.description')}</p>
+            </div>
+            {campaign.locations.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('ui.events.locations.empty')}</p>
+            ) : (
+              <ul className="space-y-2">
+                {campaign.locations.map((location) => {
+                  const mine = registrations.find((entry) => entry.locationId === location.id);
+                  const ended = location.endsOn < malaysiaToday();
+                  const selected = location.id === selectedLocationId;
+                  return (
+                    <li key={location.id}>
+                      <button
+                        type="button"
+                        onClick={() => selectLocation(location.id)}
+                        aria-pressed={selected}
+                        className={`flex w-full flex-wrap items-start justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-secondary/50'}`}
+                      >
+                        <span className="min-w-0 text-sm">
+                          <span className="flex items-center gap-1.5 font-semibold text-foreground"><MapPin size={14} className="text-primary" aria-hidden="true" />{location.name}</span>
+                          <span className="mt-0.5 block break-words pl-5 text-xs text-muted-foreground">{location.address ?? t('ui.events.locations.addressTba')}</span>
+                          <span className="mt-1 flex flex-wrap gap-x-4 pl-5 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><CalendarDays size={12} aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
+                            <span className="flex items-center gap-1"><Clock size={12} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
+                          </span>
+                        </span>
+                        {mine ? <StatusBadge status={mine.status} /> : (
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                            {t(ended ? 'ui.events.locations.ended' : 'ui.events.locations.notRegistered')}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {selectedLocation && <>
+          <h2 className="text-base font-bold text-foreground">{t('ui.events.locations.selected', { name: selectedLocation.name })}</h2>
 
           {draftBanner && !editing && (
             <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
@@ -334,6 +470,20 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
               </div>
               <p className="text-sm text-foreground">{t('ui.events.fields.stallNumber')}: {registration.stallNumber}</p>
               <p className="text-sm text-muted-foreground">{registration.stallDescription}</p>
+              {vendorId && (registration.status === 'pending' || registration.status === 'approved') && registration.products.length > 0 && (
+                <EventListingsManager vendorId={vendorId} listings={registration.products} onSaved={load} />
+              )}
+              {vendorId && (registration.status === 'pending' || registration.status === 'approved') && (
+                <PickupSlotsManager vendorId={vendorId} registrationId={registration.id} slots={registration.pickupSlots ?? []} location={selectedLocation} onSaved={load} />
+              )}
+              {(registration.status === 'pending' || registration.status === 'approved' || registration.status === 'changes_requested') && (
+                <Button type="button" size="sm" variant="outline" className="text-destructive" disabled={withdrawing} onClick={() => void withdraw(registration.id)}>
+                  {t('ui.events.withdraw.action')}
+                </Button>
+              )}
+              {(registration.status === 'withdrawn' || registration.status === 'removed') && (
+                <p className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive">{t(`ui.events.withdraw.closed.${registration.status}`)}</p>
+              )}
               {registration.status === 'rejected' && registration.rejectionReason && (
                 <p className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive">{t('ui.events.rejectionNote', { note: registration.rejectionReason })}</p>
               )}
@@ -346,9 +496,9 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
             </section>
           )}
 
-          {!registration && !editing && (
-            <Button type="button" onClick={() => startForm()}>{t('ui.events.actions.register')}</Button>
-          )}
+          {!registration && !editing && (selectedLocation.endsOn < malaysiaToday()
+            ? <p className="text-sm text-muted-foreground">{t('ui.events.locations.endedNote')}</p>
+            : <Button type="button" onClick={() => startForm()}>{t('ui.events.actions.register')}</Button>)}
 
           {editing && (
             <form onSubmit={(event) => void submit(event)} className="space-y-4 rounded-xl border border-border bg-card p-5">
@@ -388,7 +538,8 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
               <div className="rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground">{t('ui.events.fields.products')}</h3>
 
-                <div className="relative mt-3">
+                {/* Event vendors have no catalogue: they only add items made for the event. */}
+                {!isEventVendor && <div className="relative mt-3">
                   <label className="relative block">
                     <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -423,7 +574,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
                       )}
                     </div>
                   )}
-                </div>
+                </div>}
 
                 <div className="mt-4 rounded-lg bg-secondary/40 p-3">
                   <p className="text-xs font-semibold text-muted-foreground">{t('ui.events.fields.addNewProduct')}</p>
@@ -458,9 +609,29 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
                 {picks.length > 0 && (
                   <ul className="mt-4 space-y-2">
                     {picks.map((pick) => (
-                      <li key={pick.key} className="flex items-center justify-between gap-2 rounded-lg bg-background p-2 text-sm">
-                        <span className="min-w-0 truncate">{pick.name} — {formatMYR(pick.price)} {pick.kind === 'new' && <span className="text-xs text-muted-foreground">({t('ui.events.fields.newForEvent')})</span>}</span>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => removePick(pick.key)}><Trash2 size={14} /></Button>
+                      <li key={pick.key} className="space-y-2 rounded-lg bg-background p-2 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate">{pick.name} {pick.kind === 'new' && <span className="text-xs text-muted-foreground">({t('ui.events.fields.newForEvent')})</span>}</span>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => removePick(pick.key)} aria-label={t('ui.events.listing.remove', { name: pick.name })}><Trash2 size={14} /></Button>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <label className="text-xs text-muted-foreground">
+                            {t('ui.events.listing.price')}
+                            <Input type="number" min={0} max={999999.99} step={0.01} value={Number.isNaN(pick.price) ? '' : pick.price} onChange={(e) => updatePick(pick.key, { price: e.target.value === '' ? Number.NaN : Number(e.target.value) })} className="mt-1 h-8" required />
+                          </label>
+                          <label className="text-xs text-muted-foreground">
+                            {t('ui.events.listing.perDay')}
+                            <Input type="number" min={1} max={10000} step={1} value={Number.isNaN(pick.dailyQuantity) ? '' : pick.dailyQuantity} onChange={(e) => updatePick(pick.key, { dailyQuantity: e.target.value === '' ? Number.NaN : Number(e.target.value) })} className="mt-1 h-8" required />
+                          </label>
+                          <label className="text-xs text-muted-foreground">
+                            {t('ui.events.listing.kind')}
+                            <select value={pick.itemKind} onChange={(e) => updatePick(pick.key, { itemKind: e.target.value as ItemKind })} className="mt-1 h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground">
+                              <option value="product">{t('ui.events.listing.kinds.product')}</option>
+                              <option value="service">{t('ui.events.listing.kinds.service')}</option>
+                            </select>
+                          </label>
+                        </div>
+                        {pick.price === 0 && <p className="text-xs text-muted-foreground">{t('ui.events.listing.freeHint')}</p>}
                       </li>
                     ))}
                   </ul>
@@ -471,10 +642,11 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
                 <Button type="submit" disabled={submitting || uploading}>
                   {submitting ? t('ui.events.loading') : registration ? t('ui.events.actions.resubmit') : t('ui.events.actions.submitRegistration')}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => { setEditing(false); if (vendorId) window.localStorage.removeItem(eventDraftStorageKey(vendorId, id)); }}>{t('ui.events.actions.cancel')}</Button>
+                <Button type="button" variant="outline" onClick={() => { setEditing(false); clearDraft(); }}>{t('ui.events.actions.cancel')}</Button>
               </div>
             </form>
           )}
+          </>}
 
           <Dialog open={Boolean(previewUrl)} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>
             <DialogContent className="sm:max-w-xl">

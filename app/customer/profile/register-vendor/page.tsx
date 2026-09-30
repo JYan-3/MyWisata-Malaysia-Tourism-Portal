@@ -19,7 +19,7 @@ export default async function RegisterVendorPage() {
   // Check if they already have a vendor account
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('*')
+    .select('id,name,status')
     .eq('owner_id', user.id)
     .maybeSingle();
 

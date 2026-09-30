@@ -16,7 +16,7 @@ function safeName(name: string) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
 
   const formData = await request.formData();

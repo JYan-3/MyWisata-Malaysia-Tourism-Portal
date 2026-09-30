@@ -16,14 +16,25 @@ const OUTLET_MANAGER_PATHS = [
   '/vendor/analytics',
 ];
 
+// Event vendors sell only at events: event registration, invitations and payouts.
+const EVENT_VENDOR_PATHS = [
+  '/vendor/events',
+  '/vendor/event-orders',
+  '/vendor/scanner',
+  '/vendor/announcements',
+  '/vendor/wallet',
+];
+
+const onPath = (pathname: string, paths: string[]) => paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
 export default function VendorAccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { loading, user, isVendor, isVendorOwner, isOutletManager } = useAuth();
+  const { loading, user, isVendor, isVendorOwner, isOutletManager, isEventVendor } = useAuth();
   const isScannerRoute = pathname === '/vendor/scanner' || pathname.startsWith('/vendor/scanner/');
-  const allowed = isVendorOwner || (isOutletManager && OUTLET_MANAGER_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  ));
+  const allowed = isVendorOwner
+    || (isOutletManager && onPath(pathname, OUTLET_MANAGER_PATHS))
+    || (isEventVendor && onPath(pathname, EVENT_VENDOR_PATHS));
 
   useEffect(() => {
     if (!loading && !allowed) {
@@ -31,12 +42,14 @@ export default function VendorAccessGate({ children }: { children: React.ReactNo
         ? '/login'
         : !isVendor
           ? '/customer'
-          : isScannerRoute
+          : isEventVendor
+            ? '/vendor/events'
+            : isScannerRoute
             ? '/vendor/outlets'
             : '/vendor/dashboard';
       router.replace(destination);
     }
-  }, [allowed, isScannerRoute, isVendor, loading, router, user]);
+  }, [allowed, isEventVendor, isScannerRoute, isVendor, loading, router, user]);
 
   if (loading || !user || !allowed) return null;
   return children;

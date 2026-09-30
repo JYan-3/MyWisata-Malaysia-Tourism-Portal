@@ -108,6 +108,24 @@ function StopMarkerVisual({ pin, number }: { pin: MapPin; number: number }) {
 // Same photo-thumbnail treatment as an in-trip stop, but a distinct star
 // badge instead of a sequence number — visually marks "this is an AI
 // suggestion, not yet part of your itinerary" at a glance.
+/** Large red location pin (tip at the point) for maps that show a few places, e.g. event locations. */
+function RedPinVisual({ title, draggable = false }: { title: string; draggable?: boolean }) {
+  return (
+    <svg
+      width="40"
+      height="50"
+      viewBox="0 0 40 50"
+      role="img"
+      aria-label={title}
+      style={{ cursor: draggable ? "grab" : "pointer", filter: "drop-shadow(0 4px 6px rgba(15,23,42,0.35))", overflow: "visible" }}
+    >
+      <title>{title}</title>
+      <path d="M20 48C20 48 37.5 30.5 37.5 19A17.5 17.5 0 0 0 2.5 19C2.5 30.5 20 48 20 48Z" fill="#DC2626" stroke="#FFFFFF" strokeWidth="3" />
+      <circle cx="20" cy="19" r="7" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
 function SuggestedMarkerVisual({ pin }: { pin: MapPin }) {
   const [imageFailed, setImageFailed] = useState(false);
   if (pin.imageUrl && !imageFailed) {
@@ -152,6 +170,7 @@ export function MaplibreMap({
   routeDashed,
   focusRequest,
   onMapMovingChange,
+  markerStyle = "default",
   children,
 }: {
   pins: MapPin[];
@@ -174,6 +193,8 @@ export function MaplibreMap({
   /** Bumping `token` (even for the same pin) re-triggers the pan+select. */
   focusRequest?: { pin: MapPin; token: number } | null;
   onMapMovingChange?: (moving: boolean) => void;
+  /** "pin" draws places and the draggable marker as large red pins instead of dots. */
+  markerStyle?: "default" | "pin";
   children?: ReactNode;
 }) {
   const { t } = useTranslation("customer");
@@ -201,7 +222,8 @@ export function MaplibreMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [radiusCenter?.[0], radiusCenter?.[1], radiusKm],
   );
-  const interactiveLayerIds = cluster ? [CLUSTER_LAYER_ID, POINT_LAYER_ID] : [POINT_LAYER_ID];
+  const redPins = markerStyle === "pin";
+  const interactiveLayerIds = redPins ? [] : cluster ? [CLUSTER_LAYER_ID, POINT_LAYER_ID] : [POINT_LAYER_ID];
 
   // Recenter when `center`/`zoom` change (e.g. switching filters).
   useEffect(() => {
@@ -221,6 +243,11 @@ export function MaplibreMap({
   async function handleMapClick(e: MapMouseEvent) {
     const map = mapRef.current?.getMap();
     if (!map) return;
+    // Red pins are DOM markers with their own click handler; a map click just closes the popup.
+    if (redPins) {
+      setSelectedId(null);
+      return;
+    }
     const features = map.queryRenderedFeatures(e.point, { layers: interactiveLayerIds });
     if (!features.length) {
       setSelectedId(null);
@@ -253,7 +280,7 @@ export function MaplibreMap({
       onMoveEnd={() => onMapMovingChange?.(false)}
       onClick={handleMapClick}
     >
-      <Source id={SOURCE_ID} type="geojson" data={pinsGeoJSON} cluster={cluster} clusterMaxZoom={14} clusterRadius={50}>
+      {!redPins && <Source id={SOURCE_ID} type="geojson" data={pinsGeoJSON} cluster={cluster} clusterMaxZoom={14} clusterRadius={50}>
         {cluster && (
           <Layer
             id={CLUSTER_LAYER_ID}
@@ -288,7 +315,22 @@ export function MaplibreMap({
             "circle-stroke-color": "#ffffff",
           }}
         />
-      </Source>
+      </Source>}
+
+      {redPins && dotPins.map((pin) => (
+        <Marker
+          key={pin.id}
+          longitude={pin.lng}
+          latitude={pin.lat}
+          anchor="bottom"
+          onClick={(e) => {
+            e.originalEvent.stopPropagation();
+            setSelectedId(pin.id);
+          }}
+        >
+          <RedPinVisual title={pin.label} />
+        </Marker>
+      ))}
 
       {children}
 
@@ -353,7 +395,19 @@ export function MaplibreMap({
         </Source>
       )}
 
-      {userLocation && (
+      {userLocation && redPins && (
+        <Marker
+          longitude={userLocation[1]}
+          latitude={userLocation[0]}
+          anchor="bottom"
+          draggable={!!onUserLocationDrag}
+          onDragEnd={(e: MarkerDragEvent) => onUserLocationDrag?.(e.lngLat.lat, e.lngLat.lng)}
+        >
+          <RedPinVisual title={onUserLocationDrag ? t("ui.map.dragToSetLocation") : t("ui.map.youAreHere")} draggable={!!onUserLocationDrag} />
+        </Marker>
+      )}
+
+      {userLocation && !redPins && (
         <Marker
           longitude={userLocation[1]}
           latitude={userLocation[0]}
@@ -415,7 +469,7 @@ export function MaplibreMap({
       ))}
 
       {selectedPin && (
-        <Popup longitude={selectedPin.lng} latitude={selectedPin.lat} onClose={() => setSelectedId(null)} closeOnClick={false} offset={12}>
+        <Popup longitude={selectedPin.lng} latitude={selectedPin.lat} onClose={() => setSelectedId(null)} closeOnClick={false} offset={redPins ? 52 : 12}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{selectedPin.label}</div>
           {selectedPin.sublabel && <div style={{ fontSize: 11, color: "#666" }}>{selectedPin.sublabel}</div>}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>

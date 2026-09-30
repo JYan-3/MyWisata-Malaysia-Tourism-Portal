@@ -7,7 +7,10 @@ export function resolvePromotionCampaignImages(campaigns: readonly PromotionCamp
     ...campaign,
     vendors: campaign.vendors.map((vendor) => ({
       ...vendor,
-      products: vendor.products.map((product) => ({ ...product, imageUrl: productImageUrl(product.imageUrl) })),
+      stalls: vendor.stalls.map((stall) => ({
+        ...stall,
+        products: stall.products.map((product) => ({ ...product, imageUrl: productImageUrl(product.imageUrl) })),
+      })),
     })),
   }));
 }

@@ -6,7 +6,7 @@ interface Props { params: Promise<{ vendorId: string; id: string }> }
 
 export async function POST(_request: Request, { params }: Props) {
   const { vendorId, id } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
 
   const result = await markAnnouncementRead(access.access.authDb, id);

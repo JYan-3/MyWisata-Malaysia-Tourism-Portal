@@ -10,14 +10,15 @@ type Outlet = { id: string; name: string };
 
 export default function VendorScannerPage() {
   const { t } = useTranslation("vendor");
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isEventVendor } = useAuth();
   const vendorId = user?.activeVendorId;
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletsLoading, setOutletsLoading] = useState(true);
   const [outletsError, setOutletsError] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
+    // Event vendors have no outlets; they only scan event pickups.
+    if (authLoading || isEventVendor) return;
     if (!vendorId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOutletsLoading(false);
@@ -53,7 +54,7 @@ export default function VendorScannerPage() {
       })
       .finally(() => { if (active) setOutletsLoading(false); });
     return () => { active = false; };
-  }, [authLoading, user?.activeOutletIds, user?.activeOutletName, vendorId]);
+  }, [authLoading, isEventVendor, user?.activeOutletIds, user?.activeOutletName, vendorId]);
 
   if (authLoading) {
     return (
@@ -67,6 +68,8 @@ export default function VendorScannerPage() {
   if (!vendorId) {
     return <p className="mx-auto max-w-xl px-4 py-16 text-center text-sm text-muted-foreground" role="alert">{t("ui.scanner.noVendor")}</p>;
   }
+
+  if (isEventVendor) return <RedemptionScanner vendorId={vendorId} outlets={[]} />;
 
   if (outletsLoading) {
     return (

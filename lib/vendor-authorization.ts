@@ -5,6 +5,17 @@ import { apiFail } from '@/lib/validation/schemas';
 
 export type VendorRole = 'vendor_owner' | 'outlet_manager';
 
+export interface VendorAuthorizationOptions {
+  /**
+   * Event vendors (vendors.kind = 'event') sell only at events. Every vendor
+   * route rejects them unless it opts in here; the allowlist is pinned by
+   * app/api/__tests__/event-vendor-access.contract.test.ts.
+   */
+  allowEventVendor?: boolean;
+}
+
+const EVENT_VENDOR_FORBIDDEN = () => apiFail('EVENT_VENDOR_FORBIDDEN', 'This feature is not available to event vendors', 403);
+
 export interface VendorAccess {
   userId: string;
   vendorId: string;
@@ -41,17 +52,22 @@ async function getManagerOutletIds(authDb: SupabaseClient, userId: string, vendo
  * Resolve the caller's role and data scope before any service-role query.
  * The service client is only returned after the caller is scoped to this vendor.
  */
-export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole[] = ['vendor_owner', 'outlet_manager']): Promise<AccessResult> {
+export async function authorizeVendor(
+  vendorId: string,
+  allowedRoles: VendorRole[] = ['vendor_owner', 'outlet_manager'],
+  options: VendorAuthorizationOptions = {},
+): Promise<AccessResult> {
   const authDb = (await createClient()) as SupabaseClient;
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return { ok: false, response: apiFail('UNAUTHORIZED', 'Sign in required', 401) };
 
   const { data: vendor, error: vendorError } = await authDb
     .from('vendors')
-    .select('id,owner_id,status')
+    .select('id,owner_id,status,kind')
     .eq('id', vendorId)
     .maybeSingle();
   if (vendorError) return { ok: false, response: apiFail('DB_ERROR', vendorError.message, 500) };
+  if (vendor?.kind === 'event' && !options.allowEventVendor) return { ok: false, response: EVENT_VENDOR_FORBIDDEN() };
   if (!vendor) {
     if (!allowedRoles.includes('outlet_manager')) return { ok: false, response: apiFail('NOT_FOUND', 'Vendor not found', 404) };
 
@@ -65,10 +81,11 @@ export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole
     const serviceDb = createServiceClient() as SupabaseClient;
     const { data: scopedVendor, error: scopedVendorError } = await serviceDb
       .from('vendors')
-      .select('id,status')
+      .select('id,status,kind')
       .eq('id', vendorId)
       .maybeSingle();
     if (scopedVendorError) return { ok: false, response: apiFail('DB_ERROR', scopedVendorError.message, 500) };
+    if (scopedVendor?.kind === 'event' && !options.allowEventVendor) return { ok: false, response: EVENT_VENDOR_FORBIDDEN() };
     if (!scopedVendor || scopedVendor.status !== 'approved') return { ok: false, response: apiFail('FORBIDDEN', 'Vendor is not available in your assigned scope', 403) };
 
     return {
@@ -128,8 +145,13 @@ export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole
   };
 }
 
-export async function authorizeOutlet(vendorId: string, outletId: string, allowedRoles: VendorRole[] = ['vendor_owner', 'outlet_manager']) {
-  const result = await authorizeVendor(vendorId, allowedRoles);
+export async function authorizeOutlet(
+  vendorId: string,
+  outletId: string,
+  allowedRoles: VendorRole[] = ['vendor_owner', 'outlet_manager'],
+  options: VendorAuthorizationOptions = {},
+) {
+  const result = await authorizeVendor(vendorId, allowedRoles, options);
   if (!result.ok) return result;
   if (!result.access.outletIds.includes(outletId)) {
     return { ok: false as const, response: apiFail('FORBIDDEN', 'This outlet is outside your assigned scope', 403) };

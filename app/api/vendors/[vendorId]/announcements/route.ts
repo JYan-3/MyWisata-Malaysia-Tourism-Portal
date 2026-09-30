@@ -9,7 +9,7 @@ interface Props { params: Promise<{ vendorId: string }> }
 // (per-user read state), not scoped to one vendor.
 export async function GET(_request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
 
   const announcements = await getMyAnnouncements(access.access.serviceDb, access.access.userId);

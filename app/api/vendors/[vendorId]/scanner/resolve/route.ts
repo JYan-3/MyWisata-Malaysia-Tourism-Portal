@@ -5,6 +5,8 @@ import { getBookingOrderItem } from "@/lib/vendor/booking-scope";
 import { verifyTicketPassToken } from "@/lib/tickets/tokens";
 import { verifyVoucherStoreToken } from "@/lib/vouchers/store-token";
 import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
+import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
+import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -43,13 +45,65 @@ function parseFoodOrderPayload(rawValue: string) {
   }
 }
 
+function parseEventPickupPayload(rawValue: string) {
+  try {
+    const url = new URL(rawValue, "http://localhost:3000");
+    const match = url.pathname.match(/^\/customer\/orders\/([^/]+)$/);
+    const eventToken = url.searchParams.get("event_t");
+    if (!match || !eventToken) return null;
+    return { orderId: decodeURIComponent(match[1]), eventToken };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  // Event vendors have no outlets: they can only resolve event pickups below;
+  // every other code still requires one of the caller's outlets.
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
 
   const parsed = await parseBody(request, scanSchema);
   if (!parsed.ok) return parsed.response;
+
+  const eventPickup = parseEventPickupPayload(parsed.data.rawValue);
+  if (eventPickup) {
+    const verification = verifyEventPickupToken(eventPickup.eventToken);
+    if (!verification.valid && "expired" in verification) return apiFail("EVENT_PICKUP_EXPIRED", "This pickup code was only valid on its pickup date", 409);
+    if (!verification.valid || verification.claims.orderId !== eventPickup.orderId) return apiFail("INVALID_EVENT_PICKUP", "This pickup code is invalid", 400);
+    const claims = verification.claims;
+    if (claims.vendorId !== vendorId) return apiFail("FORBIDDEN", "This pickup belongs to another vendor", 403);
+    if (claims.pickupDate > getMalaysiaDateInputValue()) return apiFail("EVENT_PICKUP_NOT_YET", `This pickup is for ${claims.pickupDate}`, 409);
+
+    const { data: order, error: orderError } = await access.access.serviceDb.from("orders").select("status").eq("id", claims.orderId).maybeSingle();
+    if (orderError) return apiFail("DB_ERROR", orderError.message, 500);
+    if (!order || !["paid", "completed"].includes(String(order.status).toLowerCase())) return apiFail("ORDER_NOT_PAID", "This reservation has not been paid", 409);
+
+    const [{ data: rows, error: rowsError }, { data: vendor }] = await Promise.all([
+      access.access.serviceDb.from("order_items")
+        .select("id,product_name,variant_name,quantity,fulfil_status")
+        .eq("order_id", claims.orderId)
+        .eq("vendor_id", vendorId)
+        .eq("event_location_id", claims.locationId)
+        .eq("pickup_date", claims.pickupDate)
+        .neq("fulfil_status", "cancelled"),
+      access.access.serviceDb.from("vendors").select("name").eq("id", vendorId).maybeSingle(),
+    ]);
+    if (rowsError) return apiFail("DB_ERROR", rowsError.message, 500);
+    const items = (rows ?? []) as Array<{ id: string; product_name: string; variant_name: string | null; quantity: number; fulfil_status: string }>;
+    if (items.length === 0) return apiFail("EVENT_PICKUP_NOT_FOUND", "No reservation matches this pickup code", 404);
+    if (items.every((item) => item.fulfil_status === "fulfilled")) return apiFail("EVENT_PICKUP_COLLECTED", "This reservation has already been collected", 409);
+    return apiOk({
+      kind: "event_pickup",
+      orderId: claims.orderId,
+      eventToken: eventPickup.eventToken,
+      vendorName: vendor?.name ?? "",
+      pickupDate: claims.pickupDate,
+      items: items.map((item) => ({ id: item.id, name: item.product_name, variant: item.variant_name, quantity: item.quantity })),
+    });
+  }
+
   const outlet = selectedOutlet(parsed.data.outletId, access.access.outletIds);
   if (!outlet.ok) return outlet.response;
 

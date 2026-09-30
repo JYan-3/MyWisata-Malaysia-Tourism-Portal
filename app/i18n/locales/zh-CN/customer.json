@@ -7,7 +7,8 @@
     "trip": "行程",
     "chat": "聊天",
     "activity": "我的活动",
-    "wishlist": "已保存"
+    "wishlist": "已保存",
+    "events": "活动"
   },
   "accountGroups": {
     "Account": "账户与偏好",
@@ -1581,7 +1582,28 @@
       "activeOutletCount_one": "{{count}} 家营业门店",
       "activeOutletCount_other": "{{count}} 家营业门店",
       "reviewCount_one": "{{count}} 条评价",
-      "reviewCount_other": "{{count}} 条评价"
+      "reviewCount_other": "{{count}} 条评价",
+      "eventItems": {
+        "eventPartner": "活动伙伴",
+        "eyebrow": "活动中",
+        "title": "活动商品",
+        "description": "该商家在每个活动地点提供的商品，以及领取日期和时间。",
+        "caption": "按地点、日期和时间列出的活动商品",
+        "item": "商品",
+        "location": "地点",
+        "date": "日期",
+        "time": "时间",
+        "price": "价格",
+        "reserve": "预订",
+        "free": "免费",
+        "stall": "摊位 {{stall}}",
+        "kinds": {
+          "product": "商品",
+          "service": "体验 / 服务"
+        },
+        "noUpcomingEvent": "暂无即将举行的活动",
+        "noUpcomingEventHint": "该商家目前没有参加活动。下一场活动公布后请再来查看。"
+      }
     },
     "wallet": {
       "emptyTitle": "你的钱包为空",
@@ -2556,7 +2578,23 @@
       "productCount_other": "{{count}} 件商品",
       "viewStall": "查看摊位",
       "previous": "上一个活动",
-      "next": "下一个活动"
+      "next": "下一个活动",
+      "locationCount": "{{count}} 个地点",
+      "locationCount_one": "{{count}} 个地点",
+      "locationCount_other": "{{count}} 个地点",
+      "locationsSection": "活动地点",
+      "locationsSection_one": "活动地点",
+      "locationsSection_other": "活动地点（{{count}}）",
+      "addressTba": "地址待公布",
+      "views": {
+        "label": "选择活动查看方式",
+        "list": "列表",
+        "calendar": "日历",
+        "map": "地图",
+        "calendarEmpty": "此期间没有活动地点。",
+        "unpinned_one": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。",
+        "unpinned_other": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。"
+      }
     },
     "recommendationReasons": {
       "near_you": "在您附近",
@@ -2569,6 +2607,58 @@
         "eyebrow": "精选",
         "badge": "精选",
         "backToHome": "返回首页"
+      }
+    },
+    "eventPartners": {
+      "eyebrow": "在我们的活动中",
+      "title": "活动伙伴",
+      "description": "只在我们的活动中销售的商家。他们参加活动期间，可预订其商品。",
+      "badge": "活动伙伴",
+      "next": "下一场：{{event}}，{{location}}，{{dates}}",
+      "noUpcoming": "暂无即将举行的活动",
+      "view": "查看商品"
+    },
+    "reserve": {
+      "open": "预订",
+      "ended": "已结束",
+      "title": "预订 {{item}}",
+      "description": "在 {{location}} 领取。请选择日期和领取时间。",
+      "signInHint": "登录后即可预订并支付活动商品。",
+      "signIn": "登录以预订",
+      "date": "领取日期",
+      "time": "领取时间",
+      "loading": "正在查询余量…",
+      "noSlots": "此日期没有领取时间，请选择其他日期。",
+      "full": "已满",
+      "left_one": "剩余 {{count}}",
+      "left_other": "剩余 {{count}}",
+      "soldOutDay": "此日期已售罄。",
+      "quantity": "数量",
+      "free": "免费",
+      "payment": "支付方式",
+      "qrNote": "您将在“我的订单”中收到二维码，请在领取日期到摊位出示。",
+      "submitting": "正在预订…",
+      "confirmFree": "确认预订",
+      "pay": "支付 {{amount}}",
+      "errors": {
+        "load": "无法加载余量，请重试。",
+        "generic": "预订未能完成，请重试。",
+        "EVENT_SOLD_OUT": "所选日期该商品已售罄。",
+        "EVENT_SLOT_FULL": "该领取时间刚刚已满，请选择其他时间。",
+        "EVENT_SLOT_INVALID": "该领取时间已不可用。",
+        "EVENT_DATE_INVALID": "请选择活动期间内的日期。",
+        "EVENT_ITEM_UNAVAILABLE": "该商品已无法预订。",
+        "WALLET_INSUFFICIENT": "您的钱包余额不足以支付此预订。"
+      }
+    },
+    "eventPickup": {
+      "title": "活动领取",
+      "description": "请在领取日期到摊位出示此代码。",
+      "qrAlt": "{{date}} 的领取码",
+      "validOn": "仅在 {{date}} 有效",
+      "status": {
+        "pending": "待领取",
+        "collected": "已领取"
       }
     }
   },

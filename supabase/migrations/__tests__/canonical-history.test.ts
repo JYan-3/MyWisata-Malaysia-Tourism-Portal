@@ -84,6 +84,14 @@ const approvedForwardMigrations = [
   "20260928210000_allow_campaign_self_approval.sql",
   "20260928220000_vendor_event_promotion_pause_resume.sql",
   "20260928230000_grant_service_role_announcements_insert.sql",
+  "20260930190000_event_locations.sql",
+  "20260930210000_event_listings.sql",
+  "20260930220000_vendor_kind.sql",
+  "20260930230000_event_vendor_accounts.sql",
+  "20260930240000_restrict_vendor_columns.sql",
+  "20261001090000_event_reservations.sql",
+  "20261001120000_event_pickup_fulfilment.sql",
+  "20261001150000_event_cancellations.sql",
 ];
 
 function migrationFiles() {

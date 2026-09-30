@@ -26,13 +26,13 @@ export async function performGlobalSearch(query: string, db: SupabaseClient): Pr
 
   // 3. Vendors
   const allVendors = await getVendors(db);
-  const vendors = allVendors.filter(vendor => 
+  const vendors = allVendors.filter(vendor => vendor.kind !== "event" && (
     vendor.name.toLowerCase().includes(normalizedQuery) ||
     vendor.outlets.some(outlet => 
       (outlet.city?.toLowerCase() ?? "").includes(normalizedQuery) ||
       (outlet.state?.toLowerCase() ?? "").includes(normalizedQuery)
     )
-  ).slice(0, 5); // Limit to top 5 matching vendors for the search dropdown
+  )).slice(0, 5); // Limit to top 5 matching vendors for the search dropdown
 
   return {
     destinations,

@@ -173,6 +173,12 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
       <section className="rounded-2xl border border-border bg-card p-6 text-center">
         <h2 className="text-xl font-bold text-foreground">{t('invite.submitted.title')}</h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('invite.submitted.description')}</p>
+        {preview.vendorKind === 'event' && (
+          <>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('invite.event.submittedKyc')}</p>
+            <a href="/customer/kyc" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">{t('invite.event.startKyc')}</a>
+          </>
+        )}
       </section>
     );
   }

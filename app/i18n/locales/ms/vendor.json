@@ -9,7 +9,8 @@
     "roles": {
       "outletManager": "Pengurus outlet",
       "vendorOwner": "Pemilik vendor",
-      "teamMember": "Ahli pasukan vendor"
+      "teamMember": "Ahli pasukan vendor",
+      "eventVendor": "Rakan acara"
     }
   },
   "navigation": {
@@ -29,7 +30,8 @@
     "Shop page": "Kedai",
     "Promotions": "Promosi",
     "Announcements": "Pengumuman",
-    "Events": "Acara"
+    "Events": "Acara",
+    "Reservations": "Tempahan"
   },
   "navigationSections": {
     "workspace": "Ruang kerja",
@@ -208,7 +210,22 @@
       "description": "Jemputan vendor ini tidak lagi aktif. Hubungi sokongan MyLawatan jika anda memerlukan bantuan."
     },
     "setupLabel": "Persediaan jemputan vendor",
-    "step": "Langkah {{current}} daripada {{total}}"
+    "step": "Langkah {{current}} daripada {{total}}",
+    "event": {
+      "eyebrow": "Jemputan rakan acara",
+      "title": "{{business}} dijemput untuk berniaga di acara",
+      "description": "Sediakan akaun vendor acara anda. Anda hanya berniaga di acara yang anda sertai — tiada kedai atau cawangan diperlukan.",
+      "howItWorks": "Cara ia berfungsi",
+      "stepAccount": "Log masuk dengan e-mel yang dijemput dan sahkan nombor telefon bimbit anda.",
+      "stepKyc": "Lengkapkan pengesahan identiti (KYC) pemilik akaun.",
+      "stepReview": "Pasukan kami menyemak dan meluluskan perniagaan anda.",
+      "stepEvents": "Sertai acara daripada jemputan anda dan tetapkan item yang akan dibawa.",
+      "kycNotice": "Pelanggan membayar vendor acara lebih awal, jadi kelulusan memerlukan identiti pemilik disahkan terlebih dahulu.",
+      "contactTitle": "Hubungan perniagaan",
+      "contactDescription": "Cara kami menghubungi perniagaan anda. Lokasi acara ditetapkan bagi setiap acara.",
+      "submittedKyc": "Seterusnya, sahkan identiti anda. Vendor acara hanya boleh diluluskan selepas KYC pemilik diluluskan.",
+      "startKyc": "Mulakan pengesahan identiti"
+    }
   },
   "registration": {
     "title": "Daftar sebagai Vendor",
@@ -805,7 +822,12 @@
       "ticketsAdmitted": "Tiket Diterima",
       "vouchersUsed": "Baucar Ditebus",
       "stationActive": "Sedia untuk imbas",
-      "viewHistory": "Lihat log penuh"
+      "viewHistory": "Lihat log penuh",
+      "eventPickupCollected": "Pengambilan direkodkan — serahkan item.",
+      "eventPickupsOnly": "Pengambilan acara",
+      "eventPickupKind": "Pengambilan acara",
+      "eventPickupTitle": "Tempahan {{order}}",
+      "pickupDate": "Tarikh pengambilan"
     },
     "redemptions": {
       "eyebrow": "Penebusan Cawangan",
@@ -1562,7 +1584,101 @@
         "addProduct": "Tambah produk",
         "resumeDraft": "Sambung draf",
         "discardDraft": "Buang draf"
+      },
+      "locations": {
+        "title": "Lokasi",
+        "description": "Daftar secara berasingan untuk setiap lokasi yang ingin anda sertai.",
+        "empty": "Acara ini belum mempunyai lokasi.",
+        "addressTba": "Alamat akan diumumkan",
+        "ended": "Tamat",
+        "notRegistered": "Belum mendaftar",
+        "selected": "Gerai anda di {{name}}",
+        "endedNote": "Lokasi ini telah tamat, jadi pendaftaran baharu tidak diterima.",
+        "count": "{{count}} lokasi",
+        "count_one": "{{count}} lokasi",
+        "count_other": "{{count}} lokasi",
+        "joined": "Menyertai {{joined}} daripada {{total}}"
+      },
+      "listing": {
+        "price": "Harga acara (RM)",
+        "perDay": "Kuantiti sehari",
+        "perDayFor": "Kuantiti sehari untuk {{name}}",
+        "kind": "Jenis",
+        "kinds": {
+          "product": "Produk",
+          "service": "Pengalaman / perkhidmatan"
+        },
+        "freeHint": "RM0 menjadikan ini tempahan percuma.",
+        "free": "Percuma",
+        "remove": "Buang {{name}}",
+        "incomplete": "Tetapkan harga dan kuantiti harian sekurang-kurangnya 1 untuk setiap item.",
+        "manageTitle": "Item di lokasi ini",
+        "manageHint": "Ubah jumlah yang anda bawa setiap hari atau matikan item. Perubahan harga memerlukan penghantaran semula.",
+        "save": "Simpan",
+        "saved": "Item dikemas kini.",
+        "saveError": "Tidak dapat mengemas kini item.",
+        "quantityInvalid": "Kuantiti harian mestilah nombor bulat dari 0 hingga 10,000.",
+        "turnOff": "Matikan",
+        "turnOn": "Hidupkan"
+      },
+      "pickup": {
+        "title": "Masa pengambilan",
+        "hint": "Pelanggan memilih salah satu tempoh ini semasa menempah. Had maksimum mengira item daripada semua tempahan dalam tempoh itu setiap hari.",
+        "none": "Tambah sekurang-kurangnya satu masa pengambilan — pelanggan tidak boleh menempah sehingga anda berbuat demikian.",
+        "everyDay": "Setiap hari",
+        "extraDates": "Tambahan pada tarikh tertentu",
+        "when": "Berlaku",
+        "onDate": "Pada satu tarikh",
+        "date": "Tarikh",
+        "from": "Dari",
+        "to": "Hingga",
+        "max": "Maksimum item",
+        "add": "Tambah masa",
+        "remove": "Buang masa pengambilan",
+        "confirmRemove": "Buang masa pengambilan ini?",
+        "saved": "Masa pengambilan disimpan.",
+        "removed": "Masa pengambilan dibuang.",
+        "capacity_one": "maks {{count}} item",
+        "capacity_other": "maks {{count}} item",
+        "errors": {
+          "invalid": "Semak masa dan had maksimum.",
+          "saveFailed": "Masa pengambilan tidak dapat disimpan.",
+          "removeFailed": "Masa pengambilan tidak dapat dibuang.",
+          "outsideHours": "Masa pengambilan mesti dalam waktu operasi lokasi.",
+          "outsideDates": "Tarikh mesti dalam tempoh lokasi.",
+          "duplicate": "Masa pengambilan ini sudah wujud.",
+          "inUse": "Pelanggan telah menempah masa ini, jadi ia tidak boleh dibuang."
+        }
+      },
+      "withdraw": {
+        "action": "Tarik diri dari lokasi ini",
+        "prompt": "Mengapa anda menarik diri? Pelanggan yang menempah di sini akan dipulangkan wang.",
+        "reasonRequired": "Berikan sebab sekurang-kurangnya 5 aksara.",
+        "error": "Anda tidak dapat menarik diri dari lokasi ini.",
+        "done": "Anda telah menarik diri. Tempahan yang terjejas dibatalkan dan dipulangkan.",
+        "closed": {
+          "withdrawn": "Anda telah menarik diri dari lokasi ini.",
+          "removed": "Anda telah dikeluarkan dari lokasi ini oleh penganjur."
+        }
       }
+    },
+    "eventOrders": {
+      "title": "Tempahan acara",
+      "description": "Tempahan berbayar yang akan diambil oleh pelanggan dari gerai anda.",
+      "date": "Tarikh pengambilan",
+      "upcoming": "Semua akan datang",
+      "scan": "Imbas pengambilan",
+      "loading": "Memuatkan tempahan…",
+      "loadError": "Tempahan tidak dapat dimuatkan.",
+      "empty": "Tiada tempahan untuk tempoh ini.",
+      "order": "Pesanan",
+      "pickup": "Pengambilan",
+      "item": "Item acara",
+      "total": "Jumlah",
+      "status": "Status",
+      "free": "Percuma",
+      "collected": "Telah diambil",
+      "toCollect": "Belum diambil"
     }
   },
   "address": {

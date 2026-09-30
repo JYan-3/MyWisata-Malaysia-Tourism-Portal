@@ -40,7 +40,7 @@ test.describe("Customer vendor-fair event journeys", () => {
       page.getByRole("link", { name: "View stall" }).first().click(),
     ]);
     await expect(page.getByRole("heading", { name: vendor.vendorName })).toBeVisible();
-    await expect(page.getByText(`Stall ${vendor.stallNumber}`)).toBeVisible();
+    await expect(page.getByText(`Stall ${vendor.stalls[0].stallNumber}`).first()).toBeVisible();
   });
 
   test("an unpublished campaign slug returns a not-found page instead of an endless loading state", async ({ page }) => {

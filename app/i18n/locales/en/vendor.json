@@ -9,7 +9,8 @@
     "roles": {
       "outletManager": "Outlet manager",
       "vendorOwner": "Vendor owner",
-      "teamMember": "Vendor team member"
+      "teamMember": "Vendor team member",
+      "eventVendor": "Event partner"
     }
   },
   "navigation": {
@@ -29,7 +30,8 @@
     "Shop page": "Shop",
     "Promotions": "Promotions",
     "Announcements": "Announcements",
-    "Events": "Events"
+    "Events": "Events",
+    "Reservations": "Reservations"
   },
   "navigationSections": {
     "workspace": "Workspace",
@@ -208,7 +210,22 @@
       "description": "This vendor invitation is no longer active. Contact MyLawatan support if you need help."
     },
     "setupLabel": "Vendor invitation setup",
-    "step": "Step {{current}} of {{total}}"
+    "step": "Step {{current}} of {{total}}",
+    "event": {
+      "eyebrow": "Event partner invitation",
+      "title": "{{business}} is invited to sell at events",
+      "description": "Set up your event vendor account. You'll sell only at events you join — no shop or outlet needed.",
+      "howItWorks": "How it works",
+      "stepAccount": "Sign in with the invited email and verify your mobile number.",
+      "stepKyc": "Complete identity verification (KYC) for the account owner.",
+      "stepReview": "Our team reviews your business and approves it.",
+      "stepEvents": "Join events from your invitations and set the items you'll bring.",
+      "kycNotice": "Customers pay event vendors in advance, so approval needs the owner's identity to be verified first.",
+      "contactTitle": "Business contact",
+      "contactDescription": "Where we can reach your business. Event locations are set per event.",
+      "submittedKyc": "Next, verify your identity. We can only approve an event vendor once the owner's KYC is approved.",
+      "startKyc": "Start identity verification"
+    }
   },
   "registration": {
     "title": "Register as Vendor",
@@ -805,7 +822,12 @@
       "ticketsAdmitted": "Tickets Admitted",
       "vouchersUsed": "Vouchers Redeemed",
       "stationActive": "Ready to scan",
-      "viewHistory": "View full logs"
+      "viewHistory": "View full logs",
+      "eventPickupCollected": "Pickup recorded — hand over the items.",
+      "eventPickupsOnly": "Event pickups",
+      "eventPickupKind": "Event pickup",
+      "eventPickupTitle": "Reservation {{order}}",
+      "pickupDate": "Pickup date"
     },
     "redemptions": {
       "eyebrow": "Store Redemptions",
@@ -1562,7 +1584,101 @@
         "addProduct": "Add product",
         "resumeDraft": "Resume draft",
         "discardDraft": "Discard draft"
+      },
+      "locations": {
+        "title": "Locations",
+        "description": "Register separately for each location you want to join.",
+        "empty": "This event has no locations yet.",
+        "addressTba": "Address to be announced",
+        "ended": "Ended",
+        "notRegistered": "Not registered",
+        "selected": "Your stall at {{name}}",
+        "endedNote": "This location has already ended, so it can't take new registrations.",
+        "count": "{{count}} location",
+        "count_one": "{{count}} location",
+        "count_other": "{{count}} locations",
+        "joined": "Joined {{joined}} of {{total}}"
+      },
+      "listing": {
+        "price": "Event price (RM)",
+        "perDay": "Qty per day",
+        "perDayFor": "Quantity per day for {{name}}",
+        "kind": "Type",
+        "kinds": {
+          "product": "Product",
+          "service": "Experience / service"
+        },
+        "freeHint": "RM0 makes this a free reservation.",
+        "free": "Free",
+        "remove": "Remove {{name}}",
+        "incomplete": "Set a price and a daily quantity of at least 1 for every item.",
+        "manageTitle": "Items at this location",
+        "manageHint": "Change how many you bring each day or switch an item off. Price changes need a resubmission.",
+        "save": "Save",
+        "saved": "Item updated.",
+        "saveError": "Could not update the item.",
+        "quantityInvalid": "Daily quantity must be a whole number from 0 to 10,000.",
+        "turnOff": "Turn off",
+        "turnOn": "Turn on"
+      },
+      "pickup": {
+        "title": "Pickup times",
+        "hint": "Customers choose one of these windows when they reserve. The maximum counts items across all reservations in that window each day.",
+        "none": "Add at least one pickup time — customers can't reserve until you do.",
+        "everyDay": "Every day",
+        "extraDates": "Extra on specific dates",
+        "when": "Applies",
+        "onDate": "On one date",
+        "date": "Date",
+        "from": "From",
+        "to": "To",
+        "max": "Max items",
+        "add": "Add time",
+        "remove": "Remove pickup time",
+        "confirmRemove": "Remove this pickup time?",
+        "saved": "Pickup time saved.",
+        "removed": "Pickup time removed.",
+        "capacity_one": "max {{count}} item",
+        "capacity_other": "max {{count}} items",
+        "errors": {
+          "invalid": "Check the times and the maximum.",
+          "saveFailed": "The pickup time could not be saved.",
+          "removeFailed": "The pickup time could not be removed.",
+          "outsideHours": "Pickup times must be within the location's opening hours.",
+          "outsideDates": "The date must be within the location's dates.",
+          "duplicate": "This pickup time already exists.",
+          "inUse": "Customers have reserved this time, so it can't be removed."
+        }
+      },
+      "withdraw": {
+        "action": "Withdraw from this location",
+        "prompt": "Why are you withdrawing? Customers who reserved here will be refunded.",
+        "reasonRequired": "Give a reason of at least 5 characters.",
+        "error": "You could not be withdrawn from this location.",
+        "done": "You've withdrawn. Affected reservations were cancelled and refunded.",
+        "closed": {
+          "withdrawn": "You withdrew from this location.",
+          "removed": "You were removed from this location by the organiser."
+        }
       }
+    },
+    "eventOrders": {
+      "title": "Event reservations",
+      "description": "Paid reservations customers will collect from your stalls.",
+      "date": "Pickup date",
+      "upcoming": "All upcoming",
+      "scan": "Scan pickup",
+      "loading": "Loading reservations…",
+      "loadError": "Reservations could not be loaded.",
+      "empty": "No reservations for this period.",
+      "order": "Order",
+      "pickup": "Pickup",
+      "item": "Item",
+      "total": "Total",
+      "status": "Status",
+      "free": "Free",
+      "collected": "Collected",
+      "toCollect": "To collect"
     }
   },
   "address": {

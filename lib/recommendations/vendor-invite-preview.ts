@@ -1,4 +1,6 @@
 export type VendorInvitePreviewInput = {
+  /** 'event' invites create an event vendor: no category, outlet or map pin. */
+  vendorKind?: 'shop' | 'event';
   inviteEmail: string;
   authenticated: boolean;
   emailMatched: boolean;
@@ -25,6 +27,7 @@ export type VendorInvitePreviewInput = {
 export type VendorInviteCategory = { id: string; name: string; slug: string };
 
 export type VendorInvitePreview = {
+  vendorKind: 'shop' | 'event';
   account: {
     authenticated: boolean;
     emailMatched: boolean;
@@ -82,6 +85,7 @@ export function buildVendorInvitePreview(input: VendorInvitePreviewInput): Vendo
   const { recommendation } = input;
   const revealContact = input.authenticated && input.emailMatched;
   return {
+    vendorKind: input.vendorKind ?? 'shop',
     account: {
       authenticated: input.authenticated,
       emailMatched: input.emailMatched,

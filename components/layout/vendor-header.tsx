@@ -12,7 +12,8 @@ import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { GlobalCommandPalette } from '@/components/shared/global-command-palette';
 import { useCommandShortcutLabel } from '@/components/shared/command-shortcut';
 
-function roleLabel(isOutletManager: boolean, isVendorOwner: boolean) {
+function roleLabel(isOutletManager: boolean, isVendorOwner: boolean, isEventVendor: boolean) {
+  if (isEventVendor) return 'shell.roles.eventVendor';
   if (isOutletManager) return 'shell.roles.outletManager';
   if (isVendorOwner) return 'shell.roles.vendorOwner';
   return 'shell.roles.teamMember';
@@ -22,7 +23,7 @@ function roleLabel(isOutletManager: boolean, isVendorOwner: boolean) {
  * session rather than route parameters, and is passed to the server-authorized
  * notification API by NotificationBell. */
 export default function VendorHeader() {
-  const { user, loading, isOutletManager, isVendorOwner } = useAuth();
+  const { user, loading, isOutletManager, isVendorOwner, isEventVendor } = useAuth();
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -67,7 +68,7 @@ export default function VendorHeader() {
             aria-label={tCommon('actions.signOut')}
             className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card/80 px-3 text-xs font-semibold text-foreground transition hover:border-primary/30 hover:bg-secondary"
           >
-            <span className="hidden max-w-32 truncate sm:inline">{loading ? t('shell.loadingWorkspace') : user?.fullName || t(roleLabel(isOutletManager, isVendorOwner))}</span>
+            <span className="hidden max-w-32 truncate sm:inline">{loading ? t('shell.loadingWorkspace') : user?.fullName || t(roleLabel(isOutletManager, isVendorOwner, isEventVendor))}</span>
             <LogOut size={15} aria-hidden="true" />
           </button>
         </div>
@@ -76,6 +77,7 @@ export default function VendorHeader() {
       <GlobalCommandPalette
         scope="vendor"
         isOutletManager={isOutletManager}
+        isEventVendor={isEventVendor}
         triggerOpen={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
       />

@@ -41,6 +41,34 @@ export const campaignDraftUpdateSchema = campaignFieldsSchema.extend({
 
 export const campaignStatusSchema = z.enum(PROMOTION_CAMPAIGN_STATUSES);
 
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const clockTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+/** One event location. Dates and hours are Malaysia wall-clock values. */
+export const campaignLocationSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  address: z.string().trim().min(3).max(300).nullable(),
+  lat: z.number().min(-90).max(90).nullable(),
+  lng: z.number().min(-180).max(180).nullable(),
+  startsOn: isoDateSchema,
+  endsOn: isoDateSchema,
+  opensAt: clockTimeSchema,
+  closesAt: clockTimeSchema,
+}).strict().superRefine((value, context) => {
+  if ((value.lat === null) !== (value.lng === null)) {
+    context.addIssue({ code: "custom", path: ["lat"], message: "Set both coordinates or neither" });
+  }
+  // Same-width ISO dates and HH:MM times compare correctly as strings.
+  if (value.endsOn < value.startsOn) {
+    context.addIssue({ code: "custom", path: ["endsOn"], message: "End date must not be before start date" });
+  }
+  if (value.closesAt <= value.opensAt) {
+    context.addIssue({ code: "custom", path: ["closesAt"], message: "Closing time must be after opening time" });
+  }
+});
+
+export type CampaignLocationInput = z.infer<typeof campaignLocationSchema>;
+
 export const campaignAdminPatchSchema = z.union([
   z.object({ action: z.literal("save_draft"), campaign: campaignDraftUpdateSchema }).strict(),
   campaignTransitionSchema,

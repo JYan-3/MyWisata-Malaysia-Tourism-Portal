@@ -7,7 +7,8 @@
     "trip": "Trip",
     "chat": "Chat",
     "activity": "My Activity",
-    "wishlist": "Saved"
+    "wishlist": "Saved",
+    "events": "Events"
   },
   "accountGroups": {
     "Account": "Account & Preferences",
@@ -1581,7 +1582,28 @@
       "activeOutletCount_one": "{{count}} active outlets",
       "activeOutletCount_other": "{{count}} active outlets",
       "reviewCount_one": "{{count}} reviews",
-      "reviewCount_other": "{{count}} reviews"
+      "reviewCount_other": "{{count}} reviews",
+      "eventItems": {
+        "eventPartner": "Event partner",
+        "eyebrow": "At events",
+        "title": "Event items",
+        "description": "What this vendor offers at each event location, with the dates and hours to collect it.",
+        "caption": "Event items by location, date and time",
+        "item": "Item",
+        "location": "Location",
+        "date": "Date",
+        "time": "Time",
+        "price": "Price",
+        "reserve": "Reserve",
+        "free": "Free",
+        "stall": "Stall {{stall}}",
+        "kinds": {
+          "product": "Product",
+          "service": "Experience / service"
+        },
+        "noUpcomingEvent": "No upcoming event",
+        "noUpcomingEventHint": "This vendor isn't taking part in an event right now. Check back when the next one is announced."
+      }
     },
     "wallet": {
       "emptyTitle": "Your wallet is empty",
@@ -2556,7 +2578,23 @@
       "productCount_other": "{{count}} items",
       "viewStall": "View stall",
       "previous": "Previous event",
-      "next": "Next event"
+      "next": "Next event",
+      "locationCount": "{{count}} location",
+      "locationCount_one": "{{count}} location",
+      "locationCount_other": "{{count}} locations",
+      "locationsSection": "Locations",
+      "locationsSection_one": "Location",
+      "locationsSection_other": "Locations ({{count}})",
+      "addressTba": "Address to be announced",
+      "views": {
+        "label": "Choose how to view events",
+        "list": "List",
+        "calendar": "Calendar",
+        "map": "Map",
+        "calendarEmpty": "No event locations in this period.",
+        "unpinned_one": "{{count}} location has no map pin yet. See the List view for its address.",
+        "unpinned_other": "{{count}} locations have no map pin yet. See the List view for their addresses."
+      }
     },
     "recommendationReasons": {
       "near_you": "Near you",
@@ -2569,6 +2607,58 @@
         "eyebrow": "Featured",
         "badge": "Featured",
         "backToHome": "Back to home"
+      }
+    },
+    "eventPartners": {
+      "eyebrow": "At our events",
+      "title": "Event partners",
+      "description": "Vendors who sell only at our events. Their items can be reserved while they take part in an event.",
+      "badge": "Event partner",
+      "next": "Next: {{event}} at {{location}}, {{dates}}",
+      "noUpcoming": "No upcoming event",
+      "view": "View items"
+    },
+    "reserve": {
+      "open": "Reserve",
+      "ended": "Ended",
+      "title": "Reserve {{item}}",
+      "description": "Pick up at {{location}}. Choose a date and a pickup time.",
+      "signInHint": "Sign in to reserve and pay for event items.",
+      "signIn": "Sign in to reserve",
+      "date": "Pickup date",
+      "time": "Pickup time",
+      "loading": "Checking availability…",
+      "noSlots": "No pickup times on this date. Try another date.",
+      "full": "Full",
+      "left_one": "{{count}} left",
+      "left_other": "{{count}} left",
+      "soldOutDay": "Sold out on this date.",
+      "quantity": "Quantity",
+      "free": "Free",
+      "payment": "Payment method",
+      "qrNote": "You'll get a QR code in My Orders. Show it at the stall on your pickup date.",
+      "submitting": "Reserving…",
+      "confirmFree": "Confirm reservation",
+      "pay": "Pay {{amount}}",
+      "errors": {
+        "load": "Availability could not be loaded. Please try again.",
+        "generic": "The reservation could not be completed. Please try again.",
+        "EVENT_SOLD_OUT": "This item is sold out for the chosen date.",
+        "EVENT_SLOT_FULL": "This pickup time just filled up. Choose another time.",
+        "EVENT_SLOT_INVALID": "This pickup time is no longer available.",
+        "EVENT_DATE_INVALID": "Choose a date within the event dates.",
+        "EVENT_ITEM_UNAVAILABLE": "This item can no longer be reserved.",
+        "WALLET_INSUFFICIENT": "Your wallet balance is not enough for this reservation."
+      }
+    },
+    "eventPickup": {
+      "title": "Event pickups",
+      "description": "Show this code at the stall on your pickup date.",
+      "qrAlt": "Pickup code for {{date}}",
+      "validOn": "Valid only on {{date}}",
+      "status": {
+        "pending": "Ready to collect",
+        "collected": "Collected"
       }
     }
   },

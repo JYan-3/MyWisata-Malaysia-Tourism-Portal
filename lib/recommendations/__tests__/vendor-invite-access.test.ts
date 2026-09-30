@@ -24,11 +24,11 @@ describe('resolveActiveVendorInvite', () => {
 
     expect(result).toEqual({
       ok: true,
-      invite: { recommendationId: 'rec-1', email: 'owner@example.com' },
+      invite: { vendorKind: 'shop', recommendationId: 'rec-1', businessName: null, email: 'owner@example.com' },
     });
     expect(JSON.stringify(result)).not.toContain('invite-1');
     expect(JSON.stringify(result)).not.toContain('stored-token-hash');
-    expect(service.select).toHaveBeenCalledWith('recommendation_id,email,status,expires_at');
+    expect(service.select).toHaveBeenCalledWith('recommendation_id,email,status,expires_at,vendor_kind,business_name');
     expect(service.from).toHaveBeenCalledWith('vendor_recommendation_invites');
   });
 
@@ -173,5 +173,30 @@ describe('resolveActiveVendorInvite', () => {
     expect(service.select).toHaveBeenCalledTimes(1);
     const query = service.select.mock.results[0]?.value;
     expect(query.eq).toHaveBeenCalledWith('token_hash', hashRecommendationInviteToken(token));
+  });
+});
+
+describe('resolveActiveVendorInvite event invites', () => {
+  function serviceReturning(row: Record<string, unknown>) {
+    const service = { from: vi.fn(), select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
+    service.from.mockReturnValue(service);
+    service.select.mockReturnValue(service);
+    service.eq.mockReturnValue(service);
+    service.maybeSingle.mockResolvedValue({ data: row, error: null });
+    return service;
+  }
+
+  it('resolves an event invite by its business name instead of a recommendation', async () => {
+    const service = serviceReturning({ recommendation_id: null, vendor_kind: 'event', business_name: ' Kuih Stall ', email: 'Owner@Example.com', status: 'invited', expires_at: '2099-01-01T00:00:00.000Z' });
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: true,
+      invite: { vendorKind: 'event', recommendationId: null, businessName: 'Kuih Stall', email: 'owner@example.com' },
+    });
+  });
+
+  it('rejects an event invite without a business name', async () => {
+    const service = serviceReturning({ recommendation_id: null, vendor_kind: 'event', business_name: null, email: 'owner@example.com', status: 'invited', expires_at: '2099-01-01T00:00:00.000Z' });
+    const result = await resolveActiveVendorInvite(service as never, 'valid-invite-token-value');
+    expect(result.ok).toBe(false);
   });
 });

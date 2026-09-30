@@ -7,8 +7,8 @@ export type GuidedVendorClaimInput = {
   businessName: string;
   legalBusinessName: string;
   description: string;
-  categoryId: string;
-  outletName: string;
+  categoryId?: string;
+  outletName?: string;
   contactEmail: string;
   contactPhone: string;
   businessAddress: string;
@@ -98,8 +98,9 @@ export function buildGuidedVendorClaimInput(token: string, draft: VendorInviteDr
     businessName: draft.businessName,
     legalBusinessName: draft.legalBusinessName,
     description: draft.description,
-    categoryId: draft.categoryId,
-    outletName: draft.outletName,
+    // Event invites have no category or outlet; omitted rather than sent empty.
+    categoryId: draft.categoryId || undefined,
+    outletName: draft.outletName || undefined,
     contactEmail: draft.contactEmail,
     contactPhone: draft.contactPhone,
     businessAddress: draft.businessAddress,

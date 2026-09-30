@@ -9,6 +9,10 @@ import { attachSponsoredOutletGalleryCovers } from "@/lib/customer/partner-direc
 import { SearchClient } from "../search/search-client";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { getFeaturedEventPromotions } from "@/lib/customer/event-promotions";
+import type { EventPartner } from "@/components/customer/event-partners-section";
+import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
+import { getPublicPromotionCampaigns } from "@/lib/promotion-campaigns/public";
+import { nextVendorEvent } from "@/lib/promotion-campaigns/vendor-events";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
@@ -26,14 +30,30 @@ export default async function PartnersPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  const [results, vendors, recommendationFeed, placementsResult, eventPromotions] = await Promise.all([
+  const [results, vendors, recommendationFeed, placementsResult, eventPromotions, publicEvents] = await Promise.all([
     searchActivities({ q: q || undefined }, db),
     getVendors(db),
     q ? Promise.resolve([]) : getRecommendedFeed(user?.id ?? null, { limit: 12 }, db),
     db.rpc("list_active_sponsored_discovery_placements"),
     getFeaturedEventPromotions(db).catch(() => []),
+    getPublicPromotionCampaigns(),
   ]);
-  const approvedVendors = vendors.filter((vendor) => vendor.status === "approved");
+  // Event vendors never appear in the normal directory — only under "Event partners".
+  const approvedVendors = vendors.filter((vendor) => vendor.status === "approved" && vendor.kind !== "event");
+  const today = getMalaysiaDateInputValue();
+  const eventPartners: EventPartner[] = vendors
+    .filter((vendor) => vendor.status === "approved" && vendor.kind === "event")
+    .map((vendor) => {
+      const next = nextVendorEvent(publicEvents.campaigns, vendor.id, today);
+      return {
+        id: vendor.id,
+        name: vendor.name,
+        logoUrl: vendor.logoUrl,
+        next: next && { campaignTitle: next.campaignTitle, locationName: next.location.name, startsOn: next.location.startsOn, endsOn: next.location.endsOn },
+      };
+    })
+    // Partners with an upcoming event first, soonest first.
+    .sort((a, b) => (a.next?.startsOn ?? "9999").localeCompare(b.next?.startsOn ?? "9999") || a.name.localeCompare(b.name));
   const personalizedVendors = rankVendorsByPersonalizedFeed(approvedVendors, recommendationFeed);
   const recommendationPersonalized = recommendationFeed.some((item) => item.reason !== null) && personalizedVendors.length > 0;
   const recommendedVendors = recommendationPersonalized ? personalizedVendors : rankFeaturedVendors(approvedVendors, results);
@@ -91,6 +111,7 @@ export default async function PartnersPage({ searchParams }: Props) {
       recommendedVendors={recommendedVendors}
       sponsoredPlacements={sponsoredPlacements}
       eventPromotions={q ? [] : eventPromotions}
+      eventPartners={eventPartners}
     />
   );
 }

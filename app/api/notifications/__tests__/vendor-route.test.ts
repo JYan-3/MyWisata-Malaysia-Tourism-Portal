@@ -80,7 +80,7 @@ describe('GET /api/notifications vendor scope', () => {
     mocks.from.mockReturnValue(query);
     const response = await GET(request(`?scope=vendor&vendorId=${vendorId}&pageSize=100`));
     expect(response.status).toBe(200);
-    expect(mocks.authorizeVendor).toHaveBeenCalledWith(vendorId);
+    expect(mocks.authorizeVendor).toHaveBeenCalledWith(vendorId, undefined, { allowEventVendor: true });
     expect(query.eq).toHaveBeenCalledWith('user_id', ownerId);
     expect(query.eq).toHaveBeenCalledWith('vendor_id', vendorId);
     expect(query.range).toHaveBeenCalledWith(0, 49);

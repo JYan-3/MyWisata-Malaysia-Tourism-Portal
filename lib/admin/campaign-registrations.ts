@@ -4,13 +4,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { productImageUrl } from '@/lib/storage/product-image';
 
-export type CampaignRegistrationStatus = 'pending' | 'approved' | 'rejected' | 'changes_requested';
+export type CampaignRegistrationStatus = 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'withdrawn' | 'removed';
 
 export interface AdminCampaignProduct {
   id: string;
   name: string;
   price: number;
   imageUrl: string | null;
+  itemKind: 'product' | 'service';
+  dailyQuantity: number;
+  active: boolean;
 }
 
 export interface AdminCampaignRegistration {
@@ -19,12 +22,17 @@ export interface AdminCampaignRegistration {
   campaignTitle: string;
   vendorId: string;
   vendorName: string;
+  locationName: string;
+  locationStartsOn: string | null;
+  locationEndsOn: string | null;
   stallNumber: string;
   stallDescription: string;
   stallPosterUrl: string;
   status: CampaignRegistrationStatus;
   rejectionReason: string | null;
   changesRequestedReason: string | null;
+  /** Why a withdrawn or removed stall was closed. */
+  closedReason: string | null;
   products: AdminCampaignProduct[];
   createdAt: string;
 }
@@ -39,10 +47,14 @@ type RegistrationRow = {
   status: CampaignRegistrationStatus;
   rejection_reason: string | null;
   changes_requested_reason: string | null;
+  closed_reason: string | null;
   created_at: string;
   vendors: { name: string } | { name: string }[] | null;
   promotion_campaigns: { title: string } | { title: string }[] | null;
+  location: LocationEmbed | LocationEmbed[] | null;
 };
+
+type LocationEmbed = { name: string; starts_on: string; ends_on: string };
 
 type ProductRow = {
   id: string;
@@ -51,6 +63,9 @@ type ProductRow = {
   name: string | null;
   price: number | null;
   image_url: string | null;
+  item_kind: 'product' | 'service';
+  daily_quantity: number;
+  active: boolean;
   products: { name: string; base_price: number; cover_url: string | null } | { name: string; base_price: number; cover_url: string | null }[] | null;
 };
 
@@ -58,16 +73,19 @@ function single<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-const REGISTRATION_COLUMNS = 'id,campaign_id,vendor_id,stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,created_at,vendors(name),promotion_campaigns(title)';
-const PRODUCT_COLUMNS = 'id,registration_id,position,name,price,image_url,products(name,base_price,cover_url)';
+const REGISTRATION_COLUMNS = 'id,campaign_id,vendor_id,stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,closed_reason,created_at,vendors(name),promotion_campaigns(title),location:promotion_campaign_locations(name,starts_on,ends_on)';
+const PRODUCT_COLUMNS = 'id,registration_id,position,name,price,image_url,item_kind,daily_quantity,active,products(name,base_price,cover_url)';
 
 function toProduct(row: ProductRow): AdminCampaignProduct {
   const product = single(row.products);
   return {
     id: row.id,
     name: product?.name ?? row.name ?? '',
-    price: product?.base_price ?? row.price ?? 0,
+    price: Number(row.price ?? product?.base_price ?? 0),
     imageUrl: productImageUrl(product?.cover_url ?? row.image_url),
+    itemKind: row.item_kind,
+    dailyQuantity: row.daily_quantity,
+    active: row.active,
   };
 }
 
@@ -78,12 +96,16 @@ function toRegistration(row: RegistrationRow, products: AdminCampaignProduct[]):
     campaignTitle: single(row.promotion_campaigns)?.title ?? '',
     vendorId: row.vendor_id,
     vendorName: single(row.vendors)?.name ?? 'Unknown vendor',
+    locationName: single(row.location)?.name ?? '',
+    locationStartsOn: single(row.location)?.starts_on ?? null,
+    locationEndsOn: single(row.location)?.ends_on ?? null,
     stallNumber: row.stall_number,
     stallDescription: row.stall_description,
     stallPosterUrl: row.stall_poster_url,
     status: row.status,
     rejectionReason: row.rejection_reason,
     changesRequestedReason: row.changes_requested_reason,
+    closedReason: row.closed_reason,
     products,
     createdAt: row.created_at,
   };

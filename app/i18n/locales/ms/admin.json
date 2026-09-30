@@ -1905,7 +1905,8 @@
       },
       "errors": {
         "action": "Tindakan gagal",
-        "load": "Tidak dapat memuatkan vendor"
+        "load": "Tidak dapat memuatkan vendor",
+        "ownerKycRequired": "Pemilik mesti lulus pengesahan identiti (KYC) sebelum vendor acara boleh diluluskan."
       },
       "export": "Eksport paparan",
       "eyebrow": "Rangkaian vendor Malaysia",
@@ -1985,6 +1986,23 @@
         "cancel": "Batal",
         "error": "Tidak dapat merangka sebab sekarang — tulis secara manual.",
         "close": "Tutup"
+      },
+      "eventVendor": {
+        "open": "Cipta vendor acara",
+        "title": "Cipta vendor acara",
+        "description": "Jemput pemilik melalui e-mel. Akaun vendor acara dicipta apabila mereka menerima jemputan.",
+        "businessName": "Nama perniagaan",
+        "ownerEmail": "E-mel pemilik",
+        "message": "Mesej untuk disertakan (pilihan)",
+        "kycNote": "Mereka log masuk dengan e-mel ini, mengesahkan telefon dan melengkapkan KYC. Selepas itu anda meluluskan mereka di sini.",
+        "cancel": "Batal",
+        "send": "Hantar jemputan",
+        "sending": "Menghantar…",
+        "sent": "Jemputan vendor acara dihantar kepada {{email}}.",
+        "badge": "Vendor acara",
+        "ownerHasVendor": "E-mel ini sudah memiliki vendor. Vendor acara memerlukan log masuk sendiri.",
+        "emailFailed": "E-mel jemputan tidak dapat dihantar. Sila cuba lagi.",
+        "error": "Tidak dapat mencipta jemputan vendor acara."
       }
     },
     "walletApprovers": {
@@ -3104,7 +3122,46 @@
       "removePoster": "Buang poster",
       "saveChanges": "Terbitkan perubahan",
       "saveDraft": "Terbitkan acara",
-      "cancelEdit": "Batal edit"
+      "cancelEdit": "Batal edit",
+      "changesSaved": "Perubahan disimpan."
+    },
+    "locations": {
+      "title": "Lokasi",
+      "description": "Setiap lokasi mempunyai tarikh dan waktu harian tersendiri. Vendor mendaftar mengikut lokasi.",
+      "empty": "Belum ada lokasi. Tambah sekurang-kurangnya satu sebelum menerbitkan.",
+      "add": "Tambah lokasi",
+      "edit": "Sunting",
+      "remove": "Buang",
+      "save": "Simpan lokasi",
+      "cancel": "Batal",
+      "name": "Nama lokasi",
+      "address": "Alamat",
+      "startsOn": "Hari pertama",
+      "endsOn": "Hari terakhir",
+      "opensAt": "Buka",
+      "closesAt": "Tutup",
+      "pin": "Pin peta",
+      "pinHint": "Seret penanda ke lokasi tepat (pilihan).",
+      "pinSet": "Dipin di {{latitude}}, {{longitude}}",
+      "clearPin": "Buang pin",
+      "addressTba": "Alamat akan diumumkan",
+      "confirmRemove": "Buang lokasi ini?",
+      "toggle": "Lokasi ({{count}})",
+      "toggle_one": "Lokasi ({{count}})",
+      "toggle_other": "Lokasi ({{count}})",
+      "required": "Tambah sekurang-kurangnya satu lokasi sebelum menerbitkan.",
+      "invalid": "Semak lokasi: ia memerlukan nama, hari terakhir tidak boleh sebelum hari pertama, dan waktu tutup mesti selepas waktu buka.",
+      "saveError": "Tidak dapat menyimpan lokasi ini.",
+      "savedAsDraft": "Acara disimpan sebagai draf. Tambah lokasinya daripada senarai di bawah, kemudian terbitkannya.",
+      "cancelLocation": "Batalkan lokasi",
+      "cancelled": "Dibatalkan",
+      "cancelPrompt": "Mengapa {{name}} dibatalkan? Tempahan berbayar akan dipulangkan — secara automatik jika acara belum bermula, jika tidak melalui baris gilir bayaran balik.",
+      "cancelReasonRequired": "Berikan sebab sekurang-kurangnya 5 aksara.",
+      "cancelError": "Lokasi tidak dapat dibatalkan.",
+      "changesSaved": "Perubahan disimpan.",
+      "search": "Cari tempat",
+      "searchPlaceholder": "Cari tempat atau alamat, atau seret pin merah",
+      "searchEmpty": "Tiada tempat ditemui. Cuba nama lain."
     },
     "list": {
       "title": "Aliran kerja acara",
@@ -3205,7 +3262,26 @@
       "reject": "Tolak",
       "approveSuccess": "Pendaftaran diluluskan.",
       "request_changesSuccess": "Perubahan diminta daripada vendor.",
-      "rejectSuccess": "Pendaftaran ditolak."
+      "rejectSuccess": "Pendaftaran ditolak.",
+      "remove": "Keluarkan dari lokasi"
+    },
+    "itemKinds": {
+      "product": "Produk",
+      "service": "Pengalaman / perkhidmatan"
+    },
+    "dailyQuantity_one": "{{count}} sehari",
+    "dailyQuantity_other": "{{count}} sehari",
+    "itemOff": "Dimatikan",
+    "free": "Percuma",
+    "removeHeading": "Keluarkan dari lokasi ini",
+    "removeDescription": "Mengeluarkan vendor dari lokasi ini. Tempahan berbayar mereka di sini dipulangkan — secara automatik sebelum acara bermula, jika tidak melalui baris gilir bayaran balik.",
+    "removePrompt": "Mengapa vendor ini dikeluarkan?",
+    "removeReasonRequired": "Berikan sebab sekurang-kurangnya 5 aksara.",
+    "removeError": "Vendor tidak dapat dikeluarkan.",
+    "removed": "Vendor dikeluarkan. Tempahan yang terjejas telah dibatalkan.",
+    "closedNote": {
+      "withdrawn": "Vendor menarik diri: {{note}}",
+      "removed": "Dikeluarkan dari lokasi ini: {{note}}"
     }
   },
   "announcements": {

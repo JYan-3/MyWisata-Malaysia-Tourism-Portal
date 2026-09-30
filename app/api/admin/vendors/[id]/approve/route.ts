@@ -24,7 +24,7 @@ export async function POST(request: Request, { params }: Props) {
   // Fetch current vendor
   const { data: vendor, error: fetchErr } = await supabase
     .from('vendors')
-    .select('*')
+    .select('id,name,status,owner_id,kind')
     .eq('id', vendorId)
     .single();
 
@@ -45,6 +45,7 @@ export async function POST(request: Request, { params }: Props) {
     if (message.includes('vendor_not_approvable') || message.includes('vendor_invalid_state')) return apiFail('INVALID_STATE', 'Vendor is not in a valid state for this action', 409);
     if (message.includes('self_dealing')) return apiFail('FORBIDDEN', 'You cannot approve a vendor from your own recommendation', 403);
     if (message.includes('recommendation_not_ready_for_conversion') || message.includes('claim_link_not_found')) return apiFail('INVALID_RECOMMENDATION_STATE', 'The claimed recommendation is not ready for conversion', 409);
+    if (message.includes('owner_kyc_required')) return apiFail('OWNER_KYC_REQUIRED', 'The owner must pass KYC before an event vendor can be approved', 409);
     if (message.includes('vendor_review_action_invalid')) return apiFail('VALIDATION_FAILED', 'Vendor review action is invalid', 422);
     console.error('[vendor-approval] governed review failed:', reviewError);
     return apiFail('RPC_ERROR', 'Vendor review could not be completed', 500);

@@ -133,7 +133,7 @@ describe("customer vendor search contract", () => {
   });
 
   it("uses vendor media and never turns a destination photo into a vendor cover", () => {
-    expect(catalogueSource).toContain('select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)")');
+    expect(catalogueSource).toContain('select("id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)")');
     expect(vendorCardSource).toContain("getVendorVisual");
     expect(vendorCardSource).toContain("visual.logoUrl");
     expect(clientSource).not.toContain("MALAYSIA_DESTINATIONS");

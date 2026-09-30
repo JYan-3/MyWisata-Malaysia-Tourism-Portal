@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   let queryDb = db;
   const vendorId = url.searchParams.get('vendorId');
   const access = scope === 'vendor'
-    ? (vendorId && VENDOR_ID.test(vendorId) ? await authorizeVendor(vendorId) : null)
+    ? (vendorId && VENDOR_ID.test(vendorId) ? await authorizeVendor(vendorId, undefined, { allowEventVendor: true }) : null)
     : null;
   if (scope === 'vendor') {
     if (!access) return apiFail('INVALID_VENDOR', 'A valid vendorId is required for vendor notifications', 400);

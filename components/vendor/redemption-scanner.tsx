@@ -30,7 +30,8 @@ type OutletOption = { id: string; name: string };
 type ResolvedScan =
   | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; outletName: string; vendorName: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; remaining?: number; status?: string; valid_until?: string | null } | null }
   | { kind: "food_order"; orderId: string; foodToken: string; outletId: string; outletName: string; vendorName: string; mode: "dine_in" | "takeaway"; items: { id: string; name: string; variant: string | null; quantity: number }[] }
-  | { kind: "voucher"; claimId: string; voucherId: string; outletId: string; code: string; name: string; voucherType: string; discountValue: number; validUntil: string | null; redemptionMode: string; vendorName: string; outletName: string };
+  | { kind: "voucher"; claimId: string; voucherId: string; outletId: string; code: string; name: string; voucherType: string; discountValue: number; validUntil: string | null; redemptionMode: string; vendorName: string; outletName: string }
+  | { kind: "event_pickup"; orderId: string; eventToken: string; vendorName: string; pickupDate: string; items: { id: string; name: string; variant: string | null; quantity: number }[] };
 
 interface RecentScanItem {
   id: string;
@@ -178,7 +179,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       const response = await fetch(`/api/vendors/${vendorId}/scanner/resolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawValue, outletId }),
+        // Event pickups are not tied to an outlet; vendors without outlets scan only those.
+        body: JSON.stringify({ rawValue, ...(outletId ? { outletId } : {}) }),
       });
       const payload = await response.json() as { data?: ResolvedScan; error?: { message?: string } };
       if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? t("ui.scanner.invalidCode"));
@@ -233,7 +235,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   }, [cameraOn, resolve, result, t]);
 
   async function confirm() {
-    if (!result || !outletId) return;
+    if (!result || (!outletId && result.kind !== "event_pickup")) return;
     setBusy(true);
     setScanError("");
     try {
@@ -251,6 +253,15 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
         successMessage = progress
           ? t("ui.scanner.ticketAcceptedCount", { used: progress.entries_used ?? 0, total: progress.entry_limit ?? 1, remaining: progress.remaining ?? 0 })
           : t("ui.scanner.ticketAccepted");
+      } else if (result.kind === "event_pickup") {
+        const response = await fetch(`/api/vendors/${vendorId}/scanner/fulfil-event-pickup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventToken: result.eventToken }),
+        });
+        const payload = await response.json() as { error?: { message?: string } };
+        if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
+        successMessage = t("ui.scanner.eventPickupCollected");
       } else if (result.kind === "food_order") {
         const response = await fetch("/api/vendors/" + vendorId + "/scanner/fulfil-food-order", {
           method: "POST",
@@ -411,8 +422,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           </button>
         </div>
 
-        {/* Outlet Switcher */}
-        {outlets.length > 1 ? (
+        {/* Outlet Switcher (event-only vendors have none) */}
+        {outlets.length === 0 ? (
+          <span className="text-xs font-medium text-gray-500">{t("ui.scanner.eventPickupsOnly")}</span>
+        ) : outlets.length > 1 ? (
           <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
             <span>{t("ui.scanner.outlet")}:</span>
             <select
@@ -485,7 +498,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         setMessage("");
                         setCameraOn((current) => !current);
                       }}
-                      disabled={busy || !outletId}
+                      disabled={busy || (!outletId && outlets.length > 0)}
                       className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#ffcc00] px-4 py-2.5 text-sm font-bold text-[#010066] transition hover:brightness-105 disabled:opacity-50"
                     >
                       {cameraOn ? (
@@ -525,7 +538,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                     <button
                       type="button"
                       onClick={() => void resolveManual()}
-                      disabled={!manualValue.trim() || busy || !outletId}
+                      disabled={!manualValue.trim() || busy || (!outletId && outlets.length > 0)}
                       className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
                     >
                       {busy ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
@@ -605,11 +618,20 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           {t("ui.scanner.reviewBeforeConfirm")}
                         </p>
                         <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-                          {result.kind === "voucher" ? t("ui.scanner.voucherKind") : result.kind === "food_order" ? t("ui.scanner.foodOrderKind") : t("ui.scanner.ticketKind")}
+                          {result.kind === "voucher" ? t("ui.scanner.voucherKind") : result.kind === "food_order" ? t("ui.scanner.foodOrderKind") : result.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : t("ui.scanner.ticketKind")}
                         </span>
                       </div>
 
-                      {result.kind === "food_order" ? (
+                      {result.kind === "event_pickup" ? (
+                        <div className="mt-3">
+                          <h2 className="text-lg font-bold text-gray-950">{t("ui.scanner.eventPickupTitle", { order: result.orderId.slice(0, 8).toUpperCase() })}</h2>
+                          <p className="mt-1 text-xs text-gray-600">{t("ui.scanner.vendor")}: <span className="font-semibold text-gray-900">{result.vendorName}</span></p>
+                          <p className="text-xs text-gray-600">{t("ui.scanner.pickupDate")}: <span className="font-semibold text-gray-900">{result.pickupDate}</span></p>
+                          <ul className="mt-3 space-y-1 text-sm text-gray-700">
+                            {result.items.map((item) => <li key={item.id}>{item.quantity} × {item.name}{item.variant ? " · " + item.variant : ""}</li>)}
+                          </ul>
+                        </div>
+                      ) : result.kind === "food_order" ? (
                         <div className="mt-3">
                           <h2 className="text-lg font-bold text-gray-950">{t("ui.scanner.foodOrderTitle", { order: result.orderId.slice(0, 8).toUpperCase() })}</h2>
                           <p className="mt-1 text-xs text-gray-600">{t("ui.scanner.vendor")}: <span className="font-semibold text-gray-900">{result.vendorName}</span></p>

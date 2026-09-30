@@ -1905,7 +1905,8 @@
       },
       "errors": {
         "action": "操作失败",
-        "load": "无法加载商家"
+        "load": "无法加载商家",
+        "ownerKycRequired": "活动商家获批前，所有人必须通过身份验证（KYC）。"
       },
       "export": "导出当前视图",
       "eyebrow": "马来西亚商家网络",
@@ -1985,6 +1986,23 @@
         "cancel": "取消",
         "error": "暂时无法起草原因——请手动输入。",
         "close": "关闭"
+      },
+      "eventVendor": {
+        "open": "创建活动商家",
+        "title": "创建活动商家",
+        "description": "通过邮件邀请所有人。对方接受后即创建活动商家账户。",
+        "businessName": "商家名称",
+        "ownerEmail": "所有人邮箱",
+        "message": "附加消息（可选）",
+        "kycNote": "对方使用此邮箱登录、验证手机并完成 KYC。之后您可在此批准。",
+        "cancel": "取消",
+        "send": "发送邀请",
+        "sending": "正在发送…",
+        "sent": "已向 {{email}} 发送活动商家邀请。",
+        "badge": "活动商家",
+        "ownerHasVendor": "该邮箱已拥有商家。活动商家需要单独的登录账号。",
+        "emailFailed": "邀请邮件发送失败，请重试。",
+        "error": "无法创建活动商家邀请。"
       }
     },
     "walletApprovers": {
@@ -3104,7 +3122,46 @@
       "removePoster": "移除海报",
       "saveChanges": "发布更改",
       "saveDraft": "发布活动",
-      "cancelEdit": "取消编辑"
+      "cancelEdit": "取消编辑",
+      "changesSaved": "更改已保存。"
+    },
+    "locations": {
+      "title": "活动地点",
+      "description": "每个地点都有各自的日期和每日营业时间。商家按地点注册。",
+      "empty": "还没有地点。发布前请至少添加一个。",
+      "add": "添加地点",
+      "edit": "编辑",
+      "remove": "移除",
+      "save": "保存地点",
+      "cancel": "取消",
+      "name": "地点名称",
+      "address": "地址",
+      "startsOn": "首日",
+      "endsOn": "最后一天",
+      "opensAt": "开始营业",
+      "closesAt": "结束营业",
+      "pin": "地图标记",
+      "pinHint": "将标记拖到确切位置（可选）。",
+      "pinSet": "已标记于 {{latitude}}, {{longitude}}",
+      "clearPin": "清除标记",
+      "addressTba": "地址待公布",
+      "confirmRemove": "确定移除此地点吗？",
+      "toggle": "活动地点（{{count}}）",
+      "toggle_one": "活动地点（{{count}}）",
+      "toggle_other": "活动地点（{{count}}）",
+      "required": "发布前请至少添加一个地点。",
+      "invalid": "请检查地点：需要填写名称，最后一天不能早于首日，结束营业时间必须晚于开始时间。",
+      "saveError": "无法保存此地点。",
+      "savedAsDraft": "活动已保存为草稿。请在下方列表中添加地点，然后发布。",
+      "cancelLocation": "取消地点",
+      "cancelled": "已取消",
+      "cancelPrompt": "{{name}} 为何取消？已付款的预订将被退款——活动开始前自动退款，否则进入退款队列。",
+      "cancelReasonRequired": "请填写至少 5 个字符的原因。",
+      "cancelError": "无法取消该地点。",
+      "changesSaved": "更改已保存。",
+      "search": "搜索地点",
+      "searchPlaceholder": "搜索地点或地址，或拖动红色标记",
+      "searchEmpty": "未找到地点，请尝试其他名称。"
     },
     "list": {
       "title": "活动工作流",
@@ -3205,7 +3262,26 @@
       "reject": "拒绝",
       "approveSuccess": "注册已批准。",
       "request_changesSuccess": "已向商家要求修改。",
-      "rejectSuccess": "注册已拒绝。"
+      "rejectSuccess": "注册已拒绝。",
+      "remove": "从地点移除"
+    },
+    "itemKinds": {
+      "product": "商品",
+      "service": "体验 / 服务"
+    },
+    "dailyQuantity_one": "每日 {{count}} 件",
+    "dailyQuantity_other": "每日 {{count}} 件",
+    "itemOff": "已下架",
+    "free": "免费",
+    "removeHeading": "从此地点移除",
+    "removeDescription": "将该商家从此地点移除。其在此地点的已付款预订将被退款——活动开始前自动退款，否则进入退款队列。",
+    "removePrompt": "为何移除该商家？",
+    "removeReasonRequired": "请填写至少 5 个字符的原因。",
+    "removeError": "无法移除该商家。",
+    "removed": "已移除商家，受影响的预订已取消。",
+    "closedNote": {
+      "withdrawn": "商家已退出：{{note}}",
+      "removed": "已从此地点移除：{{note}}"
     }
   },
   "announcements": {

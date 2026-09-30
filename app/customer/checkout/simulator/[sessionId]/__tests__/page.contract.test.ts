@@ -7,12 +7,15 @@ const checkoutSource = readFileSync(
   'utf8',
 );
 const simulatorUrl = new URL('../page.tsx', import.meta.url);
+// Payment options live in a module shared with the event reserve dialog.
+const choicesSource = readFileSync(resolve(process.cwd(), 'lib/checkout/payment-choices.ts'), 'utf8');
 
 describe('customer payment simulator experience', () => {
   it('separates simulator providers and removes client-declared external success', () => {
-    expect(checkoutSource).toContain('labelKey: "strictMigration.checkout.methods.tng"');
-    expect(checkoutSource).toContain('labelKey: "strictMigration.checkout.methods.grabpay"');
-    expect(checkoutSource).toContain('labelKey: "strictMigration.checkout.methods.bankTransfer"');
+    expect(checkoutSource).toContain('from "@/lib/checkout/payment-choices"');
+    expect(choicesSource).toContain('labelKey: "strictMigration.checkout.methods.tng"');
+    expect(choicesSource).toContain('labelKey: "strictMigration.checkout.methods.grabpay"');
+    expect(choicesSource).toContain('labelKey: "strictMigration.checkout.methods.bankTransfer"');
     expect(checkoutSource).toContain('paymentProvider');
     expect(checkoutSource).toContain('simulatorUrl');
     expect(checkoutSource).not.toContain('Pay (Success)');

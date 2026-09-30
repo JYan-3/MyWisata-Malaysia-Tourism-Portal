@@ -343,15 +343,41 @@ export const eventPromotionResubmitSchema = eventPromotionSubmitSchema;
 // latter is never written into the vendor's real /vendor/products catalog,
 // it only ever exists on the registration. See 20260928180000 migration.
 
+// Every event listing carries its own price, item type and daily quantity,
+// whether it references a catalog product or is new for the event.
+const campaignListingFields = {
+  price: z.number().min(0).max(999_999.99),
+  dailyQuantity: z.number().int().min(0).max(10_000),
+  itemKind: z.enum(['product', 'service']),
+};
+
 export const campaignRegistrationProductSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('existing'), productId: databaseUuidSchema }).strict(),
+  z.object({ kind: z.literal('existing'), productId: databaseUuidSchema, ...campaignListingFields }).strict(),
   z.object({
     kind: z.literal('new'),
     name: z.string().trim().min(2).max(120),
-    price: z.number().min(0).max(999_999.99),
     imageUrl: z.string().url().max(2000).nullable(),
+    ...campaignListingFields,
   }).strict(),
 ]);
+
+/** What a vendor may change on a listing without re-review: stock and on/off, never price. */
+export const campaignListingUpdateSchema = z.object({
+  dailyQuantity: z.number().int().min(0).max(10_000),
+  active: z.boolean(),
+}).strict();
+
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+/** A pickup window at one event location: every day (slotDate null) or one extra date. */
+export const pickupSlotSchema = z.object({
+  registrationId: databaseUuidSchema,
+  slotId: databaseUuidSchema.nullable().optional(),
+  slotDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  startsAt: clockTime,
+  endsAt: clockTime,
+  capacity: z.number().int().min(1).max(10_000),
+}).strict().refine((slot) => slot.endsAt > slot.startsAt, { message: 'End time must be after start time', path: ['endsAt'] });
 
 export const campaignRegistrationSubmitSchema = z.object({
   stallNumber: z.string().trim().min(1).max(40),
@@ -389,3 +415,5 @@ export type EventPromotionResubmit = z.infer<typeof eventPromotionResubmitSchema
 export type CampaignRegistrationProduct = z.infer<typeof campaignRegistrationProductSchema>;
 export type CampaignRegistrationSubmit = z.infer<typeof campaignRegistrationSubmitSchema>;
 export type CampaignRegistrationResubmit = z.infer<typeof campaignRegistrationResubmitSchema>;
+export type CampaignListingUpdate = z.infer<typeof campaignListingUpdateSchema>;
+export type PickupSlotInput = z.infer<typeof pickupSlotSchema>;

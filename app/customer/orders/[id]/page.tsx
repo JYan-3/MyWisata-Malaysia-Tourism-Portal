@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
 import { BookingQrCode } from "@/components/customer/booking-qr-code";
 import { FoodOrderQrCodes } from "@/components/customer/food-order-qr-codes";
+import { EventPickupQrCodes } from "@/components/customer/event-pickup-qr-codes";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order, Outlet } from "@/backend/core/types";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -502,6 +503,7 @@ export default function OrderDetailPage() {
                 </section>
               )}
               {isPaid && <FoodOrderQrCodes orderId={order.id} />}
+              {isPaid && <EventPickupQrCodes orderId={order.id} />}
             </div>
 
             {/* Right Column: Order Summary & Quick Action Card (1 Col) */}

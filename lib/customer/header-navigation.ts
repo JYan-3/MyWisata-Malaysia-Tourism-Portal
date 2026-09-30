@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Compass, Gift, Heart, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
+import { Bell, CalendarDays, Compass, Gift, Heart, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -21,6 +21,7 @@ export type CustomerAccountGroup = {
 export const CUSTOMER_NAV: CustomerNavigationItem[] = [
   { href: "/customer", label: "Home", labelKey: "navigation.home", icon: Home },
   { href: "/customer/explore", label: "Explore", labelKey: "navigation.explore", icon: Compass },
+  { href: "/customer/events", label: "Events", labelKey: "navigation.events", icon: CalendarDays },
   { href: "/customer/partners", label: "Partners", labelKey: "navigation.search", icon: Store },
   { href: "/customer/trip", label: "Trip", labelKey: "navigation.trip", icon: Map },
 ];

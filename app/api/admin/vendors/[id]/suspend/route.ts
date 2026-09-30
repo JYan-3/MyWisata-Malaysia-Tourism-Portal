@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: Props) {
 
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('*')
+    .select('id,name,status,owner_id')
     .eq('id', vendorId)
     .single();
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { hashRecommendationInviteToken } from '@/lib/recommendations/invite-token';
 import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
@@ -9,8 +10,9 @@ const claimSchema = z.object({
   businessName: z.string().trim().min(2).max(255),
   legalBusinessName: z.string().trim().min(2).max(255),
   description: z.string().trim().min(10).max(2000),
-  categoryId: z.string().uuid(),
-  outletName: z.string().trim().min(2).max(255),
+  // Required for shop invites only; event vendors have no category or outlet.
+  categoryId: z.string().uuid().optional(),
+  outletName: z.string().trim().min(2).max(255).optional(),
   contactEmail: z.string().trim().email().max(255),
   contactPhone: z.string().trim().max(50).optional(),
   businessAddress: z.string().trim().min(5).max(500),
@@ -32,6 +34,7 @@ function claimError(message: string) {
     owner_already_has_vendor: { code: 'OWNER_ALREADY_HAS_VENDOR', status: 409, text: 'This account already owns a vendor.' },
     category_not_active: { code: 'CATEGORY_NOT_ACTIVE', status: 409, text: 'The selected vendor category is no longer available.' },
     phone_verification_required: { code: 'PHONE_VERIFICATION_REQUIRED', status: 403, text: 'Phone verification is required before claiming a vendor' },
+    claim_details_invalid: { code: 'VALIDATION_FAILED', status: 422, text: 'Some business details are missing or too long.' },
   };
   const mapped = Object.entries(mappings).find(([key]) => message.includes(key))?.[1];
   return mapped ?? { code: 'CLAIM_FAILED', status: 409, text: 'Unable to claim this vendor invitation.' };
@@ -55,8 +58,38 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
 
   const { token, ...input } = parsed.data;
+  const tokenHash = hashRecommendationInviteToken(token);
+
+  // The invite decides which vendor kind is created — never the request body.
+  const { data: invite } = await createServiceClient()
+    .from('vendor_recommendation_invites')
+    .select('vendor_kind')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+  if (invite?.vendor_kind === 'event') {
+    const { data, error } = await db.rpc('claim_event_vendor_invite', {
+      p_token_hash: tokenHash,
+      p_business_name: input.businessName,
+      p_legal_business_name: input.legalBusinessName,
+      p_description: input.description,
+      p_contact_email: input.contactEmail,
+      p_contact_phone: input.contactPhone?.trim() || null,
+      p_business_address: input.businessAddress,
+    });
+    if (error) {
+      const mapped = claimError(error.message ?? 'claim_failed');
+      return apiFail(mapped.code, mapped.text, mapped.status);
+    }
+    return apiOk(data, { status: 201 });
+  }
+
+  if (!input.categoryId || !input.outletName) {
+    return apiFail('VALIDATION_FAILED', 'Category and first outlet are required', 422, {
+      fieldErrors: { ...(input.categoryId ? {} : { categoryId: ['Required'] }), ...(input.outletName ? {} : { outletName: ['Required'] }) },
+    });
+  }
   const { data, error } = await db.rpc('claim_vendor_recommendation', {
-    p_token_hash: hashRecommendationInviteToken(token),
+    p_token_hash: tokenHash,
     p_business_name: input.businessName,
     p_legal_business_name: input.legalBusinessName,
     p_description: input.description,

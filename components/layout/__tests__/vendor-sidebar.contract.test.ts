@@ -8,7 +8,7 @@ const gateSource = readFileSync(resolve(process.cwd(), "components/layout/vendor
 
 describe("Outlet Manager navigation", () => {
   it("uses the shared role-specific navigation source consumed by the command palette", () => {
-    expect(source).toContain("getVendorNavigationSections(isOutletManager)");
+    expect(source).toContain("getVendorNavigationSections(isOutletManager, isEventVendor)");
     expect(source).not.toContain("const OUTLET_MANAGER_SECTIONS");
     expect(getVendorNavigationSections(false).flatMap((section) => section.items.map((item) => item.href))).toEqual([
       "/vendor/dashboard",
@@ -25,6 +25,7 @@ describe("Outlet Manager navigation", () => {
       "/vendor/analytics",
       "/vendor/event-promotions",
       "/vendor/events",
+      "/vendor/event-orders",
     ]);
     expect(getVendorNavigationSections(true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
       "/vendor/dashboard",
@@ -39,6 +40,14 @@ describe("Outlet Manager navigation", () => {
       "/vendor/analytics",
       "/vendor/event-promotions",
       "/vendor/events",
+    ]);
+    // Event vendors: events, payouts and invitations only — no shop pages.
+    expect(getVendorNavigationSections(false, true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
+      "/vendor/events",
+      "/vendor/event-orders",
+      "/vendor/scanner",
+      "/vendor/wallet",
+      "/vendor/announcements",
     ]);
   });
 

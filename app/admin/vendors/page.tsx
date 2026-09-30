@@ -30,6 +30,7 @@ import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
+import { CreateEventVendorModal } from './create-event-vendor-modal';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 // 'welcomed' is UI-only — not a real vendors.status value. It's a narrower
@@ -52,6 +53,8 @@ interface VendorData {
   name: string;
   slug: string;
   status: VendorStatus;
+  /** 'event' vendors sell only at events; approval needs the owner's KYC. */
+  kind?: 'shop' | 'event';
   created_at: string;
   description: string | null;
   business_type: string | null;
@@ -134,6 +137,7 @@ export default function AdminVendorsPage() {
   const [linkingVendor, setLinkingVendor] = useState<string | null>(null);
   const [selectedRec, setSelectedRec] = useState<Record<string, string>>({});
   const [approvalEmailTarget, setApprovalEmailTarget] = useState<{ id: string; name: string; defaultEmail?: string } | null>(null);
+  const [eventVendorOpen, setEventVendorOpen] = useState(false);
   const [reasonModal, setReasonModal] = useState<{ vendor: VendorData; action: 'reject' | 'suspend' | 'request_information' } | null>(null);
 
   const loadVendors = useCallback(async () => {
@@ -210,8 +214,12 @@ export default function AdminVendorsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const result = await response.json().catch(() => ({})) as { error?: string; message?: string };
-    if (!response.ok) throw new Error(result.error ?? result.message ?? t('ui.vendors.errors.action'));
+    const result = await response.json().catch(() => ({})) as { error?: { code?: string; message?: string } | string; message?: string };
+    if (!response.ok) {
+      const failure = typeof result.error === 'object' ? result.error : null;
+      if (failure?.code === 'OWNER_KYC_REQUIRED') throw new Error(t('ui.vendors.errors.ownerKycRequired'));
+      throw new Error(failure?.message ?? (typeof result.error === 'string' ? result.error : undefined) ?? result.message ?? t('ui.vendors.errors.action'));
+    }
   }
 
   async function runAction(vendor: VendorData, action: ActionType, reason?: string) {
@@ -329,6 +337,9 @@ export default function AdminVendorsPage() {
           title={t('ui.vendors.title')}
           description={t('ui.vendors.description')}
           actions={<>
+            <button type="button" onClick={() => setEventVendorOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary">
+              <Mail size={16} /> {t('ui.vendors.eventVendor.open')}
+            </button>
             <button type="button" onClick={exportCurrentView} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary">
               <ExternalLink size={16} /> {t('ui.vendors.export')}
             </button>
@@ -434,7 +445,7 @@ export default function AdminVendorsPage() {
                       <td className="px-3 py-4 align-top">
                         <button type="button" onClick={() => setActiveVendor(vendor)} className="flex max-w-[290px] items-start gap-3 text-left">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-sm font-bold text-primary">{initials(vendor.name)}</div>
-                          <span className="min-w-0"><span className="block truncate font-bold text-foreground group-hover:text-primary">{vendor.name}</span><span className="mt-1 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">{vendor.id.slice(0, 8)}… <Copy size={11} /></span></span>
+                          <span className="min-w-0"><span className="block truncate font-bold text-foreground group-hover:text-primary">{vendor.name}</span>{vendor.kind === 'event' && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">{t('ui.vendors.eventVendor.badge')}</span>}<span className="mt-1 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">{vendor.id.slice(0, 8)}… <Copy size={11} /></span></span>
                         </button>
                       </td>
                       <td className="px-3 py-4 align-top"><div className="flex items-start gap-2"><UserRound size={15} className="mt-0.5 shrink-0 text-muted-foreground" /><span><span className="block font-semibold text-foreground">{owner.full_name ?? t('ui.vendors.ownerUnnamed')}</span><span className="mt-1 block max-w-[210px] truncate text-xs text-muted-foreground">{owner.email ?? t('ui.vendors.noEmail')}</span></span></div></td>
@@ -478,6 +489,15 @@ export default function AdminVendorsPage() {
           setActiveVendor(null);
           setNotice(t('ui.vendors.approvalEmail.sent'));
           void loadVendors();
+        }}
+      />
+
+      <CreateEventVendorModal
+        open={eventVendorOpen}
+        onClose={() => setEventVendorOpen(false)}
+        onSent={(email) => {
+          setEventVendorOpen(false);
+          setNotice(t('ui.vendors.eventVendor.sent', { email }));
         }}
       />
 

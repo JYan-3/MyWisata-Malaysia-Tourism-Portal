@@ -176,6 +176,22 @@ export const walletApproverPatchSchema = z.object({
 
 export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).or(z.string().min(16).max(128));
 
+/** Reserve-now checkout for one event item: price, stock and slot are decided in SQL. */
+export const eventCheckoutSchema = z.object({
+  listingId: uuid,
+  pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  slotId: uuid,
+  quantity: z.number().int().min(1).max(20),
+  paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'wallet_split', 'mock_card', 'free_reservation']),
+  paymentProvider: z.enum([
+    'tng_ewallet_simulator',
+    'grabpay_simulator',
+    'bank_transfer_simulator',
+    'toyyibpay',
+  ]).nullable().optional(),
+  idempotencyKey: idempotencyHeaderSchema,
+}).strict();
+
 export const checkoutPrepareSchema = z.object({
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
   voucherCode: z.string().trim().max(50).nullable().optional(),

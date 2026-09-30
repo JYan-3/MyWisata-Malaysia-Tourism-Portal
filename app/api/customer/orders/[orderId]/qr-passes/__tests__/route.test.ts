@@ -6,6 +6,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ aut
 import { GET } from "../route";
 import { verifyTicketPassToken } from "@/lib/tickets/tokens";
 import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
+import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
 
 function query(data: unknown, error: { code: string; message: string } | null = null) {
   const result = Promise.resolve({ data, error });
@@ -141,5 +142,27 @@ describe("GET customer order QR passes", () => {
     });
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });
     expect((await response.json()).data.foodOrders[0].status).toBe("fulfilled");
+  });
+
+  it("issues one pickup code per stall and date for event reservations, valid for that date", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
+      if (table === "bookings") return query([]);
+      return query([
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", product_name: "Kuih", variant_name: "Main hall · 10:00–11:00", quantity: 2, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", product_name: "Teh", variant_name: "Main hall · 10:00–11:00", quantity: 1, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-30", product_name: "Kuih", variant_name: "Main hall · 12:00–13:00", quantity: 1, fulfil_status: "cancelled", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+      ]);
+    });
+
+    const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });
+    const pickups = (await response.json()).data.eventPickups;
+
+    expect(pickups).toHaveLength(1);
+    expect(pickups[0]).toMatchObject({ vendorName: "Kuih Stall", pickupDate: "2099-12-31", pickupLabels: ["Main hall · 10:00–11:00"], status: "pending" });
+    expect(pickups[0].items).toEqual([{ name: "Kuih", quantity: 2 }, { name: "Teh", quantity: 1 }]);
+    const verified = verifyEventPickupToken(pickups[0].eventToken);
+    expect(verified.valid).toBe(true);
+    expect(verified.claims).toMatchObject({ orderId: "order-1", vendorId: "vendor-e", locationId: "loc-1", pickupDate: "2099-12-31" });
   });
 });

@@ -87,6 +87,33 @@ export default function VendorInviteClient({ token }: { token: string }) {
 
   const { preview } = state;
 
+  if (preview.vendorKind === 'event') {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <div className="mb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('invite.event.eyebrow')}</p>
+          <h1 className="mt-2 text-3xl font-bold text-foreground">{t('invite.event.title', { business: preview.recommendation.businessName })}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t('invite.event.description')}</p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:items-start">
+          <section className="space-y-3 rounded-2xl border border-border bg-card p-6 text-sm leading-6 text-muted-foreground">
+            <h2 className="text-lg font-bold text-foreground">{t('invite.event.howItWorks')}</h2>
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>{t('invite.event.stepAccount')}</li>
+              <li>{t('invite.event.stepKyc')}</li>
+              <li>{t('invite.event.stepReview')}</li>
+              <li>{t('invite.event.stepEvents')}</li>
+            </ol>
+            <p className="flex items-start gap-2 rounded-xl bg-secondary/50 px-4 py-3 text-xs">
+              <ShieldCheck size={15} className="mt-0.5 shrink-0 text-primary" /> {t('invite.event.kycNotice')}
+            </p>
+          </section>
+          <VendorInviteWizard token={token} preview={preview} onReload={loadPreview} />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mb-6">

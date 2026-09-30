@@ -17,15 +17,19 @@ const campaign = {
   startsAt: "2026-09-25T12:00:00.000Z",
   endsAt: "2026-09-26T12:00:00.000Z",
   visibility: "live",
+  locations: [],
   vendors: [{
-    registrationId: "22222222-2222-4222-8222-222222222222",
     vendorId: "vendor-a",
     vendorName: "Vendor A",
     vendorLogoUrl: null,
-    stallNumber: "A1",
-    stallDescription: "A real stall description.",
-    stallPosterUrl: "https://x/stall.jpg",
-    products: [{ id: "product-a", name: "A real product", price: 12, imageUrl: null }],
+    stalls: [{
+      registrationId: "22222222-2222-4222-8222-222222222222",
+      locationId: "33333333-3333-4333-8333-333333333333",
+      stallNumber: "A1",
+      stallDescription: "A real stall description.",
+      stallPosterUrl: "https://x/stall.jpg",
+      products: [{ id: "product-a", name: "A real product", price: 12, imageUrl: null }],
+    }],
   }],
 };
 
@@ -63,7 +67,7 @@ describe("GET /api/customer/promotion-campaigns", () => {
     mocks.rpc.mockResolvedValueOnce({
       data: [{
         ...campaign,
-        vendors: [{ ...campaign.vendors[0], products: [{ ...campaign.vendors[0].products[0], imageUrl: "/assets/customer/products/real-product.jpg" }] }],
+        vendors: [{ ...campaign.vendors[0], stalls: [{ ...campaign.vendors[0].stalls[0], products: [{ ...campaign.vendors[0].stalls[0].products[0], imageUrl: "/assets/customer/products/real-product.jpg" }] }] }],
       }],
       error: null,
     });
@@ -72,7 +76,7 @@ describe("GET /api/customer/promotion-campaigns", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data.campaigns[0].vendors[0].products[0].imageUrl).toBe("https://project.supabase.co/storage/v1/object/public/product-images/products/real-product.jpg");
+    expect(body.data.campaigns[0].vendors[0].stalls[0].products[0].imageUrl).toBe("https://project.supabase.co/storage/v1/object/public/product-images/products/real-product.jpg");
   });
 
   it("rejects malformed slugs without querying the database", async () => {

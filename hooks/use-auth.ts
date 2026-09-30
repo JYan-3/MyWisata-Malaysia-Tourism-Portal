@@ -24,9 +24,11 @@ export function useAuth() {
   const isApprover = user?.roles.includes('approver') ?? false;
   const isVendorOwner = user?.roles.includes('vendor_owner') ?? false;
   const isOutletManager = user?.roles.includes('outlet_manager') ?? false;
-  const isVendor = isVendorOwner || isOutletManager;
+  // Event vendors sell only at events: their own portal, never shop pages.
+  const isEventVendor = user?.roles.includes('event_vendor') ?? false;
+  const isVendor = isVendorOwner || isOutletManager || isEventVendor;
   const isKyc = user?.kycStatus === 'approved';
   const canEarn = isKyc && !!user?.profileComplete;
 
-  return { user, loading, isAdmin, isApprover, isVendor, isVendorOwner, isOutletManager, isKyc, canEarn };
+  return { user, loading, isAdmin, isApprover, isVendor, isVendorOwner, isOutletManager, isEventVendor, isKyc, canEarn };
 }
