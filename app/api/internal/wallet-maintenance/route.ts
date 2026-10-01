@@ -47,5 +47,3 @@ export async function POST(request: Request) {
   if (reportError) return apiFail('REPORT_GENERATION_FAILED', 'Unable to generate the monthly payout report', 500);
   return apiOk({ periodStart, escalated: Number(escalated ?? 0), rewardsCleared, vendorSettlements, report });
 }
-
-export { currentMalaysiaMonthStart };
