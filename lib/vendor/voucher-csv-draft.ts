@@ -17,7 +17,7 @@ export type VoucherCsvDraftSummary = {
 export function normalizeVoucherCsvDraft(document: VoucherCsvDraftDocument): VoucherCsvDraftDocument {
   return {
     title: document.title.trim(),
-    rows: document.rows.map((row) => ({ ...row, name: row.name.trim(), code: row.code.trim().toUpperCase() })),
+    rows: document.rows.map((row) => ({ ...row, redemptionMode: row.redemptionMode ?? 'online', name: row.name.trim(), code: row.code.trim().toUpperCase() })),
     autoGenerate: Boolean(document.autoGenerate),
     codePrefix: document.codePrefix.trim().toUpperCase(),
   };

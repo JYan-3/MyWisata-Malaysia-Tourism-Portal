@@ -28,10 +28,21 @@ describe("production Explore MapLibre map", () => {
     expect(mapSource).toContain('"fill-extrusion-opacity", 0.86');
   });
 
-  it("keeps only the map label, 3D status, and required attribution visible", () => {
+  it("removes the Events 2D label and places attribution below the map", () => {
     expect(mapSource).toContain("Explore the map");
-    expect(mapSource).toContain("3D buildings");
+    expect(mapSource).not.toContain('t("ui.map.buildings3D"');
+    expect(mapSource).not.toContain('t("ui.map.view3D"');
+    expect(mapSource).not.toContain("Move3d");
     expect(mapSource).toContain('t("ui.map.attribution")');
+    expect(mapSource).toContain('href="https://www.openstreetmap.org/copyright"');
+    expect(mapSource.match(/href="https:\/\/www\.openstreetmap\.org\/copyright"/g)).toHaveLength(1);
+    expect(mapSource).not.toContain("{!isEventsMap && (");
+    expect(mapSource).toContain('className={isEventsMap ? "mt-3 inline-block text-sm leading-5 text-foreground hover:text-primary" : "mt-2 inline-block text-[10px] leading-4 text-muted-foreground hover:text-foreground"}');
+    expect(mapSource.indexOf('href="https://www.openstreetmap.org/copyright"')).toBeGreaterThan(mapSource.lastIndexOf("    </div>"));
+    expect(mapSource).not.toContain('t("ui.promotionCampaigns.map.flatView")');
+    expect(mapSource).not.toContain('className="pointer-events-none absolute right-5 top-5 z-10');
+    expect(mapSource).not.toContain('className="absolute bottom-3 right-3 z-10');
+    expect(mapSource).toContain('{isEventsMap && <NavigationControl position="bottom-right" showCompass showZoom={false} />}');
     expect(mapSource).not.toContain("Malaysia 3D Atlas");
     expect(mapSource).not.toContain("All states and federal territories");
     expect(mapSource).not.toContain("selected</div>");

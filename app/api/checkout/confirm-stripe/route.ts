@@ -32,6 +32,12 @@ export async function POST(request: Request) {
     checkoutSessionId: session.metadata.checkout_session_id,
   });
   const service = createServiceClient();
+  const { error: environmentError } = await service.rpc('mark_checkout_payment_environment', {
+    p_checkout_session_id: session.metadata.checkout_session_id,
+    p_provider_payment_id: session.id,
+    p_is_live: session.livemode === true,
+  });
+  if (environmentError) return NextResponse.json({ error: 'Unable to record verified payment environment' }, { status: 500 });
   const { data, error } = await service.rpc('settle_provider_checkout', {
     p_checkout_session_id: session.metadata.checkout_session_id,
     p_provider: 'stripe',

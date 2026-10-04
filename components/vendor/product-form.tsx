@@ -22,7 +22,7 @@ import { formatMYRNumber } from '@/lib/i18n/format';
 interface Props {
   vendorId: string;
   outletIds?: string[];
-  initialData?: Partial<ProductCreate> & { id?: string };
+  initialData?: Partial<ProductCreate> & { id?: string; inventoryConfigured?: boolean; inventorySetupSingleEntry?: boolean };
   onSuccess?: () => void;
   onClose?: () => void;
 }
@@ -45,7 +45,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { register, handleSubmit, getValues, setValue, watch, formState: { errors, isSubmitting } } = useForm<any>({
+  const { register, handleSubmit, getValues, setValue, watch, formState: { errors, isSubmitting, dirtyFields } } = useForm<any>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(formSchema) as any,
     shouldFocusError: true,
@@ -153,7 +153,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       gallery: gallery.length ? gallery : undefined,
       ...(initialData?.id ? {} : { outletId: data.outletId }),
     };
-    if (intent === 'review') {
+    if (intent === 'review' && !initialData?.id) {
       const readinessErrors = validateProductReviewReadiness({
         productType: normalizedData.productType,
         coverUrl: normalizedData.coverUrl,
@@ -173,10 +173,18 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         ? `/api/vendors/${vendorId}/products/${initialData.id}` 
         : `/api/vendors/${vendorId}/products`;
         
+      const contentFields = ['name', 'description', 'productType', 'requiresBooking', 'ticketEntryPolicy', 'ticketEntryLimit', 'ticketValidityDays', 'basePrice', 'categoryId', 'coverUrl', 'tags', 'defaultCapacity', 'digitalAssetUrl', 'digitalAssetName', 'digitalAssetType', 'digitalAssetSize', 'gallery'];
+      const inventoryOnlySetup = Boolean(initialData?.id && initialData.inventoryConfigured === false && initialData.inventorySetupSingleEntry !== false && !contentFields.some((field) => dirtyFields[field]));
+      const requestData = inventoryOnlySetup
+        ? {
+            ...(normalizedData.availableStock !== undefined ? { availableStock: normalizedData.availableStock } : {}),
+            ...(dirtyFields.lowStockThreshold && normalizedData.lowStockThreshold !== undefined ? { lowStockThreshold: normalizedData.lowStockThreshold } : {}),
+          }
+        : normalizedData;
       const res = await fetch(url, {
         method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(normalizedData),
+        body: JSON.stringify(requestData),
       });
       
       const result = await res.json().catch(() => null);
@@ -401,19 +409,22 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             </div>
             <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">{productType}</span>
           </div>
-          {['product', 'food'].includes(productType) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.initialStock')}</label>
-                <Input {...register('availableStock', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="0" />
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {errors.availableStock && <p className="mt-1 text-xs text-red-600">{(errors.availableStock as any)?.message}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.lowStockAlert')}</label>
-                <Input {...register('lowStockThreshold', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="5" />
-              </div>
-            </div>
+          {['product', 'food'].includes(productType) && !requiresBooking && (
+            initialData?.id && initialData.inventorySetupSingleEntry === false
+              ? <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900" role="status">{t('productForm.variantStockHint')}</p>
+              : <div className="grid grid-cols-2 gap-4">
+                  {initialData?.id && initialData.inventoryConfigured === false && <p className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900" role="status">{t('productForm.stockSetupHint')}</p>}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.initialStock')}</label>
+                    <Input {...register('availableStock', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder={initialData?.id && initialData.inventoryConfigured === false ? t('productForm.stockQuantityPlaceholder') : '0'} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {errors.availableStock && <p className="mt-1 text-xs text-red-600">{(errors.availableStock as any)?.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.lowStockAlert')}</label>
+                    <Input {...register('lowStockThreshold', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="5" />
+                  </div>
+                </div>
           )}
           {['activity', 'experience', 'service'].includes(productType) && (
             <div>
@@ -449,14 +460,14 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+      <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-4 sm:flex sm:justify-end sm:gap-3">
         {onClose && (
-          <Button type="button" variant="outline" onClick={onClose}>{tCommon('actions.cancel')}</Button>
+          <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">{tCommon('actions.cancel')}</Button>
         )}
-        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => submitForm('draft')}>
+        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => submitForm('draft')} className="w-full sm:w-auto">
           {isSubmitting && submitIntent === 'draft' ? t('productForm.savingDraft') : t('productForm.saveDraft')}
         </Button>
-        <Button type="button" disabled={isSubmitting} onClick={() => submitForm('review')}>
+        <Button type="button" disabled={isSubmitting} onClick={() => submitForm('review')} className="col-span-2 w-full sm:col-span-1 sm:w-auto">
           {isSubmitting && submitIntent === 'review' ? t('productForm.submitting') : <><Check size={15} /> {t('productForm.submitReview')}</>}
         </Button>
       </div>

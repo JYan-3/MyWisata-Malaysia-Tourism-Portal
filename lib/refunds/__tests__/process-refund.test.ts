@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
@@ -32,40 +33,60 @@ function serviceStub(refund: Record<string, unknown> | null, queued: { id: strin
     builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: queued, error: null }).then(resolve);
     return builder;
   });
-  return { service: { from, rpc } as never, updates, rpc };
+  return { service: { from, rpc } as unknown as SupabaseClient, updates, rpc };
 }
 
-function refundRow(payment: Payment, status = 'pending') {
-  return { id: 'refund-1', order_id: 'order-1', payment_id: 'payment-1', amount: 28, status, payments: payment };
+function refundRow(payment: Payment, status = 'pending', funding = { wallet_topup_sen: 700, wallet_earnings_sen: 600, external_amount_sen: 1500 }) {
+  return {
+    id: 'refund-1', order_id: 'order-1', payment_id: 'payment-1', amount: 28, status, payments: payment,
+    ...funding,
+  };
 }
 
 describe('processRefund', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.retrieve.mockResolvedValue({ payment_intent: 'pi_1' });
-    mocks.refundsCreate.mockResolvedValue({ id: 're_1' });
+    mocks.refundsCreate.mockResolvedValue({ id: 're_1', status: 'succeeded', amount: 1500, currency: 'myr' });
   });
 
-  it('refunds a Stripe card payment in full, then marks refund, payment and order refunded', async () => {
+  it('refunds only the external Stripe leg and completes wallet restoration atomically', async () => {
     const { service, updates } = serviceStub(refundRow({ method: 'stripe_card', provider: 'stripe', provider_payment_id: 'cs_1' }));
 
     const result = await processRefund({ service, walletDb: service, refundId: 'refund-1', actorId: null });
 
     expect(result.ok).toBe(true);
-    expect(mocks.refundsCreate).toHaveBeenCalledWith({ payment_intent: 'pi_1', amount: 2800 }, { idempotencyKey: 'refund:refund-1' });
-    expect(updates.map((update) => update.table)).toEqual(['refunds', 'payments', 'orders']);
-    // The cancellation reason survives when there is no admin note.
-    expect(updates[0].values).not.toHaveProperty('reason');
-    expect(mocks.reverseSettlement).toHaveBeenCalledWith(service, 'order-1', 2800);
+    expect(mocks.refundsCreate).toHaveBeenCalledWith(
+      { payment_intent: 'pi_1', amount: 1500, metadata: { mywisata_refund_id: 'refund-1' } },
+      { idempotencyKey: 'refund:refund-1' },
+    );
+    expect(service.rpc).toHaveBeenCalledWith('record_order_refund_provider_outcome', expect.objectContaining({
+      p_refund_id: 'refund-1', p_provider_refund_id: 're_1', p_outcome: 'succeeded', p_amount_sen: 1500, p_currency: 'MYR',
+    }));
+    expect(updates).toEqual([]);
+    expect(mocks.reverseSettlement).not.toHaveBeenCalled();
+  });
+
+  it('keeps a Stripe refund pending until the provider confirms it', async () => {
+    mocks.refundsCreate.mockResolvedValue({ id: 're_1', status: 'pending', amount: 1500, currency: 'myr' });
+    const { service, updates } = serviceStub(refundRow({ method: 'stripe_card', provider: 'stripe', provider_payment_id: 'cs_1' }));
+    const result = await processRefund({ service, walletDb: service, refundId: 'refund-1', actorId: 'admin-1' });
+    expect(result.ok).toBe(true);
+    expect(service.rpc).toHaveBeenCalledWith('record_order_refund_provider_outcome', expect.objectContaining({ p_outcome: 'pending' }));
+    expect(updates).toEqual([]);
   });
 
   it('refunds a wallet payment through process_wallet_refund on the given client', async () => {
-    const { service, rpc } = serviceStub(refundRow({ method: 'wallet', provider: 'platform', provider_payment_id: null }));
+    const { service, rpc } = serviceStub(refundRow(
+      { method: 'wallet', provider: 'platform', provider_payment_id: null },
+      'pending',
+      { wallet_topup_sen: 1600, wallet_earnings_sen: 1200, external_amount_sen: 0 },
+    ));
 
     const result = await processRefund({ service, walletDb: service, refundId: 'refund-1', actorId: null });
 
     expect(result.ok).toBe(true);
-    expect(rpc).toHaveBeenCalledWith('process_wallet_refund', { p_refund_id: 'refund-1', p_note: null });
+    expect(rpc).toHaveBeenCalledWith('process_wallet_refund', { p_refund_id: 'refund-1', p_note: null, p_actor_id: null });
     expect(mocks.refundsCreate).not.toHaveBeenCalled();
   });
 
@@ -76,6 +97,14 @@ describe('processRefund', () => {
 
     expect(result).toMatchObject({ ok: false, code: 'MANUAL_REFUND_REQUIRED' });
     expect(updates).toEqual([]);
+  });
+
+  it('requires a manual refund reference before recording an offline provider refund', async () => {
+    const { service, updates } = serviceStub(refundRow({ method: 'bank_transfer', provider: 'toyyibpay', provider_payment_id: 'bill-1' }));
+    const result = await processRefund({ service, walletDb: service, refundId: 'refund-1', actorId: 'admin-1' });
+    expect(result).toMatchObject({ ok: false, code: 'MANUAL_REFUND_REFERENCE_REQUIRED' });
+    expect(updates).toEqual([]);
+    expect(service.rpc).not.toHaveBeenCalled();
   });
 
   it('refuses a refund that is no longer pending', async () => {

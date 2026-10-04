@@ -18,6 +18,7 @@ let additionalCartItemRows: Record<string, unknown>[] = [];
 let productLookupError: unknown = null;
 let voucherRow: Record<string, unknown> | null = null;
 let outletOfferRows: Record<string, unknown>[] = [];
+let serviceWriteError: Error | null = null;
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -95,6 +96,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     additionalCartItemRows = [];
     voucherRow = null;
     outletOfferRows = [];
+    serviceWriteError = null;
     cartItemRow = {
       id: CART_ITEM_ID,
       variant_id: VARIANT_ID,
@@ -143,7 +145,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       if (table === 'vouchers') return queryResult(voucherRow);
       throw new Error(`unexpected table ${table}`);
     });
-    mocks.serviceFrom.mockImplementation(() => queryResult(null));
+    mocks.serviceFrom.mockImplementation(() => queryResult({ id: CHECKOUT_ID }, serviceWriteError));
   });
 
   afterEach(() => {
@@ -218,6 +220,23 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     }));
     expect(mocks.serviceFrom).toHaveBeenCalledWith('payments');
     expect(mocks.serviceFrom).toHaveBeenCalledWith('checkout_sessions');
+  });
+
+  it('does not expose a Stripe URL when the payment reference cannot be persisted', async () => {
+    serviceWriteError = new Error('database unavailable');
+    mocks.stripeCreate.mockResolvedValue({ id: 'cs_test_unattached', url: 'https://checkout.stripe.test/cs_test_unattached' });
+
+    const response = await POST(new Request('http://localhost/api/checkout/prepare', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ paymentMethod: 'stripe_card', idempotencyKey: 'stripe-write-failure-key-123456' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({ error: { code: 'PAYMENT_SESSION_PERSIST_FAILED' } });
+    expect(body.data).toBeNull();
+    expect(body.data?.stripeUrl).toBeUndefined();
   });
 
   it('charges only the external remainder to Stripe for a wallet split', async () => {

@@ -6,8 +6,8 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
 import { outletShortName } from '@/lib/outlet-display';
-import { authorizeVendor } from '@/lib/vendor-authorization';
-import { filterProductsByOutlet, resolveProductOutlet, type ProductOutletCandidate } from '@/lib/vendor/product-scope';
+import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-authorization';
+import { filterProductsByOutlet, getOutletStock, isInventoryConfiguredForOutlets, scopeProductOutletData, resolveProductOutlet, type ProductOutletCandidate } from '@/lib/vendor/product-scope';
 import { getOutletProductIds } from '@/backend/domains/catalogue';
 import {
   DEFAULT_PRODUCT_TICKET_ADMISSION,
@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: Props) {
 
   const selection = metadataOnly
     ? 'id,name,requires_booking,status,outlet_id,outlets(id,name),outlet_offers(outlet_id,status,outlets(id,name))'
-    : 'id,display_id,name,slug,description,product_type,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state)),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold))';
+    : 'id,display_id,name,slug,description,product_type,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state,status),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state,status)),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),booking_slots(outlet_id,starts_at,status,capacity,booked)';
   const legacySelection = selection.replace('ticket_entry_policy,ticket_entry_limit,ticket_validity_days,', '');
   let outletProductIds: Set<string> | null = null;
 
@@ -46,12 +46,16 @@ export async function GET(request: Request, { params }: Props) {
   // Keep direct outlet products and shared products in the same vendor view;
   // resolveProductOutlet below enforces the caller's outlet scope for shared
   // rows after their offers have been loaded.
-  if (outletId) {
-    if (!access.access.outletIds.includes(outletId)) {
+  if (outletId && !access.access.outletIds.includes(outletId)) {
       return apiFail('FORBIDDEN', 'This outlet is outside your assigned scope', 403);
-    }
+  }
+  const scopedOutletIds = outletId ? [outletId] : access.access.outletIds;
+  if (scopedOutletIds.length) {
     try {
-      outletProductIds = await getOutletProductIds(supabase, outletId);
+      const outletProductSets = await Promise.all(
+        scopedOutletIds.map((scopedOutletId) => getOutletProductIds(supabase, scopedOutletId)),
+      );
+      outletProductIds = new Set(outletProductSets.flatMap((productIds) => [...productIds]));
     } catch (error) {
       return apiFail('DB_ERROR', error instanceof Error ? error.message : 'Unable to verify outlet products', 500);
     }
@@ -67,7 +71,7 @@ export async function GET(request: Request, { params }: Props) {
       .eq('vendor_id', vendorId)
       .range((page - 1) * pageSize, page * pageSize - 1);
 
-    if (outletId && outletProductIds) {
+    if (outletProductIds) {
       query = query.in('id', [...outletProductIds]);
     } else {
       query = access.access.outletIds.length
@@ -126,7 +130,7 @@ export async function GET(request: Request, { params }: Props) {
     const scopedOffers = (product.outlet_offers ?? []).filter(
       (offer: { outlet_id: string }) => allowedOutletIds.has(offer.outlet_id),
     );
-    const scopedProduct = { ...product, outlet_offers: scopedOffers };
+    const scopedProduct = scopeProductOutletData(product, [...allowedOutletIds]);
     const resolvedOutlet = resolveProductOutlet(scopedProduct, [...allowedOutletIds]);
     if (!resolvedOutlet) return [];
     if (metadataOnly) {
@@ -138,10 +142,10 @@ export async function GET(request: Request, { params }: Props) {
         requires_booking: product.requires_booking,
       }];
     }
-    const outlet = outletId ? resolvedOutlet : product.outlets || resolvedOutlet;
+    const outlet = resolvedOutlet;
 
     // Collect all unique outlets offering this product
-    const allOutletsMap = new Map<string, { id: string; display_id?: string; name: string; short_name: string; city?: string | null; state?: string | null }>();
+    const allOutletsMap = new Map<string, { id: string; display_id?: string; name: string; short_name: string; city?: string | null; state?: string | null; status?: string | null }>();
     if (product.outlets?.id && allowedOutletIds.has(product.outlets.id)) {
       allOutletsMap.set(product.outlets.id, {
         id: product.outlets.id,
@@ -150,6 +154,7 @@ export async function GET(request: Request, { params }: Props) {
         short_name: outletShortName(product.outlets.name),
         city: product.outlets.city,
         state: product.outlets.state,
+        status: product.outlets.status,
       });
     }
     for (const offer of scopedOffers) {
@@ -161,28 +166,32 @@ export async function GET(request: Request, { params }: Props) {
           short_name: outletShortName(offer.outlets.name),
           city: offer.outlets.city,
           state: offer.outlets.state,
+          status: offer.outlets.status,
         });
       }
     }
     const allOutlets = Array.from(allOutletsMap.values());
+    const activeProductOutletIds = allOutlets.filter((candidate) => candidate.status !== 'inactive').map((candidate) => candidate.id);
     const isFeatured = Array.isArray(product.tags) && product.tags.includes('featured');
     const metric = metricsMap.get(product.id) ?? { rating: 0, reviews: 0 };
 
     return [{
-      ...product,
+      ...scopedProduct,
       outlet_offers: scopedOffers,
-      outlet_id: product.outlet_id || resolvedOutlet.id,
+      outlet_id: resolvedOutlet.id,
       outlet: { ...outlet, full_name: outlet.name, name: outletShortName(outlet.name) },
       outlets: allOutlets,
       outlets_count: allOutlets.length,
       rating: metric.rating,
       reviews: metric.reviews,
       is_featured: isFeatured,
-      variants: product.product_variants ?? [],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      lowStockThreshold: (product.product_variants ?? []).reduce((threshold: number, variant: any) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
+      variants: scopedProduct.product_variants ?? [],
+      availableSlotCount: (scopedProduct.booking_slots ?? []).filter((slot: { starts_at: string; status: string; capacity: number; booked: number }) => slot.status === 'available' && new Date(slot.starts_at).getTime() > Date.now() && slot.booked < slot.capacity).length,
+      fullFutureSlotCount: (scopedProduct.booking_slots ?? []).filter((slot: { starts_at: string; status: string; capacity: number; booked: number }) => new Date(slot.starts_at).getTime() > Date.now() && (slot.status === 'full' || slot.booked >= slot.capacity)).length,
+      ...getOutletStock(scopedProduct.product_variants ?? [], activeProductOutletIds),
+      inventoryConfigured: product.requires_booking || product.product_type === 'digital'
+        ? true
+        : isInventoryConfiguredForOutlets(scopedProduct.product_variants ?? [], activeProductOutletIds),
     }];
   });
 
@@ -201,7 +210,7 @@ export async function GET(request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId, { allowOwnerSetup: true });
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 

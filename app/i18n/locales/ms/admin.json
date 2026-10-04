@@ -2919,6 +2919,9 @@
       "simulateSuccess": "Simulasikan kejayaan"
     },
     "attempt": "Percubaan {{count}}",
+    "fundingSummary": "Tambah nilai dompet {{walletTopup}} · pendapatan dompet {{walletEarnings}} · penyedia {{provider}}",
+    "manualReferenceLabel": "Rujukan bayaran balik manual",
+    "manualReferencePrompt": "Masukkan rujukan transaksi bayaran balik bank atau penyedia yang telah selesai",
     "detail": {
       "noReason": "Tiada sebab dibekalkan"
     },
@@ -3027,7 +3030,7 @@
     "description": "Semak butiran pesanan, pembayaran dan pemenuhan outlet semasa daripada aliran pembayaran pelanggan.",
     "refresh": "Muat semula",
     "searchLabel": "ID pesanan",
-    "searchPlaceholder": "Tampal ID pesanan penuh",
+    "searchPlaceholder": "ID pesanan atau nombor pesanan",
     "search": "Cari",
     "status": "Status pesanan",
     "statuses": {

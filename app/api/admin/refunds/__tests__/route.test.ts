@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const USER_ID = '7df122f8-afae-4249-8504-bdd465a78f31';
 const REFUND_ID = '33333333-3333-4333-8333-333333333333';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFrom: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFrom: vi.fn(), processRefund: vi.fn() }));
 
 function queryResult(data: unknown, error: unknown = null) {
   const terminal = Promise.resolve({ data, error });
   const builder: Record<string, unknown> = {};
   for (const method of ['select', 'eq', 'order', 'limit']) builder[method] = vi.fn(() => builder);
+  builder.maybeSingle = vi.fn(() => terminal);
   builder.then = terminal.then.bind(terminal);
   return builder;
 }
@@ -19,8 +20,10 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom })),
 }));
+vi.mock('@/lib/refunds/process-refund', () => ({ processRefund: mocks.processRefund }));
 
 import { GET } from '../route';
+import { POST } from '../[refundId]/route';
 
 describe('GET /api/admin/refunds', () => {
   beforeEach(() => {
@@ -34,6 +37,10 @@ describe('GET /api/admin/refunds', () => {
       reason: 'Customer request',
       status: 'approved',
       provider_refund_id: 'sim_refund_0123456789abcdef0123456789abcdef01234567',
+      manual_reference: null,
+      wallet_topup_sen: 1000,
+      wallet_earnings_sen: 2000,
+      external_amount_sen: 2000,
       provider_failure_code: null,
       provider_failure_message: null,
       attempt_count: 1,
@@ -59,6 +66,10 @@ describe('GET /api/admin/refunds', () => {
       provider: 'tng_ewallet_simulator',
       method: 'ewallet',
       providerRefundId: 'sim_refund_0123456789abcdef0123456789abcdef01234567',
+      manualReference: null,
+      walletTopupSen: 1000,
+      walletEarningsSen: 2000,
+      externalAmountSen: 2000,
       failureCode: null,
       failureMessage: null,
       attemptCount: 1,
@@ -74,5 +85,30 @@ describe('GET /api/admin/refunds', () => {
 
     expect(response.status).toBe(403);
     expect(mocks.serviceFrom).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/admin/refunds/[refundId]', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
+    mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
+    mocks.serviceFrom.mockReturnValue(queryResult({ id: REFUND_ID, status: 'pending' }));
+    mocks.processRefund.mockResolvedValue({ ok: true, data: { refundId: REFUND_ID, status: 'processed' } });
+  });
+
+  it('passes the manual transaction reference to refund processing', async () => {
+    const response = await POST(new Request('http://localhost/api/admin/refunds/' + REFUND_ID, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'approve', manualReference: 'BANK-REF-12345' }),
+    }), { params: Promise.resolve({ refundId: REFUND_ID }) });
+
+    expect(response.status).toBe(200);
+    expect(mocks.processRefund).toHaveBeenCalledWith(expect.objectContaining({
+      refundId: REFUND_ID,
+      actorId: USER_ID,
+      manualReference: 'BANK-REF-12345',
+    }));
   });
 });

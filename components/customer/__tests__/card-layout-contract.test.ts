@@ -19,9 +19,10 @@ describe("shared card layout contract", () => {
 
   it("keeps media consumer backgrounds from being overwritten", () => {
     const styles = read("app/globals.css");
+    const mediaRule = styles.match(/\.mw-card-media\s*\{([^}]*)\}/)?.[1] ?? "";
 
-    expect(styles).toContain("background-color: var(--secondary);");
-    expect(styles).not.toContain("  background: var(--secondary);");
+    expect(mediaRule).toContain("background-color: var(--secondary);");
+    expect(mediaRule).not.toContain("background: var(--secondary);");
   });
 
   it("uses the contract across customer-facing card families", () => {

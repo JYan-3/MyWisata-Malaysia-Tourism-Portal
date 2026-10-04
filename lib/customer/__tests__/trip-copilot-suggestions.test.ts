@@ -151,6 +151,16 @@ describe('generateTripSuggestions', () => {
     expect(mocks.callGemini).toHaveBeenCalledWith(expect.stringContaining('Simplified Chinese'), expect.any(String), expect.any(Object));
   });
 
+  it('passes the traveller preference as bounded planning context', async () => {
+    mocks.callGemini.mockResolvedValue(JSON.stringify({ suggestions: [{ productId: 'p2', message: 'Try a local meal.' }] }));
+
+    await generateTripSuggestions(TRIP, CANDIDATES, 'en', 'local food and relaxed afternoons');
+
+    const [, userText] = mocks.callGemini.mock.calls[0];
+    expect(JSON.parse(userText).preference).toBe('local food and relaxed afternoons');
+    expect(mocks.callGemini.mock.calls[0][0]).toContain('traveller\'s preference');
+  });
+
   it('sends only the real trip info, weather, and candidates to Gemini, nothing invented', async () => {
     mocks.callGemini.mockResolvedValue(JSON.stringify({ suggestions: [] }));
 

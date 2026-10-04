@@ -16,6 +16,16 @@ export interface TripItemTimeBounds {
   disabled?: boolean;
 }
 
+export function getTripActivitySublabel(
+  activity: { price: number; outlet: { city: string } } | undefined,
+  savedSublabel: string | null | undefined,
+  formatPrice: (price: number) => string,
+  fallback: string,
+): string {
+  if (activity) return `${formatPrice(Number(activity.price))} · ${activity.outlet.city}`;
+  return savedSublabel || fallback;
+}
+
 export type TripDayWeatherAnchor = Pick<
   TripItem,
   "id" | "experience_id" | "lat" | "lng" | "label" | "scheduled_date"

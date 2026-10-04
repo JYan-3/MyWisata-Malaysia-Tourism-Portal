@@ -195,3 +195,11 @@ describe("getComputedActivity", () => {
     expect(await getComputedActivity("missing", undefined, db)).toBeNull();
   });
 });
+
+
+it('uses the representative outlet inventory rather than the first inventory row', async () => {
+  const db = makeDb({ products: [{ ...PRODUCT_ROW, product_variants: [{ id: 'v', name: 'default', price_offset: 0, inventory: [{ outlet_id: 'other', quantity: 100, reserved: 0, low_stock_threshold: 20 }, { outlet_id: 'o1', quantity: 7, reserved: 3, low_stock_threshold: 2 }] }] }] }, []);
+  const [activity] = await getActivities(db);
+  expect(activity.availableStock).toBe(4);
+  expect(activity.lowStockThreshold).toBe(2);
+});

@@ -51,6 +51,7 @@ describe('GET /api/vendors/:vendorId/products review-state filter', () => {
       access: { outletIds: ['outlet-a'], serviceDb: { from: mocks.from } },
       ok: true,
     });
+    mocks.getOutletProductIds.mockResolvedValue(new Set(['approved-product']));
     mocks.from.mockImplementation((table: string) => table === 'products' ? productQuery : metricsQuery);
 
     const response = await GET(
@@ -66,5 +67,52 @@ describe('GET /api/vendors/:vendorId/products review-state filter', () => {
     expect(productQuery.eq).toHaveBeenCalledWith('status', 'active');
     expect(productQuery.eq).toHaveBeenCalledWith('review_status', 'approved');
     expect(productQuery.range).toHaveBeenCalledWith(24, 47);
+  });
+
+  it('includes shared products offered at an assigned outlet even when their primary outlet is elsewhere', async () => {
+    const sharedProduct = {
+      id: 'shared-product',
+      name: 'Shared attraction',
+      base_price: 18,
+      outlet_id: 'primary-outlet',
+      outlets: { id: 'primary-outlet', name: 'Primary outlet' },
+      outlet_offers: [
+        {
+          outlet_id: 'assigned-outlet',
+          price: 18,
+          status: 'active',
+          outlets: { id: 'assigned-outlet', name: 'Assigned outlet' },
+        },
+      ],
+      product_variants: [],
+      requires_booking: false,
+      status: 'active',
+      tags: [],
+    };
+    const productQuery = chainQuery({ count: 1, data: [sharedProduct], error: null });
+    const metricsQuery = {
+      in: vi.fn().mockResolvedValue({ data: [] }),
+      select: vi.fn().mockReturnThis(),
+    };
+    const db = { from: mocks.from };
+    mocks.authorizeVendor.mockResolvedValue({
+      access: { outletIds: ['assigned-outlet'], serviceDb: db },
+      ok: true,
+    });
+    mocks.getOutletProductIds.mockResolvedValue(new Set(['shared-product']));
+    mocks.from.mockImplementation((table: string) => table === 'products' ? productQuery : metricsQuery);
+
+    const response = await GET(
+      new Request('http://localhost/api/vendors/vendor-a/products'),
+      { params: Promise.resolve({ vendorId: 'vendor-a' }) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { items: [{ id: 'shared-product', outlet: { id: 'assigned-outlet' } }] },
+    });
+    expect(mocks.getOutletProductIds).toHaveBeenCalledWith(db, 'assigned-outlet');
+    expect(productQuery.in).toHaveBeenCalledWith('id', ['shared-product']);
+    expect(productQuery.or).not.toHaveBeenCalled();
   });
 });

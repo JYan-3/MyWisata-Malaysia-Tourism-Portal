@@ -154,6 +154,8 @@ const mapboxRouteSchema = z.object({
   distance: routeMetricSchema,
   duration: routeMetricSchema,
   legs: z.array(z.object({
+    distance: routeMetricSchema.optional(),
+    duration: routeMetricSchema.optional(),
     annotation: z.object({
       congestion: z.array(z.enum(["unknown", "low", "moderate", "heavy", "severe"]).nullable()).max(50_000).optional(),
       congestion_numeric: z.array(z.number().finite().min(0).max(100).nullable()).max(50_000).optional(),
@@ -167,6 +169,7 @@ const orsFeatureSchema = z.object({
   geometry: z.object({ coordinates: providerCoordinatesSchema }),
   properties: z.object({
     summary: z.object({ distance: routeMetricSchema, duration: routeMetricSchema }),
+    segments: z.array(z.object({ distance: routeMetricSchema, duration: routeMetricSchema })).max(25).optional(),
     extras: z.object({
       tollways: z.object({
         summary: z.array(z.object({ value: z.number().finite().optional(), distance: routeMetricSchema.optional() })).max(10_000).optional(),
@@ -180,6 +183,7 @@ const osrmResponseSchema = z.object({
     geometry: z.object({ coordinates: providerCoordinatesSchema }),
     distance: routeMetricSchema,
     duration: routeMetricSchema,
+    legs: z.array(z.object({ distance: routeMetricSchema, duration: routeMetricSchema })).max(25).optional(),
   })).max(3),
 });
 
@@ -222,6 +226,9 @@ async function routeViaMapbox(points: [number, number][], token: string, departu
       return {
         geometry: fromOrsCoordinates(coordinates),
         ...summarizeRoute(route.distance, route.duration),
+        ...(route.legs?.length === points.length - 1 && route.legs.every((leg) => leg.distance !== undefined && leg.duration !== undefined)
+          ? { legs: route.legs.map((leg) => summarizeRoute(leg.distance!, leg.duration!)) }
+          : {}),
         ...(hasKnownTraffic ? {
           traffic: {
             provider: "mapbox" as const,
@@ -281,6 +288,9 @@ async function fetchOrsRoutes(mode: TravelModeId, points: [number, number][], ke
         return {
           geometry: fromOrsCoordinates(coords),
           ...summarizeRoute(summary.distance, summary.duration),
+          ...(f.properties.segments?.length === points.length - 1
+            ? { legs: f.properties.segments.map((segment) => summarizeRoute(segment.distance, segment.duration)) }
+            : {}),
           hasTolls: isDriving ? hasTolls(f.properties) : false,
         };
       })
@@ -305,7 +315,12 @@ async function routeViaOsrm(mode: TravelModeId, points: [number, number][]): Pro
     const routes = parsed.data.routes
       .map((r): RouteResult | null => {
         const coords = r.geometry.coordinates;
-        return { geometry: fromOrsCoordinates(coords), ...summarizeRoute(r.distance, r.duration), hasTolls: false };
+        return {
+          geometry: fromOrsCoordinates(coords),
+          ...summarizeRoute(r.distance, r.duration),
+          ...(r.legs?.length === points.length - 1 ? { legs: r.legs.map((leg) => summarizeRoute(leg.distance, leg.duration)) } : {}),
+          hasTolls: false,
+        };
       })
       .filter((r): r is RouteResult => r !== null);
     return routes.length ? routes : null;

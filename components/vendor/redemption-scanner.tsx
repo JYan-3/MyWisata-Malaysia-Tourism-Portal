@@ -25,6 +25,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { mapRedemptionStationStats, type RedemptionStationStats, type RedemptionApiStats } from "@/lib/vendor/redemption-station-stats";
 
 type OutletOption = { id: string; name: string };
 type ResolvedScan =
@@ -40,13 +41,6 @@ interface RecentScanItem {
   outlet: { id: string; name: string };
   item: { code?: string; name: string; details: string; discountValue?: number };
   customer: { name: string; email: string };
-}
-
-interface StationStats {
-  todayScans: number;
-  ticketAdmissions: number;
-  voucherRedemptions: number;
-  uniqueCustomers: number;
 }
 
 interface RedemptionScannerProps {
@@ -108,11 +102,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [stats, setStats] = useState<StationStats>({
+  const [stats, setStats] = useState<RedemptionStationStats>({
     todayScans: 0,
     ticketAdmissions: 0,
     voucherRedemptions: 0,
-    uniqueCustomers: 0,
   });
   const [recentLogs, setRecentLogs] = useState<RecentScanItem[]>([]);
 
@@ -130,14 +123,9 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     try {
       const params = new URLSearchParams({ outletId, pageSize: "8" });
       const response = await fetch(`/api/vendors/${vendorId}/redemptions?${params.toString()}`, { cache: "no-store" });
-      const payload = await response.json() as { data?: { stats?: { totalRedemptions?: number; ticketAdmissions?: number; voucherRedemptions?: number; uniqueCustomers?: number }; items?: RecentScanItem[] } };
+      const payload = await response.json() as { data?: { stats?: RedemptionApiStats; items?: RecentScanItem[] } };
       if (response.ok && payload.data) {
-        setStats({
-          todayScans: payload.data.stats?.totalRedemptions ?? 0,
-          ticketAdmissions: payload.data.stats?.ticketAdmissions ?? 0,
-          voucherRedemptions: payload.data.stats?.voucherRedemptions ?? 0,
-          uniqueCustomers: payload.data.stats?.uniqueCustomers ?? 0,
-        });
+        setStats(mapRedemptionStationStats(payload.data.stats));
         setRecentLogs(payload.data.items ?? []);
       }
     } catch {

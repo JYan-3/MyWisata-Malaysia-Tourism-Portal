@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ require: vi.fn(), from: vi.fn(), tables: {} as
 function builder(result: unknown) {
   const terminal = Promise.resolve(result);
   const query: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'in', 'order', 'range', 'limit', 'ilike']) query[method] = vi.fn(() => query);
+  for (const method of ['select', 'eq', 'in', 'order', 'range', 'limit', 'ilike', 'or']) query[method] = vi.fn(() => query);
   query.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
   return query;
 }
@@ -56,6 +56,17 @@ describe('GET /api/admin/orders', () => {
     });
     expect(mocks.tables.orders.eq).toHaveBeenCalledWith('status', 'paid');
     expect(mocks.tables.orders.range).toHaveBeenCalledWith(0, 24);
+    expect(mocks.tables.order_items.select).toHaveBeenCalledWith(expect.stringContaining('vendors(name),outlets(name)'));
+    expect(mocks.tables.order_items.select).not.toHaveBeenCalledWith(expect.stringContaining('!fk_oi_vendor'));
+    expect(mocks.tables.order_items.select).not.toHaveBeenCalledWith(expect.stringContaining('!fk_oi_outlet'));
+  });
+
+  it('accepts display IDs with or without a hash and keeps every payment leg', async () => {
+    const response = await GET(request('?search=%23ORD-2026-0042'));
+    expect(response.status).toBe(200);
+    expect(mocks.tables.orders.eq).toHaveBeenCalledWith('display_id', 'ORD-2026-0042');
+    const payload = await response.json();
+    expect(payload.data.orders[0].payments).toHaveLength(1);
   });
 
   it('rejects invalid filters and pagination values', async () => {

@@ -338,8 +338,45 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
       cancel_url: `${origin}/customer/checkout?stripe_cancelled=1`,
     });
     const service = createServiceClient();
-    await service.from('payments').update({ provider_payment_id: stripeSession.id, status: 'requires_action', updated_at: new Date().toISOString() }).eq('order_id', prepared.order_id);
-    await service.from('checkout_sessions').update({ status: 'requires_action', updated_at: new Date().toISOString() }).eq('id', checkoutSessionId);
+    try {
+      const { data: paymentLink, error: paymentUpdateError } = await service.from('payments')
+        .update({ provider_payment_id: stripeSession.id, status: 'requires_action', updated_at: new Date().toISOString() })
+        .eq('order_id', prepared.order_id)
+        .select('id')
+        .maybeSingle();
+      if (paymentUpdateError || !paymentLink) {
+        return NextResponse.json({
+          data: null,
+          error: {
+            code: 'PAYMENT_SESSION_PERSIST_FAILED',
+            message: 'The payment session could not be linked to this order. Please retry checkout.',
+          },
+        }, { status: 503 });
+      }
+
+      const { data: checkoutLink, error: checkoutUpdateError } = await service.from('checkout_sessions')
+        .update({ status: 'requires_action', updated_at: new Date().toISOString() })
+        .eq('id', checkoutSessionId)
+        .select('id')
+        .maybeSingle();
+      if (checkoutUpdateError || !checkoutLink) {
+        return NextResponse.json({
+          data: null,
+          error: {
+            code: 'PAYMENT_SESSION_PERSIST_FAILED',
+            message: 'The payment session could not be linked to this order. Please retry checkout.',
+          },
+        }, { status: 503 });
+      }
+    } catch {
+      return NextResponse.json({
+        data: null,
+        error: {
+          code: 'PAYMENT_SESSION_PERSIST_FAILED',
+          message: 'The payment session could not be linked to this order. Please retry checkout.',
+        },
+      }, { status: 503 });
+    }
     return NextResponse.json({ data: { ...response, stripeUrl: stripeSession.url }, error: null });
   }
   return NextResponse.json({ data: response, error: null });

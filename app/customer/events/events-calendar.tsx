@@ -23,6 +23,7 @@ export function EventsCalendar({ campaigns }: { campaigns: PromotionCampaignPubl
       // FullCalendar's all-day end is exclusive.
       end: addMalaysiaCalendarDays(location.endsOn, 1),
       allDay: true,
+      classNames: [`mw-events-calendar__event--${campaign.visibility}`],
       extendedProps: { slug: campaign.slug },
     })));
   const firstStart = entries.map((entry) => entry.start).sort()[0];
@@ -33,7 +34,7 @@ export function EventsCalendar({ campaigns }: { campaigns: PromotionCampaignPubl
   }
 
   return (
-    <div className="mw-customer-calendar min-w-0 rounded-2xl border border-border bg-card p-2 shadow-sm sm:p-4">
+    <div className="mw-customer-calendar mw-events-calendar min-w-0 rounded-2xl border border-border bg-card p-2 shadow-sm sm:p-4">
       <FullCalendar
         plugins={[dayGridPlugin, listPlugin]}
         initialView="dayGridMonth"

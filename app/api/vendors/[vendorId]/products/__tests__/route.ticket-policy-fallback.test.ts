@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/vendor-authorization', () => ({
   authorizeVendor: mocks.authorizeVendor,
+  authorizeVendorProductWrite: mocks.authorizeVendor,
 }));
 
 vi.mock('@/backend/domains/catalogue', () => ({
@@ -71,6 +72,7 @@ describe('GET /api/vendors/:vendorId/products ticket-policy schema fallback', ()
       },
       ok: true,
     });
+    mocks.getOutletProductIds.mockResolvedValue(new Set(['product-1']));
     mocks.from
       .mockReturnValueOnce(missingColumnQuery)
       .mockReturnValueOnce(legacyQuery)

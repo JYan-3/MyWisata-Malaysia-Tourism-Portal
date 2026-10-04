@@ -37,12 +37,14 @@ describe('emitOrderVendorEvent', () => {
       category: 'vendor_orders',
       email: true,
       vendorId: 'vendor-1',
+      link: '/vendor/orders?orderId=order-1',
     }));
     expect(emitMock.emitVendorNotification).toHaveBeenNthCalledWith(2, expect.objectContaining({
       category: 'vendor_bookings',
       type: 'vendor_booking_created',
       email: false,
       reference: 'booking-1',
+      link: '/vendor/bookings?bookingId=booking-1',
     }));
   });
 });

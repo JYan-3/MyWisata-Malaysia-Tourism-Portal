@@ -61,4 +61,9 @@ describe("vendor voucher catalogue linkage", () => {
     expect(source).toContain("access.access.isOutletManager");
     expect(source).toContain("outlet is outside your assigned scope");
   });
+
+  it("persists redemption mode in CSV drafts and defaults older rows to online", () => {
+    const source = read("app/api/vendors/[vendorId]/vouchers/drafts/route.ts");
+    expect(source).toContain("redemptionMode: z.enum(['online', 'in_store', 'both']).default('online')");
+  });
 });

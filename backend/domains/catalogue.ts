@@ -1,3 +1,4 @@
+import { getOutletStock } from '@/lib/vendor/product-scope';
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
@@ -360,11 +361,11 @@ type ProductRow = {
   place_lat: number | string | null;
   place_lng: number | string | null;
   categories: { name: string; slug: string } | null;
-  product_variants?: { id: string; name: string; price_offset: number; inventory?: { quantity: number; reserved: number; low_stock_threshold: number }[] }[];
+  product_variants?: { id: string; name: string; price_offset: number; is_active?: boolean; inventory?: { outlet_id: string; quantity: number; reserved: number; low_stock_threshold: number }[] }[];
   price_rules?: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
 };
 
-const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
+const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 const DISCOVERY_ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status)";
 
 async function getReviewMetricsForProducts(productIds: string[], db: SupabaseClient): Promise<Map<string, ReviewMetric>> {
@@ -439,8 +440,10 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     place,
     variants: (row.product_variants ?? []).map((v) => ({ id: v.id, label: v.name, priceDelta: Number(v.price_offset) })),
     priceRules: (row.price_rules ?? []).filter((rule) => rule.is_active).map((rule) => ({ id: rule.id, productId: row.id, ruleType: rule.rule_type, label: rule.label ?? undefined, multiplier: rule.multiplier === null ? undefined : Number(rule.multiplier), fixedAmount: rule.fixed_amount === null ? undefined : Number(rule.fixed_amount), validFrom: rule.valid_from ?? undefined, validUntil: rule.valid_until ?? undefined, minQuantity: rule.min_quantity ?? undefined, bundleProductIds: rule.bundle_product_ids ?? undefined, priority: Number(rule.priority ?? 0), isActive: rule.is_active })),
-    availableStock: row.requires_booking ? undefined : (row.product_variants ?? []).reduce((total, variant) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
-    lowStockThreshold: row.requires_booking ? undefined : (row.product_variants ?? []).reduce((threshold, variant) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
+    ...(row.requires_booking ? {} : getOutletStock(row.product_variants ?? [], [row.outlet_id ?? cheapest?.outletId ?? ''])),
+    stockByOutlet: row.requires_booking ? undefined : Object.fromEntries(
+      [...new Set([row.outlet_id, ...offers.map((offer) => offer.outletId)].filter((id): id is string => Boolean(id)))].map((id) => [id, getOutletStock(row.product_variants ?? [], [id]).availableStock]),
+    ),
   };
 }
 
@@ -513,9 +516,9 @@ export async function getActivitiesByIds(ids: string[], db: SupabaseClient = sup
 }
 
 export async function getBookingSlots(activityId: string, db: SupabaseClient = supabase): Promise<BookingSlot[]> {
-  const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,ends_at,capacity,booked,status,price_override").eq("product_id", activityId).order("starts_at");
+  const { data, error } = await db.from("booking_slots").select("id,product_id,outlet_id,starts_at,ends_at,capacity,booked,status,price_override").eq("product_id", activityId).order("starts_at");
   if (error) throw error;
-  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, endsAt: s.ends_at, capacity: s.capacity, booked: s.booked, status: s.status, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
+  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, outletId: s.outlet_id, startsAt: s.starts_at, endsAt: s.ends_at, capacity: s.capacity, booked: s.booked, status: s.status, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
 }
 
 export async function getProductReviews(productId: string, db: SupabaseClient = supabase, options: { outletId?: string } = {}): Promise<ProductReview[]> {
@@ -577,6 +580,23 @@ export async function getProductReviewEligibility(
   return { state: "not_purchased", canReview: false, orderItemId: null };
 }
 
+export async function getPublicReviewAuthorNames(
+  db: SupabaseClient,
+  userIds: string[],
+): Promise<Map<string, string | null>> {
+  const uniqueIds = [...new Set(userIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { data, error } = await db
+    .from("public_users")
+    .select("id,full_name")
+    .in("id", uniqueIds);
+  if (error) throw error;
+
+  return new Map(((data ?? []) as { id: string; full_name: string | null }[])
+    .map((user) => [user.id, user.full_name]));
+}
+
 export async function getProductReviewsPage(
   productId: string,
   options: { page?: number; pageSize?: number; outletId?: string } = {},
@@ -602,7 +622,7 @@ export async function getProductReviewsPage(
 
   let dataQuery = db
     .from("reviews")
-    .select("id,rating,title,body,created_at,users(full_name)")
+    .select("id,rating,title,body,created_at,user_id")
     .eq("product_id", productId)
     .eq("is_visible", true);
   if (options.outletId) dataQuery = dataQuery.eq("outlet_id", options.outletId);
@@ -611,8 +631,21 @@ export async function getProductReviewsPage(
     .range(offset, offset + pageSize - 1);
   if (error) throw error;
 
+  const reviewRows = (data ?? []) as {
+    id: string;
+    rating: number;
+    title: string | null;
+    body: string | null;
+    created_at: string;
+    user_id: string | null;
+  }[];
+  const authorNames = await getPublicReviewAuthorNames(db, reviewRows.map((row) => row.user_id ?? ""));
+
   return {
-    items: (data ?? []).map((row) => toProductReview(row as unknown as Parameters<typeof toProductReview>[0])),
+    items: reviewRows.map((row) => toProductReview({
+      ...row,
+      users: { full_name: row.user_id ? authorNames.get(row.user_id) ?? null : null },
+    })),
     page,
     pageSize,
     total,

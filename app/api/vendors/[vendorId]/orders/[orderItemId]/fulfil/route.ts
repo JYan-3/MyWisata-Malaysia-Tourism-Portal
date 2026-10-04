@@ -80,7 +80,7 @@ export async function POST(request: Request, { params }: Props) {
     type: 'vendor_order_updated',
     title: `Order marked ${newStatus}`,
     body: `Order ${item.order_id} was marked ${newStatus}.`,
-    link: `/vendor/orders/${item.order_id}`,
+    link: `/vendor/orders?orderId=${encodeURIComponent(item.order_id)}`,
     email: true,
     reference: item.order_id,
     metadata: { status: newStatus },

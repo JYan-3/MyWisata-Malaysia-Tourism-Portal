@@ -89,7 +89,7 @@ const input = {
   type: 'vendor_order_update',
   title: 'New order',
   body: 'An order needs attention.',
-  link: '/vendor/orders/order-1',
+  link: '/vendor/orders?orderId=order-1',
   email: true,
   reference: 'order-1',
   metadata: { amount: 42, source: 'checkout', nullable: null },

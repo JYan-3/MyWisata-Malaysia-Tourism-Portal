@@ -16,6 +16,7 @@ interface CartContextValue {
   items: CartItem[];
   count: number;
   activities: Activity[];
+  activitiesReady: boolean;
   selectedKeys: Set<string>;
   selectedItems: CartItem[];
   toggleSelected: (key: string) => void;
@@ -42,6 +43,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     () => activityData.key === activityIdsKey ? activityData.activities : [],
     [activityData, activityIdsKey],
   );
+  const activitiesReady = activityData.key === activityIdsKey;
 
   useEffect(() => {
     let active = true;
@@ -133,12 +135,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const replaceSelectedKeys = useCallback((keys: string[]) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    setSelectedKeysState((current) => {
-      const available = new Set(items.map(cartItemKey));
-      return new Set(keys.filter((key) => available.has(key)));
-    });
-  }, [items]);
+    setSelectedKeysState(new Set(keys));
+    if (!currentUser) return;
+    try {
+      sessionStorage.setItem(`customer-cart-selection-${currentUser.id}`, JSON.stringify(keys));
+    } catch {
+      // Selection persistence is best-effort; checkout still works in-memory.
+    }
+  }, [currentUser]);
 
   const addItem = useCallback(async (item: CartItem) => {
     if (!currentUser) return;
@@ -172,7 +176,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, count, activities, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, clear, totals }}
+      value={{ items, count, activities, activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, clear, totals }}
     >
       {children}
     </CartContext.Provider>

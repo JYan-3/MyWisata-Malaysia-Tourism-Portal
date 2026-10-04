@@ -1,21 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent as ReactFormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Star, X } from "lucide-react";
+import Image from "next/image";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
-import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { CATEGORIES, getBookingSlots, searchActivities } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, buildRouteDepartureTime, type GeoHit, type RouteResult } from "@/lib/routing";
 import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
-import { getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, computeSwapTargetOrder } from "@/lib/customer/trip-planner";
+import { getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, computeSwapTargetOrder } from "@/lib/customer/trip-planner";
 import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
-import Link from "next/link";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { buildItineraryWeatherPlan } from "@/lib/weather/itinerary";
 import { useItineraryWeather } from "./use-itinerary-weather";
@@ -43,6 +42,18 @@ export interface TripStop {
   locationKind?: "custom" | "gps";
 }
 
+interface TripPlanSuggestion {
+  productId: string;
+  productName: string;
+  message: string;
+  lat: number;
+  lng: number;
+  price: number;
+  rating: number;
+  image: string | null;
+  category: string;
+}
+
 // local sync hook matching useTrip API
 function useSyncTrip(tripId: string, initialItems: TripItem[]) {
   const { alert } = useAppDialog();
@@ -65,7 +76,7 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
     items,
     origin,
     stops,
-    has: (id: string) => stops.some(s => s.id === id),
+    has: (id: string) => items.some((item) => item.id === id || item.experience_id === id),
     add: async (stop: Omit<TripStop, "id"> & { id?: string }, schedule?: { date: string | null; time?: string | null }) => {
       const tempId = stop.id || ("temp-" + Date.now());
       const newItem: TripItem = {
@@ -213,7 +224,6 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
 
 const KL_CENTER: [number, number] = [3.139, 101.6869];
 const ROUTE_TRAFFIC_REFRESH_MS = 5 * 60 * 1000;
-const TRIP_DAYS_PAGE_SIZE = 5;
 const PLACES_PAGE_SIZE = 15;
 
 const MODE_STYLE: Record<TravelModeId, { color: string; dashed?: boolean }> = {
@@ -222,12 +232,6 @@ const MODE_STYLE: Record<TravelModeId, { color: string; dashed?: boolean }> = {
   BICYCLING: { color: "#16A34A" },
   TRANSIT: { color: "#010066" },
 };
-
-function formatTripRange(trip: Trip) {
-  if (!trip.start_date) return "Dates pending";
-  const format = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  return trip.end_date ? `${format(trip.start_date)} – ${format(trip.end_date)}` : format(trip.start_date);
-}
 
 export function MapClient({
   tripData,
@@ -243,7 +247,7 @@ export function MapClient({
   suggestedAtByVendor: Record<string, string>;
 }) {
   const trip = useSyncTrip(tripData.id, initialItems);
-  const { t: tCustomer } = useTranslation("customer");
+  const { t: tCustomer, i18n } = useTranslation("customer");
   const { alert: showAlert } = useAppDialog();
   const router = useRouter();
   const cart = useCart();
@@ -285,10 +289,16 @@ export function MapClient({
   const [selectedRouteIdx, setSelectedRouteIdx] = useState(0);
 
   const [dragPayload, setDragPayload] = useState<{ kind: "item"; itemId: string } | { kind: "catalogue"; activityId: string } | null>(null);
-  const [activePanel, setActivePanel] = useState<"itinerary" | "map" | "places">("itinerary");
-  const [itineraryCollapsed, setItineraryCollapsed] = useState(false);
+  const [activePanel, setActivePanel] = useState<"ai" | "itinerary" | "places">("itinerary");
+  const [aiCollapsed, setAiCollapsed] = useState(false);
   const [placesCollapsed, setPlacesCollapsed] = useState(false);
-  const [dayPage, setDayPage] = useState(1);
+  const [aiWidth, setAiWidth] = useState(320);
+  const aiResizeRef = useRef(false);
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [aiPreference, setAiPreference] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState<TripPlanSuggestion[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
   const focusTokenRef = useRef(0);
@@ -310,13 +320,10 @@ export function MapClient({
   const [discoveryNow] = useState(() => new Date().toISOString());
   const impressedPlacementIdsRef = useRef(new Set<string>());
 
-  const desktopGridClass = itineraryCollapsed
-    ? placesCollapsed
-      ? "md:grid-cols-[52px_minmax(0,1fr)_52px]"
-      : "md:grid-cols-[52px_minmax(0,1fr)_360px]"
-    : placesCollapsed
-      ? "md:grid-cols-[360px_minmax(0,1fr)_52px]"
-      : "md:grid-cols-[360px_minmax(0,1fr)_360px]";
+  const plannerGridStyle = {
+    "--planner-ai-width": aiCollapsed ? "52px" : `${aiWidth}px`,
+    "--planner-places-width": placesCollapsed ? "52px" : "360px",
+  } as CSSProperties;
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -355,6 +362,10 @@ export function MapClient({
       .map((item): TripStop => ({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind }));
     return origin ? [origin, ...datedStops] : datedStops;
   }, [origin, selectedDate, trip.items]);
+  const selectedRouteCoordinates = useMemo(
+    () => selectedRouteStops.map((stop): [number, number] => [stop.lat, stop.lng]),
+    [selectedRouteStops],
+  );
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -585,6 +596,8 @@ export function MapClient({
   function focusPin(pin: MapPin) {
     focusTokenRef.current += 1;
     setFocusRequest({ pin, token: focusTokenRef.current });
+    setMapExpanded(true);
+    setActivePanel("itinerary");
   }
 
   function patchPlaceFilters(patch: Partial<TripPlaceFilters>) {
@@ -641,10 +654,8 @@ export function MapClient({
     () => groupTripItemsByDay(tripData, trip.items),
     [trip.items, tripData],
   );
-  const dayTotalPages = Math.max(1, Math.ceil(groupedItems.days.length / TRIP_DAYS_PAGE_SIZE));
-  const safeDayPage = Math.min(dayPage, dayTotalPages);
-  const dayPageStart = (safeDayPage - 1) * TRIP_DAYS_PAGE_SIZE;
-  const visibleDays = groupedItems.days.slice(dayPageStart, dayPageStart + TRIP_DAYS_PAGE_SIZE);
+  const selectedDay = groupedItems.days.find((day) => day.date === selectedDate) ?? groupedItems.days[0] ?? null;
+  const selectedDayIndex = selectedDay ? groupedItems.days.findIndex((day) => day.date === selectedDay.date) : -1;
   const placesTotalPages = Math.max(1, Math.ceil(filteredActivities.length / PLACES_PAGE_SIZE));
   const safePlacesPage = Math.min(placesPage, placesTotalPages);
   const placesPageStart = (safePlacesPage - 1) * PLACES_PAGE_SIZE;
@@ -741,10 +752,10 @@ export function MapClient({
   // Trip-stop pins always render (numbered markers matching the list order);
   // vendor "browse to add" pins are opt-in via showAllVendors, off by default so
   // the map doesn't get cluttered once a trip actually has stops.
-  const stopIdSet = new Set(trip.stops.map((s) => s.id));
+  const stopIdSet = new Set(trip.items.map((item) => item.experience_id ?? item.id));
   const stopPins: MapPin[] = selectedRouteStops.map((s, index) => {
     const activity = activitiesById.get(s.id) ?? (s.source === "vendor" ? activitiesById.get(trip.items.find((item) => item.id === s.id)?.experience_id ?? "") : undefined);
-    return { id: s.id, lat: s.lat, lng: s.lng, label: s.label, sublabel: s.sublabel, imageUrl: activity?.image, order: index + 1 };
+    return { id: s.id, lat: s.lat, lng: s.lng, label: s.label, sublabel: activity ? getTripActivitySublabel(activity, s.sublabel, formatMYR, tCustomer("ui.map.addPlace")) : s.sublabel, imageUrl: activity?.image, order: index + 1 };
   });
   const vendorPins: MapPin[] = showAllVendors
     ? filteredActivities.filter((a) => !stopIdSet.has(a.id)).map((a) => ({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `${formatMYR(Number(a.price))} · ${a.outlet.city}`, href: `/customer/activity/${a.id}`, imageUrl: a.image }))
@@ -768,6 +779,83 @@ export function MapClient({
   function travelModeLabel(id: TravelModeId) {
     return tCustomer(`ui.map.travelModes.${id.toLowerCase()}`);
   }
+
+  function handleAiResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    aiResizeRef.current = true;
+    const startX = event.clientX;
+    const startWidth = aiWidth;
+    function onMove(moveEvent: PointerEvent) {
+      if (!aiResizeRef.current) return;
+      setAiWidth(Math.max(260, Math.min(520, startWidth + moveEvent.clientX - startX)));
+    }
+    function onUp() {
+      aiResizeRef.current = false;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (aiLoading) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const language = i18n.resolvedLanguage ?? i18n.language;
+      const locale = language.toLowerCase().startsWith("zh") ? "zh-CN" : language.toLowerCase().startsWith("ms") || language.toLowerCase().startsWith("bm") ? "ms" : "en";
+      const response = await fetch("/api/trips/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale }),
+      });
+      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[] }; error?: { code?: string } };
+      if (!response.ok || !body.data) {
+        setAiSuggestions([]);
+        setAiError(body.error?.code === "PHONE_VERIFICATION_REQUIRED"
+          ? tCustomer("strictMigration.tripPlanner.ai.verifyPhone")
+          : tCustomer("strictMigration.tripPlanner.ai.error"));
+        return;
+      }
+      setAiSuggestions(body.data.suggestions ?? []);
+    } catch {
+      setAiSuggestions([]);
+      setAiError(tCustomer("strictMigration.tripPlanner.ai.error"));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function addAiSuggestion(suggestion: TripPlanSuggestion) {
+    if (trip.has(suggestion.productId)) return;
+    void trip.add({
+      id: suggestion.productId,
+      lat: suggestion.lat,
+      lng: suggestion.lng,
+      label: suggestion.productName,
+      sublabel: `${formatMYR(suggestion.price)} · ${suggestion.category}`,
+      source: "vendor",
+    }, { date: selectedDate });
+    setActivePanel("itinerary");
+  }
+
+  function renderTravelLeg(fromId: string, toId: string, index: number) {
+    const leg = activeRoute?.legs?.[index];
+    const ModeIcon = TRAVEL_MODES.find((travelMode) => travelMode.id === mode)?.icon ?? Navigation;
+    return (
+      <li key={`leg-${fromId}-${toId}`} data-trip-leg className="flex items-center gap-2 pl-4 text-[11px] text-muted-foreground">
+        <span className="h-5 border-l border-dashed border-border" aria-hidden="true" />
+        <ModeIcon size={12} className="shrink-0 text-primary" />
+        <span className="font-semibold">{travelModeLabel(mode)}</span>
+        {leg && <span>· {formatDurationShort(leg.durationMin)} · {leg.distanceKm.toFixed(1)} {DISTANCE_UNIT_KM}</span>}
+        {!leg && routesLoading && mode !== "TRANSIT" && <span>· {tCustomer("strictMigration.tripPlanner.ai.calculating")}</span>}
+        {!leg && mode === "TRANSIT" && <span>· {tCustomer("ui.map.maps")}</span>}
+      </li>
+    );
+  }
   function activityStop(activity: ComputedActivity): Omit<TripStop, "id"> & { id: string } {
     return { id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: `${formatMYR(Number(activity.price))} · ${activity.outlet.city}`, source: "vendor" };
   }
@@ -775,22 +863,17 @@ export function MapClient({
   function chooseDayForActivity(activity: ComputedActivity, date: string) {
     if (!trip.has(activity.id)) trip.add(activityStop(activity), { date });
     setSelectedDate(date);
-    showDatePage(date);
-  }
-
-  function showDatePage(date: string) {
-    const index = groupedItems.days.findIndex((day) => day.date === date);
-    if (index >= 0) setDayPage(Math.floor(index / TRIP_DAYS_PAGE_SIZE) + 1);
+    setActivePanel("itinerary");
   }
 
   function handleSelectWeatherRiskHour(date: string, hour: number) {
     requestedOverlayHourRef.current = { date, hour };
     setSelectedDate(date);
-    showDatePage(date);
     setWeatherLayerEnabled(true);
     setWeatherMapMode("forecast");
     setOverlayHour(hour);
-    setActivePanel("map");
+    setMapExpanded(true);
+    setActivePanel("itinerary");
   }
 
   function handleDropOnDay(date: string | null) {
@@ -826,6 +909,9 @@ export function MapClient({
     const weatherResult = weatherTargetKey ? weatherState.results[weatherTargetKey] ?? null : null;
     const activity = activitiesById.get(item.experience_id ?? item.id);
     const timeBounds = getTripItemTimeBounds(trip.items, item.id);
+    const sublabel = isLocation
+      ? (item.kind === "gps" ? tCustomer("ui.map.currentLocation") : tCustomer("ui.map.customStart"))
+      : getTripActivitySublabel(activity, item.sublabel, formatMYR, tCustomer("ui.map.addPlace"));
 
     return (
       <li
@@ -873,10 +959,10 @@ export function MapClient({
         ) : (
           <div className="flex items-center gap-2">
             <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
-            {activity?.image ? <span data-itinerary-image={item.id} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-secondary">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={activity.image} alt="" className="h-full w-full object-cover" /><b className="absolute bottom-0.5 left-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-white bg-primary px-0.5 text-[8px] text-white">{stopNumber > 0 ? stopNumber : "–"}</b></span> : <span className={"grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>}
+            {activity?.image ? <span data-itinerary-image={item.id} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-secondary"><Image src={activity.image} alt="" width={40} height={40} unoptimized className="h-full w-full object-cover" /><b className="absolute bottom-0.5 left-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-white bg-primary px-0.5 text-[8px] text-white">{stopNumber > 0 ? stopNumber : "–"}</b></span> : <span className={"grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>}
             <span className="min-w-0 flex-1">
               <span className="block break-words whitespace-normal text-xs font-bold text-foreground">{item.label}</span>
-              <span className="block break-words whitespace-normal text-[11px] text-muted-foreground">{isLocation ? (item.kind === "gps" ? tCustomer("ui.map.currentLocation") : tCustomer("ui.map.customStart")) : item.sublabel || tCustomer("ui.map.addPlace")}</span>
+              <span className="block break-words whitespace-normal text-[11px] text-muted-foreground">{sublabel}</span>
               <TripWeatherItemMarker result={weatherResult} />
             </span>
             <input
@@ -917,6 +1003,31 @@ export function MapClient({
     const simulationLabel = isSimulatedDay
       ? `${tCustomer("strictMigration.tripPlanner.weather.simulation.testData")} · ${tCustomer(`strictMigration.tripPlanner.weather.conditions.${simulatedWeatherConditionKeyForHour(overlayHour)}`)} · ${String(overlayHour).padStart(2, "0")}:00`
       : undefined;
+    const timelineRows: ReactNode[] = [];
+    const startAlreadyListed = items.some((item) => item.id === origin?.id);
+    if (date === selectedDate && origin && !startAlreadyListed && items.length > 0) {
+      timelineRows.push(
+        <li key="trip-origin" className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-background/70 px-3 py-2 text-xs">
+          <LocateFixed size={14} className="shrink-0 text-primary" />
+          <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{tCustomer("strictMigration.tripPlanner.startingPoint")}</span>
+          <span className="min-w-0 flex-1 break-words whitespace-normal font-semibold text-foreground">{origin.label}</span>
+        </li>,
+      );
+      const firstRouteIndex = selectedRouteStops.findIndex((stop) => stop.id === items[0].id);
+      if (firstRouteIndex === 1 && selectedRouteStops[0]?.id === origin.id) {
+        timelineRows.push(renderTravelLeg(origin.id, items[0].id, 0));
+      }
+    }
+    items.forEach((item, index) => {
+      timelineRows.push(renderStopRow(item));
+      const next = items[index + 1];
+      if (!next) return;
+      const fromRouteIndex = selectedRouteStops.findIndex((stop) => stop.id === item.id);
+      const toRouteIndex = selectedRouteStops.findIndex((stop) => stop.id === next.id);
+      if (fromRouteIndex >= 0 && toRouteIndex === fromRouteIndex + 1) {
+        timelineRows.push(renderTravelLeg(item.id, next.id, fromRouteIndex));
+      }
+    });
     return (
       <section
         key={key ?? title}
@@ -944,89 +1055,91 @@ export function MapClient({
           </div>
           <span className="rounded-full bg-background px-2 py-1 text-[10px] font-bold text-muted-foreground">{tCustomer("ui.map.stopCount", { count: items.length })}</span>
         </div>
-        {items.length > 0 ? <ul className="flex flex-col gap-2">{items.map(renderStopRow)}</ul> : <p className="rounded-xl border border-dashed border-border bg-background/70 px-3 py-3 text-center text-xs text-muted-foreground">{emptyCopy}</p>}
+        {items.length > 0 ? <ul className="flex flex-col gap-2">{timelineRows}</ul> : <p className="rounded-xl border border-dashed border-border bg-background/70 px-3 py-3 text-center text-xs text-muted-foreground">{emptyCopy}</p>}
       </section>
     );
   }
 
   return (
-    <>
-      <CustomerPageTitle
-        eyebrow={tCustomer("accountGroups.myTravel")}
-        title={tripData.name}
-        description={formatTripRange(tripData)}
-        icon={<Navigation size={14} />}
-        actions={
-          <Link href="/customer/trip" className="inline-flex h-10 items-center gap-2 rounded-full border border-primary/20 bg-card px-4 text-sm font-bold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <Navigation size={15} /> {tCustomer("ui.trip.title")}
-          </Link>
-        }
-      />
-
-      <CustomerPageShell wide className="pt-0 sm:pt-0">
-        <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-          <div className="flex min-h-[640px] w-full flex-col overflow-hidden bg-card md:h-[680px] md:min-h-0">
-            <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
-              {(["itinerary", "map", "places"] as const).map((panel) => (
+    <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]">
+          <div className="flex h-full w-full flex-col overflow-hidden bg-card">
+            <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 xl:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
+              {(["ai", "itinerary", "places"] as const).map((panel) => (
                 <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-full px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
-                  {panel === "itinerary" ? tCustomer("strictMigration.tripPlanner.itineraryTab") : panel === "map" ? tCustomer("strictMigration.tripPlanner.mapTab") : tCustomer("strictMigration.tripPlanner.placesTab")}
+                  {panel === "ai" ? tCustomer("strictMigration.tripPlanner.ai.title") : panel === "itinerary" ? tCustomer("strictMigration.tripPlanner.itineraryTab") : tCustomer("strictMigration.tripPlanner.placesTab")}
                 </button>
               ))}
             </div>
 
-      <div className={`grid min-h-0 flex-1 transition-[grid-template-columns] duration-300 ease-out ${desktopGridClass}`}>
-        <aside aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className={(activePanel === "itinerary" ? "flex" : "hidden") + " relative min-h-0 flex-col border-r border-border bg-card md:flex"}>
+      <div style={plannerGridStyle} className="grid min-h-0 flex-1 grid-cols-1 transition-[grid-template-columns] duration-200 ease-out xl:grid-cols-[var(--planner-ai-width)_minmax(0,1fr)_var(--planner-places-width)]">
+        <aside aria-label={tCustomer("strictMigration.tripPlanner.ai.title")} className={(activePanel === "ai" ? "flex" : "hidden") + " relative min-h-0 flex-col border-r border-border bg-card xl:flex"}>
           <button
             type="button"
-            onClick={() => setItineraryCollapsed((collapsed) => !collapsed)}
-            aria-expanded={!itineraryCollapsed}
-            aria-label={tCustomer(itineraryCollapsed ? "ui.map.expandTripPanel" : "ui.map.minimizeTripPanel")}
-            title={tCustomer(itineraryCollapsed ? "ui.map.expandTripPanel" : "ui.map.minimizeTripPanel")}
-            className={itineraryCollapsed
-              ? "hidden h-full w-full flex-col items-center gap-3 px-2 py-4 text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 md:flex"
-              : "absolute right-3 top-4 z-10 hidden h-8 w-8 place-items-center rounded-full border border-border bg-card text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 md:grid"}
+            onClick={() => setAiCollapsed((collapsed) => !collapsed)}
+            aria-expanded={!aiCollapsed}
+            aria-label={tCustomer(aiCollapsed ? "strictMigration.tripPlanner.ai.expand" : "strictMigration.tripPlanner.ai.collapse")}
+            title={tCustomer(aiCollapsed ? "strictMigration.tripPlanner.ai.expand" : "strictMigration.tripPlanner.ai.collapse")}
+            className={aiCollapsed
+              ? "hidden h-full w-full flex-col items-center gap-3 px-2 py-4 text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 xl:flex"
+              : "absolute right-3 top-3 z-10 hidden h-8 w-8 place-items-center rounded-full border border-border bg-card text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 xl:grid"}
           >
-            {itineraryCollapsed ? (
-              <>
-              <ChevronRight size={17} />
-              <Navigation size={16} />
-              <span className="text-[10px] font-bold tracking-[0.12em] [writing-mode:vertical-rl]">{tCustomer("ui.map.yourTrip")}</span>
-              </>
-            ) : <ChevronLeft size={15} />}
+            {aiCollapsed ? <><ChevronRight size={17} /><Sparkles size={16} /><span className="text-[10px] font-bold tracking-[0.12em] [writing-mode:vertical-rl]">{tCustomer("strictMigration.tripPlanner.ai.shortTitle")}</span></> : <ChevronLeft size={15} />}
           </button>
-          <div className={(itineraryCollapsed ? "flex md:hidden" : "flex") + " min-h-0 flex-1 flex-col"}>
-          <header className="shrink-0 border-b border-border px-4 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{tCustomer("ui.map.yourTrip")}</p>
-                <h1 className="mt-1 break-words whitespace-normal text-lg font-bold text-foreground">{tripData.name}</h1>
-                <p className="mt-1 text-xs text-muted-foreground">{formatTripRange(tripData)}</p>
+          {!aiCollapsed && <div role="separator" aria-label={tCustomer("strictMigration.tripPlanner.ai.resize")} aria-orientation="vertical" aria-valuemin={260} aria-valuemax={520} aria-valuenow={aiWidth} tabIndex={0} onPointerDown={handleAiResizeStart} onKeyDown={(event) => { if (event.key === "ArrowRight") setAiWidth((width) => Math.min(520, width + 20)); if (event.key === "ArrowLeft") setAiWidth((width) => Math.max(260, width - 20)); }} className="absolute -right-[3px] top-0 z-20 hidden h-full w-[6px] cursor-col-resize touch-none focus-visible:bg-primary/30 xl:block" />}
+          <div className={(aiCollapsed ? "flex xl:hidden" : "flex") + " min-h-0 flex-1 flex-col"}>
+            <header className="shrink-0 border-b border-border px-4 py-5">
+              <div className="flex items-center gap-2 pr-10">
+                <span className="grid h-8 w-8 place-items-center rounded-xl bg-secondary text-primary"><Sparkles size={16} /></span>
+                <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{tCustomer("strictMigration.tripPlanner.ai.label")}</p><h1 className="text-lg font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.title")}</h1></div>
               </div>
-              <span className="mr-10 shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-bold text-primary">{tCustomer("strictMigration.tripPlanner.planned", { scheduled: scheduledItemCount, total: trip.items.length })}</span>
+            </header>
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+              <form onSubmit={requestAiPlan} className="space-y-2">
+                <label htmlFor="trip-ai-preference" className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.preferenceLabel")}</label>
+                <input id="trip-ai-preference" value={aiPreference} onChange={(event) => setAiPreference(event.target.value)} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" />
+                <button type="submit" disabled={aiLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">
+                  {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}{aiLoading ? tCustomer("strictMigration.tripPlanner.ai.loading") : tCustomer("strictMigration.tripPlanner.ai.planAction")}
+                </button>
+              </form>
+              {aiError && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{aiError}</p>}
+              {aiSuggestions.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.suggestions")} className="space-y-2">
+                <h2 className="text-xs font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.suggestions")}</h2>
+                {aiSuggestions.slice(0, 3).map((suggestion) => {
+                  const added = trip.has(suggestion.productId);
+                  return <article key={suggestion.productId} className="rounded-xl border border-border bg-background p-3">
+                    <div className="flex gap-3">
+                      {suggestion.image ? <Image src={suggestion.image} alt="" width={48} height={48} unoptimized className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"><MapIcon size={16} /></span>}
+                      <div className="min-w-0"><h3 className="text-xs font-bold text-foreground">{suggestion.productName}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{suggestion.message}</p><div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /><span>{suggestion.rating.toFixed(1)}</span><span>{formatMYR(suggestion.price)}</span></div></div>
+                    </div>
+                    <button type="button" onClick={() => addAiSuggestion(suggestion)} disabled={added} className="mt-2 w-full rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-default disabled:opacity-60">{added ? tCustomer("ui.map.removeFromTrip") : tCustomer("strictMigration.tripPlanner.ai.addToDay")}</button>
+                  </article>;
+                })}
+              </section>}
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
+              <details className="rounded-xl border border-border bg-background px-3 py-2">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.budget")}</summary>
+                <div className="pt-3"><TripBudgetGuard tripId={tripData.id} items={trip.items} activities={activities} onShowOnMap={(pin) => { setSuggestedPins((current) => current.some((existing) => existing.id === pin.id) ? current : [...current, pin]); focusPin(pin); setMapExpanded(true); setActivePanel("itinerary"); }} /></div>
+              </details>
             </div>
-            <button
-              type="button"
-              onClick={handleCheckout}
-              disabled={checkingOut || scheduledItemCount === 0}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {checkingOut ? <Loader2 size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
-              {tCustomer("ui.tripCheckout.button", { count: scheduledItemCount })}
-            </button>
+          </div>
+        </aside>
+
+        <main aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className={(activePanel === "itinerary" ? "flex" : "hidden") + " relative min-h-0 flex-col bg-background xl:flex"}>
+          <header className="flex shrink-0 flex-col items-stretch gap-2 border-b border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary">{tCustomer("strictMigration.tripPlanner.itineraryTab")}</p>
+              <h2 className="mt-0.5 break-words whitespace-normal text-lg font-bold text-foreground">{selectedDay ? tCustomer("strictMigration.tripPlanner.dayNumber", { number: selectedDayIndex + 1 }) : tCustomer("strictMigration.tripPlanner.planDays")}</h2>
+              <p className="text-xs text-muted-foreground">{selectedDay ? formatTripDay(selectedDay.date) : tCustomer("strictMigration.tripPlanner.planned", { scheduled: scheduledItemCount, total: trip.items.length })}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {selectedDay && <label className="sr-only" htmlFor="planner-selected-day">{tCustomer("strictMigration.tripPlanner.selectDay")}</label>}
+              {selectedDay && <select id="planner-selected-day" value={selectedDay.date} onChange={(event) => setSelectedDate(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary sm:max-w-52">{groupedItems.days.map((day, index) => <option key={day.date} value={day.date}>{tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 })} · {formatTripDay(day.date)}</option>)}</select>}
+              <button type="button" onClick={() => setMapExpanded((expanded) => !expanded)} aria-expanded={mapExpanded} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground transition hover:border-primary/40"><MapIcon size={14} />{mapExpanded ? tCustomer("strictMigration.tripPlanner.ai.hideMap") : tCustomer("strictMigration.tripPlanner.ai.showMap")}</button>
+              <button type="button" onClick={handleCheckout} disabled={checkingOut || scheduledItemCount === 0} aria-label={tCustomer("ui.tripCheckout.button", { count: scheduledItemCount })} title={tCustomer("ui.tripCheckout.button", { count: scheduledItemCount })} className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white transition hover:bg-primary/90 disabled:opacity-40">{checkingOut ? <Loader2 size={15} className="animate-spin" /> : <ShoppingCart size={15} />}</button>
+            </div>
           </header>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <TripBudgetGuard
-              tripId={tripData.id}
-              items={trip.items}
-              activities={activities}
-              onShowOnMap={(pin) => {
-                setSuggestedPins((current) => (current.some((existing) => existing.id === pin.id) ? current : [...current, pin]));
-                focusPin(pin);
-                setActivePanel("map");
-              }}
-            />
-
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-xs font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.buildRoute")}</p>
               <button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
@@ -1048,9 +1161,15 @@ export function MapClient({
               </div>
             )}
 
+            {mapExpanded && <div data-trip-route-map className="mb-4 h-44 overflow-hidden rounded-2xl border border-border bg-muted sm:h-48">
+              <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={near && placeFilters.distanceKm !== null ? [near.lat, near.lng] : undefined} radiusKm={near ? placeFilters.distanceKm ?? undefined : undefined} onAddStop={toggleStop} stopIds={selectedRouteStops.map((stop) => stop.id)} suggestedIds={suggestedPins.map((pin) => pin.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx, trafficSegments: route.traffic?.segments }))} fitCoordinates={selectedRouteCoordinates} disableNavigationGestures routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} onMapMovingChange={setMapMoving}>
+                <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} liveRadarAvailable={liveRadarAvailable} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
+              </MapView>
+            </div>}
+
             <div className="space-y-3">
-              {groupedItems.days.length > 0 ? visibleDays.map((day, index) => renderDaySection(tCustomer("strictMigration.tripPlanner.dayNumber", { number: dayPageStart + index + 1 }), day.date, day.items, tCustomer("strictMigration.tripPlanner.dropStopHint"), dayPageStart + index)) : renderDaySection(tCustomer("strictMigration.tripPlanner.planDays"), null, groupedItems.unscheduled, tCustomer("strictMigration.tripPlanner.addPlacesHint"))}
-              {groupedItems.days.length > 0 && safeDayPage === dayTotalPages && renderDaySection(tCustomer("strictMigration.tripPlanner.unscheduled"), null, groupedItems.unscheduled, tCustomer("strictMigration.tripPlanner.allAssigned"))}
+              {selectedDay ? renderDaySection(tCustomer("strictMigration.tripPlanner.dayNumber", { number: selectedDayIndex + 1 }), selectedDay.date, selectedDay.items, tCustomer("strictMigration.tripPlanner.dropStopHint")) : renderDaySection(tCustomer("strictMigration.tripPlanner.planDays"), null, groupedItems.unscheduled, tCustomer("strictMigration.tripPlanner.addPlacesHint"))}
+              {selectedDay && groupedItems.unscheduled.length > 0 && <details className="rounded-xl border border-border bg-card p-3"><summary className="cursor-pointer text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.unscheduled")} · {groupedItems.unscheduled.length}</summary><div className="mt-3">{renderDaySection(tCustomer("strictMigration.tripPlanner.unscheduled"), null, groupedItems.unscheduled, tCustomer("strictMigration.tripPlanner.allAssigned"))}</div></details>}
             </div>
 
             <div className="mt-3">
@@ -1068,66 +1187,22 @@ export function MapClient({
             </div>
           </div>
 
-          <DirectoryPagination
-            ariaLabel={tCustomer("strictMigration.tripPlanner.dayPagination")}
-            currentPage={safeDayPage}
-            itemLabel={tCustomer("strictMigration.tripPlanner.dayItemLabel")}
-            onPageChange={setDayPage}
-            pageSize={TRIP_DAYS_PAGE_SIZE}
-            totalItems={groupedItems.days.length}
-            totalPages={dayTotalPages}
-            variant="compact"
-          />
-
-          <footer className="shrink-0 border-t border-border bg-card p-3">
-            <div className="mb-2 grid grid-cols-4 gap-1.5">
-              {TRAVEL_MODES.map((travelMode) => {
-                const supported = Boolean(ORS_PROFILE[travelMode.id]);
-                const best = routes[travelMode.id]?.[0];
-                return <button key={travelMode.id} onClick={() => setMode(travelMode.id)} className="flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-[10px] font-bold" style={{ borderColor: mode === travelMode.id ? "var(--travel-blue)" : "var(--border)", backgroundColor: mode === travelMode.id ? "var(--travel-blue)" : "transparent", color: mode === travelMode.id ? "white" : "var(--foreground)" }}><span className="flex items-center gap-1"><travelMode.icon size={12} />{travelModeLabel(travelMode.id)}</span><span className="text-[9px] opacity-80">{!hasRouteInputs ? "" : !supported ? tCustomer("ui.map.maps") : routesLoading ? "…" : best ? formatDurationShort(best.durationMin) : "—"}</span></button>;
-              })}
+          <footer className="shrink-0 border-t border-border bg-card p-3 pb-20 xl:pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="sr-only" htmlFor="planner-travel-mode">{tCustomer("strictMigration.tripPlanner.buildRoute")}</label>
+              <select id="planner-travel-mode" value={mode} onChange={(event) => setMode(event.target.value as TravelModeId)} className="min-w-36 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">{TRAVEL_MODES.map((travelMode) => <option key={travelMode.id} value={travelMode.id}>{travelModeLabel(travelMode.id)}</option>)}</select>
+              {hasRouteInputs && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer("ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
+              {activeRoutes.length > 1 && <label className="ml-auto flex items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span>{tCustomer("ui.map.routeOptions")}</span><select aria-label={tCustomer("ui.map.routeOptions")} value={selectedRouteIdx} onChange={(event) => setSelectedRouteIdx(Number(event.target.value))} className="max-w-52 rounded-lg border border-border bg-background px-2 py-2 text-[11px] text-foreground">{activeRoutes.map((route, index) => <option key={index} value={index}>{formatDurationShort(route.durationMin)} · {route.distanceKm} {DISTANCE_UNIT_KM}{route.hasTolls ? ` · ${tCustomer("ui.map.toll")}` : ""}</option>)}</select></label>}
             </div>
-            {activeRoutes.length > 1 && (
-              <div className="mb-2 space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{tCustomer("ui.map.routeOptions")}</p>
-                {activeRoutes.map((route, index) => (
-                  <button key={index} onClick={() => setSelectedRouteIdx(index)} className="flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-[11px]" style={{ borderColor: index === selectedRouteIdx ? "var(--travel-blue)" : "var(--border)", backgroundColor: index === selectedRouteIdx ? "var(--secondary, #dbe6ff)" : "transparent" }}>
-                    <span className="font-bold">{formatDuration(route.durationMin)} <span className="font-semibold text-muted-foreground">· {route.distanceKm} {DISTANCE_UNIT_KM}</span></span>
-                    <span className="flex items-center gap-1">{index === 0 && <span className="rounded-full bg-nature-green/10 px-1.5 py-0.5 text-[9px] font-bold text-[#16A34A]">{tCustomer("ui.map.fastest")}</span>}{route.hasTolls && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{tCustomer("ui.map.toll")}</span>}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {hasRouteInputs && <p className="mb-2 text-center text-[11px] font-semibold text-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer("ui.map.calculatingRoute") : activeRoute ? (travelModeLabel(mode) + " · " + formatDuration(activeRoute.durationMin) + " · " + activeRoute.distanceKm + " km") : tCustomer("ui.map.routeUnavailable")}</p>}
-            {mode === "DRIVING" && activeRoute?.traffic && (
-              <div data-route-traffic-status className="mb-2 rounded-xl border border-border bg-muted/70 px-2.5 py-2">
-                <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-foreground">
-                  <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{activeRoute.traffic.basis === "live" ? tCustomer("ui.map.trafficLive") : tCustomer("ui.map.trafficPredicted")}</span>
-                  <span className="font-semibold text-muted-foreground">{tCustomer("ui.map.trafficProviderRetrievedAt", { time: new Date(activeRoute.traffic.retrievedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</span>
-                </div>
-                <div className="mt-1.5 grid grid-cols-4 gap-1 text-[9px] font-semibold text-muted-foreground">
-                  <span className="flex items-center gap-1"><i className="h-1 w-4 rounded-full bg-[#2563EB]" />{tCustomer("ui.map.trafficNormal")}</span>
-                  <span className="flex items-center gap-1"><i className="h-1 w-4 rounded-full bg-[#FACC15]" />{tCustomer("ui.map.trafficSlow")}</span>
-                  <span className="flex items-center gap-1"><i className="h-1 w-4 rounded-full bg-[#EF4444]" />{tCustomer("ui.map.trafficCongested")}</span>
-                  <span className="flex items-center gap-1"><i className="h-1 w-4 rounded-full bg-[#B91C1C]" />{tCustomer("ui.map.trafficSevere")}</span>
-                </div>
-              </div>
-            )}
+            {mode === "DRIVING" && activeRoute?.traffic && <details data-route-traffic-status className="mt-2 text-[10px] text-muted-foreground"><summary className="cursor-pointer font-semibold">{activeRoute.traffic.basis === "live" ? tCustomer("ui.map.trafficLive") : tCustomer("ui.map.trafficPredicted")}</summary><p className="pt-1">{tCustomer("ui.map.trafficProviderRetrievedAt", { time: new Date(activeRoute.traffic.retrievedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p></details>}
             <button onClick={() => directionsUrl && window.open(directionsUrl, "_blank")} disabled={!directionsUrl} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white disabled:opacity-40"><Navigation size={14} /> {tCustomer("ui.map.getDirectionsGoogle")}</button>
             <div className="mt-2 flex items-center justify-between"><button onClick={() => setUrlPreview((current) => current ? null : directionsUrl)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? tCustomer("ui.map.hideHandoffUrl") : tCustomer("ui.map.showHandoffUrl")}</button><button onClick={trip.clear} className="text-[10px] font-bold text-muted-foreground hover:text-destructive">{tCustomer("ui.map.clearTrip")}</button></div>
             {trip.stops.length > 9 && <p className="mt-1 text-[10px] font-semibold text-destructive">{tCustomer("ui.map.maxStops")}</p>}
             {urlPreview && <code className="mt-2 block max-h-16 overflow-auto break-all rounded-lg bg-muted p-2 text-[10px]">{urlPreview}</code>}
           </footer>
-          </div>
-        </aside>
-
-        <main aria-label={tCustomer("strictMigration.tripPlanner.tripMap")} className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 bg-muted md:flex"}>
-          <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={near && placeFilters.distanceKm !== null ? [near.lat, near.lng] : undefined} radiusKm={near ? placeFilters.distanceKm ?? undefined : undefined} onAddStop={toggleStop} stopIds={selectedRouteStops.map((stop) => stop.id)} suggestedIds={suggestedPins.map((pin) => pin.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx, trafficSegments: route.traffic?.segments }))} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} onMapMovingChange={setMapMoving}>
-            <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} liveRadarAvailable={liveRadarAvailable} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
-          </MapView>
         </main>
 
-        <aside aria-label={tCustomer("strictMigration.tripPlanner.placesToAdd")} className={(activePanel === "places" ? "flex" : "hidden") + " relative min-h-0 flex-col border-l border-border bg-card md:flex"}>
+        <aside aria-label={tCustomer("strictMigration.tripPlanner.placesToAdd")} className={(activePanel === "places" ? "flex" : "hidden") + " relative min-h-0 flex-col border-l border-border bg-card xl:flex"}>
           <button
             type="button"
             onClick={() => setPlacesCollapsed((collapsed) => !collapsed)}
@@ -1135,8 +1210,8 @@ export function MapClient({
             aria-label={tCustomer(placesCollapsed ? "ui.map.expandPlacesPanel" : "ui.map.minimizePlacesPanel")}
             title={tCustomer(placesCollapsed ? "ui.map.expandPlacesPanel" : "ui.map.minimizePlacesPanel")}
             className={placesCollapsed
-              ? "hidden h-full w-full flex-col items-center gap-3 px-2 py-4 text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 md:flex"
-              : "absolute right-3 top-4 z-10 hidden h-8 w-8 place-items-center rounded-full border border-border bg-card text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 md:grid"}
+              ? "hidden h-full w-full flex-col items-center gap-3 px-2 py-4 text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 xl:flex"
+              : "absolute right-3 top-4 z-10 hidden h-8 w-8 place-items-center rounded-full border border-border bg-card text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 xl:grid"}
           >
             {placesCollapsed ? (
               <>
@@ -1146,7 +1221,7 @@ export function MapClient({
               </>
             ) : <ChevronRight size={15} />}
           </button>
-          <div className={(placesCollapsed ? "flex md:hidden" : "flex") + " min-h-0 flex-1 flex-col"}>
+          <div className={(placesCollapsed ? "flex xl:hidden" : "flex") + " min-h-0 flex-1 flex-col"}>
           {filtersOpen ? (
             <TripPlaceFilterPanel
               filters={placeFilters}
@@ -1167,9 +1242,8 @@ export function MapClient({
             <ul className="flex flex-col gap-2">
               {visibleActivitiesPage.map((activity) => {
                 const added = trip.has(activity.id);
-                // eslint-disable-next-line @next/next/no-img-element
                 const sponsoredClick = () => activity.sponsorship && recordSponsoredEvent(activity.sponsorship.placementId, "click", activity.id);
-                return <li key={activity.id} data-activity-card={activity.id} data-promoted-activity={activity.sponsorship ? activity.sponsorship.placementId : undefined} draggable={!added} onDragStart={() => setDragPayload({ kind: "catalogue", activityId: activity.id })} onDragEnd={() => setDragPayload(null)} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "cursor-grab border-border hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg active:cursor-grabbing")}><div className="flex gap-2.5"><button type="button" onClick={() => { sponsoredClick(); focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: formatMYR(Number(activity.price)) + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id, imageUrl: activity.image }); }} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={tCustomer("strictMigration.tripPlanner.showOnMap", { item: activity.name })}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h3 className="min-w-0 flex-1 break-words whitespace-normal text-xs font-bold text-foreground">{activity.name}</h3>{activity.sponsorship && <span className="shrink-0 rounded-full bg-highlight-yellow/20 px-1.5 py-0.5 text-[9px] font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.filters.promoted")}</span>}</div><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? tCustomer("ui.map.distanceKm", { distance: activity.distanceKm.toFixed(1) }) : activity.outlet.city} · {formatMYR(Number(activity.price))}</p><div className="mt-2 flex flex-wrap items-center gap-2"><button onClick={() => { sponsoredClick(); toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: formatMYR(Number(activity.price)) + " · " + activity.outlet.city }); }} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? tCustomer("ui.map.removeFromTrip") : tCustomer("ui.actions.addToTrip")}</button>{!added && groupedItems.days.length > 0 && <select aria-label={tCustomer("strictMigration.tripPlanner.chooseDay", { item: activity.name })} defaultValue="" onChange={(event) => { if (event.target.value) { sponsoredClick(); chooseDayForActivity(activity, event.target.value); } event.currentTarget.value = ""; }} className="max-w-[96px] rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] font-bold text-primary"><option value="" disabled>{tCustomer("strictMigration.tripPlanner.chooseDayShort")}</option>{groupedItems.days.map((day, index) => <option key={day.date} value={day.date}>{tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 })}</option>)}</select>}<a href={"/customer/activity/" + activity.id} onClick={sponsoredClick} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">{tCustomer("ui.actions.viewDetails")}</a></div></div></div></li>;
+                return <li key={activity.id} data-activity-card={activity.id} data-promoted-activity={activity.sponsorship ? activity.sponsorship.placementId : undefined} draggable={!added} onDragStart={() => setDragPayload({ kind: "catalogue", activityId: activity.id })} onDragEnd={() => setDragPayload(null)} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "cursor-grab border-border hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg active:cursor-grabbing")}><div className="flex gap-2.5"><button type="button" onClick={() => { sponsoredClick(); focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: formatMYR(Number(activity.price)) + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id, imageUrl: activity.image }); }} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={tCustomer("strictMigration.tripPlanner.showOnMap", { item: activity.name })}>{activity.image ? <Image src={activity.image} alt="" width={56} height={56} unoptimized className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h3 className="min-w-0 flex-1 break-words whitespace-normal text-xs font-bold text-foreground">{activity.name}</h3>{activity.sponsorship && <span className="shrink-0 rounded-full bg-highlight-yellow/20 px-1.5 py-0.5 text-[9px] font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.filters.promoted")}</span>}</div><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? tCustomer("ui.map.distanceKm", { distance: activity.distanceKm.toFixed(1) }) : activity.outlet.city} · {formatMYR(Number(activity.price))}</p><div className="mt-2 flex flex-wrap items-center gap-2"><button onClick={() => { sponsoredClick(); toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: formatMYR(Number(activity.price)) + " · " + activity.outlet.city }); }} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? tCustomer("ui.map.removeFromTrip") : tCustomer("ui.actions.addToTrip")}</button>{!added && groupedItems.days.length > 0 && <select aria-label={tCustomer("strictMigration.tripPlanner.chooseDay", { item: activity.name })} defaultValue="" onChange={(event) => { if (event.target.value) { sponsoredClick(); chooseDayForActivity(activity, event.target.value); } event.currentTarget.value = ""; }} className="max-w-[96px] rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] font-bold text-primary"><option value="" disabled>{tCustomer("strictMigration.tripPlanner.chooseDayShort")}</option>{groupedItems.days.map((day, index) => <option key={day.date} value={day.date}>{tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 })}</option>)}</select>}<a href={"/customer/activity/" + activity.id} onClick={sponsoredClick} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">{tCustomer("ui.actions.viewDetails")}</a></div></div></div></li>;
               })}
             </ul>
             {filteredActivities.length === 0 && <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center"><Search size={22} className="mx-auto mb-2 text-muted-foreground" /><p className="text-xs font-bold text-foreground">{tCustomer("ui.map.noPlacesRadius")}</p><p className="mt-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noPlacesRadius")}</p></div>}
@@ -1189,8 +1263,6 @@ export function MapClient({
         </aside>
             </div>
           </div>
-        </section>
-      </CustomerPageShell>
-    </>
+    </section>
   );
 }

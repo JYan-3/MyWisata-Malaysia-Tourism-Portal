@@ -19,7 +19,11 @@ export async function GET(request: Request, { params }: Props) {
   const to = url.searchParams.get('to');
   const outletId = url.searchParams.get('outletId');
   const productId = url.searchParams.get('productId');
+  const linkedBookingId = url.searchParams.get('bookingId');
   const vendorOutletIds = access.access.outletIds;
+  if (linkedBookingId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(linkedBookingId)) {
+    return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 }, stats: {} });
+  }
   const outletIds = outletId && vendorOutletIds.includes(outletId) ? [outletId] : vendorOutletIds;
   if (!outletIds.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 }, stats: {} });
 
@@ -30,6 +34,7 @@ export async function GET(request: Request, { params }: Props) {
   let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(product_name,quantity,line_total,slot_starts_at,product_id,vendor_id,outlet_id,products(name,cover_url),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' })
     .eq('order_items.vendor_id', vendorId)
     .in('order_items.outlet_id', outletIds);
+  if (linkedBookingId) query = query.eq('id', linkedBookingId);
   if (productId) query = query.eq('order_items.product_id', productId);
   if (from) query = query.gte('booking_slots.starts_at', from);
   if (to) query = query.lte('booking_slots.starts_at', to);

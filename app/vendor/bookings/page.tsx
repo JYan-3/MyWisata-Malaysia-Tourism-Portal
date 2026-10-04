@@ -258,10 +258,11 @@ export default function VendorBookingsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const linkedBookingId = searchParams.get("bookingId") ?? "";
   const { showFeedback } = useActionFeedback();
   const { confirm } = useAppDialog();
   const vendorId = user?.activeVendorId;
-  const [tab, setTab] = useState<Tab>("reservations");
+  const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "operating-hours" ? "operating-hours" : "reservations");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
@@ -274,7 +275,7 @@ export default function VendorBookingsPage() {
     from: "",
     to: "",
     outletId: "",
-    productId: "",
+    productId: searchParams.get("productId") ?? "",
   });
   const [scheduleOutletId, setScheduleOutletId] = useState("");
   const [scheduleDraft, setScheduleDraft] =
@@ -378,6 +379,7 @@ export default function VendorBookingsPage() {
       });
       if (filters.outletId) params.set("outletId", filters.outletId);
       if (filters.productId) params.set("productId", filters.productId);
+      if (tab === "reservations" && linkedBookingId) params.set("bookingId", linkedBookingId);
       const endpoint = tab === "reservations" ? "bookings" : "slots";
       try {
         const response = await fetch(
@@ -411,6 +413,7 @@ export default function VendorBookingsPage() {
       filters.to,
       filters.outletId,
       filters.productId,
+      linkedBookingId,
       tab,
       t,
       vendorId,
@@ -420,6 +423,17 @@ export default function VendorBookingsPage() {
   useEffect(() => {
     void loadData(1);
   }, [loadData]);
+
+  useEffect(() => {
+    if (!linkedBookingId || tab !== "reservations" || loading) return;
+    const linkedBooking = bookings.find((booking) => booking.id === linkedBookingId);
+    if (!linkedBooking) return;
+    setSelectedBooking(linkedBooking);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("bookingId");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [bookings, linkedBookingId, loading, pathname, router, searchParams, tab]);
 
   function handleExportBookings() {
     if (!bookings.length) return;
@@ -864,7 +878,6 @@ export default function VendorBookingsPage() {
           onApply={applyBatch}
           actions={[
             { value: "check_in", label: t("ui.bookings.checkInSelected") },
-            { value: "cancel", label: t("ui.bookings.cancelSelected") },
           ]}
           busy={batchBusy}
           message={batchMessage}

@@ -68,7 +68,7 @@ describe("reference currency UI contract", () => {
     const customer = read("app/customer/layout.tsx");
     const guest = read("app/guest/layout.tsx");
 
-    expect(customer).toContain('<CurrencySwitcher compact className="w-20 md:w-24" />');
+    expect(customer).toContain('<CurrencySwitcher compact className="w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24" />');
     expect(guest).toContain("<CurrencySwitcher compact");
   });
 });

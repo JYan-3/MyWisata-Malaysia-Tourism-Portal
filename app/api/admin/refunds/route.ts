@@ -17,7 +17,7 @@ export async function GET() {
   const service = createServiceClient();
   const { data, error } = await service
     .from('refunds')
-    .select('id,order_id,amount,reason,status,provider_refund_id,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(display_id)')
+    .select('id,order_id,amount,reason,status,provider_refund_id,manual_reference,wallet_topup_sen,wallet_earnings_sen,external_amount_sen,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(display_id)')
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
@@ -35,6 +35,10 @@ export async function GET() {
       provider: payment?.provider ?? null,
       method: payment?.method ?? null,
       providerRefundId: refund.provider_refund_id ?? null,
+      manualReference: refund.manual_reference ?? null,
+      walletTopupSen: Number(refund.wallet_topup_sen ?? 0),
+      walletEarningsSen: Number(refund.wallet_earnings_sen ?? 0),
+      externalAmountSen: Number(refund.external_amount_sen ?? Math.round(Number(refund.amount) * 100)),
       failureCode: refund.provider_failure_code ?? null,
       failureMessage: refund.provider_failure_message ?? null,
       attemptCount: refund.attempt_count ?? 0,

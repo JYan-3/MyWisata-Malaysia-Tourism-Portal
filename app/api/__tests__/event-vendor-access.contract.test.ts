@@ -55,7 +55,7 @@ function routeFiles(directory: string): string[] {
 }
 
 const apiRoutes = routeFiles("app/api");
-const callsAuthorize = (source: string) => /\bauthorize(?:Vendor|Outlet)\(/.test(source);
+const callsAuthorize = (source: string) => /\bauthorize(?:Vendor|Outlet)(?:ProductWrite)?\(/.test(source);
 
 describe("event vendor API access contract", () => {
   it("opts in exactly the allowlisted routes", () => {

@@ -9,6 +9,7 @@ export interface OutboxEventRow {
   status: "pending" | "processing" | "delivered" | "failed";
   retry_count: number;
   next_retry_at: string;
+  lease_expires_at?: string | null;
   last_error: string | null;
   created_at: string;
 }
@@ -16,6 +17,7 @@ export interface OutboxEventRow {
 export type OutboxDispatcher = (event: OutboxEventRow) => Promise<void>;
 
 const DEFAULT_MAX_RETRIES = 5;
+const CLAIM_LEASE_MS = 5 * 60 * 1000;
 
 export async function processOutboxBatch(
   dispatcher: OutboxDispatcher,
@@ -29,12 +31,18 @@ export async function processOutboxBatch(
   const { data: events, error } = await supabase
     .from("sync_outbox")
     .select("*")
-    .in("status", ["pending", "failed"])
+    .in("status", ["pending", "failed", "processing"])
+    .or(`status.neq.processing,lease_expires_at.lt.${now}`)
+    .lt("retry_count", DEFAULT_MAX_RETRIES)
     .lte("next_retry_at", now)
     .order("created_at", { ascending: true })
     .limit(limit);
 
-  if (error || !events || events.length === 0) {
+  if (error) {
+    console.error("[sync-outbox] failed to load due events", error.message);
+    throw new Error("outbox_load_failed");
+  }
+  if (!events || events.length === 0) {
     return { processed: 0, delivered: 0, failed: 0 };
   }
 
@@ -45,9 +53,12 @@ export async function processOutboxBatch(
   for (const event of events as OutboxEventRow[]) {
     const { data: claimed, error: claimError } = await supabase
       .from("sync_outbox")
-      .update({ status: "processing" })
+      .update({
+        status: "processing",
+        lease_expires_at: new Date(Date.now() + CLAIM_LEASE_MS).toISOString(),
+      })
       .eq("id", event.id)
-      .in("status", ["pending", "failed"])
+      .or(`status.in.(pending,failed),and(status.eq.processing,lease_expires_at.lt.${now})`)
       .select("id")
       .maybeSingle();
     if (claimError) {
@@ -64,6 +75,7 @@ export async function processOutboxBatch(
         .update({
           status: "delivered",
           last_error: null,
+          lease_expires_at: null,
         })
         .eq("id", event.id);
       if (deliveryStateError) {
@@ -72,10 +84,11 @@ export async function processOutboxBatch(
         const { error: retryStateError } = await supabase
           .from("sync_outbox")
           .update({
-            status: "pending",
+            status: retryCount >= DEFAULT_MAX_RETRIES ? "failed" : "pending",
             retry_count: retryCount,
             next_retry_at: new Date(Date.now() + retryDelaySeconds * 1000).toISOString(),
             last_error: "delivery_state_update_failed",
+            lease_expires_at: null,
           })
           .eq("id", event.id)
           .eq("status", "processing");
@@ -97,8 +110,10 @@ export async function processOutboxBatch(
             status: "failed",
             retry_count: newRetryCount,
             last_error: errorMessage,
+            lease_expires_at: null,
           })
-          .eq("id", event.id);
+          .eq("id", event.id)
+          .eq("status", "processing");
       } else {
         const backoffSeconds = Math.min(3600, Math.pow(2, newRetryCount) * 10);
         const nextRetry = new Date(Date.now() + backoffSeconds * 1000).toISOString();
@@ -109,8 +124,10 @@ export async function processOutboxBatch(
             retry_count: newRetryCount,
             next_retry_at: nextRetry,
             last_error: errorMessage,
+            lease_expires_at: null,
           })
-          .eq("id", event.id);
+          .eq("id", event.id)
+          .eq("status", "processing");
       }
       failedCount++;
     }

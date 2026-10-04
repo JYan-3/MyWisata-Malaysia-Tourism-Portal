@@ -135,7 +135,6 @@ export function TripHubClient({ initialTrips, initialTripNameSequence }: { initi
       <CustomerPageTitle
         eyebrow={t("accountGroups.myTravel")}
         title={t("ui.trip.title")}
-        description={t("ui.trip.description")}
         icon={<Navigation size={14} />}
         actions={
           <button

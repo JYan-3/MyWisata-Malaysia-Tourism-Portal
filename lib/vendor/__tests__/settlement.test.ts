@@ -64,3 +64,16 @@ describe('getVendorSettlements', () => {
     expect(result).toEqual({ totals: { pendingSen: 0, clearedSen: 0, lifetimePlatformFeesSen: 0 }, settlements: [] });
   });
 });
+
+it('reports a failed settlement instead of claiming it succeeded', async () => {
+  const { settleOrderVendorEarnings } = await import('@/lib/vendor/settlement');
+  const result = await settleOrderVendorEarnings({ rpc: async () => ({ data: null, error: { message: 'temporary failure' } }) } as never, 'order');
+  expect(result).toBe(false);
+});
+
+it('separates simulated settlements from withdrawable totals', async () => {
+  const { service } = serviceFor([row({ is_simulated: true })]);
+  const result = await getVendorSettlements(service, 'vendor');
+  expect(result.totals.pendingSen).toBe(0);
+  expect(result.settlements[0]).toMatchObject({ isSimulated: true });
+});

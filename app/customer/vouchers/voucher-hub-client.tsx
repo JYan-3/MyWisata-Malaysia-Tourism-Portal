@@ -102,7 +102,11 @@ function VoucherCard({
         ) : undefined,
         locationLabel: voucher.locationLabel ?? tCustomer("ui.voucherHub.malaysia"),
         identityLabel: <><Sparkles size={12} aria-hidden="true" className="text-[#FFCC00]" /> {tCustomer("ui.labels.verified")}</>,
-        image: voucher.outletImageUrl ? { src: voucher.outletImageUrl, alt: imageAlt } : null,
+        image: voucher.outletImageUrl
+          ? { src: voucher.outletImageUrl, alt: imageAlt }
+          : voucher.vendorCoverUrl
+            ? { src: voucher.vendorCoverUrl, alt: voucher.vendorName }
+            : null,
         fallback: { logoUrl: voucher.vendorLogoUrl, logoAlt: tCustomer("ui.voucherHub.vendorLogoAlt", { name: voucher.vendorName }), initials: voucher.vendorName.slice(0, 2).toUpperCase() },
       }}
     >

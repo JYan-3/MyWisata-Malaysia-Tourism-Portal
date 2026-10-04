@@ -47,4 +47,9 @@ describe("cart voucher outlet validation", () => {
     expect(source).toContain("removeCurrentBeforeSwitch");
     localeSources.forEach((localeSource) => expect(localeSource).toContain('"removeCurrentBeforeSwitch"'));
   });
+
+  it("keeps saved selections until cart activity availability has finished loading", () => {
+    expect(source).toContain("activitiesReady");
+    expect(source).toMatch(/if \(!activitiesReady\) return;[\s\S]*selectedKeys\.forEach/);
+  });
 });

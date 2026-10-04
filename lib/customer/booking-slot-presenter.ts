@@ -16,14 +16,6 @@ const timeLabelFormatter = new Intl.DateTimeFormat("en-MY", {
   hour12: true,
 });
 
-const calendarDateLabelFormatter = new Intl.DateTimeFormat("en-MY", {
-  timeZone: MALAYSIA_TIME_ZONE,
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
 const calendarMonthLabelFormatter = new Intl.DateTimeFormat("en-MY", {
   timeZone: MALAYSIA_TIME_ZONE,
   month: "long",
@@ -92,12 +84,21 @@ export function isBookingSlotAvailable(slot: BookingSlot, now = new Date()): boo
   return getBookingSlotAvailability(slot, now) === "available";
 }
 
+export function getUpcomingSlotState(slots: BookingSlot[], now = new Date()): "available" | "full" | "none" {
+  if (slots.some((slot) => isBookingSlotAvailable(slot, now))) return "available";
+  const futureSlots = slots.filter((slot) => isValidDate(slot.startsAt) && new Date(slot.startsAt).getTime() > now.getTime());
+  return futureSlots.length > 0 && futureSlots.every((slot) => getBookingSlotAvailability(slot, now) === "full")
+    ? "full"
+    : "none";
+}
+
 export function formatBookingSlotDate(startsAt: string): string {
   return dateLabelFormatter.format(new Date(startsAt));
 }
 
-export function formatBookingSlotTime(startsAt: string): string {
-  return timeLabelFormatter.format(new Date(startsAt)).toLowerCase();
+export function formatBookingSlotTime(startsAt: string, locale?: string): string {
+  const formatter = locale ? new Intl.DateTimeFormat(locale, { timeZone: MALAYSIA_TIME_ZONE, hour: "numeric", minute: "2-digit", hour12: true }) : timeLabelFormatter;
+  return formatter.format(new Date(startsAt)).toLowerCase();
 }
 
 export function groupBookingSlotsByDate(slots: BookingSlot[]): BookingDateGroup[] {
@@ -120,7 +121,7 @@ export function groupBookableBookingSlotsByDate(slots: BookingSlot[], now = new 
   return groupBookingSlotsByDate(slots.filter((slot) => isBookingSlotAvailable(slot, now)));
 }
 
-export function getBookingCalendarDays(slots: BookingSlot[], monthKey: string, now = new Date()): BookingCalendarDay[] {
+export function getBookingCalendarDays(slots: BookingSlot[], monthKey: string, now = new Date(), locale?: string): BookingCalendarDay[] {
   const { year, month } = getMonthParts(monthKey);
   const firstDay = new Date(Date.UTC(year, month - 1, 1));
   const firstGridDay = new Date(Date.UTC(year, month - 1, 1 - firstDay.getUTCDay()));
@@ -145,7 +146,13 @@ export function getBookingCalendarDays(slots: BookingSlot[], monthKey: string, n
       monthKey: getMonthKeyFromDateKey(key),
       day: date.getUTCDate(),
       isCurrentMonth: getMonthKeyFromDateKey(key) === monthKey,
-      label: calendarDateLabelFormatter.format(new Date(`${key}T00:00:00+08:00`)),
+      label: new Intl.DateTimeFormat(locale ?? "en-MY", {
+        timeZone: MALAYSIA_TIME_ZONE,
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(new Date(`${key}T00:00:00+08:00`)),
       status,
       availableSlotCount,
       totalSlotCount: dateSlots.length,
@@ -153,8 +160,9 @@ export function getBookingCalendarDays(slots: BookingSlot[], monthKey: string, n
   });
 }
 
-export function formatBookingCalendarMonth(monthKey: string): string {
-  return calendarMonthLabelFormatter.format(new Date(`${monthKey}-01T00:00:00+08:00`));
+export function formatBookingCalendarMonth(monthKey: string, locale?: string): string {
+  const formatter = locale ? new Intl.DateTimeFormat(locale, { timeZone: MALAYSIA_TIME_ZONE, month: "long", year: "numeric" }) : calendarMonthLabelFormatter;
+  return formatter.format(new Date(`${monthKey}-01T00:00:00+08:00`));
 }
 
 export function getAdjacentBookingMonth(monthKey: string, offset: number): string {

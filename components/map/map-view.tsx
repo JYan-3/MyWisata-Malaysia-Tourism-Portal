@@ -38,6 +38,8 @@ export function MapView(props: {
   stopIds?: string[];
   suggestedIds?: string[];
   routes?: { path: [number, number][]; selected: boolean; trafficSegments?: RouteTrafficSegment[] }[];
+  fitCoordinates?: [number, number][];
+  disableNavigationGestures?: boolean;
   routeColor?: string;
   routeDashed?: boolean;
   focusRequest?: { pin: MapPin; token: number } | null;
@@ -48,7 +50,7 @@ export function MapView(props: {
 }) {
   const { t } = useTranslation("customer");
   return (
-    <div aria-label={t("ui.map.mapRegion")} className="h-full min-h-0 min-w-0 flex-1">
+    <div aria-label={t("ui.map.mapRegion")} data-map-navigation-gestures={props.disableNavigationGestures ? "disabled" : "enabled"} className="h-full min-h-0 min-w-0 flex-1">
       <MaplibreMap {...props} />
     </div>
   );

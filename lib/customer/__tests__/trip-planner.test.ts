@@ -8,6 +8,7 @@ import {
   isValidTripCoordinate,
   selectTripDayWeatherAnchor,
   computeSwapTargetOrder,
+  getTripActivitySublabel,
 } from "@/lib/customer/trip-planner";
 
 const trip: Trip = {
@@ -38,6 +39,22 @@ function item(id: string, overrides: Partial<TripItem> = {}): TripItem {
 }
 
 describe("trip planner scheduling helpers", () => {
+  it("uses the current catalogue price and outlet for linked activities", () => {
+    expect(getTripActivitySublabel(
+      { price: 75, outlet: { city: "George Town" } },
+      "RM 60 · Penang",
+      (price) => `RM ${price.toFixed(2)}`,
+      "Place details unavailable",
+    )).toBe("RM 75.00 · George Town");
+  });
+
+  it("keeps saved text for custom stops and uses it when a linked activity is unavailable", () => {
+    expect(getTripActivitySublabel(undefined, "My saved location", (price) => `RM ${price}`, "Place details unavailable"))
+      .toBe("My saved location");
+    expect(getTripActivitySublabel(undefined, undefined, (price) => `RM ${price}`, "Place details unavailable"))
+      .toBe("Place details unavailable");
+  });
+
   it("creates every inclusive calendar day for a dated trip", () => {
     expect(getTripDayDates(trip)).toEqual(["2026-08-15", "2026-08-16", "2026-08-17"]);
   });

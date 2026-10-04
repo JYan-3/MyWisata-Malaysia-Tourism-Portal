@@ -69,7 +69,7 @@ export function VendorSettlementPanel() {
           </thead>
           <tbody className="divide-y divide-border">
             {data.settlements.map((s) => {
-              const statusLine =
+              const statusLine = s.isSimulated ? t("ui.settlement.simulated") :
                 s.status === "confirmed"
                   ? t("ui.settlement.statusCleared")
                   : s.status === "reversed"

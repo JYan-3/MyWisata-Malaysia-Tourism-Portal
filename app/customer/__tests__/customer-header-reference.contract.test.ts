@@ -51,6 +51,13 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).not.toContain("max-md:hidden");
   });
 
+  it("compresses the customer utility row at phone widths to keep account controls visible", () => {
+    expect(customerLayoutSource).toContain("px-2 sm:px-6 flex items-center gap-1 sm:gap-8");
+    expect(customerLayoutSource).toContain("w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]");
+    expect(customerLayoutSource).toContain("className=\"w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24\"");
+    expect(customerLayoutSource).toContain("text-muted-foreground transition-transform sm:inline");
+  });
+
   it("wraps account-menu descriptions instead of clipping them with an ellipsis", () => {
     expect(customerLayoutSource).toContain(
       '<span className="block whitespace-normal break-words text-[0.6875rem] leading-5 text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>',

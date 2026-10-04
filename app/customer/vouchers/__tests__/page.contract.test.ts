@@ -41,8 +41,10 @@ describe("customer voucher hub UI contract", () => {
     expect(browse).toContain("resolveOutletImage");
     expect(browse).toContain("outletImageUrl");
     expect(client).toContain("voucher.outletImageUrl");
+    expect(client).toContain(": voucher.vendorCoverUrl");
     expect(client).toContain("voucher.vendorLogoUrl");
     expect(types).toContain("outletImageUrl: string | null");
+    expect(types).toContain("vendorCoverUrl: string | null");
   });
 
   it("gives voucher tickets a responsive image-led horizontal treatment", () => {

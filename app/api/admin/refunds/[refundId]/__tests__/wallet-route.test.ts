@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   rolesSelect: vi.fn(),
-  rpc: vi.fn(),
+  serviceRpc: vi.fn(),
   refundMaybeSingle: vi.fn(),
 }));
 
@@ -11,11 +11,11 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     auth: { getUser: mocks.getUser },
     from: () => ({ select: () => ({ eq: () => mocks.rolesSelect() }) }),
-    rpc: mocks.rpc,
   })),
 }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({
+    rpc: mocks.serviceRpc,
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: mocks.refundMaybeSingle }) }),
     }),
@@ -50,14 +50,15 @@ describe('POST /api/admin/refunds/:refundId Wallet refund', () => {
   });
 
   it('uses the atomic Wallet refund RPC instead of a direct balance write', async () => {
-    mocks.rpc.mockResolvedValue({ data: { status: 'processed' }, error: null });
+    mocks.serviceRpc.mockResolvedValue({ data: { status: 'processed' }, error: null });
 
     const response = await POST(request(), { params: Promise.resolve({ refundId: '33333333-3333-4333-8333-333333333333' }) });
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('process_wallet_refund', {
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('process_wallet_refund', {
       p_refund_id: '33333333-3333-4333-8333-333333333333',
       p_note: null,
+      p_actor_id: '11111111-1111-4111-8111-111111111111',
     });
   });
 });

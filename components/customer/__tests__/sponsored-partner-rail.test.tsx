@@ -26,7 +26,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => ({
       "ui.search.featuredRecommendations": "Featured recommendations",
-      "ui.search.featuredDescription": "Featured experiences from verified local partners.",
+      "ui.search.featuredDescription": "A stable starting point while you build your travel preferences.",
       "ui.search.featuredCarousel": "Featured recommendations carousel",
       "ui.search.previousAdvertisement": "Previous advertisement",
       "ui.search.nextAdvertisement": "Next advertisement",
@@ -204,14 +204,21 @@ describe("SponsoredPartnerRail", () => {
 
     expect(container.textContent).toContain("Featured recommendations");
     expect(container.textContent).toContain("Featured");
+    expect(container.textContent).not.toContain("A stable starting point while you build your travel preferences.");
     expect(container.textContent).not.toContain("Sponsored");
     expect(container.textContent).toContain("Operating hours: 6:00 PM - 10:00 PM");
     expect(container.textContent).toContain("Advertisement activity-1");
     expect(container.textContent).not.toContain("Advertisement activity-2");
     expect(container.textContent).toContain("George Town Walks");
     expect(container.textContent).toContain("George Town, Penang");
-    expect(findOne(container, (element) => element.tagName === "A").getAttribute("href")).toBe("/customer/activity/activity-1");
-    expect(findElements(container, (element) => element.tagName === "ARTICLE")).toHaveLength(1);
+    const cardLink = findOne(container, (element) => element.tagName === "A");
+    expect(cardLink.getAttribute("href")).toBe("/customer/activity/activity-1");
+    expect(cardLink.className).toContain("md:grid-cols-[52%_48%]");
+    expect(cardLink.className).toContain("md:min-h-[410px]");
+    const cards = findElements(container, (element) => element.tagName === "ARTICLE");
+    expect(cards).toHaveLength(1);
+    expect(cards[0].className).toContain("rounded-[28px]");
+    expect(cards[0].className).toContain("shadow-sm");
 
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
     expect(viewport.getAttribute("aria-roledescription")).toBe("Featured recommendations carousel");
@@ -222,8 +229,18 @@ describe("SponsoredPartnerRail", () => {
     expect(findElements(container, (element) => element.tagName === "ARTICLE")[0].className).not.toContain("snap-start");
   });
 
-  it("uses the selected outlet photo and its name as the image alternative", async () => {
+  it("uses the product photo and its name before outlet media", async () => {
     const item = advertisement("activity-1");
+    await render(root, <SponsoredPartnerRail advertisements={[item]} />);
+
+    const image = findOne(container, (element) => element.tagName === "IMG");
+    expect(image.getAttribute("src")).toBe("/assets/customer/penang/penang-street-art.webp");
+    expect(image.getAttribute("alt")).toBe("Advertisement activity-1");
+  });
+
+  it("uses the outlet photo only when the product photo is missing", async () => {
+    const item = advertisement("activity-1");
+    item.image = null;
     await render(root, <SponsoredPartnerRail advertisements={[item]} />);
 
     const image = findOne(container, (element) => element.tagName === "IMG");
@@ -233,6 +250,7 @@ describe("SponsoredPartnerRail", () => {
 
   it("does not render an activity photo when the outlet has no photo", async () => {
     const item = advertisement("activity-1");
+    item.image = null;
     item.outlet.coverUrl = null;
     await render(root, <SponsoredPartnerRail advertisements={[item]} />);
 

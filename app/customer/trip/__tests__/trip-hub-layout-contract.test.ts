@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const hubSource = readFileSync(new URL("../trip-hub-client.tsx", import.meta.url), "utf8");
+const pageSource = readFileSync(new URL("../page.tsx", import.meta.url), "utf8");
 const localeSources = [
   readFileSync(new URL("../../../i18n/locales/en/customer.json", import.meta.url), "utf8"),
   readFileSync(new URL("../../../i18n/locales/ms/customer.json", import.meta.url), "utf8"),
@@ -16,9 +17,10 @@ describe("trip hub layout contract", () => {
     expect(hubSource).not.toContain("<div className=\"mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8\">");
   });
 
-  it("uses the shared customer page container and responsive heading scale", () => {
+  it("omits visible helper copy while preserving the metadata description", () => {
     expect(hubSource).toContain("CustomerPageShell wide");
-    expect(hubSource).toContain("description={t(\"ui.trip.description\")}");
+    expect(hubSource).not.toContain("description={t(\"ui.trip.description\")}");
+    expect(pageSource).toContain('description: t("ui.trip.description")');
   });
 
   it("keeps the trip cards readable at wide desktop sizes", () => {

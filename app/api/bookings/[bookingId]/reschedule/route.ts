@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: Props) {
         type: 'vendor_booking_rescheduled',
         title: 'Booking rescheduled',
         body: `Booking ${bookingId} was rescheduled by the customer.`,
-        link: `/vendor/bookings/${bookingId}`,
+        link: `/vendor/bookings?bookingId=${encodeURIComponent(bookingId)}`,
         email: false,
         reference: bookingId,
         metadata: { status: 'rescheduled' },

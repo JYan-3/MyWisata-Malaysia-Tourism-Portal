@@ -15,6 +15,7 @@ export interface CustomerVoucher {
   vendorId: string;
   vendorName: string;
   vendorLogoUrl: string | null;
+  vendorCoverUrl: string | null;
   outletId: string | null;
   outletName: string | null;
   outletImageUrl: string | null;

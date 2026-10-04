@@ -1,6 +1,6 @@
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { priceRuleCreateSchema } from '@/lib/validation/vendor-schemas';
-import { authorizeVendor } from '@/lib/vendor-authorization';
+import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-authorization';
 import { getScopedProduct } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
@@ -18,7 +18,7 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId);
   if (!access.ok) return access.response;
   const parsed = await parseBody(request, priceRuleCreateSchema);
   if (!parsed.ok) return parsed.response;

@@ -28,6 +28,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { EventPartnersSection, type EventPartner } from "@/components/customer/event-partners-section";
 
 const PLACEHOLDER_TEXTS = [
   "Where should we wander?",
@@ -70,11 +71,14 @@ function useTypewriterPlaceholder(texts: string[], typingSpeed = 70, deletingSpe
 }
 
 export type DemoVendor = CustomerVendorCardVendor & { businessType: string | null };
+type NearbyPartner = CustomerVendorCardVendor & { distanceKm: number };
+type NearbyLocationSource = "browser" | "city" | "none";
 
 export function CustomerHomeClient({
   recommended,
   popular,
   vendors,
+  eventPartners = [],
   campaign,
   campaigns,
   campaignUnavailable = false,
@@ -82,6 +86,7 @@ export function CustomerHomeClient({
   recommended: ComputedActivity[];
   popular: ComputedActivity[];
   vendors: DemoVendor[];
+  eventPartners?: EventPartner[];
   campaign: PromotionCampaignPublic | null;
   campaigns?: PromotionCampaignPublic[];
   campaignUnavailable?: boolean;
@@ -96,6 +101,10 @@ export function CustomerHomeClient({
   const { savedStates, toggleSaved } = useSavedDestinations();
   const [previewDestination, setPreviewDestination] = useState<typeof MALAYSIA_DESTINATIONS[number] | null>(null);
   const [eventCalendarOpen, setEventCalendarOpen] = useState(false);
+  const [nearbyPartners, setNearbyPartners] = useState<NearbyPartner[] | null>(null);
+  const [nearbyLocationSource, setNearbyLocationSource] = useState<NearbyLocationSource | null>(null);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
   const destinationRailRef = useRef<HTMLDivElement>(null);
   const placeholderText = useTypewriterPlaceholder(PLACEHOLDER_TEXTS);
 
@@ -106,10 +115,55 @@ export function CustomerHomeClient({
   const activeIndex = MALAYSIA_DESTINATIONS.findIndex((destination) => destination.state === activeDestination.state);
   const nextDestination = MALAYSIA_DESTINATIONS[(activeIndex + 1) % MALAYSIA_DESTINATIONS.length];
 
+  async function loadNearbyPartners(coordinates?: { latitude: number; longitude: number }) {
+    setNearbyLoading(true);
+    setNearbyError(null);
+    try {
+      const response = await fetch("/api/customer/nearby-partners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(coordinates ?? {}),
+      });
+      const body = await response.json() as {
+        data?: { locationSource: NearbyLocationSource; partners: NearbyPartner[] };
+        error?: { message?: string };
+      };
+      if (!response.ok || !body.data) {
+        throw new Error(body.error?.message ?? t("ui.home.nearbyLoadError"));
+      }
+      setNearbyPartners(body.data.partners.slice(0, 4));
+      setNearbyLocationSource(body.data.locationSource);
+    } catch (error) {
+      setNearbyError(error instanceof Error ? error.message : t("ui.home.nearbyLoadError"));
+      setNearbyLocationSource(null);
+      setNearbyPartners(null);
+    } finally {
+      setNearbyLoading(false);
+    }
+  }
+
+  function useMyLocationForPartners() {
+    setNearbyError(null);
+    if (!navigator.geolocation) {
+      void loadNearbyPartners();
+      return;
+    }
+
+    setNearbyLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => void loadNearbyPartners({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      }),
+      () => void loadNearbyPartners(),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
+    );
+  }
+
   function submitSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedQuery = query.trim();
-    router.push(trimmedQuery ? `/customer/search?q=${encodeURIComponent(trimmedQuery)}` : "/customer/explore");
+    router.push(trimmedQuery ? `/customer/partners?q=${encodeURIComponent(trimmedQuery)}` : "/customer/explore");
   }
 
   function scrollDestinations(direction: "previous" | "next") {
@@ -119,74 +173,76 @@ export function CustomerHomeClient({
     rail.scrollBy({ left: direction === "next" ? distance : -distance, behavior: "smooth" });
   }
 
-  const recommendationItems = recommended.length > 0 ? recommended.slice(0, 4) : popular.slice(0, 4);
-  const hasPersonalizedRecommendations = !isGuest && recommended.length > 0;
-
-  const popularExperiences = useMemo(() => {
-    const activities = popular.filter((item) => item.categorySlug === "activity" || item.requiresBooking);
-    return activities.length > 0 ? activities : popular;
-  }, [popular]);
-
-  const localDelicacies = useMemo(() => {
-    return popular.filter((item) => item.categorySlug === "food" || item.categorySlug === "retail");
-  }, [popular]);
+  const highlightItems = popular.slice(0, 4);
+  const highlightIds = new Set(highlightItems.map((activity) => activity.id));
+  const forYouItems = recommended.filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
+  const quickSearches = [
+    { label: t("ui.home.penangFoodSearch"), query: "Penang" },
+    { label: t("ui.home.langkawiIslandSearch"), query: "Langkawi" },
+    { label: t("ui.home.melakaHeritageSearch"), query: "Melaka" },
+    { label: t("ui.home.sabahNatureSearch"), query: "Sabah" },
+  ];
 
   return (
     <div className="bg-background min-h-screen text-foreground pb-20">
       {/* 1. Hero Section */}
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary text-white lg:h-auto lg:min-h-[calc(100svh-64px)]">
+      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary text-white lg:h-auto lg:min-h-0">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_12%,rgba(255,204,0,0.2),transparent_24%),radial-gradient(circle_at_8%_85%,rgba(84,112,210,0.18),transparent_30%),linear-gradient(125deg,#020044_0%,#05083d_58%,#0a243b_100%)]" />
         <div className="atlas-ambient absolute left-[55%] top-20 -z-10 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
         <div className="atlas-ambient atlas-ambient-delayed absolute left-[58%] top-32 -z-10 h-56 w-56 rounded-full border border-white/10 sm:h-72 sm:w-72" />
 
-        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:flex lg:flex-col lg:px-8 lg:pb-8 lg:pt-4">
+        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:flex lg:flex-col lg:px-8 lg:pb-6 lg:pt-4">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:mb-2">
             <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/60"><Compass size={16} className="text-[#ffcc00]" /> {ATLAS_BRAND_NAME}</div>
             <Link href="/customer/explore" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 transition hover:border-[#ffcc00] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">{t("ui.home.viewFullMap")} <ArrowRight size={14} /></Link>
           </div>
 
-          <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:gap-7 lg:flex-none lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:gap-10">
+          <div className="grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:gap-7 lg:flex-none lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:gap-10">
             <div className="max-w-2xl">
-              <div className="atlas-enter atlas-delay-1 mb-5 inline-flex items-center gap-2 rounded-full border border-[#ffcc00]/35 bg-[#ffcc00]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00] lg:mb-4"><Sparkles size={13} /> {t("ui.home.heroKicker")}</div>
-              <h1 className="atlas-enter atlas-delay-2 max-w-xl font-[family-name:var(--font-display)] text-5xl font-bold leading-[0.96] tracking-[-0.04em] text-[#ffffff] sm:text-7xl lg:text-6xl">{t("ui.home.heroTitleStart")} <span className="text-[#ffcc00]">{t("ui.home.heroTitleAccent")}</span></h1>
-              <p className="atlas-enter atlas-delay-3 mt-6 max-w-lg text-base leading-7 text-white/65 sm:text-lg lg:mt-4 lg:text-base">{t("ui.home.heroDescription")}</p>
+              <h1 className="atlas-enter atlas-delay-1 max-w-xl font-[family-name:var(--font-display)] text-5xl font-bold leading-[0.96] tracking-[-0.04em] text-[#ffffff] sm:text-7xl lg:text-6xl">{t("ui.home.exploreMalaysia")}</h1>
 
-              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-4 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-card p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center lg:mt-6">
+              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-2 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-card p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center lg:mt-5">
                 <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholderText} aria-label={t("ui.home.searchAria")} className="min-w-0 flex-1 bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" /></div>
                 <button type="submit" className="atlas-shimmer inline-flex items-center justify-center gap-2 rounded-[16px] bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.startExploring")} <ArrowRight size={15} /></button>
               </form>
 
-              <div className="atlas-enter atlas-delay-5 mt-8 grid max-w-xl grid-cols-3 gap-4 border-t border-white/15 pt-5 lg:mt-5 lg:pt-4">
+              <div className="atlas-enter atlas-delay-3 mt-8 grid max-w-xl grid-cols-2 gap-4 border-t border-white/15 pt-5 lg:mt-4 lg:pt-3">
                 <div><p className="font-mono text-lg font-bold text-[#ffcc00]">{MALAYSIA_DESTINATIONS.length}</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">{t("ui.home.destinationCount")}</p></div>
                 <div><p className="font-mono text-lg font-bold text-[#ffcc00]">{popular.length}</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">{t("ui.home.experienceCount")}</p></div>
-                <div><p className="font-mono text-lg font-bold text-[#ffcc00]">∞</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">{t("ui.home.wanderWays")}</p></div>
               </div>
+
+              <nav aria-label={t("ui.home.quickSearches")} className="atlas-enter atlas-delay-4 mt-5 max-w-xl">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">{t("ui.home.quickSearches")}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {quickSearches.map(({ label, query }) => (
+                    <Link
+                      key={query}
+                      href={`/customer/partners?q=${encodeURIComponent(query)}`}
+                      className="group flex min-h-11 items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold leading-snug text-white/80 transition hover:border-[#ffcc00]/45 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30"
+                    >
+                      <span className="min-w-0">{label}</span>
+                      <ArrowUpRight size={13} className="shrink-0 text-[#ffcc00]" aria-hidden="true" />
+                    </Link>
+                  ))}
+                </div>
+              </nav>
             </div>
 
-            <div className="atlas-enter atlas-delay-3 relative mx-auto min-h-[540px] w-full max-w-[460px] md:min-h-[500px] md:max-w-[390px] lg:min-h-[500px] lg:max-w-[560px]">
+            <div className="atlas-enter atlas-delay-3 relative mx-auto aspect-[0.78] w-full max-w-[460px] md:aspect-auto md:min-h-[500px] md:max-w-[390px] lg:min-h-[500px] lg:max-w-[560px]">
               <div className="atlas-depth-card absolute right-0 top-7 hidden w-[72%] rotate-[5deg] overflow-hidden rounded-[28px] border border-white/20 bg-[#11115f] shadow-2xl lg:block lg:top-8 lg:h-[380px] lg:w-[68%]" aria-hidden="true">
                 <div className="relative aspect-[0.72] opacity-80 lg:h-full lg:aspect-auto"><Image src={nextDestination.image} alt="" fill sizes="320px" className="object-cover" /><div className="absolute inset-0 bg-[#010066]/35" /></div>
-              </div>
-              <div className="atlas-note absolute left-0 top-14 z-30 hidden w-[80%] -rotate-[3deg] rounded-2xl border border-[#ffcc00]/40 bg-card px-4 py-3 text-foreground shadow-xl lg:block lg:left-2 lg:top-20 lg:w-[70%]">
-                <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{t("ui.home.postcard", { current: String(activeIndex + 1).padStart(2, "0"), total: MALAYSIA_DESTINATIONS.length })}</span><MapPin size={15} className="text-highlight-yellow" /></div>
-                <p className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">{t("ui.home.keepClose")}</p>
               </div>
               <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[88%]">
                 <div className="relative aspect-[0.78] lg:h-[500px] lg:aspect-auto">
                   <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 560px" priority className="atlas-active-image object-cover object-top" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-                  <div className="atlas-mobile-note absolute left-5 top-5 z-30 w-[calc(100%-10rem)] max-w-[12rem] rounded-2xl border border-[#ffcc00]/40 bg-card/95 px-3 py-2.5 text-foreground shadow-lg backdrop-blur lg:hidden">
-                    <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-primary">{t("ui.home.postcard", { current: String(activeIndex + 1).padStart(2, "0"), total: MALAYSIA_DESTINATIONS.length })}</span><MapPin size={13} className="shrink-0 text-highlight-yellow" /></div>
-                    <p className="mt-1 font-[family-name:var(--font-display)] text-base font-bold leading-tight">{t("ui.home.keepClose")}</p>
-                  </div>
-                  <div className="atlas-desktop-spotlight absolute right-5 top-5 z-30 hidden rounded-2xl border border-white/20 bg-[#00004d]/90 px-4 py-3 text-right shadow-lg backdrop-blur lg:block"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">{t("ui.home.spotlight")}</p><p className="mt-1 text-sm font-bold text-white">{activeDestination.state}</p><p className="mt-1 text-[11px] text-[#ffcc00]">{t("ui.home.islandMood")}</p></div>
-                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><p className="mt-1 text-xs leading-5 text-white/60">{activeDestination.tagline}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.viewDestination")} <ArrowUpRight size={14} /></button><SaveToggleButton onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(activeDestination.state); }} appearance="pill" saved={savedStates.has(activeDestination.state)} aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedToAtlas") : t("ui.home.saveFeeling")} className="atlas-press">{savedStates.has(activeDestination.state) ? t("ui.home.savedToAtlas") : t("ui.home.saveFeeling")}</SaveToggleButton></div></div>
+                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.viewDestination")} <ArrowUpRight size={14} /></button><SaveToggleButton onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(activeDestination.state); }} appearance="pill" saved={savedStates.has(activeDestination.state)} aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")} className="atlas-press">{savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}</SaveToggleButton></div></div>
                 </div>
               </div>
             </div>
           </div>
 
-          <nav aria-label={t("ui.home.destinationCarousel")} className="mt-12 border-t border-white/15 pt-8 lg:mt-10 lg:pt-8">
+          <nav aria-label={t("ui.home.destinationCarousel")} className="mt-12 border-t border-white/15 pt-8 lg:mt-8 lg:pt-6">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{t("ui.home.exploreDestinations")}</p>
@@ -225,8 +281,8 @@ export function CustomerHomeClient({
             </div>
           </nav>
 
-          <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-[#ffcc00]/25 bg-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]"><CalendarDays size={14} /> {t("ui.home.eventCalendarKicker")}</p><p className="mt-2 text-lg font-bold text-white">{t("ui.home.eventCalendarPrompt")}</p><p className="mt-1 max-w-xl text-sm leading-6 text-white/60">{t("ui.home.eventCalendarPromptDescription")}</p></div>
+          <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/15 bg-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:mt-6">
+            <h2 className="text-lg font-bold text-white">{t("ui.home.eventCalendar")}</h2>
             <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
           </div>
         </div>
@@ -235,89 +291,112 @@ export function CustomerHomeClient({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <PromotionCampaignSpotlight campaign={campaign} campaigns={campaigns} unavailable={campaignUnavailable} />
 
-        {/* 3. Recommended Experiences */}
-        {recommendationItems.length > 0 && (
-          <section className="mt-12">
-            <div className="mb-6 flex items-end justify-between gap-4">
+        {highlightItems.length > 0 && (
+          <section aria-labelledby="featured-highlights-heading" className="mt-12">
+            <div className="mb-5 flex items-end justify-between gap-4 border-b border-border/70 pb-4">
               <div>
-                <h2 className="text-xl font-bold font-[family-name:var(--font-display)] flex items-center gap-2">
-                  <Sparkles size={20} className="text-primary" /> {isGuest ? t("ui.home.featuredHighlights") : (hasPersonalizedRecommendations ? t("ui.home.forYou") : t("ui.home.popularExperiences"))}
+                <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+                  {t("ui.home.featuredHighlights")}
                 </h2>
-                {isGuest ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{t("ui.home.featuredHighlightsSubtitle")}</p>
-                ) : (
-                  !hasPersonalizedRecommendations && <p className="mt-1 text-sm text-muted-foreground">{t("ui.home.explorationPrompt")}</p>
-                )}
               </div>
-              {isGuest ? (
-                <Link
-                  href="/customer/explore?sort=recommended"
-                  className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-                >
-                  {t("ui.actions.viewAll")} <ArrowRight size={14} />
-                </Link>
-              ) : (
-                <Link
-                  href="/customer/for-you"
-                  className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-                >
-                  {t("ui.actions.viewAll")} <ArrowRight size={14} />
-                </Link>
-              )}
+              <Link href="/customer/explore" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+                {t("ui.actions.viewAll")} <ArrowRight size={14} />
+              </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {recommendationItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {highlightItems.map((activity) => (
+                <ActivityCard key={activity.id} activity={activity} detailsRevealOnHover detailsRevealStyle="caption" />
               ))}
             </div>
           </section>
         )}
 
-        {/* 4. Popular Experiences */}
-        <section className="mt-12">
-          <div className="flex items-center justify-between mb-6">
+        {!isGuest && forYouItems.length > 0 && (
+          <section aria-labelledby="for-you-heading" className="mt-12 rounded-[28px] border border-border/70 bg-secondary/35 p-4 sm:p-6 lg:p-7">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <h2 id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+                <Sparkles size={19} className="text-primary" aria-hidden="true" /> {t("ui.home.forYou")}
+              </h2>
+              <Link href="/customer/for-you" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+                {t("ui.actions.viewAll")} <ArrowRight size={14} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {forYouItems.map((activity) => (
+                <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} detailsRevealOnHover detailsRevealStyle="caption" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <EventPartnersSection partners={eventPartners.slice(0, 4)} featured />
+
+        <section className="mt-12" aria-labelledby="nearby-partners-heading">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.popularExperiences")}</h2>
-              <p className="mt-1 text-xs text-muted-foreground">{t("ui.home.popularExperiencesSubtitle")}</p>
+              <h2 id="nearby-partners-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+                {t("ui.home.nearbyPartners")}
+              </h2>
+              {nearbyLocationSource === "browser" && <p role="status" className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyFromCurrentLocation")}</p>}
+              {nearbyLocationSource === "city" && <p role="status" className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyFromProfile")}</p>}
+              {nearbyPartners === null && <p className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyPrompt")}</p>}
             </div>
-            <Link href="/customer/explore?category=activity" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={useMyLocationForPartners}
+                disabled={nearbyLoading}
+                aria-busy={nearbyLoading}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-wait disabled:opacity-60"
+              >
+                <MapPin size={15} aria-hidden="true" />
+                {nearbyLoading ? t("ui.states.loading") : t("ui.map.useCurrentLocation")}
+              </button>
+              <Link href="/customer/partners" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+                {t("ui.home.viewPartners")} <ArrowRight size={14} />
+              </Link>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {popularExperiences.slice(0, 8).map((activity) => (
-              <ActivityCard key={activity.id} activity={activity} />
-            ))}
-          </div>
-        </section>
 
-        {/* 5. Local Delicacies & Souvenirs */}
-        {localDelicacies.length > 0 && (
-          <section className="mt-12">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.localDelicacies")}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{t("ui.home.localDelicaciesSubtitle")}</p>
-              </div>
-              <Link href="/customer/explore?category=food" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
+          {nearbyError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{nearbyError}</p>}
+          {nearbyLoading ? (
+            <p role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">{t("ui.states.loading")}</p>
+          ) : nearbyPartners && nearbyPartners.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {nearbyPartners.slice(0, 4).map((partner, index) => {
+                const primaryOutlet = partner.outlets[0];
+                const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
+                return <VendorCard
+                  key={partner.id}
+                  vendor={partner}
+                  description={partner.description}
+                  descriptionFallback={t("ui.home.vendorDescription", { location })}
+                  distanceLabel={t("ui.home.distanceAway", { distance: partner.distanceKm.toFixed(1) })}
+                  index={index}
+                  detailsRevealOnHover
+                  detailsRevealStyle="caption"
+                />;
+              })}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {localDelicacies.slice(0, 8).map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
-              ))}
-            </div>
-          </section>
-        )}
+          ) : nearbyPartners ? (
+            <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+              {t(nearbyLocationSource === "none" ? "ui.home.nearbyNoLocation" : "ui.home.noNearbyPartners")} {" "}
+              <Link href="/customer/partners" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
+            </p>
+          ) : null}
+        </section>
 
         {/* 5. Featured Partners */}
         <section className="mt-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
             <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {vendors.slice(0, 8).map((vendor, index) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {vendors.slice(0, 4).map((vendor, index) => {
               const primaryOutlet = vendor.outlets[0];
               const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
-              return <VendorCard key={vendor.id} vendor={vendor} description={vendor.description} descriptionFallback={t("ui.home.vendorDescription", { location })} index={index} isFeatured showExploreAction={false} />;
+              return <VendorCard key={vendor.id} vendor={vendor} description={vendor.description} descriptionFallback={t("ui.home.vendorDescription", { location })} index={index} isFeatured detailsRevealOnHover detailsRevealStyle="caption" />;
             })}
           </div>
         </section>
@@ -364,9 +443,7 @@ export function CustomerHomeClient({
 
         .atlas-depth-card { animation: atlas-depth-drift 8s var(--atlas-ease-in-out) infinite alternate; }
 
-        .atlas-note { animation: atlas-note-float 6s ease-in-out infinite; }
-
-        .atlas-active-card { animation: atlas-card-in 720ms var(--atlas-ease-out) both; }
+          .atlas-active-card { animation: atlas-card-in 720ms var(--atlas-ease-out) both; }
 
         /* :global because styled-jsx only adds its scoping class to plain DOM
            elements, never to an imported component like next/image — a scoped
@@ -416,11 +493,6 @@ export function CustomerHomeClient({
           to { transform: translate3d(-12px, -10px, 0) rotate(8deg); }
         }
 
-        @keyframes atlas-note-float {
-          0%, 100% { transform: translate3d(0, 0, 0) rotate(-3deg); }
-          50% { transform: translate3d(0, -9px, 0) rotate(-1deg); }
-        }
-
         @keyframes atlas-card-in {
           from { opacity: 0; transform: translate3d(0, 26px, 0) scale(0.97); filter: blur(3px); }
           to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
@@ -452,8 +524,7 @@ export function CustomerHomeClient({
           .atlas-enter,
           .atlas-ambient,
           .atlas-depth-card,
-          .atlas-note,
-          .atlas-active-card,
+           .atlas-active-card,
           .atlas-shimmer::after {
             animation: none;
           }

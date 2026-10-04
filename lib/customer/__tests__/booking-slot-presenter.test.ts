@@ -5,6 +5,7 @@ import {
   formatBookingSlotTime,
   getBookingCalendarDays,
   getBookingDatePreview,
+  getUpcomingSlotState,
   groupBookableBookingSlotsByDate,
   groupBookingSlotsByDate,
   isBookingSlotAvailable,
@@ -76,5 +77,22 @@ describe("booking slot presentation", () => {
     expect(days.find((day) => day.key === "2026-08-03")).toMatchObject({ status: "available", availableSlotCount: 1 });
     expect(days.find((day) => day.key === "2026-08-04")).toMatchObject({ status: "full", availableSlotCount: 0 });
     expect(days.find((day) => day.key === "2026-08-01")).toMatchObject({ status: "unavailable", availableSlotCount: 0 });
+  });
+
+  it("distinguishes full upcoming supply from missing or unavailable dates", () => {
+    const now = new Date("2026-08-02T00:00:00+08:00");
+    expect(getUpcomingSlotState([slot("full", "2026-08-03T10:00:00+08:00", { booked: 10 })], now)).toBe("full");
+    expect(getUpcomingSlotState([slot("paused", "2026-08-03T10:00:00+08:00", { status: "paused" })], now)).toBe("none");
+    expect(getUpcomingSlotState([slot("available", "2026-08-03T10:00:00+08:00")], now)).toBe("available");
+  });
+
+  it("formats calendar accessibility labels in the requested locale", () => {
+    const days = getBookingCalendarDays(
+      [slot("available", "2026-08-03T10:00:00+08:00")],
+      "2026-08",
+      new Date("2026-08-02T00:00:00+08:00"),
+      "zh-CN",
+    );
+    expect(days.find((day) => day.key === "2026-08-03")?.label).toContain("8月");
   });
 });

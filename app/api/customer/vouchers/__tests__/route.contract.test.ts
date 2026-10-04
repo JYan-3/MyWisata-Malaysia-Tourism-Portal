@@ -46,9 +46,13 @@ describe("customer voucher API contracts", () => {
   it("resolves voucher imagery from the outlet before falling back to vendor branding", () => {
     const browse = read("app/api/customer/vouchers/route.ts");
     expect(browse).toContain("outlet_pages(hero_url)");
+    expect(browse).toContain("media_assets(url,alt_text,media_type,sort_order)");
     expect(browse).toContain("managed_by_vendor_id");
     expect(browse).toContain("resolveOutletImage");
     expect(browse).toContain("outletImageUrl");
+    expect(browse).toContain("vendors(id,name,logo_url,cover_url)");
+    expect(browse).toContain("vendorLogoUrl: vendorImageUrl(vendor?.logo_url)");
+    expect(browse).toContain("vendorCoverUrl: vendorImageUrl(vendor?.cover_url)");
   });
 
   it("claims only by voucher ID and delegates ownership to the RPC", () => {

@@ -6,17 +6,17 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   formatBookingCalendarMonth,
   formatBookingSlotTime,
+  getUpcomingSlotState,
   getAdjacentBookingMonth,
   getBookingCalendarDays,
   getBookingDatePreview,
   getTodayBookingDateKey,
   groupBookableBookingSlotsByDate,
-  groupBookingSlotsByDate,
   isBookingSlotAvailable,
 } from "@/lib/customer/booking-slot-presenter";
 import type { DetailBodyProps } from "./types";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 
 /**
  * Date + time slot picker. Shared by the categories that book a moment in time
@@ -24,11 +24,12 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  * panel reads it — the cart only needs the chosen slot id.
  */
 export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: DetailBodyProps & { label: string }) {
-  const { t } = useTranslation("customer");
+  const { t, i18n } = useTranslation("customer");
+  const locale = i18n.resolvedLanguage || "en-MY";
+  const weekdays = Array.from({ length: 7 }, (_, day) => new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(Date.UTC(2026, 0, 4 + day))));
   const now = useMemo(() => new Date(), []);
-  const slotDateGroups = useMemo(() => groupBookingSlotsByDate(slots), [slots]);
   const bookableDateGroups = useMemo(() => groupBookableBookingSlotsByDate(slots, now), [slots, now]);
-  const firstDateKey = bookableDateGroups[0]?.key ?? slotDateGroups[0]?.key ?? getTodayBookingDateKey(now);
+  const firstDateKey = bookableDateGroups[0]?.key ?? getTodayBookingDateKey(now);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => firstDateKey);
   const [displayedMonthKey, setDisplayedMonthKey] = useState<string>(() => firstDateKey.slice(0, 7));
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -36,8 +37,9 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
   const activeDateKey = bookableDateGroups.some((group) => group.key === selectedDateKey) ? selectedDateKey : bookableDateGroups[0]?.key ?? "";
   const activeDateGroup = bookableDateGroups.find((group) => group.key === activeDateKey);
   const previewDateGroups = getBookingDatePreview(bookableDateGroups, activeDateKey);
-  const calendarDays = useMemo(() => getBookingCalendarDays(slots, displayedMonthKey, now), [slots, displayedMonthKey, now]);
+  const calendarDays = useMemo(() => getBookingCalendarDays(slots, displayedMonthKey, now, locale), [slots, displayedMonthKey, now, locale]);
   const availableSlotCount = activeDateGroup?.slots.length ?? 0;
+  const upcomingSlotState = getUpcomingSlotState(slots, now);
 
   useEffect(() => {
     if (!calendarOpen) return;
@@ -93,7 +95,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
             {calendarOpen && (
               <div id="booking-availability-calendar" role="dialog" aria-label={t("ui.booking.chooseDateTime")} className="absolute right-0 z-20 mt-2 w-[min(320px,calc(100vw-3rem))] rounded-2xl border border-border bg-white p-4 shadow-xl">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-foreground">{formatBookingCalendarMonth(displayedMonthKey)}</p>
+                  <p className="text-sm font-bold text-foreground">{formatBookingCalendarMonth(displayedMonthKey, locale)}</p>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
@@ -115,7 +117,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                 </div>
 
                 <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-muted-foreground">
-                  {WEEKDAYS.map((weekday) => <span key={weekday}>{weekday}</span>)}
+                  {weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}
                 </div>
 
                 <div className="mt-2 grid grid-cols-7 gap-1">
@@ -156,7 +158,9 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
       {slots.length === 0 ? (
         <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">{t("ui.states.noSlots")}</p>
       ) : bookableDateGroups.length === 0 ? (
-        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">{t("ui.states.noDates")}</p>
+        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+          {upcomingSlotState === "full" ? t("ui.states.allDatesFull") : t("ui.states.noDates")}
+        </p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -173,8 +177,8 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                   color: activeDateKey === group.key ? "white" : "var(--foreground)",
                 }}
               >
-                {group.label}
-                <span className="mt-0.5 block text-[10px] font-medium opacity-75">{group.slots.length} {group.slots.length === 1 ? "time" : "times"}</span>
+                {new Intl.DateTimeFormat(locale, { timeZone: "Asia/Kuala_Lumpur", weekday: "short", day: "numeric", month: "short" }).format(new Date(`${group.key}T00:00:00+08:00`))}
+                <span className="mt-0.5 block text-[10px] font-medium opacity-75">{t("strictMigration.bookingPanel.availableTimesCount", { count: group.slots.length })}</span>
               </button>
             ))}
           </div>
@@ -196,7 +200,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                     color: selected ? "white" : "var(--foreground)",
                   }}
                 >
-                  <span className="block truncate text-sm font-semibold">{formatBookingSlotTime(slot.startsAt)}</span>
+                  <span className="block truncate text-sm font-semibold">{formatBookingSlotTime(slot.startsAt, locale)}</span>
                   <span className="mt-0.5 block text-[11px] font-medium opacity-75">{t("ui.experience.slotsLeft", { count: slot.capacity - slot.booked })}</span>
                 </button>
               );

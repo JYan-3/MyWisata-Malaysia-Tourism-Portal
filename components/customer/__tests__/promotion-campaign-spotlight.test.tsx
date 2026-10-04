@@ -11,7 +11,7 @@ const campaign: PromotionCampaignPublic = {
   summary: "A real campaign summary.", description: "Campaign details",
   posterUrl: null, operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T12:00:00.000Z", endsAt: "2026-09-26T12:00:00.000Z",
-  visibility: "upcoming", locations: [], vendors: [],
+  visibility: "upcoming", locations: [{ id: "melaka", name: "Melaka", address: null, lat: null, lng: null, startsOn: "2026-09-25", endsOn: "2026-09-26", opensAt: "10:00", closesAt: "18:00" }], vendors: [],
 };
 
 function getPanelActions(markup: string, labels: string[]) {
@@ -36,14 +36,23 @@ describe("promotion campaign home spotlight", () => {
     expect(contentIndex).toBeGreaterThan(imageIndex);
     expect(actionsIndex).toBeGreaterThan(contentIndex);
     expect(markup).toContain("bg-card");
-    expect(markup).toContain("border-highlight-yellow");
+    expect(markup).toContain("rounded-[28px]");
+    expect(markup).toContain("shadow-sm");
+    expect(markup).toContain("md:grid-cols-[52%_48%]");
+    expect(markup).toContain("md:min-h-[410px]");
     expect(markup).toContain("aspect-[16/9]");
-    expect(markup).toContain("lg:aspect-auto");
-    expect(markup).toContain("lg:border-l-4");
-    expect(markup).toContain("border-t-4");
+    expect(markup).toContain("md:aspect-auto");
+    expect(markup).toContain("ui.home.campaigns");
+    expect(markup).not.toContain("ui.search.featuredRecommendations");
+    expect(markup).not.toContain("ui.search.featuredDescription");
+    expect(markup).not.toContain("ui.labels.featured");
+    expect(markup).not.toContain("ui.promotionCampaigns.homeEyebrow");
+    expect(markup).toContain('data-testid="promotion-campaign-spotlight"');
+    expect(markup).not.toContain("border-t-4");
+    expect(markup).not.toContain("lg:border-l-4");
     expect(markup).not.toContain("opacity-70");
     expect(markup).not.toContain("bg-gradient-to-r");
-    expect(getPanelActions(markup, ["ui.promotionCampaigns.exploreCampaign", "ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
+    expect(getPanelActions(markup, ["ui.promotionCampaigns.exploreCampaign", "ui.promotionCampaigns.allCampaigns"])).toContain("text-primary");
   });
 
   it("distinguishes an unavailable projection from a genuine empty campaign list", () => {
@@ -57,7 +66,7 @@ describe("promotion campaign home spotlight", () => {
     expect(getPanelActions(empty, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
   });
 
-  it("shows external prev/next controls beside the card only when more than one campaign is eligible", () => {
+  it("uses the shared Partner carousel arrows only when more than one campaign is eligible", () => {
     const second: PromotionCampaignPublic = { ...campaign, id: "campaign-2", slug: "second-event", title: "Second event" };
 
     const single = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign]} />);
@@ -69,6 +78,12 @@ describe("promotion campaign home spotlight", () => {
     expect(multiple).toContain("ui.promotionCampaigns.next");
     expect(multiple).toContain("Sample event");
     expect(multiple).not.toContain("Second event");
+    const previousControl = multiple.match(/<button(?=[^>]*aria-label="ui\.promotionCampaigns\.previous")[^>]*>/)?.[0];
+    const nextControl = multiple.match(/<button(?=[^>]*aria-label="ui\.promotionCampaigns\.next")[^>]*>/)?.[0];
+    expect(previousControl).toContain("absolute left-3 top-1/2");
+    expect(previousControl).toContain("md:group-hover/carousel:opacity-100");
+    expect(nextControl).toContain("absolute right-3 top-1/2");
+    expect(nextControl).toContain("md:group-hover/carousel:opacity-100");
   });
 
   it("renders the event poster without requiring a global image host allowlist", () => {
@@ -81,5 +96,16 @@ describe("promotion campaign home spotlight", () => {
 
     expect(markup).toContain('src="https://thumb.wikimedia.org/event-poster.jpg"');
     expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
+  });
+
+  it("reveals campaign location and hours over the poster without changing the split layout", () => {
+    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
+
+    expect(markup).toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
+    expect(markup).toContain("group-hover:opacity-100");
+    expect(markup).toContain("group-focus-within:opacity-100");
+    expect(markup).toContain("Melaka");
+    expect(markup).toContain("10:00 AM - 6:00 PM");
+    expect(markup).toContain("md:grid-cols-[52%_48%]");
   });
 });

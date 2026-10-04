@@ -58,7 +58,7 @@ describe('POST /api/customer/event-reservations', () => {
       capability, allowed: true, blockerCode: null, qualificationPaths: [], entitlementGeneration: 1, source: 'policy',
     }));
     mocks.from.mockImplementation(() => queryResult({ phone_verified_at: '2026-09-01T00:00:00Z' }));
-    mocks.serviceFrom.mockImplementation(() => queryResult(null));
+    mocks.serviceFrom.mockImplementation(() => queryResult({ id: CHECKOUT_ID }));
     mocks.stripeCreate.mockResolvedValue({ id: 'cs_evt', url: 'https://checkout.stripe.test/cs_evt' });
   });
 

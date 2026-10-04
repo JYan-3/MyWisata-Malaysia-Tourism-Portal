@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Fragment, type ReactNode } from "react";
 import Map, { Layer, Marker, Popup, Source, type MapRef, type MarkerDragEvent } from "react-map-gl/maplibre";
 import type { GeoJSONSource, MapMouseEvent } from "maplibre-gl";
@@ -166,6 +166,8 @@ export function MaplibreMap({
   stopIds,
   suggestedIds,
   routes,
+  fitCoordinates,
+  disableNavigationGestures = false,
   routeColor = "#2563EB",
   routeDashed,
   focusRequest,
@@ -188,6 +190,8 @@ export function MaplibreMap({
   /** Pins from an AI suggestion (e.g. Budget Guard) not yet in the trip — rendered with a distinct star marker, and the popup reads "Suggested" instead of "+ Add to trip". */
   suggestedIds?: string[];
   routes?: { path: [number, number][]; selected: boolean; trafficSegments?: RouteTrafficSegment[] }[];
+  fitCoordinates?: [number, number][];
+  disableNavigationGestures?: boolean;
   routeColor?: string;
   routeDashed?: boolean;
   /** Bumping `token` (even for the same pin) re-triggers the pan+select. */
@@ -201,6 +205,7 @@ export function MaplibreMap({
   const mapRef = useRef<MapRef | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState("grab");
+  const routeCoordinates = useMemo(() => fitCoordinates ?? [], [fitCoordinates]);
 
   // Trip-stop and suggested pins render as DOM markers below, not the GL dot layer.
   const dotPins = useMemo(
@@ -225,11 +230,37 @@ export function MaplibreMap({
   const redPins = markerStyle === "pin";
   const interactiveLayerIds = redPins ? [] : cluster ? [CLUSTER_LAYER_ID, POINT_LAYER_ID] : [POINT_LAYER_ID];
 
+  const fitMapToRoute = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || routeCoordinates.length === 0) return;
+
+    const latitudes = routeCoordinates.map(([lat]) => lat);
+    const longitudes = routeCoordinates.map(([, lng]) => lng);
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
+    if (routeCoordinates.length === 1 || (maxLat - minLat < 0.00001 && maxLng - minLng < 0.00001)) {
+      map.flyTo({ center: [longitudes[0], latitudes[0]], zoom: 13, duration: 0 });
+      return;
+    }
+
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+      padding: { top: 24, right: 36, bottom: 24, left: 36 },
+      maxZoom: 12.5,
+      duration: 0,
+    });
+  }, [routeCoordinates]);
+
   // Recenter when `center`/`zoom` change (e.g. switching filters).
   useEffect(() => {
     mapRef.current?.flyTo({ center: [center[1], center[0]], zoom, duration: 600 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [center[0], center[1], zoom]);
+
+  useEffect(() => {
+    fitMapToRoute();
+  }, [fitMapToRoute]);
 
   // External trigger (e.g. tapping a "Nearby to add" row) — pan to the pin and open its popup.
   useEffect(() => {
@@ -268,14 +299,22 @@ export function MaplibreMap({
   return (
     <Map
       ref={mapRef}
-      initialViewState={{ longitude: center[1], latitude: center[0], zoom }}
+      initialViewState={{ longitude: center[1], latitude: center[0], zoom, bearing: 0, pitch: 0 }}
       mapStyle={MAP_STYLE}
       style={{ height, width: "100%", borderRadius: "1rem" }}
+      dragPan={!disableNavigationGestures}
+      scrollZoom={!disableNavigationGestures}
+      doubleClickZoom={!disableNavigationGestures}
+      dragRotate={!disableNavigationGestures}
+      touchZoomRotate={!disableNavigationGestures}
+      touchPitch={!disableNavigationGestures}
+      boxZoom={!disableNavigationGestures}
+      keyboard={!disableNavigationGestures}
       interactiveLayerIds={interactiveLayerIds}
-      cursor={cursor}
-      onMouseEnter={() => setCursor("pointer")}
-      onMouseLeave={() => setCursor("grab")}
-      onLoad={() => onApiLoaded?.()}
+      cursor={disableNavigationGestures ? "default" : cursor}
+      onMouseEnter={() => { if (!disableNavigationGestures) setCursor("pointer"); }}
+      onMouseLeave={() => { if (!disableNavigationGestures) setCursor("grab"); }}
+      onLoad={() => { onApiLoaded?.(); fitMapToRoute(); }}
       onMoveStart={() => onMapMovingChange?.(true)}
       onMoveEnd={() => onMapMovingChange?.(false)}
       onClick={handleMapClick}

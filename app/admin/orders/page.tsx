@@ -19,6 +19,7 @@ type OrderItem = {
 
 type AdminOrder = {
   id: string;
+  display_id: string | null;
   status: string;
   subtotal: number;
   discount_amount: number;
@@ -30,6 +31,7 @@ type AdminOrder = {
   created_at: string;
   customer: { name: string | null; email: string | null };
   items: OrderItem[];
+  payments?: { method: string; provider: string | null; status: string; amount: number }[];
   payment: { method: string; provider: string | null; status: string; amount: number } | null;
 };
 
@@ -148,7 +150,8 @@ export default function AdminOrdersPage() {
                 {orders.map((order) => (
                   <tr key={order.id} className="align-top">
                     <td className="px-4 py-4">
-                      <p className="font-mono text-xs font-semibold text-foreground">{order.id}</p>
+                      <p className="font-mono text-xs font-semibold text-foreground">{order.display_id ?? order.id}</p>
+                      {order.display_id && <p className="mt-1 font-mono text-[10px] text-muted-foreground">{order.id}</p>}
                       <p className="mt-1 capitalize text-muted-foreground">{t(`orderOperations.statuses.${STATUS_OPTIONS.includes(order.status as typeof STATUS_OPTIONS[number]) ? order.status : 'all'}`)}</p>
                     </td>
                     <td className="px-4 py-4">
@@ -170,8 +173,13 @@ export default function AdminOrdersPage() {
                       </ul>
                     </td>
                     <td className="px-4 py-4">
-                      <p>{order.payment?.method ?? order.payment_method ?? '—'}</p>
-                      <p className="text-xs text-muted-foreground">{order.payment?.status ?? t('orderOperations.paymentPending')}</p>
+                      {(order.payments?.length ? order.payments : order.payment ? [order.payment] : []).map((payment, index) => (
+                        <div key={index} className="mb-1">
+                          <p>{payment.method} · {formatMoney(payment.amount, order.currency || 'MYR', locale)}</p>
+                          <p className="text-xs text-muted-foreground">{payment.status}</p>
+                        </div>
+                      ))}
+                      {!order.payments?.length && !order.payment && <p>{t('orderOperations.paymentPending')}</p>}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-right font-semibold">{formatMoney(order.total_amount, order.currency || 'MYR', locale)}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(order.created_at))}</td>
