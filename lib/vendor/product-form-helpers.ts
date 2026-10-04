@@ -2,7 +2,7 @@ import type { ProductCreate } from '@/lib/validation/vendor-schemas';
 
 export const PRODUCT_TAG_LIMIT = 20;
 
-export function buildProductFormDefaults(initialData?: Partial<ProductCreate> & { id?: string }) {
+export function buildProductFormDefaults(initialData?: Partial<ProductCreate> & { id?: string; inventoryConfigured?: boolean; inventorySetupSingleEntry?: boolean }) {
   if (!initialData) {
     return {
       requiresBooking: false,
@@ -17,9 +17,10 @@ export function buildProductFormDefaults(initialData?: Partial<ProductCreate> & 
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id: _id, outletId: _outletId, ...editableFields } = initialData;
+  const { id: _id, outletId: _outletId, inventoryConfigured: _inventoryConfigured, inventorySetupSingleEntry: _singleStockEntry, ...editableFields } = initialData;
   return {
     ...editableFields,
+    ...(initialData.inventoryConfigured === false ? { availableStock: undefined, lowStockThreshold: undefined } : {}),
     ticketEntryPolicy: initialData.ticketEntryPolicy ?? 'single_entry',
     ticketEntryLimit: initialData.ticketEntryLimit ?? 1,
     ticketValidityDays: initialData.ticketValidityDays ?? 30,

@@ -16,6 +16,14 @@ describe("journey canvas weather overlay contract", () => {
     expect(source).toContain("advanceWeatherEffectParticles");
   });
 
+  it("keeps weather details collapsed until the user asks to open them", () => {
+    const source = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
+    expect(source).toContain("const [controlsExpanded, setControlsExpanded] = useState(false)");
+    expect(source).toContain("aria-expanded={controlsExpanded}");
+    expect(source).toMatch(/\{controlsExpanded && (?:hasForecast|enabled)/);
+    expect(source).toContain("onEnabledChange(!enabled)");
+  });
+
   it("keeps the expanded weather panel compact and anchored below its map control", () => {
     const source = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
     expect(source).toContain("absolute left-4 top-20 w-[min(360px,calc(100%-32px))] max-h-[calc(100%-5rem)] overflow-y-auto");

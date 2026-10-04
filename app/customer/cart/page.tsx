@@ -72,7 +72,7 @@ function VoucherOptionCard({ option, applied, hasAppliedVoucher = false, onApply
 
 export default function CartPage() {
   const { t: tCustomer } = useTranslation("customer");
-  const { items, activities = [], selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
+  const { items, activities = [], activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const [code, setCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
@@ -316,11 +316,12 @@ export default function CartPage() {
   }, [appliedVoucher, applyVoucherCode, deepLinkedVoucher, voucherValidationItems.length]);
 
   useEffect(() => {
+    if (!activitiesReady) return;
     const selectableSet = new Set(selectableKeys);
     selectedKeys.forEach((key) => {
       if (!selectableSet.has(key)) toggleSelected(key);
     });
-  }, [selectableKeys, selectedKeys, toggleSelected]);
+  }, [activitiesReady, selectableKeys, selectedKeys, toggleSelected]);
 
   if (items.length === 0) {
     return (

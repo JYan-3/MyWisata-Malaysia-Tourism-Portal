@@ -25,16 +25,17 @@ export async function GET(request: Request) {
   const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return apiFail('VALIDATION_FAILED', 'Invalid order query parameters.', 422, parsed.error.flatten());
   const { page, status, search } = parsed.data;
-  if (search && !UUID.test(search)) return apiFail('VALIDATION_FAILED', 'Search using a complete order ID.', 422);
+  const orderSearch = search.replace(/^#/, '');
+  if (orderSearch && !/^[a-z0-9-]+$/i.test(orderSearch)) return apiFail('VALIDATION_FAILED', 'Search using a complete order ID.', 422);
 
   try {
     const service = createServiceClient();
     let ordersQuery = service.from('orders')
-      .select('id,user_id,status,subtotal,discount_amount,total_amount,currency,payment_method,voucher_code,paid_at,created_at', { count: 'exact' })
+      .select('id,display_id,user_id,status,subtotal,discount_amount,total_amount,currency,payment_method,voucher_code,paid_at,created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (status !== 'all') ordersQuery = ordersQuery.eq('status', status);
-    if (search) ordersQuery = ordersQuery.eq('id', search);
+    if (orderSearch) ordersQuery = ordersQuery.eq(UUID.test(orderSearch) ? 'id' : 'display_id', orderSearch);
 
     const { data: orders, count, error: ordersError } = await ordersQuery;
     if (ordersError) return apiFail('ORDERS_UNAVAILABLE', 'Unable to load orders right now.', 503);
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
     const [usersResult, itemsResult, paymentsResult] = await Promise.all([
       service.from('users').select('id,full_name,email').in('id', userIds),
       service.from('order_items')
-        .select('id,order_id,vendor_id,outlet_id,product_name,quantity,line_total,fulfil_status,vendors!fk_oi_vendor(name),outlets!fk_oi_outlet(name)')
+        .select('id,order_id,vendor_id,outlet_id,product_name,quantity,line_total,fulfil_status,vendors(name),outlets(name)')
         .in('order_id', orderIds)
         .order('created_at', { ascending: true })
         .limit(1000),
@@ -68,8 +69,12 @@ export async function GET(request: Request) {
       items.push(item);
       itemsByOrder.set(item.order_id, items);
     }
+    const paymentsByOrder = new Map<string, NonNullable<typeof paymentsResult.data>>();
     const latestPaymentByOrder = new Map<string, NonNullable<typeof paymentsResult.data>[number]>();
     for (const payment of paymentsResult.data ?? []) {
+      const legs = paymentsByOrder.get(payment.order_id) ?? [];
+      legs.push(payment);
+      paymentsByOrder.set(payment.order_id, legs);
       if (!latestPaymentByOrder.has(payment.order_id)) latestPaymentByOrder.set(payment.order_id, payment);
     }
 
@@ -91,6 +96,7 @@ export async function GET(request: Request) {
           outletId: item.outlet_id,
           outletName: one(item.outlets)?.name ?? null,
         })),
+        payments: paymentsByOrder.get(order.id) ?? [],
         payment: latestPaymentByOrder.get(order.id) ?? null,
       })),
       page,

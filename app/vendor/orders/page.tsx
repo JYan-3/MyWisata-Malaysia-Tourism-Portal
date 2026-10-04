@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -137,6 +138,9 @@ function imageFor(item: OrderItemData) {
 
 export default function VendorOrdersPage() {
   const { t } = useTranslation("vendor");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const linkedOrderId = searchParams.get("orderId") ?? "";
   const { user } = useAuth();
   const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
@@ -185,6 +189,7 @@ export default function VendorOrdersPage() {
           from: filters.from,
           to: filters.to,
         });
+        if (linkedOrderId) params.set("orderId", linkedOrderId);
         const response = await fetch(
           `/api/vendors/${vendorId}/orders?${params}`,
           { cache: "no-store" },
@@ -217,6 +222,7 @@ export default function VendorOrdersPage() {
       filters.orderStatus,
       filters.from,
       filters.to,
+      linkedOrderId,
       t,
       vendorId,
     ],
@@ -226,6 +232,17 @@ export default function VendorOrdersPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadOrders(1);
   }, [loadOrders]);
+
+  useEffect(() => {
+    if (!linkedOrderId || loading) return;
+    const linkedOrder = items.find((order) => order.id === linkedOrderId);
+    if (!linkedOrder) return;
+    setSelectedItem(linkedOrder);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("orderId");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `/vendor/orders?${nextQuery}` : "/vendor/orders", { scroll: false });
+  }, [items, linkedOrderId, loading, router, searchParams]);
 
   const quickFilter =
     filters.fulfilStatus === "pending" || filters.fulfilStatus === "ready"
@@ -598,22 +615,22 @@ export default function VendorOrdersPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-xs text-gray-500">{t("ui.orders.needsAttention")}</p>
           <p className="mt-1 text-2xl font-bold text-amber-600">{stats.attention}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("ui.bookings.currentFilter")}</p>
+          <p className="mt-1 text-xs text-gray-400">{t("ui.products.currentPage")}</p>
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-xs text-gray-500">{t("ui.orders.markReady")}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950">{stats.ready}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("ui.bookings.currentFilter")}</p>
+          <p className="mt-1 text-xs text-gray-400">{t("ui.products.currentPage")}</p>
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-xs text-gray-500">{t("ui.orders.completed")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.fulfilled}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("ui.bookings.currentFilter")}</p>
+          <p className="mt-1 text-xs text-gray-400">{t("ui.products.currentPage")}</p>
         </div>
         <div className="rounded-2xl border border-primary/10 bg-secondary p-4 shadow-sm">
           <p className="text-xs text-primary">{t("ui.dashboard.totalRevenue")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{formatMYR(stats.totalSales)}</p>
-          <p className="mt-1 text-xs text-primary">{t("ui.bookings.currentFilter")}</p>
+          <p className="mt-1 text-xs text-primary">{t("ui.products.currentPage")}</p>
         </div>
       </div>
 

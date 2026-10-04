@@ -30,4 +30,10 @@ describe('admin approval overview workbench', () => {
     expect(pageSource).toContain('t("dashboard.allSources")');
     expect(pageSource).toContain('t("dashboard.queueActivity")');
   });
+
+  it('uses existing localized withdrawal-age labels for the oldest-request summary', () => {
+    expect(pageSource).toContain('translate("withdrawals.queue.noOpenRequests")');
+    expect(pageSource).toContain('translate("withdrawals.age.lessThanHour")');
+    expect(pageSource).toContain('translate("withdrawals.age.daysHours"');
+  });
 });

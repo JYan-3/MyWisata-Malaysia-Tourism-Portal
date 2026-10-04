@@ -240,8 +240,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         contextLabel={tAdmin(`roles.${currentUser.role}`)}
         contextDetail={contextDetail}
         sections={sidebarSections}
+        fixed
       />
-      <div ref={mainContentRef} data-scroll-container="admin-main" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      <div ref={mainContentRef} data-scroll-container="admin-main" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-20 lg:ml-60 lg:pb-0" style={{ backgroundColor: "var(--background)" }}>
         <header className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6">
           {currentUser.role !== "staff" && <button
             type="button"

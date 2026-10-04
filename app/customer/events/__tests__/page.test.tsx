@@ -56,6 +56,7 @@ describe("customer promotion campaign listing", () => {
     const markup = renderToStaticMarkup(await CustomerEventsPage());
 
     expect(markup).toContain("ui.promotionCampaigns.pageTitle");
+    expect(markup).not.toContain("ui.promotionCampaigns.pageDescription");
     expect(markup).toContain(campaign.title);
     expect(markup).toContain("Heritage Walk KL");
     expect(markup).not.toContain("ui.promotionCampaigns.loading");
@@ -63,25 +64,21 @@ describe("customer promotion campaign listing", () => {
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledOnce();
   });
 
-  it("shows campaign timing and a single count-aware action for a three-card preview", async () => {
-    const campaignWithSixVendors: PromotionCampaignPublic = {
-      ...campaign,
-      vendors: Array.from({ length: 6 }, (_, index) => ({
-        ...vendor,
-        registrationId: `registration-${index}`,
-        vendorId: `vendor-${index}`,
-        vendorName: `Vendor ${index}`,
-      })),
-    };
-    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [campaignWithSixVendors], error: false });
-
+  it("defaults to the combined Malaysia map and state-filtered event list", async () => {
     const markup = renderToStaticMarkup(await CustomerEventsPage());
+    const pageHeader = markup.match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? "";
 
+    expect(markup).toContain("ui.promotionCampaigns.map.stateCountsTitle");
+    expect(markup).toContain("ui.promotionCampaigns.map.eventsInMalaysia");
+    expect(markup).toContain("ui.promotionCampaigns.map.stateCountLabel");
+    expect(markup.match(/ui\.promotionCampaigns\.map\.stateCountLabel/g)).toHaveLength(16);
+    expect(pageHeader).toContain('role="group"');
+    expect(pageHeader).toContain("ui.promotionCampaigns.views.map");
+    expect(pageHeader).toContain("ui.promotionCampaigns.views.list");
+    expect(pageHeader).toContain("ui.promotionCampaigns.views.calendar");
+    expect(markup).not.toContain('href="/customer"');
     expect(markup).toContain("ui.promotionCampaigns.endsAt");
-    expect(markup).toContain("ui.promotionCampaigns.vendorCount");
     expect(markup).toContain("ui.promotionCampaigns.viewAllVendors");
-    expect(markup).toContain("ui.promotionCampaigns.previewVendorCount");
-    expect(markup).toContain("xl:grid-cols-3");
     expect(markup.match(/href="\/customer\/events\/heritage-walk-kl-current-offers"/g)).toHaveLength(1);
   });
 

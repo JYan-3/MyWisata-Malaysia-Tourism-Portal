@@ -107,7 +107,7 @@ export async function POST(request: Request) {
     type: 'vendor_order_created',
     title: 'New order received',
     body: `A new order for ${product.name} is ready for fulfilment.`,
-    link: `/vendor/orders/${orderId}`,
+    link: `/vendor/orders?orderId=${encodeURIComponent(orderId)}`,
     email: VENDOR_EVENT_MATRIX.newOrder.email,
     reference: orderId,
     metadata: { amount: Number(amount.toFixed(2)), vendorName: 'Vendor' },

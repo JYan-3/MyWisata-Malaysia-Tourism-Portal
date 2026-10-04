@@ -1,11 +1,10 @@
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { allocateVoucherCodes, parseVoucherCsv } from '@/lib/vendor/voucher-csv';
 import { isProductEligibleForVoucherOutlet } from '@/lib/vendor/voucher-scope';
 
 interface Props { params: Promise<{ vendorId: string }> }
-
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function csvDate(value: string | undefined) {
   if (!value) return null;
@@ -28,9 +27,10 @@ export async function POST(request: Request, { params }: Props) {
   const index = (name: string) => headers.indexOf(name);
   const parsedRows = rows.map((row, rowIndex) => {
     const voucherType = row[index('vouchertype')] || row[index('voucher_type')] || 'fixed';
-    const discountValue = Number(row[index('discountvalue')] || row[index('discount_value')] || 0);
+    const discountValueRaw = row[index('discountvalue')] || row[index('discount_value')] || '';
+    const discountValue = Number(discountValueRaw || 0);
     const code = row[index('code')]?.trim().toUpperCase() || '';
-    const name = row[index('name')]?.trim() || code;
+    const name = row[index('name')]?.trim() || '';
     const perCustomerLimit = row[index('percustomerlimit')] || row[index('per_customer_limit')];
     const redemptionMode = row[index('redemptionmode')] || row[index('redemption_mode')] || 'online';
     const outletId = row[index('outletid')] || row[index('outlet_id')] || null;
@@ -39,26 +39,38 @@ export async function POST(request: Request, { params }: Props) {
     const errors: string[] = [];
     if (!code && !codePrefix) errors.push('missing code (provide codePrefix to auto-generate)');
     if (code.length > 50) errors.push('code is longer than 50 characters');
-    if (!name) errors.push('missing name');
-    if (!['fixed', 'percent', 'bogo'].includes(voucherType)) errors.push('invalid voucher type');
-    if (voucherType !== 'bogo' && (!Number.isFinite(discountValue) || discountValue <= 0)) errors.push('discount must be positive');
-    if (voucherType === 'percent' && discountValue > 100) errors.push('percent discount cannot exceed 100');
-    const minSpend = Number(row[index('minspend')] || row[index('min_spend')] || 0);
-    if (!Number.isFinite(minSpend) || minSpend < 0) errors.push('minimum spend must be a non-negative number');
-    if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1)) errors.push('max uses must be a positive integer');
-    if (perCustomerLimit && (!Number.isInteger(Number(perCustomerLimit)) || Number(perCustomerLimit) < 1)) errors.push('per customer limit must be a positive integer');
-    if (!['online', 'in_store', 'both'].includes(redemptionMode)) errors.push('invalid redemption mode');
+    const minSpendRaw = row[index('minspend')] || row[index('min_spend')] || '';
+    const minSpend = Number(minSpendRaw || 0);
     const productId = row[index('productid')] || row[index('product_id')] || null;
     const buyQuantity = Number(row[index('buyquantity')] || row[index('buy_quantity')] || 0) || null;
     const freeQuantity = Number(row[index('freequantity')] || row[index('free_quantity')] || 0) || null;
-    if (productId && !uuidPattern.test(productId)) errors.push('product id must be a valid UUID');
-    if (outletId && !uuidPattern.test(outletId)) errors.push('outlet id must be a valid UUID');
-    if (voucherType === 'bogo' && (!productId || !buyQuantity || !freeQuantity)) errors.push('BOGO requires product, buy quantity and free quantity');
-    const validFrom = csvDate(row[index('validfrom')] || row[index('valid_from')]);
-    const validUntil = csvDate(row[index('validuntil')] || row[index('valid_until')]);
-    if ((row[index('validfrom')] || row[index('valid_from')]) && !validFrom) errors.push('valid from must be a valid date');
-    if ((row[index('validuntil')] || row[index('valid_until')]) && !validUntil) errors.push('valid until must be a valid date');
-    if (validFrom && validUntil && new Date(validUntil) <= new Date(validFrom)) errors.push('valid until must be after valid from');
+    const validFromRaw = row[index('validfrom')] || row[index('valid_from')];
+    const validUntilRaw = row[index('validuntil')] || row[index('valid_until')];
+    const validFrom = csvDate(validFromRaw);
+    const validUntil = csvDate(validUntilRaw);
+    const schemaResult = voucherCreateSchema.safeParse({
+      code: code || 'AUTOCODE001',
+      name,
+      voucherType,
+      discountValue: discountValueRaw ? Number(discountValueRaw) : undefined,
+      minSpend,
+      maxUses: maxUses ?? undefined,
+      perCustomerLimit: perCustomerLimit ? Number(perCustomerLimit) : undefined,
+      validFrom: validFrom ?? (validFromRaw ? validFromRaw : undefined),
+      validUntil: validUntil ?? (validUntilRaw ? validUntilRaw : undefined),
+      redemptionMode,
+      isClaimable: true,
+      outletId: outletId ?? undefined,
+      productId: productId ?? undefined,
+      buyQuantity: buyQuantity ?? undefined,
+      freeQuantity: freeQuantity ?? undefined,
+    });
+    if (!schemaResult.success) {
+      schemaResult.error.issues.forEach((issue) => {
+        if (issue.path[0] === 'code' && code.length > 50) return;
+        errors.push(issue.message);
+      });
+    }
     return {
       rowNumber: rowIndex + 2,
       errors,

@@ -158,3 +158,19 @@ export async function authorizeOutlet(
   }
   return result;
 }
+
+/** Product operations belong to assigned managers after vendor approval. */
+export async function authorizeVendorProductWrite(
+  vendorId: string,
+  options: { allowOwnerSetup?: boolean } = {},
+): Promise<AccessResult> {
+  const result = await authorizeVendor(vendorId);
+  if (!result.ok || !result.access.isOwner) return result;
+  if (options.allowOwnerSetup) {
+    const { data, error } = await result.access.authDb.from('vendors')
+      .select('status').eq('id', vendorId).maybeSingle();
+    if (error) return { ok: false, response: apiFail('DB_ERROR', error.message, 500) };
+    if (data && ['pending', 'rejected'].includes(data.status)) return result;
+  }
+  return { ok: false, response: apiFail('FORBIDDEN', 'Product changes require an assigned outlet manager', 403) };
+}

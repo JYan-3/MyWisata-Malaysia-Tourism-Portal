@@ -2,7 +2,7 @@
 
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productUpdateSchema } from '@/lib/validation/vendor-schemas';
-import { authorizeVendor } from '@/lib/vendor-authorization';
+import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-authorization';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getScopedProduct } from '@/lib/vendor/product-scope';
 import {
@@ -14,13 +14,13 @@ import {
 } from '@/lib/tickets/product-ticket-policy';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
-type StockVariant = { is_active: boolean; inventory?: { quantity?: number | null; reserved?: number | null }[] };
+type StockVariant = { is_active: boolean; inventory?: { outlet_id?: string; quantity?: number | null; reserved?: number | null }[] };
 
 async function refreshStockStatus(serviceDb: SupabaseClient, vendorId: string, productId: string) {
-  const { data: product } = await serviceDb.from('products').select('requires_booking,review_status,status').eq('id', productId).eq('vendor_id', vendorId).maybeSingle();
-  if (!product || product.requires_booking) return;
+  const { data: product } = await serviceDb.from('products').select('requires_booking,product_type,review_status,status').eq('id', productId).eq('vendor_id', vendorId).maybeSingle();
+  if (!product || product.requires_booking || product.product_type === 'digital') return;
   const { data: variants } = await serviceDb.from('product_variants').select('is_active,inventory(quantity,reserved)').eq('product_id', productId);
-  const available = ((variants || []) as StockVariant[]).some((variant) => variant.is_active && Number(variant.inventory?.[0]?.quantity || 0) - Number(variant.inventory?.[0]?.reserved || 0) > 0);
+  const available = ((variants || []) as StockVariant[]).some((variant) => variant.is_active && (variant.inventory ?? []).some((row) => Number(row.quantity || 0) - Number(row.reserved || 0) > 0));
   await serviceDb.from('products').update({ status: available && product.review_status === 'approved' ? 'active' : 'inactive' }).eq('id', productId).eq('vendor_id', vendorId).neq('status', 'archived');
 }
 
@@ -45,13 +45,14 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId);
   if (!access.ok) return access.response;
 
   const scopedTicketProduct = await getScopedProduct<{
     id: string;
     outlet_id: string | null;
     requires_booking: boolean;
+    product_type: string;
     ticket_entry_policy: TicketEntryPolicy | null;
     ticket_entry_limit: number | null;
     ticket_validity_days: number | null;
@@ -60,7 +61,7 @@ export async function PATCH(request: Request, { params }: Props) {
     vendorId,
     productId,
     access.access.outletIds,
-    'id,outlet_id,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days',
+    'id,outlet_id,requires_booking,product_type,ticket_entry_policy,ticket_entry_limit,ticket_validity_days',
   );
   let existingProduct = scopedTicketProduct.data;
   let productOutlet = scopedTicketProduct.outlet;
@@ -70,12 +71,13 @@ export async function PATCH(request: Request, { params }: Props) {
       id: string;
       outlet_id: string | null;
       requires_booking: boolean;
+      product_type: string;
     }>(
       access.access.serviceDb,
       vendorId,
       productId,
       access.access.outletIds,
-      'id,outlet_id,requires_booking',
+      'id,outlet_id,requires_booking,product_type',
     );
     existingProduct = legacyProduct.data
       ? {
@@ -174,24 +176,67 @@ export async function PATCH(request: Request, { params }: Props) {
     }
   }
 
-  if (body.availableStock !== undefined || body.lowStockThreshold !== undefined) {
-    const { data: variant } = await access.access.serviceDb
+  const stockProductType = body.productType ?? existingProduct.product_type;
+  const requiresBooking = body.requiresBooking ?? existingProduct.requires_booking;
+  if ((body.availableStock !== undefined || body.lowStockThreshold !== undefined) && !requiresBooking && stockProductType !== 'digital') {
+    const { data: variant, error: variantError } = await access.access.serviceDb
       .from('product_variants')
       .select('id')
       .eq('product_id', productId)
       .eq('is_default', true)
+      .eq('is_active', true)
       .maybeSingle();
-    if (variant && body.productType !== 'digital' && body.requiresBooking !== true) {
+    if (variantError) return apiFail('DB_ERROR', variantError.message, 500);
+
+    let inventoryVariant = variant;
+    if (!inventoryVariant && body.availableStock !== undefined) {
+      const { data: createdVariant, error: createVariantError } = await access.access.serviceDb
+        .from('product_variants')
+        .insert({ product_id: productId, name: 'Standard', price_offset: 0, is_default: true, is_active: true })
+        .select('id')
+        .single();
+      if (createVariantError || !createdVariant) return apiFail('DB_ERROR', createVariantError?.message || 'Unable to create the default stock variant', 500);
+      inventoryVariant = createdVariant;
+    }
+
+    if (!inventoryVariant && body.lowStockThreshold !== undefined) {
+      return apiFail('INVENTORY_SETUP_REQUIRED', 'Enter the actual stock quantity before configuring inventory.', 400);
+    }
+
+    if (inventoryVariant && body.availableStock !== undefined) {
+      const { data: existingInventory, error: inventoryReadError } = await access.access.serviceDb
+        .from('inventory')
+        .select('quantity,reserved,low_stock_threshold')
+        .eq('variant_id', inventoryVariant.id)
+        .eq('outlet_id', productOutlet.id)
+        .maybeSingle();
+      if (inventoryReadError) return apiFail('DB_ERROR', inventoryReadError.message, 500);
       const { error: inventoryError } = await access.access.serviceDb
         .from('inventory')
         .upsert({
-          variant_id: variant.id,
+          variant_id: inventoryVariant.id,
           outlet_id: productOutlet.id,
-          quantity: body.availableStock ?? 0,
-          low_stock_threshold: body.lowStockThreshold ?? 5,
+          quantity: body.availableStock,
+          reserved: Number(existingInventory?.reserved ?? 0),
+          low_stock_threshold: body.lowStockThreshold ?? Number(existingInventory?.low_stock_threshold ?? 5),
         }, { onConflict: 'variant_id,outlet_id' });
       if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
       await refreshStockStatus(access.access.serviceDb, vendorId, productId);
+    } else if (inventoryVariant && body.lowStockThreshold !== undefined) {
+      const { data: existingInventory, error: inventoryReadError } = await access.access.serviceDb
+        .from('inventory')
+        .select('quantity')
+        .eq('variant_id', inventoryVariant.id)
+        .eq('outlet_id', productOutlet.id)
+        .maybeSingle();
+      if (inventoryReadError) return apiFail('DB_ERROR', inventoryReadError.message, 500);
+      if (!existingInventory) return apiFail('INVENTORY_SETUP_REQUIRED', 'Enter the actual stock quantity before configuring inventory.', 400);
+      const { error: inventoryError } = await access.access.serviceDb
+        .from('inventory')
+        .update({ low_stock_threshold: body.lowStockThreshold })
+        .eq('variant_id', inventoryVariant.id)
+        .eq('outlet_id', productOutlet.id);
+      if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
     }
   }
 
@@ -200,7 +245,7 @@ export async function PATCH(request: Request, { params }: Props) {
 
 export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId);
   if (!access.ok) return access.response;
 
   const { data: existingProduct } = await getScopedProduct<{ id: string }>(

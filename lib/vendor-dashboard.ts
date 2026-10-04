@@ -2,8 +2,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import type { RecentOrder } from '@/components/vendor/recent-transactions';
 import { outletLocation, outletShortName } from '@/lib/outlet-display';
-import { isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
+import { isInventoryConfiguredForOutlets, isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
 import { productImageUrl } from '@/lib/storage/product-image';
+import { allocateDashboardRevenue, classifyDashboardSale, summarizeDashboardPayments, type DashboardPayment, type DashboardSaleClass } from '@/lib/vendor/dashboard-metrics';
 
 export type DashboardFilter = 'today' | '7d' | '30d' | '12m' | 'custom';
 export type DashboardCustomRange = { from?: string; to?: string };
@@ -28,7 +29,7 @@ type DashboardRow = {
   product_type?: string | null;
   requires_booking?: boolean | null;
   rating?: number;
-  orders?: { display_id?: string | null; status?: string | null };
+  orders?: { display_id?: string | null; status?: string | null; subtotal?: number | string | null; total_amount?: number | string | null; paid_at?: string | null; completed_at?: string | null; payments?: DashboardPayment[] | null };
 };
 
 type DashboardProduct = {
@@ -40,10 +41,12 @@ type DashboardProduct = {
   product_type?: string | null;
   requires_booking?: boolean | null;
   outlet_offers?: Array<{ outlet_id: string; status?: string | null }> | null;
+  product_variants?: Array<{ id: string; is_active?: boolean | null; inventory?: Array<{ outlet_id: string }> | null }> | null;
 };
 
 type RecentOrderDraft = RecentOrder & { display_id?: string | null; fulfil_statuses: string[] };
 export type StockAlert = { variantId: string; productId: string; productName: string; variantName: string; outletId: string; quantity: number; reserved: number; available: number; threshold: number; coverUrl: string | null };
+export type InventorySetupItem = { productId: string; productName: string; outletId: string; outletName: string; coverUrl: string | null };
 
 const TIME_ZONE = 'Asia/Kuala_Lumpur';
 
@@ -108,12 +111,22 @@ function bucketLabel(key: string, filter: DashboardFilter) {
       : { timeZone: TIME_ZONE, day: '2-digit', month: 'short' }).format(date);
 }
 
+function saleClass(item: DashboardRow): DashboardSaleClass {
+  return classifyDashboardSale(item.orders?.status, item.orders?.payments);
+}
+
 function isRevenueItem(item: DashboardRow) {
-  return ['paid', 'completed'].includes(item.orders?.status ?? '');
+  return saleClass(item) === 'verified';
 }
 
 function sumRevenue(items: DashboardRow[]) {
-  return items.reduce((total, item) => total + (isRevenueItem(item) ? number(item.line_total) : 0), 0);
+  const verifiedItems = items.filter(isRevenueItem);
+  return [...allocateDashboardRevenue(verifiedItems)].reduce((total, [, amount]) => total + amount, 0);
+}
+
+function sumClassRevenue(items: DashboardRow[], target: DashboardSaleClass) {
+  const scopedItems = items.filter((item) => saleClass(item) === target);
+  return [...allocateDashboardRevenue(scopedItems)].reduce((total, [, amount]) => total + amount, 0);
 }
 
 function percentChange(current: number, previous: number) {
@@ -174,16 +187,16 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
 
   const [itemsResult, productsResult, reviewsResult, pendingResult, inventoryResult] = await Promise.all([
     outletIds.length
-      ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(display_id,status,total_amount,created_at,paid_at,completed_at)').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
+      ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(display_id,status,subtotal,total_amount,created_at,paid_at,completed_at,payments(status,provider,is_live))').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
       : Promise.resolve({ data: [], error: null }),
     outletIds.length
-      ? db.from('products').select('id,name,base_price,product_type,status,outlet_id,cover_url,outlet_offers(outlet_id,status)').eq('vendor_id', vendor.id).or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
+      ? db.from('products').select('id,name,base_price,product_type,requires_booking,status,outlet_id,cover_url,outlet_offers(outlet_id,status),product_variants(id,is_active,inventory(outlet_id))').eq('vendor_id', vendor.id).or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
       : Promise.resolve({ data: [], error: null }),
     db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true).gte('created_at', start.toISOString()).lte('created_at', now.toISOString()),
     outletIds.length
       ? db.from('order_items').select('order_id,orders!inner(status)').in('outlet_id', outletIds).in('fulfil_status', ['pending', 'ready']).eq('orders.status', 'paid')
       : Promise.resolve({ data: [], error: null }),
-    db.from('inventory').select('variant_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,products!inner(id,name,outlet_id,cover_url,outlet_offers(outlet_id,status)))'),
+    db.from('inventory').select('variant_id,outlet_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,is_active,products!inner(id,name,status,outlet_id,cover_url,outlet_offers(outlet_id,status)))'),
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (productsResult.error) throw productsResult.error;
@@ -216,15 +229,32 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const outletLocations = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outletLocation(outlet.city, outlet.state)]));
   const productNames = Object.fromEntries(products.map((product) => [product.id, product.name]));
   const productById = Object.fromEntries(products.map((product) => [product.id, product]));
+  const activeOutletRows = outletRows.filter((outlet) => outlet.status === 'active');
+  const activeOutletIds = activeOutletRows.map((outlet) => outlet.id);
+  const stockSetupRows = products.flatMap((product) => {
+    if (product.status !== 'active' || product.requires_booking || product.product_type === 'digital' || !isVisibleActiveProduct(product, activeOutletIds)) return [];
+    return activeOutletIds.flatMap((outletId) => {
+      if (!resolveProductOutlet(product, [outletId]) || isInventoryConfiguredForOutlets(product.product_variants ?? [], [outletId])) return [];
+      return [{
+        productId: product.id,
+        productName: product.name,
+        outletId,
+        outletName: outletNames[outletId] || 'Unknown outlet',
+        coverUrl: productImageUrl(product.cover_url) || null,
+      }];
+    });
+  });
+  const inventorySetupCount = stockSetupRows.length;
+  const inventorySetupItems = stockSetupRows.slice(0, 12) as InventorySetupItem[];
   const productOutletIds = Object.fromEntries(products.flatMap((product) => {
     const outlet = resolveProductOutlet(product, outletIds);
     return outlet ? [[product.id, outlet.id]] : [];
   }));
-  const stockAlerts = ((inventoryResult.data || []) as Array<{ product_variants: unknown; quantity: number | string | null; reserved: number | string | null; low_stock_threshold: number | string | null; variant_id: string }>).flatMap((row) => {
+  const stockAlerts = ((inventoryResult.data || []) as Array<{ outlet_id: string; product_variants: unknown; quantity: number | string | null; reserved: number | string | null; low_stock_threshold: number | string | null; variant_id: string }>).flatMap((row) => {
     const variant = Array.isArray(row.product_variants) ? row.product_variants[0] : row.product_variants;
     const product = Array.isArray(variant?.products) ? variant.products[0] : variant?.products;
-    const resolvedOutlet = product ? resolveProductOutlet(product, outletIds) : null;
-    if (!variant || !product || !resolvedOutlet) return [];
+    const resolvedOutlet = product && outletIds.includes(row.outlet_id) ? resolveProductOutlet(product, [row.outlet_id]) : null;
+    if (!variant || variant.is_active === false || !product || product.status !== 'active' || !resolvedOutlet) return [];
     const quantity = number(row.quantity);
     const reserved = number(row.reserved);
     const available = Math.max(0, quantity - reserved);
@@ -233,10 +263,13 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   }).sort((a, b) => a.available - b.available).slice(0, 12) as StockAlert[];
 
   const chartMap = new Map<string, { revenue: number; orders: Set<string> }>();
-  for (const item of currentItems) {
+  const verifiedCurrentItems = currentItems.filter(isRevenueItem);
+  const verifiedRevenueByItem = allocateDashboardRevenue(verifiedCurrentItems);
+  const orderAmountByItem = allocateDashboardRevenue(currentItems);
+  for (const item of verifiedCurrentItems) {
     const key = bucketKey(new Date(item.created_at), filter);
     const point = chartMap.get(key) || { revenue: 0, orders: new Set<string>() };
-    if (isRevenueItem(item)) point.revenue += number(item.line_total);
+    point.revenue += verifiedRevenueByItem.get(item.id) ?? 0;
     point.orders.add(item.order_id);
     chartMap.set(key, point);
   }
@@ -245,17 +278,17 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   }));
 
   const outletMap = new Map<string, number>();
-  for (const item of currentItems) if (isRevenueItem(item)) outletMap.set(item.outlet_id, (outletMap.get(item.outlet_id) || 0) + number(item.line_total));
+  for (const item of verifiedCurrentItems) outletMap.set(item.outlet_id, (outletMap.get(item.outlet_id) || 0) + (verifiedRevenueByItem.get(item.id) ?? 0));
   const salesByOutlet = [...outletMap.entries()].sort(([, a], [, b]) => b - a).map(([outletId, revenue], index) => ({
     name: outletShortNames[outletId] || outletNames[outletId] || 'Unknown outlet', fullName: outletNames[outletId] || 'Unknown outlet', revenue: Math.round(revenue * 100) / 100, color: ['#010066', '#1d2a8a', '#b45309', '#be123c', '#7c3aed'][index % 5],
   }));
 
   const productMap = new Map<string, { name: string; quantity: number; revenue: number; coverUrl: string | null; outletName: string }>();
-  for (const item of currentItems) {
+  for (const item of verifiedCurrentItems) {
     const key = item.product_id || item.product_name;
     const product = productMap.get(key) || { name: item.product_name, quantity: 0, revenue: 0, coverUrl: productImageUrl(productById[key]?.cover_url) || null, outletName: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet' };
     product.quantity += number(item.quantity);
-    if (isRevenueItem(item)) product.revenue += number(item.line_total);
+    product.revenue += verifiedRevenueByItem.get(item.id) ?? 0;
     productMap.set(key, product);
   }
   const topSelling = [...productMap.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 5).map((product) => ({ ...product, revenue: Math.round(product.revenue * 100) / 100 }));
@@ -279,11 +312,13 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   for (const item of currentItems) {
     const itemWithNames = { ...item, outlet_name: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet', outlet_location: outletLocations[item.outlet_id] || 'Malaysia', order_status: item.orders?.status || 'unknown' };
     if (!recentOrderMap.has(item.order_id)) {
-      recentOrderMap.set(item.order_id, { order_id: item.order_id, display_id: item.orders?.display_id, created_at: item.created_at, order_status: itemWithNames.order_status, order_total: 0, quantity: 0, item_count: 0, product_name: item.product_name, outlet_name: itemWithNames.outlet_name, outlet_id: item.outlet_id, outlet_location: itemWithNames.outlet_location, fulfil_status: 'pending', fulfil_statuses: [], items: [] });
+      const product = item.product_id ? productById[item.product_id] : null;
+      recentOrderMap.set(item.order_id, { order_id: item.order_id, display_id: item.orders?.display_id, created_at: item.created_at, order_status: itemWithNames.order_status, order_total: 0, order_amount: 0, payment: summarizeDashboardPayments(item.orders?.payments), quantity: 0, item_count: 0, product_name: item.product_name, productType: product?.product_type, coverUrl: productImageUrl(product?.cover_url), outlet_name: itemWithNames.outlet_name, outlet_id: item.outlet_id, outlet_location: itemWithNames.outlet_location, fulfil_status: 'pending', fulfil_statuses: [], items: [] });
     }
     const order = recentOrderMap.get(item.order_id)!;
     order.created_at = new Date(item.created_at) > new Date(order.created_at) ? item.created_at : order.created_at;
     order.order_total += number(item.line_total);
+    order.order_amount += orderAmountByItem.get(item.id) ?? 0;
     order.quantity += number(item.quantity);
     order.item_count += 1;
     order.fulfil_statuses.push(item.fulfil_status);
@@ -299,6 +334,10 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     }));
   const totalRevenue = sumRevenue(currentItems);
   const previousRevenue = sumRevenue(previousItems);
+  const simulatedItems = currentItems.filter((item) => saleClass(item) === 'simulated');
+  const unverifiedItems = currentItems.filter((item) => saleClass(item) === 'unverified');
+  const simulatedOrderIds = new Set(simulatedItems.map((item) => item.order_id));
+  const unverifiedOrderIds = new Set(unverifiedItems.map((item) => item.order_id));
   const activeProducts = products.filter((product) => isVisibleActiveProduct(product, outletIds)).length;
   const activeOutlets = outletRows.filter((outlet) => outlet.status === 'active').length;
   const bookingItems = currentItems.filter((item) => item.slot_id || item.slot_starts_at).length;
@@ -322,6 +361,10 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     stats: {
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       totalOrders: currentOrderIds.size,
+      simulatedRevenue: Math.round(sumClassRevenue(currentItems, 'simulated') * 100) / 100,
+      simulatedOrders: simulatedOrderIds.size,
+      unverifiedRevenue: Math.round(sumClassRevenue(currentItems, 'unverified') * 100) / 100,
+      unverifiedOrders: unverifiedOrderIds.size,
       pendingOrders: pendingOrdersCount,
       activeProducts,
       activeOutlets,
@@ -338,6 +381,8 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     topRated,
     recentTransactions,
     stockAlerts,
+    inventorySetupCount,
+    inventorySetupItems,
   };
 }
 

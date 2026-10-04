@@ -2,8 +2,8 @@
 
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { variantUpdateSchema } from '@/lib/validation/vendor-schemas';
-import { authorizeVendor } from '@/lib/vendor-authorization';
-import { getScopedProduct } from '@/lib/vendor/product-scope';
+import { authorizeVendorProductWrite } from '@/lib/vendor-authorization';
+import { getScopedProduct, scopeVariantInventory } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string; variantId: string }> }
 
@@ -38,7 +38,7 @@ async function refreshStockStatus(serviceDb: any, vendorId: string, productId: s
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, productId, variantId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId);
   if (!access.ok) return access.response;
   const serviceDb = access.access.serviceDb;
 
@@ -76,12 +76,12 @@ export async function PATCH(request: Request, { params }: Props) {
 
   const { data: updated, error } = await serviceDb.from('product_variants').select('*, inventory(*)').eq('id', variantId).single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk(updated);
+  return apiOk(updated ? scopeVariantInventory(updated, access.access.outletIds) : updated);
 }
 
 export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, productId, variantId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId);
   if (!access.ok) return access.response;
   const serviceDb = access.access.serviceDb;
   const { data: product } = await scopedProduct(serviceDb, vendorId, productId, access.access.outletIds);

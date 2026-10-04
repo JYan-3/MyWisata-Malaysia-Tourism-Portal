@@ -92,6 +92,12 @@ const approvedForwardMigrations = [
   "20261001090000_event_reservations.sql",
   "20261001120000_event_pickup_fulfilment.sql",
   "20261001150000_event_cancellations.sql",
+  "20261002143855_harden_internal_wallet_rpc_access.sql",
+  "20261002145304_close_order_financial_lifecycle.sql",
+  "20261002145904_preserve_refund_funding_and_provider_outcomes.sql",
+  "20261002152921_trip_itineraries_and_outbox_leases.sql",
+  "20261003104454_reclassify_test_mode_vendor_settlements.sql",
+  "20261004111559_performance_advisor_safe_remediations.sql",
 ];
 
 function migrationFiles() {

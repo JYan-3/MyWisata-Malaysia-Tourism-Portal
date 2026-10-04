@@ -15,6 +15,7 @@ import { getServerTranslation } from '@/lib/i18n/server';
 import { formatHours } from '@/lib/customer/operating-hours';
 import type { OperatingHours } from '@/backend/core/types';
 import { formatReviewAuthor } from '@/backend/domains/review-presenter';
+import { getPublicReviewAuthorNames } from '@/backend/domains/catalogue';
 import { VendorReviewsList, type VendorReviewItem } from '@/components/customer/vendor-reviews-list';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
@@ -109,8 +110,11 @@ async function getVendor(vendorId: string) {
     db.from('outlets').select('id,name,city,state,address,lat,lng,operating_hours,outlet_pages(hero_url)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('products').select('id,name,description,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
-    db.from('reviews').select('id,rating,title,body,created_at,product_id,outlet_id,users(full_name)').eq('vendor_id', vendorId).eq('is_visible', true).order('created_at', { ascending: false }),
+    db.from('reviews').select('id,rating,title,body,created_at,product_id,outlet_id,user_id').eq('vendor_id', vendorId).eq('is_visible', true).order('created_at', { ascending: false }),
   ]);
+
+  const reviewRows = (rawReviews ?? []) as { user_id: string | null }[];
+  const reviewAuthorNames = await getPublicReviewAuthorNames(db, reviewRows.map((row) => row.user_id ?? ''));
 
   const outletIds = (outlets ?? []).map((outlet) => outlet.id);
   const [{ data: vendorMedia }, { data: outletMedia }] = await Promise.all([
@@ -189,7 +193,7 @@ async function getVendor(vendorId: string) {
     title: row.title ?? undefined,
     body: row.body ?? undefined,
     createdAt: row.created_at,
-    authorName: formatReviewAuthor(row.users?.full_name),
+    authorName: formatReviewAuthor(row.user_id ? reviewAuthorNames.get(row.user_id) : null),
     productId: row.product_id ?? null,
     productName: row.product_id ? (productNames.get(row.product_id) ?? null) : null,
     outletId: row.outlet_id ?? null,

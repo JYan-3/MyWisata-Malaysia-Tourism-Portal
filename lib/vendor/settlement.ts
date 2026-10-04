@@ -19,6 +19,7 @@ export interface VendorSettlementRow {
   vendorNetSen: number;
   platformRate: number;
   status: 'pending' | 'confirmed' | 'reversed';
+  isSimulated?: boolean;
   /** Days until a pending settlement's hold matures, floored at 0. null unless pending. */
   clearsInDays: number | null;
   createdAt: string;
@@ -49,6 +50,7 @@ type Row = {
   vendor_net_sen: number | string;
   platform_rate: number | string;
   status: string;
+  is_simulated?: boolean;
   hold_until: string | null;
   reversed_amount_sen: number | string;
   created_at: string;
@@ -67,7 +69,7 @@ export async function getVendorSettlements(
 ): Promise<VendorSettlements> {
   const { data, error } = await service
     .from('order_settlements')
-    .select('id, order_id, gross_sen, platform_fee_sen, vendor_net_sen, platform_rate, status, hold_until, reversed_amount_sen, created_at, orders(display_id)')
+    .select('id, order_id, gross_sen, platform_fee_sen, vendor_net_sen, platform_rate, status, is_simulated, hold_until, reversed_amount_sen, created_at, orders(display_id)')
     .eq('vendor_id', vendorId)
     .order('created_at', { ascending: false });
 
@@ -85,6 +87,7 @@ export async function getVendorSettlements(
       vendorNetSen: Number(row.vendor_net_sen),
       platformRate: Number(row.platform_rate),
       status,
+      isSimulated: Boolean(row.is_simulated),
       clearsInDays: status === 'pending' ? clearsInDays(row.hold_until) : null,
       createdAt: row.created_at,
     };
@@ -92,9 +95,9 @@ export async function getVendorSettlements(
 
   const netFor = (r: Row) => Number(r.vendor_net_sen) - Number(r.reversed_amount_sen);
   const totals = {
-    pendingSen: rows.filter((r) => r.status === 'pending').reduce((s, r) => add(s, netFor(r)), 0),
-    clearedSen: rows.filter((r) => r.status === 'confirmed').reduce((s, r) => add(s, netFor(r)), 0),
-    lifetimePlatformFeesSen: rows.filter((r) => r.status !== 'reversed').reduce((s, r) => add(s, Number(r.platform_fee_sen)), 0),
+    pendingSen: rows.filter((r) => r.status === 'pending' && !r.is_simulated).reduce((s, r) => add(s, netFor(r)), 0),
+    clearedSen: rows.filter((r) => r.status === 'confirmed' && !r.is_simulated).reduce((s, r) => add(s, netFor(r)), 0),
+    lifetimePlatformFeesSen: rows.filter((r) => r.status !== 'reversed' && !r.is_simulated).reduce((s, r) => add(s, Number(r.platform_fee_sen)), 0),
   };
 
   return { totals, settlements };
@@ -106,12 +109,14 @@ export async function getVendorSettlements(
  * settlement failure must not misrepresent a completed payment; the
  * wallet-maintenance backstop re-settles any order this missed.
  */
-export async function settleOrderVendorEarnings(service: SupabaseClient, orderId: string): Promise<void> {
+export async function settleOrderVendorEarnings(service: SupabaseClient, orderId: string): Promise<boolean> {
   try {
-    const { error } = await service.rpc('settle_order_vendor_earnings', { p_order_id: orderId });
+    const { data, error } = await service.rpc('settle_order_vendor_earnings', { p_order_id: orderId });
     if (error) console.error('[vendor-settlement] settle failed', orderId, error.message);
+    return !error && Number(data?.settled ?? 0) > 0;
   } catch (err) {
     console.error('[vendor-settlement] settle threw', orderId, err instanceof Error ? err.message : err);
+    return false;
   }
 }
 
@@ -120,25 +125,26 @@ export async function reverseOrderVendorSettlement(
   service: SupabaseClient,
   orderId: string,
   refundAmountSen?: number,
-): Promise<void> {
+): Promise<boolean> {
   try {
-    const { error } = await service.rpc('reverse_order_vendor_settlement', {
+    const { data, error } = await service.rpc('reverse_order_vendor_settlement', {
       p_order_id: orderId,
       p_refund_amount_sen: refundAmountSen ?? null,
     });
     if (error) console.error('[vendor-settlement] reverse failed', orderId, error.message);
+    return !error && Number(data?.reversed ?? 0) > 0;
   } catch (err) {
     console.error('[vendor-settlement] reverse threw', orderId, err instanceof Error ? err.message : err);
+    return false;
   }
 }
-
-const BACKSTOP_WINDOW_DAYS = 14;
 
 export interface VendorSettlementMaintenanceResult {
   cleared: number;
   reversed: number;
   backfilled: number;
   clawedBack: number;
+  failed: number;
 }
 
 /**
@@ -149,44 +155,52 @@ export interface VendorSettlementMaintenanceResult {
 export async function runVendorSettlementMaintenance(
   service: SupabaseClient,
 ): Promise<VendorSettlementMaintenanceResult> {
-  const result: VendorSettlementMaintenanceResult = { cleared: 0, reversed: 0, backfilled: 0, clawedBack: 0 };
+  const result: VendorSettlementMaintenanceResult = { cleared: 0, reversed: 0, backfilled: 0, clawedBack: 0, failed: 0 };
 
-  const { data: matured } = await service.rpc('clear_matured_vendor_settlements');
+  const { data: matured, error: maturityError } = await service.rpc('clear_matured_vendor_settlements');
+  if (maturityError) result.failed += 1;
   for (const row of (matured ?? []) as { action: string }[]) {
     if (row.action === 'cleared') result.cleared += 1;
     else if (row.action === 'reversed') result.reversed += 1;
   }
 
-  const since = new Date(Date.now() - BACKSTOP_WINDOW_DAYS * 86_400_000).toISOString();
-
-  // Backfill: paid/completed orders that never got an order_settlements row.
-  const { data: paidOrders } = await service
-    .from('orders')
-    .select('id, order_settlements(order_id)')
-    .in('status', ['paid', 'completed'])
-    .gte('paid_at', since)
-    .limit(500);
-  for (const order of (paidOrders ?? []) as { id: string; order_settlements: unknown[] }[]) {
-    if ((order.order_settlements ?? []).length === 0) {
-      await settleOrderVendorEarnings(service, order.id);
-      result.backfilled += 1;
+  // Stable keyset pages cover old orders without a fourteen-day cutoff.
+  let cursor: string | null = null;
+  do {
+    let query = service.from('orders').select('id, order_settlements(order_id)')
+      .in('status', ['paid', 'completed']).order('id', { ascending: true }).limit(500);
+    if (cursor) query = query.gt('id', cursor);
+    const { data, error } = await query;
+    if (error) { result.failed += 1; break; }
+    const orders = (data ?? []) as { id: string; order_settlements: unknown[] }[];
+    for (const order of orders) {
+      if ((order.order_settlements ?? []).length === 0) {
+        if (await settleOrderVendorEarnings(service, order.id)) result.backfilled += 1;
+        else result.failed += 1;
+      }
     }
-  }
+    cursor = orders.length === 500 ? orders[orders.length - 1].id : null;
+  } while (cursor);
 
-  // Clawback: confirmed settlements whose order is now refunded/cancelled.
-  const { data: staleConfirmed } = await service
-    .from('order_settlements')
-    .select('order_id, vendor_net_sen, reversed_amount_sen, orders!inner(status)')
-    .eq('status', 'confirmed')
-    .in('orders.status', ['refunded', 'cancelled'])
-    .limit(500);
+  cursor = null;
   const seen = new Set<string>();
-  for (const row of (staleConfirmed ?? []) as { order_id: string; vendor_net_sen: number; reversed_amount_sen: number }[]) {
-    if (Number(row.reversed_amount_sen) >= Number(row.vendor_net_sen) || seen.has(row.order_id)) continue;
-    seen.add(row.order_id);
-    await reverseOrderVendorSettlement(service, row.order_id);
-    result.clawedBack += 1;
-  }
+  do {
+    let query = service.from('order_settlements')
+      .select('id, order_id, vendor_net_sen, reversed_amount_sen, orders!inner(status)')
+      .eq('status', 'confirmed').eq('is_simulated', false).in('orders.status', ['refunded', 'cancelled'])
+      .order('id', { ascending: true }).limit(500);
+    if (cursor) query = query.gt('id', cursor);
+    const { data, error } = await query;
+    if (error) { result.failed += 1; break; }
+    const rows = (data ?? []) as { id: string; order_id: string; vendor_net_sen: number; reversed_amount_sen: number }[];
+    for (const row of rows) {
+      if (Number(row.reversed_amount_sen) >= Number(row.vendor_net_sen) || seen.has(row.order_id)) continue;
+      seen.add(row.order_id);
+      if (await reverseOrderVendorSettlement(service, row.order_id)) result.clawedBack += 1;
+      else result.failed += 1;
+    }
+    cursor = rows.length === 500 ? rows[rows.length - 1].id : null;
+  } while (cursor);
 
   return result;
 }

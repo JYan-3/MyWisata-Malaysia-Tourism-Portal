@@ -2919,6 +2919,9 @@
       "simulateSuccess": "模拟成功"
     },
     "attempt": "第 {{count}} 次尝试",
+    "fundingSummary": "钱包充值 {{walletTopup}} · 钱包收益 {{walletEarnings}} · 外部支付 {{provider}}",
+    "manualReferenceLabel": "人工退款凭证编号",
+    "manualReferencePrompt": "输入已完成的银行或支付商退款交易凭证编号",
     "detail": {
       "noReason": "未提供原因"
     },
@@ -3027,7 +3030,7 @@
     "description": "查看来自客户结账流程的实时订单、付款和门店履约信息。",
     "refresh": "刷新",
     "searchLabel": "订单 ID",
-    "searchPlaceholder": "粘贴完整订单 ID",
+    "searchPlaceholder": "订单 ID 或订单编号",
     "search": "搜索",
     "status": "状态",
     "statuses": {

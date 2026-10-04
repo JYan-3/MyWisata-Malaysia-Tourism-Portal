@@ -48,6 +48,12 @@ export async function POST(req: Request) {
       if (session.payment_status !== 'paid' || !session.currency) {
         return NextResponse.json({ error: 'Order payment is not confirmed as paid' }, { status: 409 });
       }
+      const { error: environmentError } = await db.rpc('mark_checkout_payment_environment', {
+        p_checkout_session_id: session.metadata.checkout_session_id,
+        p_provider_payment_id: session.id,
+        p_is_live: session.livemode === true,
+      });
+      if (environmentError) return NextResponse.json({ error: 'Unable to record verified payment environment' }, { status: 500 });
       const { data: finalizeData, error: finalizeError } = await db.rpc('settle_provider_checkout', {
         p_checkout_session_id: session.metadata.checkout_session_id,
         p_provider: 'stripe',
@@ -153,6 +159,36 @@ export async function POST(req: Request) {
         });
       } catch (emailError) {
         log('error', '[stripe-webhook] top-up failure email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
+      }
+    }
+  }
+
+  if (event.type === 'refund.created' || event.type === 'refund.updated' || event.type === 'refund.failed') {
+    const providerRefund = event.data.object as Stripe.Refund;
+    const refundId = providerRefund.metadata?.mywisata_refund_id;
+    // Ignore Stripe refunds created outside this order refund flow.
+    if (refundId) {
+      const outcome = providerRefund.status === 'succeeded'
+        ? 'succeeded'
+        : providerRefund.status === 'pending'
+          ? 'pending'
+          : 'failed';
+      const db = createServiceClient();
+      const { error } = await db.rpc('record_order_refund_provider_outcome', {
+        p_refund_id: refundId,
+        p_provider_refund_id: providerRefund.id,
+        p_outcome: outcome,
+        p_amount_sen: providerRefund.amount,
+        p_currency: providerRefund.currency?.toUpperCase() ?? '',
+        p_failure_code: providerRefund.failure_reason ?? null,
+        p_failure_message: outcome === 'failed' ? 'Stripe could not complete this refund.' : null,
+        p_actor_id: null,
+        p_note: null,
+        p_event_id: event.id,
+      });
+      if (error) {
+        log('error', '[stripe-webhook] refund outcome RPC failed', { requestId, error: error.message, providerRefundId: providerRefund.id });
+        return NextResponse.json({ error: 'Failed to record refund outcome', requestId }, { status: 500 });
       }
     }
   }

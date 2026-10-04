@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, MapPin, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { FeaturedSplitCard } from "@/components/customer/featured-split-card";
+import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
@@ -58,137 +60,136 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
 
   const spotlight = (
     <section
-      aria-labelledby="promotion-campaign-spotlight-title"
-      className={hasMultiple ? "min-w-0 flex-1 overflow-hidden rounded-[28px] border border-border bg-card text-card-foreground" : "my-10 overflow-hidden rounded-[28px] border border-border bg-card text-card-foreground sm:my-14"}
+      aria-labelledby="promotion-campaign-spotlight-heading"
+      className="my-10 sm:my-14"
     >
-      <div className="grid min-w-0 lg:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
-        <div
-          data-slot="promotion-campaign-image"
-          className="relative aspect-[16/9] min-w-0 overflow-hidden bg-muted lg:aspect-auto lg:min-h-96"
-        >
-          {image ? (
-            <Image
-              src={image}
-              alt=""
-              fill
-              sizes="(max-width: 1024px) 100vw, 46vw"
-              loading="eager"
-              unoptimized={image.startsWith("http://") || image.startsWith("https://")}
-              className="object-cover"
-            />
-          ) : (
-            <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-muted-foreground/50">
-              <CalendarDays size={72} strokeWidth={1} />
-            </div>
-          )}
-        </div>
-
-        <div
-          data-slot="promotion-campaign-content"
-          className="flex min-w-0 flex-col justify-center border-t-4 border-highlight-yellow bg-card p-6 sm:p-8 lg:border-l-4 lg:border-t-0 lg:p-10"
-        >
-          <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
-            <Sparkles size={14} className="text-highlight-yellow" />
-            {t("ui.promotionCampaigns.homeEyebrow")}
-          </p>
-
-          {displayCampaign ? (
+      <FeaturedRecommendationsFrame
+        headingId="promotion-campaign-spotlight-heading"
+        eyebrow={null}
+        title={t("ui.home.campaigns")}
+        description={null}
+        carouselLabel={t("ui.search.featuredCarousel")}
+        previousLabel={t("ui.promotionCampaigns.previous")}
+        nextLabel={t("ui.promotionCampaigns.next")}
+        carouselTestId="promotion-campaign-spotlight"
+        hasMultipleSlides={hasMultiple}
+        onPrevious={() => move(-1)}
+        onNext={() => move(1)}
+      >
+        <FeaturedSplitCard
+          mediaSlot="promotion-campaign-image"
+          contentSlot="promotion-campaign-content"
+          mediaCaption={displayCampaign && (
             <>
-              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+              {displayCampaign.locations[0]?.name && <p className="flex items-start gap-1.5 text-xs font-semibold leading-snug"><MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />{displayCampaign.locations[0].name}</p>}
+              <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/90">
+                <CalendarDays size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{t(live ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}</span>{" "}
+                  {displayCampaign.title} · {formatDateTime(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {formatDateTime(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
+                </span>
+              </p>
+              {displayCampaign.operatingHours && <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85"><Clock3 size={12} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{displayCampaign.operatingHours}</span></p>}
+            </>
+          )}
+          media={(
+          <>
+            {image ? (
+              <Image
+                src={image}
+                alt=""
+                fill
+                sizes="(max-width: 767px) 100vw, 52vw"
+                loading="eager"
+                unoptimized={image.startsWith("http://") || image.startsWith("https://")}
+                className="object-cover"
+              />
+            ) : (
+              <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-muted-foreground/50">
+                <CalendarDays size={72} strokeWidth={1} />
+              </div>
+            )}
+          </>
+        )}
+      >
+        {displayCampaign ? (
+          <>
+            <h2
+              id="promotion-campaign-spotlight-title"
+              className="mt-3 break-words font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl"
+            >
+              {displayCampaign.title}
+            </h2>
+            <p className="mt-4 max-w-2xl break-words text-base leading-7 text-muted-foreground">
+              {displayCampaign.summary}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
+              <span className="inline-flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
                   {t(live ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}
                 </span>
-                <span className="text-xs leading-5 text-muted-foreground sm:text-sm">
+                <span className="text-sm">
                   {formatDateTime(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                   {" – "}
                   {formatDateTime(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                 </span>
-              </div>
-              <h2
-                id="promotion-campaign-spotlight-title"
-                className="mt-4 break-words font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl xl:text-4xl"
-              >
-                {displayCampaign.title}
-              </h2>
-              <p className="mt-3 max-w-2xl break-words text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                {displayCampaign.summary}
-              </p>
-              <p className="mt-4 text-sm font-semibold text-primary/75">
+              </span>
+              <span className="shrink-0 font-semibold text-foreground">
                 {t("ui.promotionCampaigns.vendorCount", { count: displayCampaign.vendors.length })}
-              </p>
-            </>
-          ) : (
-            <>
-              <h2
-                id="promotion-campaign-spotlight-title"
-                className="mt-4 break-words font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-foreground sm:text-3xl"
-              >
-                {t(unavailable ? "ui.promotionCampaigns.unavailableTitle" : "ui.promotionCampaigns.emptyTitle")}
-              </h2>
-              <p className="mt-3 max-w-xl break-words text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                {t(unavailable ? "ui.promotionCampaigns.unavailableDescription" : "ui.promotionCampaigns.emptyDescription")}
-              </p>
-            </>
-          )}
-
-          <div data-slot="promotion-campaign-actions" className="mt-7 flex w-full flex-wrap items-center justify-start gap-2 sm:gap-3">
-            {displayCampaign && (
-              <Button asChild className="min-h-11 rounded-full bg-highlight-yellow px-5 font-bold text-highlight-yellow-foreground hover:bg-highlight-yellow/85">
-                <Link href={`/customer/events/${encodeURIComponent(displayCampaign.slug)}`}>
-                  {t("ui.promotionCampaigns.exploreCampaign")} <ArrowRight size={15} />
-                </Link>
-              </Button>
-            )}
-            {loadFailed && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void refresh()}
-                disabled={retrying}
-                className="min-h-11 rounded-full border-border px-4 font-semibold text-foreground hover:bg-muted"
-              >
-                <RefreshCw size={15} className={retrying ? "animate-spin" : undefined} />
-                {t("ui.actions.retry")}
-              </Button>
-            )}
-            <Button
-              asChild
-              variant={displayCampaign ? "ghost" : "default"}
-              className={displayCampaign
-                ? "min-h-11 rounded-full px-4 font-semibold text-primary hover:bg-primary/5 hover:text-primary"
-                : "min-h-11 rounded-full bg-highlight-yellow px-5 font-bold text-highlight-yellow-foreground hover:bg-highlight-yellow/85"}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2
+              id="promotion-campaign-spotlight-title"
+              className="mt-4 break-words font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-foreground sm:text-3xl"
             >
+              {t(unavailable ? "ui.promotionCampaigns.unavailableTitle" : "ui.promotionCampaigns.emptyTitle")}
+            </h2>
+            <p className="mt-3 max-w-xl break-words text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+              {t(unavailable ? "ui.promotionCampaigns.unavailableDescription" : "ui.promotionCampaigns.emptyDescription")}
+            </p>
+          </>
+        )}
+
+        <div data-slot="promotion-campaign-actions" className="mt-auto flex w-full flex-wrap items-center justify-start gap-x-5 gap-y-3 pt-8">
+          {displayCampaign && (
+            <Link
+              href={`/customer/events/${encodeURIComponent(displayCampaign.slug)}`}
+              className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+            >
+              {t("ui.promotionCampaigns.exploreCampaign")} <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          )}
+          {loadFailed && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void refresh()}
+              disabled={retrying}
+              className="min-h-11 rounded-full border-border px-4 font-semibold text-foreground hover:bg-muted"
+            >
+              <RefreshCw size={15} className={retrying ? "animate-spin" : undefined} />
+              {t("ui.actions.retry")}
+            </Button>
+          )}
+          {displayCampaign ? (
+            <Link href="/customer/events" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+              {t("ui.promotionCampaigns.allCampaigns")} <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          ) : (
+            <Button asChild className="min-h-11 rounded-full bg-highlight-yellow px-5 font-bold text-highlight-yellow-foreground hover:bg-highlight-yellow/85">
               <Link href="/customer/events">
                 {t("ui.promotionCampaigns.allCampaigns")} <ArrowRight size={15} />
               </Link>
             </Button>
-          </div>
+          )}
         </div>
-      </div>
+        </FeaturedSplitCard>
+      </FeaturedRecommendationsFrame>
     </section>
   );
 
-  if (!hasMultiple) return spotlight;
-
-  return (
-    <div className="my-10 flex items-center gap-3 sm:my-14">
-      <button
-        type="button"
-        onClick={() => move(-1)}
-        aria-label={t("ui.promotionCampaigns.previous")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-primary transition hover:border-primary hover:bg-primary/5"
-      >
-        <ChevronLeft size={18} aria-hidden="true" />
-      </button>
-      {spotlight}
-      <button
-        type="button"
-        onClick={() => move(1)}
-        aria-label={t("ui.promotionCampaigns.next")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-primary transition hover:border-primary hover:bg-primary/5"
-      >
-        <ChevronRight size={18} aria-hidden="true" />
-      </button>
-    </div>
-  );
+  return spotlight;
 }

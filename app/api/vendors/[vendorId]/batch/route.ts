@@ -2,8 +2,9 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { vendorBatchSchema, type VendorBatch } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
-import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { checkInBooking } from '@/lib/vendor/booking-checkin';
 import { canUseGenericFoodFulfilment } from '@/lib/food/generic-fulfil-policy';
+import { getOutletProductIds } from '@/backend/domains/catalogue';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -27,13 +28,14 @@ function voucherStatus(voucher: Record<string, unknown>) {
   return 'active';
 }
 
-async function findFilteredIds(db: SupabaseClient, vendorId: string, input: VendorBatch, scopedOutletIds?: string[]) {
+async function findFilteredIds(db: SupabaseClient, vendorId: string, input: VendorBatch, scopedOutletIds?: string[], scopedProductIds?: string[]) {
   const filters = input.filters || {};
   const q = safe(filters.q as string | undefined);
 
   if (input.entity === 'products') {
     let query = db.from('products').select('id,name,slug').eq('vendor_id', vendorId);
-    if (scopedOutletIds) query = query.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    if (scopedProductIds) query = query.in('id', scopedProductIds.length ? scopedProductIds : ['none']);
+    else if (scopedOutletIds) query = query.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
     if (filters.productType) query = query.eq('product_type', filters.productType);
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.outletId) query = query.eq('outlet_id', filters.outletId);
@@ -95,13 +97,10 @@ async function findFilteredIds(db: SupabaseClient, vendorId: string, input: Vend
     }).map((item: { id: string }) => item.id);
   }
 
-  const outletIds = scopedOutletIds ?? ((await db.from('outlets').select('id').eq('vendor_id', vendorId)).data || []).map((item: { id: string }) => item.id);
+  const outletIds = scopedOutletIds ?? [];
   if (!outletIds.length) return [];
-  const { data: slots, error: slotError } = await db.from('booking_slots').select('id,starts_at').in('outlet_id', outletIds);
-  if (slotError) throw slotError;
-  const slotIds = (slots || []).map((item: { id: string }) => item.id);
-  if (!slotIds.length) return [];
-  let query = db.from('bookings').select('id,status,customer_id,users(full_name,email),order_items(product_name),booking_slots(starts_at)').in('slot_id', slotIds);
+  let query = db.from('bookings').select('id,status,customer_id,users(full_name,email),order_items!inner(product_name,vendor_id,outlet_id),booking_slots(starts_at)')
+    .eq('order_items.vendor_id', vendorId).in('order_items.outlet_id', outletIds);
   if (filters.status) query = query.eq('status', filters.status);
   const { data, error } = await query;
   if (error) throw error;
@@ -129,15 +128,24 @@ export async function POST(request: Request, { params }: Props) {
   if (access.access.isOutletManager && !['products', 'orders', 'bookings', 'slots'].includes(input.entity)) {
     return apiFail('FORBIDDEN', 'Outlet Managers can only batch-update products, bookings, orders, and availability', 403);
   }
+  if (input.entity === 'products' && access.access.isOwner) return apiFail('FORBIDDEN', 'Product changes require an assigned outlet manager', 403);
+  if (input.entity === 'bookings' && input.action === 'cancel') return apiFail('USE_REFUND_FLOW', 'Cancel paid bookings through the order refund flow so funds and ticket capacity remain consistent', 409);
   const db = access.access.serviceDb;
-  const scopedOutletIds = access.access.isOutletManager ? access.access.outletIds : undefined;
-  let scopedSlotIds: string[] | undefined;
-  if (scopedOutletIds) {
-    const { data: slots, error } = await db.from('booking_slots').select('id').in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
-    if (error) return apiFail('DB_ERROR', error.message, 500);
-    scopedSlotIds = (slots || []).map((item: { id: string }) => item.id);
+  const scopedOutletIds = access.access.outletIds;
+  let scopedProductIds: Set<string> | null = null;
+  if (input.entity === 'products') {
+    try {
+      const outletProducts = await Promise.all(scopedOutletIds.map((outletId) => getOutletProductIds(db, outletId)));
+      scopedProductIds = new Set(outletProducts.flatMap((productIds) => [...productIds]));
+    } catch {
+      return apiFail('DB_ERROR', 'Unable to verify outlet product scope', 500);
+    }
   }
-  let targetIds = input.selectAllFiltered ? await findFilteredIds(db, vendorId, input, scopedOutletIds) : input.ids;
+  let targetIds = input.selectAllFiltered
+    ? await findFilteredIds(db, vendorId, input, scopedOutletIds, scopedProductIds ? [...scopedProductIds] : undefined)
+    : input.entity === 'products' && scopedProductIds
+      ? input.ids.filter((id) => scopedProductIds!.has(id))
+      : input.ids;
   targetIds = [...new Set(targetIds)];
   if (!targetIds.length) return apiOk({ entity: input.entity, action: input.action, requested: 0, updated: 0, skipped: 0 });
 
@@ -147,8 +155,7 @@ export async function POST(request: Request, { params }: Props) {
   if (input.entity === 'products') {
     const status = input.action === 'archive' ? 'archived' : input.action === 'restore' ? 'active' : null;
     if (!status) return apiFail('INVALID_ACTION', 'Products support archive or restore only', 400);
-    let updateQuery = db.from('products').update({ status }).eq('vendor_id', vendorId).in('id', targetIds);
-    if (scopedOutletIds) updateQuery = updateQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    const updateQuery = db.from('products').update({ status }).eq('vendor_id', vendorId).in('id', targetIds);
     const { data, error } = await updateQuery.select('id');
     if (error) return apiFail('DB_ERROR', error.message, 500);
     updatedIds = (data || []).map((item: { id: string }) => item.id);
@@ -192,48 +199,18 @@ export async function POST(request: Request, { params }: Props) {
       updatedIds = (data || []).map((item: { id: string }) => item.id);
     }
   } else if (input.entity === 'bookings') {
-    if (!['check_in', 'cancel'].includes(input.action)) return apiFail('INVALID_ACTION', 'Bookings support check-in or cancel only', 400);
-    let bookingQuery = db.from('bookings').select('id,status,order_item_id,slot_id').in('id', targetIds);
-    if (scopedSlotIds) bookingQuery = bookingQuery.in('slot_id', scopedSlotIds.length ? scopedSlotIds : ['none']);
-    const { data: bookings, error } = await bookingQuery;
+    if (input.action !== 'check_in') return apiFail('INVALID_ACTION', 'Bookings support check-in only', 400);
+    const { data: bookings, error } = await db.from('bookings')
+      .select('id,status,order_items!inner(vendor_id,outlet_id)')
+      .in('id', targetIds).eq('order_items.vendor_id', vendorId)
+      .in('order_items.outlet_id', scopedOutletIds);
     if (error) return apiFail('DB_ERROR', error.message, 500);
-    const valid = (bookings || []).filter((item: { id: string; status: string }) => input.action === 'check_in' ? item.status === 'confirmed' : item.status === 'confirmed').map((item: { id: string }) => item.id);
-    skippedIds = targetIds.filter((id: string) => !valid.includes(id));
-    if (valid.length) {
-      const updateData = input.action === 'check_in' ? { status: 'checked_in', check_in_at: new Date().toISOString() } : { status: 'cancelled', cancelled_at: new Date().toISOString() };
-      let updateQuery = db.from('bookings').update(updateData).in('id', valid);
-      if (scopedSlotIds) updateQuery = updateQuery.in('slot_id', scopedSlotIds.length ? scopedSlotIds : ['none']);
-      const { data, error: updateError } = await updateQuery.select('id,order_item_id');
-      if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
-      updatedIds = (data || []).map((item: { id: string }) => item.id);
-      const orderItemIds = (data || []).map((item: { order_item_id: string }) => item.order_item_id).filter(Boolean);
-      if (input.action === 'check_in' && orderItemIds.length) {
-        const { error: fulfilmentError } = await db.from('order_items').update({ fulfil_status: 'fulfilled', fulfilled_at: new Date().toISOString() }).in('id', orderItemIds);
-        if (fulfilmentError) return apiFail('DB_ERROR', fulfilmentError.message, 500);
-      }
-      if (orderItemIds.length) {
-        const { data: orderItems } = await db.from('order_items').select('id,vendor_id,outlet_id').in('id', orderItemIds);
-        for (const item of orderItems ?? []) {
-          if (!item.vendor_id || !item.outlet_id) continue;
-          const isCancellation = input.action === 'cancel';
-          void emitVendorNotification({
-            eventKey: `booking:${isCancellation ? 'cancel' : 'checkin'}:${(data || []).find((row: { order_item_id: string }) => row.order_item_id === item.id)?.id ?? item.id}`,
-            vendorId: item.vendor_id,
-            outletId: item.outlet_id,
-            audience: 'owner_and_assigned_outlet',
-            category: 'vendor_bookings',
-            type: isCancellation ? 'vendor_booking_cancelled' : 'vendor_booking_checkin',
-            title: isCancellation ? 'Booking cancelled' : 'Booking checked in',
-            body: isCancellation ? 'A booking at your outlet was cancelled.' : 'A booking at your outlet was checked in.',
-            link: `/vendor/${vendorId}/bookings`,
-            email: isCancellation,
-            reference: item.id,
-            metadata: { status: isCancellation ? 'cancelled' : 'checked_in' },
-            serviceDb: db,
-          }).catch((notificationError) => console.error('[vendor-notifications] batch booking event failed', notificationError));
-        }
-      }
+    for (const booking of bookings || []) {
+      if (!['confirmed', 'in_use'].includes(booking.status)) continue;
+      const response = await checkInBooking(new Request(request.url, { method: 'POST' }), vendorId, booking.id, access.access);
+      if (response.ok) updatedIds.push(booking.id);
     }
+    skippedIds = targetIds.filter((id: string) => !updatedIds.includes(id));
   } else {
     if (!['cancel', 'restore'].includes(input.action)) return apiFail('INVALID_ACTION', 'Slots support cancel or restore only', 400);
     const targetStatus = input.action === 'cancel' ? 'cancelled' : 'available';
@@ -242,10 +219,10 @@ export async function POST(request: Request, { params }: Props) {
     if (scopedOutletIds) slotQuery = slotQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
     const { data: slots, error } = await slotQuery;
     if (error) return apiFail('DB_ERROR', error.message, 500);
-    const valid = (slots || []).filter((item: { id: string; status: string; booked: number }) => validStatuses.includes(item.status) && (input.action === 'cancel' ? true : item.booked === 0)).map((item: { id: string }) => item.id);
+    const valid = (slots || []).filter((item: { id: string; status: string; booked: number }) => validStatuses.includes(item.status) && item.booked === 0).map((item: { id: string }) => item.id);
     skippedIds = targetIds.filter((id: string) => !valid.includes(id));
     if (valid.length) {
-      let updateQuery = db.from('booking_slots').update({ status: targetStatus }).in('id', valid);
+      let updateQuery = db.from('booking_slots').update({ status: targetStatus }).in('id', valid).eq('booked', 0).in('status', validStatuses);
       if (scopedOutletIds) updateQuery = updateQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
       const { data, error: updateError } = await updateQuery.select('id');
       if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
@@ -253,5 +230,6 @@ export async function POST(request: Request, { params }: Props) {
     }
   }
 
+  skippedIds = targetIds.filter((id: string) => !updatedIds.includes(id));
   return apiOk({ entity: input.entity, action: input.action, requested: targetIds.length, updated: updatedIds.length, skipped: skippedIds.length, skippedIds });
 }

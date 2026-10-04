@@ -33,10 +33,12 @@ export function ExploreClient({
   initialActivities,
   statesWithPlaces = [],
   placeCountByState = {},
+  dataUnavailable = false,
 }: {
   initialActivities: ComputedActivity[];
   statesWithPlaces?: string[];
   placeCountByState?: Record<string, number>;
+  dataUnavailable?: boolean;
 }) {
   const { t } = useTranslation("customer");
   const router = useRouter();
@@ -217,6 +219,11 @@ export function ExploreClient({
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
+      {dataUnavailable && (
+        <p role="status" className="mx-auto max-w-7xl px-4 py-3 text-sm text-muted-foreground sm:px-6">
+          {t("ui.states.loadingError")}
+        </p>
+      )}
       {/* Header */}
       <section className="border-b border-border bg-background">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
@@ -226,9 +233,6 @@ export function ExploreClient({
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
                 {t("ui.explore.title")}
               </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("ui.explore.description")}
-              </p>
             </div>
 
             {/* Tab switch */}
@@ -365,11 +369,13 @@ export function ExploreClient({
               </div>
             </div>
             {activities.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
-                {hasActiveFilters && <p className="mt-2">{t("ui.discovery.adjustFilters")}</p>}
-                {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-secondary">{t("ui.actions.clearFilters")}</button>}
-              </div>
+              dataUnavailable ? null : (
+                <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+                  <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
+                  {hasActiveFilters && <p className="mt-2">{t("ui.discovery.adjustFilters")}</p>}
+                  {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-secondary">{t("ui.actions.clearFilters")}</button>}
+                </div>
+              )
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
                 {activities.slice(0, visibleLimit).map((a) => (

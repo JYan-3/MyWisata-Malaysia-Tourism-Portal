@@ -27,11 +27,11 @@ type DashboardData = {
 };
 
 function formatAge(createdAt: string | null, translate: (key: string, options?: Record<string, unknown>) => string) {
-  if (!createdAt) return translate("dashboard.age.noOpenRequests");
+  if (!createdAt) return translate("withdrawals.queue.noOpenRequests");
   const hours = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 3_600_000));
-  if (hours < 1) return translate("dashboard.age.lessThanHour");
-  if (hours < 24) return translate("dashboard.age.hours", { count: hours });
-  return translate("dashboard.age.days", { days: Math.floor(hours / 24), hours: hours % 24 });
+  if (hours < 1) return translate("withdrawals.age.lessThanHour");
+  if (hours < 24) return translate("withdrawals.age.hours", { count: hours });
+  return translate("withdrawals.age.daysHours", { days: Math.floor(hours / 24), hours: hours % 24 });
 }
 
 function getLastSevenDays(withdrawalDates: string[]) {

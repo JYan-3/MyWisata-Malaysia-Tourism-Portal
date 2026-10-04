@@ -2,8 +2,8 @@
 
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { variantCreateSchema } from '@/lib/validation/vendor-schemas';
-import { authorizeVendor } from '@/lib/vendor-authorization';
-import { getScopedProduct } from '@/lib/vendor/product-scope';
+import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-authorization';
+import { getScopedProduct, scopeVariantInventory } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
 
@@ -23,12 +23,12 @@ export async function GET(_request: Request, { params }: Props) {
     .order('sort_order');
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk(data ?? []);
+  return apiOk((data ?? []).map((variant) => scopeVariantInventory(variant, access.access.outletIds)));
 }
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendorProductWrite(vendorId);
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 

@@ -49,7 +49,7 @@ async function fetchPlaceSuggestions(query: string): Promise<PlaceSuggestion[]> 
   }
 }
 
-const RESULTS_PER_PAGE = 8;
+const RESULTS_PER_PAGE = 4;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PLACE_ACTIVITIES_PER_PAGE = 8;
 
@@ -231,9 +231,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
             {t("ui.search.title")}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t("ui.search.description")}
-          </p>
 
            <div data-testid="partner-filter-bar" className="mt-6">
             <CustomerDiscoveryFilterPanel
@@ -296,7 +293,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">
               {query || category || state || timeFrom || timeTo || openNow || partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("ui.search.directoryDescription")}</p>
           </div>
         </div>
         
@@ -307,9 +303,10 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
                 key={vendor.id}
                 vendor={vendor}
                 categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
-                description={t("ui.search.approvedPartnerDescription")}
                 index={index}
                 isFeatured={featuredVendorIds.has(vendor.id)}
+                detailsRevealOnHover
+                detailsRevealStyle="caption"
               />
             ))}
           </div>

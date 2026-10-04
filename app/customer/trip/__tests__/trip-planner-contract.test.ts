@@ -3,45 +3,75 @@ import { describe, expect, it } from "vitest";
 
 const plannerSource = readFileSync(new URL("../[tripId]/trip-planner-client.tsx", import.meta.url), "utf8");
 const actionsSource = readFileSync(new URL("../actions.ts", import.meta.url), "utf8");
+const planRouteSource = readFileSync(new URL("../../../api/trips/plan/route.ts", import.meta.url), "utf8");
+const mapRendererSource = readFileSync(new URL("../../../../components/map/maplibre-map.tsx", import.meta.url), "utf8");
 
-describe("trip planner layout contract", () => {
-  it("uses the shared customer title and page shell", () => {
-    expect(plannerSource).toContain('import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";');
-    expect(plannerSource).toContain("<CustomerPageTitle");
-    expect(plannerSource).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
-    expect(plannerSource).toContain("rounded-3xl border border-border bg-card");
-    expect(plannerSource).not.toContain("h-[calc(100vh-4rem)]");
+describe("trip planner workspace contract", () => {
+  it("removes the repeated page title and uses the full area below the customer navigation", () => {
+    expect(plannerSource).not.toContain("<CustomerPageTitle");
+    expect(plannerSource).not.toContain("<CustomerPageShell");
+    expect(plannerSource).toContain("h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]");
   });
 
-  it("defines the approved itinerary, map, and listing regions", () => {
+  it("presents an AI planner, one selected day, and the places rail", () => {
+    expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.ai.title")}');
     expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.itinerary")}');
-    expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.tripMap")}');
     expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.placesToAdd")}');
+    expect(plannerSource).toContain('id="planner-selected-day"');
+    expect(plannerSource).toContain("selectedDay ? renderDaySection");
+    expect(plannerSource).toContain("data-trip-leg");
+    expect(plannerSource).toContain("activeRoute?.legs?.[index]");
   });
 
-  it("renders day-based scheduling and an unscheduled queue", () => {
-    expect(plannerSource).toContain("groupTripItemsByDay");
-    expect(plannerSource).toContain('tCustomer("strictMigration.tripPlanner.unscheduled")');
-    expect(plannerSource).toContain("scheduled_date");
-    expect(plannerSource).toContain("scheduled_time");
+  it("keeps the AI request on demand and adds suggestions to the selected day", () => {
+    expect(plannerSource).toContain('fetch("/api/trips/plan"');
+    expect(plannerSource).toContain("function addAiSuggestion");
+    expect(plannerSource).toContain("{ date: selectedDate }");
+    expect(planRouteSource).toContain("CUSTOMER_CAPABILITY.BASIC_AI");
+    expect(planRouteSource).toContain("getTripCopilotCandidates");
+    expect(planRouteSource).toContain("generateTripSuggestions");
   });
 
-  it("wires schedule changes through a server action", () => {
+  it("wires schedule changes through the existing server action", () => {
     expect(plannerSource).toContain("updateTripItemScheduleAction");
     expect(actionsSource).toContain("export async function updateTripItemScheduleAction");
   });
 
-  it("derives weather from dated live itinerary items and renders route-local hints", () => {
+  it("matches persisted vendor stops by their catalogue activity id", () => {
+    expect(plannerSource).toContain("has: (id: string) => items.some((item) => item.id === id || item.experience_id === id),");
+    expect(plannerSource).toContain("const stopIdSet = new Set(trip.items.map((item) => item.experience_id ?? item.id));");
+  });
+
+  it("keeps dated weather hints and the map available behind a simple toggle", () => {
     expect(plannerSource).toContain("buildItineraryWeatherPlan");
     expect(plannerSource).toContain("useItineraryWeather");
     expect(plannerSource).toContain("TripWeatherHint");
     expect(plannerSource).toContain("TripWeatherItemMarker");
-    expect(plannerSource).toContain("groupedItems.days");
-    expect(plannerSource).toContain("dayTargetKeyByDate");
-    expect(plannerSource).toContain("itemTargetKeyById");
+    expect(plannerSource).toContain("aria-expanded={mapExpanded}");
+    expect(plannerSource).toContain("{mapExpanded &&");
+    expect(plannerSource).toContain("<MapView pins={pins}");
+    expect(plannerSource).toContain("setMapExpanded(true)");
   });
 
-  it("keeps weather request code private and race-safe", () => {
+  it("fits a compact, non-draggable 2D map to the selected day's route", () => {
+    expect(plannerSource).toContain("data-trip-route-map");
+    expect(plannerSource).toContain("fitCoordinates={selectedRouteCoordinates}");
+    expect(plannerSource).toContain("disableNavigationGestures");
+    expect(plannerSource).toContain("h-44 overflow-hidden rounded-2xl");
+    expect(plannerSource).toContain("data-trip-leg");
+  });
+
+  it("disables map navigation gestures while preserving route fitting and marker clicks", () => {
+    expect(mapRendererSource).toContain("dragPan={!disableNavigationGestures}");
+    expect(mapRendererSource).toContain("scrollZoom={!disableNavigationGestures}");
+    expect(mapRendererSource).toContain("touchZoomRotate={!disableNavigationGestures}");
+    expect(mapRendererSource).toContain("touchPitch={!disableNavigationGestures}");
+    expect(mapRendererSource).toContain("map.fitBounds(");
+    expect(mapRendererSource).toContain("maxZoom: 12.5");
+    expect(mapRendererSource).toContain("onClick={handleMapClick}");
+  });
+
+  it("keeps weather requests private, race-safe, and attached to this trip", () => {
     const hookSource = readFileSync(new URL("../[tripId]/use-itinerary-weather.ts", import.meta.url), "utf8");
     expect(hookSource).toContain('cache: "no-store"');
     expect(hookSource).toContain("AbortController");
@@ -49,88 +79,66 @@ describe("trip planner layout contract", () => {
     expect(hookSource).toContain("tripId");
   });
 
-  it("tells the weather overlay whether the selected day has usable coordinates", () => {
-    expect(plannerSource).toContain("selectedRouteStops.length > 0");
-    expect(plannerSource).toContain("useWeatherOverlay(");
-    expect(plannerSource).toContain("weatherLayerEnabled && activeWeatherMapMode");
-  });
-
-  it("keeps the temporary animation simulator local-only and uses the production weather hint", () => {
+  it("keeps the weather simulator local-only", () => {
     expect(plannerSource).toContain('process.env.NODE_ENV !== "production"');
     expect(plannerSource).toContain("buildSimulatedWeatherResult(selectedDate, overlayHour)");
     expect(plannerSource).toContain("simulationEnabled");
     expect(plannerSource).toContain('simulationActive ? "forecast"');
     expect(plannerSource).toContain("buildSimulatedWeatherOverlay");
-    expect(plannerSource).toContain("simulationActive ? simulatedWeatherOverlay : overlayState.result");
     expect(plannerSource).toContain("!simulationActive");
-    expect(plannerSource).not.toContain("simulatedWeatherOverlayAction");
-    expect(plannerSource).toContain("simulationLabel=");
+    expect(plannerSource).toContain('simulationLabel={simulationLabel}');
   });
 
-  it("lets desktop users independently collapse both side panels", () => {
-    expect(plannerSource).toContain("itineraryCollapsed");
-    expect(plannerSource).toContain("placesCollapsed");
-    expect(plannerSource).toContain("md:grid-cols-[52px_minmax(0,1fr)_360px]");
-    expect(plannerSource).toContain("md:grid-cols-[360px_minmax(0,1fr)_52px]");
-    expect(plannerSource).toContain("md:grid-cols-[52px_minmax(0,1fr)_52px]");
-    expect(plannerSource).toContain("aria-expanded={!itineraryCollapsed}");
-    expect(plannerSource).toContain("aria-expanded={!placesCollapsed}");
+  it("lets users resize and collapse the AI panel with keyboard and pointer input", () => {
+    expect(plannerSource).toContain("onPointerDown={handleAiResizeStart}");
+    expect(plannerSource).toContain('role="separator"');
+    expect(plannerSource).toContain('aria-valuenow={aiWidth}');
+    expect(plannerSource).toContain('event.key === "ArrowRight"');
+    expect(plannerSource).toContain("aiCollapsed");
+    expect(plannerSource).toContain("setAiCollapsed");
+    expect(plannerSource).toContain('aria-expanded={!aiCollapsed}');
+    expect(plannerSource).toContain('"--planner-ai-width"');
   });
 
-  it("keeps complete panel content available when a collapsed desktop layout becomes mobile", () => {
-    expect(plannerSource).toContain('itineraryCollapsed ? "flex md:hidden" : "flex"');
-    expect(plannerSource).toContain('placesCollapsed ? "flex md:hidden" : "flex"');
-    expect(plannerSource).toContain("setItineraryCollapsed((collapsed) => !collapsed)");
-    expect(plannerSource).toContain("setPlacesCollapsed((collapsed) => !collapsed)");
+  it("keeps panel controls usable when switching to the single-panel mobile view", () => {
+    expect(plannerSource).toContain('plannerViews")}');
+    expect(plannerSource).toContain('(["ai", "itinerary", "places"] as const)');
+    expect(plannerSource).toContain('aiCollapsed ? "flex xl:hidden" : "flex"');
+    expect(plannerSource).toContain('placesCollapsed ? "flex xl:hidden" : "flex"');
+    expect(plannerSource).toContain("xl:grid-cols-[var(--planner-ai-width)_minmax(0,1fr)_var(--planner-places-width)]");
+    expect(plannerSource).toContain("border-r border-border bg-card xl:flex");
   });
 
-  it("bounds the desktop canvas and paginates both side panels", () => {
-    expect(plannerSource).toContain("const TRIP_DAYS_PAGE_SIZE = 5");
-    expect(plannerSource).toContain("const PLACES_PAGE_SIZE = 15");
-    expect(plannerSource).toContain("dayPage");
-    expect(plannerSource).toContain("placesPage");
-    expect(plannerSource).toContain("md:h-[680px]");
-    expect(plannerSource.match(/variant="compact"/g)).toHaveLength(2);
-    expect(plannerSource).toContain("visibleDays");
-    expect(plannerSource).toContain("visibleActivitiesPage");
-    expect(plannerSource).toContain("function patchPlaceFilters");
-    expect(plannerSource).toContain("setPlacesPage(1)");
-  });
-
-  it("connects the dedicated place filters and keeps promoted recommendations explicit", () => {
+  it("keeps place search, filters, result paging, and map-focus behavior", () => {
     expect(plannerSource).toContain("TripPlaceFilterPanel");
     expect(plannerSource).toContain("filterAndRankTripPlaces");
     expect(plannerSource).toContain("placeFilters.distanceKm");
     expect(plannerSource).toContain("data-promoted-activity");
     expect(plannerSource).toContain("eventType, productId");
-    expect(plannerSource).not.toContain('id="planner-radius"');
-    expect(plannerSource).not.toContain("RADIUS_OPTIONS_KM");
+    expect(plannerSource).toContain("function focusPin");
+    expect(plannerSource).toContain('setPlacesPage(1)');
+    expect(plannerSource).toContain("const PLACES_PAGE_SIZE = 15");
   });
 
-  it("loads distance-enriched activities on first render when the trip already has an origin", () => {
+  it("loads distance-enriched activities when a trip origin exists", () => {
     expect(plannerSource).toContain("if (!near) return;");
     expect(plannerSource).toContain('searchActivities({ category: null, near, sort: near ? "distance_asc" : "recommended" })');
   });
 
-  it("lets a weather-risk window reveal its exact hour on the map", () => {
+  it("reveals the map when a weather risk window is selected", () => {
     expect(plannerSource).toContain("handleSelectWeatherRiskHour");
     expect(plannerSource).toContain('setWeatherMapMode("forecast")');
     expect(plannerSource).toContain("setOverlayHour(hour)");
-    expect(plannerSource).toContain('setActivePanel("map")');
     expect(plannerSource).toContain("onSelectRiskHour");
   });
 
-  it("requests and presents real traffic segments for the selected driving route", () => {
+  it("retains real route traffic status without a dense color legend", () => {
     expect(plannerSource).toContain("buildRouteDepartureTime");
     expect(plannerSource).toContain("departureTime: routeDepartureTime");
     expect(plannerSource).toContain("trafficSegments: route.traffic?.segments");
     expect(plannerSource).toContain("data-route-traffic-status");
     expect(plannerSource).toContain('tCustomer("ui.map.trafficLive")');
     expect(plannerSource).toContain('tCustomer("ui.map.trafficPredicted")');
-    expect(plannerSource).toContain('tCustomer("ui.map.trafficProviderRetrievedAt"');
-    expect(plannerSource).not.toContain(">Mapbox · {");
-    expect(plannerSource).toContain('tCustomer("ui.map.trafficSlow")');
-    expect(plannerSource).toContain('tCustomer("ui.map.trafficCongested")');
     expect(plannerSource).toContain("ROUTE_TRAFFIC_REFRESH_MS");
     expect(plannerSource).toContain('document.visibilityState === "visible"');
   });

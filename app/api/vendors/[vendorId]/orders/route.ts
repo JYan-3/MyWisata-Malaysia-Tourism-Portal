@@ -19,9 +19,13 @@ export async function GET(request: Request, { params }: Props) {
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const linkedOrderId = url.searchParams.get('orderId');
 
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+  if (linkedOrderId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(linkedOrderId)) {
+    return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });
+  }
 
 
   const supabase = access.access.serviceDb;
@@ -45,6 +49,8 @@ export async function GET(request: Request, { params }: Props) {
     .eq('order_items.vendor_id', vendorId)
     .in('order_items.outlet_id', outletIds)
     .order('created_at', { ascending: false });
+
+  if (linkedOrderId) query = query.eq('id', linkedOrderId);
 
   if (fulfilStatus === 'attention') {
     query = query.in('order_items.fulfil_status', ['pending', 'ready']);

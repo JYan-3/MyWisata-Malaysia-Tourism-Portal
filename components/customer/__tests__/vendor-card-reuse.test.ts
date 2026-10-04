@@ -32,4 +32,39 @@ describe("customer vendor card reuse", () => {
     expect(partnersSource).toContain("rankPartnerDirectory");
     expect(partnersSource).toContain("isFeatured={featuredVendorIds.has(vendor.id)}");
   });
+
+  it("reveals Partners vendor details on interaction using the shared card", () => {
+    expect(partnersSource).toContain("detailsRevealOnHover");
+    const detailsStart = sharedCardSource.indexOf('<div id={detailsId}');
+    const detailsEnd = sharedCardSource.indexOf("</div>", detailsStart);
+    const detailsPanel = sharedCardSource.slice(detailsStart, detailsEnd);
+    expect(detailsPanel).toContain("MapPin");
+    expect(detailsPanel).toContain("{location}");
+  });
+
+  it("uses the same compact caption hover and keeps Explore vendor available on both pages", () => {
+    expect(homeSource).toContain('detailsRevealStyle="caption"');
+    expect(partnersSource).toContain('detailsRevealStyle="caption"');
+    expect(sharedCardSource).toContain('detailsRevealStyle?: "panel" | "caption"');
+    expect(sharedCardSource).toContain('detailsRevealStyle = "panel"');
+    expect(sharedCardSource).toContain("<CardMediaHoverCaption>");
+    expect(sharedCardSource).toContain("mw-card-body-compact");
+    expect(sharedCardSource).toContain('{showExploreAction && <Link');
+    const captionStart = sharedCardSource.indexOf("<CardMediaHoverCaption>");
+    const captionEnd = sharedCardSource.indexOf("</CardMediaHoverCaption>", captionStart);
+    const caption = sharedCardSource.slice(captionStart, captionEnd);
+    expect(caption).toContain("{location}");
+    expect(caption).toContain("{showExploreAction && <Link");
+    expect(caption).toContain("group-hover:pointer-events-auto");
+    expect(homeSource).not.toContain("showExploreAction={false}");
+    expect(partnersSource).not.toContain("showExploreAction={false}");
+  });
+
+  it("can show a nearby distance in the same caption as the outlet area", () => {
+    const captionStart = sharedCardSource.indexOf("<CardMediaHoverCaption>");
+    const captionEnd = sharedCardSource.indexOf("</CardMediaHoverCaption>", captionStart);
+    const caption = sharedCardSource.slice(captionStart, captionEnd);
+    expect(sharedCardSource).toContain("distanceLabel?: string");
+    expect(caption).toContain("distanceLabel");
+  });
 });

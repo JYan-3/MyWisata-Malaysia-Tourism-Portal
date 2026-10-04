@@ -26,9 +26,10 @@ describe('admin navigation shell', () => {
   it('keeps the sidebar fixed while the navigation list can scroll independently', () => {
     expect(layoutSource).toContain('className="flex h-screen overflow-hidden"');
     expect(layoutSource).toContain('<PortalSidebar');
+    expect(layoutSource).toMatch(/<PortalSidebar[\s\S]*?sections={sidebarSections}[\s\S]*?fixed/);
     expect(sharedSidebarSource).toContain('w-60');
     expect(sharedSidebarSource).toContain('min-h-0 flex-1 overflow-y-auto');
-    expect(layoutSource).toContain('className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"');
+    expect(layoutSource).toContain('className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-20 lg:ml-60 lg:pb-0"');
   });
 
   it('provides a localized label for the staff conduct navigation item', () => {

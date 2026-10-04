@@ -25,7 +25,6 @@ describe('vendor notification event matrix', () => {
       'app/api/dev/simulate-purchase/route.ts',
       'app/api/orders/[orderId]/refund/route.ts',
       'app/api/vendors/[vendorId]/orders/[orderItemId]/fulfil/route.ts',
-      'app/api/vendors/[vendorId]/bookings/[bookingId]/checkin/route.ts',
       'app/api/admin/catalogue/reviews/route.ts',
       'app/api/admin/vendors/[id]/approve/route.ts',
       'app/api/admin/vendors/[id]/suspend/route.ts',
@@ -36,6 +35,11 @@ describe('vendor notification event matrix', () => {
     for (const path of producers) {
       expect(read(path), path).toContain('emitVendorNotification');
     }
+    const checkInRoute = read('app/api/vendors/[vendorId]/bookings/[bookingId]/checkin/route.ts');
+    const checkInOperation = read('lib/vendor/booking-checkin.ts');
+    expect(checkInRoute).toContain('checkInBooking(');
+    expect(checkInOperation).toContain('emitVendorNotification');
+    expect(checkInOperation.lastIndexOf('emitVendorNotification')).toBeGreaterThan(checkInOperation.indexOf('if (!result.success)'));
   });
 
   it('wires paid checkout finalization through the order event helper', () => {
@@ -51,7 +55,7 @@ describe('vendor notification event matrix', () => {
     const revoke = read('app/api/vendors/[vendorId]/outlet-managers/[outletId]/route.ts');
     expect(revoke.indexOf('deleteRoleError')).toBeLessThan(revoke.indexOf('void emitVendorNotification'));
     expect(revoke).toContain('recipientOverrides');
-    expect(read('app/api/vendors/[vendorId]/batch/route.ts')).toContain('fulfilmentError');
+    expect(read('app/api/vendors/[vendorId]/batch/route.ts')).toContain('error: updateError');
   });
 
   it('keeps chat messages App-only in both directions', () => {

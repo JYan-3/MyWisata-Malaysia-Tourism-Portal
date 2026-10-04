@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   rolesSelect: vi.fn(),
   serviceFrom: vi.fn(),
+  serviceRpc: vi.fn(),
   retrieveSession: vi.fn(),
   createRefund: vi.fn(),
 }));
@@ -17,7 +18,7 @@ vi.mock('@/lib/supabase/server', () => ({
   })),
 }));
 vi.mock('@/lib/supabase/service', () => ({
-  createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom })),
+  createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.serviceRpc })),
 }));
 vi.mock('@/lib/stripe', () => ({
   stripe: {
@@ -40,6 +41,7 @@ function queryResult(data: unknown) {
 describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.serviceRpc.mockResolvedValue({ data: { status: 'processed' }, error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
     mocks.rolesSelect.mockResolvedValue({ data: [{ roles: { name: 'super_admin' } }] });
     mocks.serviceFrom.mockImplementation((table: string) => queryResult(table === 'refunds' ? {
@@ -51,7 +53,7 @@ describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
       payments: { method: 'stripe_card', provider: 'stripe', provider_payment_id: 'cs_test_session_001' },
     } : null));
     mocks.retrieveSession.mockResolvedValue({ payment_intent: { id: 'pi_test_001' } });
-    mocks.createRefund.mockResolvedValue({ id: 're_test_001' });
+    mocks.createRefund.mockResolvedValue({ id: 're_test_001', status: 'succeeded', amount: 5000, currency: 'myr' });
   });
 
   it('uses a deterministic Stripe idempotency key tied to the refund request', async () => {
@@ -63,7 +65,7 @@ describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.createRefund).toHaveBeenCalledWith(
-      { payment_intent: 'pi_test_001', amount: 5000 },
+      { payment_intent: 'pi_test_001', amount: 5000, metadata: { mywisata_refund_id: REFUND_ID } },
       { idempotencyKey: `refund:${REFUND_ID}` },
     );
   });

@@ -202,7 +202,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-16">
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
                 src="/branding/mywisata-logo-transparent.png?v=2"
@@ -210,7 +210,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 width={758}
                 height={306}
                 priority
-                className="block h-auto w-[118px]"
+                className="block h-auto w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]"
               />
           </Link>
 
@@ -227,9 +227,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1">
             <LanguageSwitcher compact className="hidden md:flex w-28" />
-            <CurrencySwitcher compact className="w-20 md:w-24" />
+            <CurrencySwitcher compact className="w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24" />
             <AppearanceControl />
             {currentUser ? <NotificationBell key={currentUser.id} /> : (
               <button type="button" aria-label={tCommon("accessibility.notifications")} onClick={() => gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "/customer/notifications")} className={HEADER_ICON_BUTTON_CLASS}>
@@ -309,7 +309,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-label={currentUser
                   ? tCommon("account.openMenuFor", { name: customerDisplayName })
                   : tCommon("account.guestMenu")}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 p-1 pr-2 transition hover:border-primary/30 hover:bg-secondary"
+                className="flex items-center gap-0 rounded-full border border-border bg-card/80 p-1 pr-1 transition hover:border-primary/30 hover:bg-secondary sm:gap-1.5 sm:pr-2"
               >
                 <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
                   {currentUser?.avatarInitial ?? "G"}
@@ -317,7 +317,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                     <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-destructive" />
                   )}
                 </span>
-                <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
+                <ChevronDown size={14} className={`hidden text-muted-foreground transition-transform sm:inline ${accountMenuOpen ? "rotate-180" : ""}`} />
               </button>
 
               {accountMenuOpen && (

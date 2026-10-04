@@ -25,5 +25,7 @@ describe("vendor reviews list and contract", () => {
     expect(pageSource).toContain("import { VendorReviewsList");
     expect(pageSource).toContain("<VendorReviewsList reviews={reviews} vendorId={vendor.id} />");
     expect(pageSource).toContain("from('reviews')");
+    expect(pageSource).toContain("getPublicReviewAuthorNames");
+    expect(pageSource).not.toContain("users(full_name)");
   });
 });

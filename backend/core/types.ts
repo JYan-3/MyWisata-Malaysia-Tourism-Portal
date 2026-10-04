@@ -135,6 +135,7 @@ export interface PriceRule {
 export interface BookingSlot {
   id: string;
   activityId: string;
+  outletId?: string;
   startsAt: string; // ISO datetime
   endsAt?: string; // ISO datetime
   capacity: number;
@@ -182,6 +183,7 @@ export interface Activity {
   variants: Variant[];
   priceRules?: PriceRule[];
   availableStock?: number;
+  stockByOutlet?: Record<string, number>;
   lowStockThreshold?: number;
   aiTag?: string; // static label for now; AI scoring deferred
   hot?: boolean;

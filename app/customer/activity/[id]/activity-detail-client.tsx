@@ -62,7 +62,6 @@ export function ActivityDetailClient({
     : initialActivity?.outletId ?? "";
 
   const [activity] = useState<ComputedActivity | null>(initialActivity);
-  const [slots] = useState<BookingSlot[]>(initialSlots);
   const [reviews] = useState<ProductReview[]>(initialReviews);
   const [variantId, setVariantId] = useState<string>(initialActivity?.variants[0]?.id ?? "");
   const [slotId, setSlotId] = useState<string>("");
@@ -73,6 +72,8 @@ export function ActivityDetailClient({
   // Which outlet the customer is buying from. Price and stock are per-outlet,
   // so this is required before the item can go in the cart.
   const [outletId, setOutletId] = useState<string>(initialOutletId);
+  const slots = initialSlots.filter((slot) => !slot.outletId || slot.outletId === outletId);
+  const selectedStock = activity?.stockByOutlet?.[outletId] ?? activity?.availableStock;
 
   // §11.2.7 view signal: beacon dwell time on unmount (best-effort, ignored for guests).
   useEffect(() => {
@@ -316,7 +317,7 @@ export function ActivityDetailClient({
                     <button
                       key={choice.outletId}
                       type="button"
-                      onClick={() => { setOutletId(choice.outletId); setAdded(false); }}
+                      onClick={() => { setOutletId(choice.outletId); setSlotId(""); setAdded(false); }}
                       aria-pressed={selected}
                       className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors"
                       style={{
@@ -388,7 +389,7 @@ export function ActivityDetailClient({
            <Button
             type="button"
             onClick={handleAddToCart}
-            disabled={adding || (activity.requiresBooking && !slotId)}
+            disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && selectedStock === 0)}
             className="h-12 w-full rounded-full text-base"
            >
              {added ? t("ui.states.addedToCart") : activity.requiresBooking ? t("ui.actions.addBookingToCart") : t("ui.actions.addToCart")}
@@ -502,7 +503,7 @@ export function ActivityDetailClient({
           {added ? (
             <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>
           ) : (
-            <Button type="button" onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId)} className="h-11 flex-1 rounded-full">
+            <Button type="button" onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && selectedStock === 0)} className="h-11 flex-1 rounded-full">
               {activity.requiresBooking ? t("ui.activityDetail.addBooking") : t("ui.actions.addToCart")}
             </Button>
           )}

@@ -11,19 +11,22 @@ type Props = {
   vendor: PromotionCampaignPublicVendor;
   campaignSlug: string;
   mode: "preview" | "detail";
+  layout?: "grid" | "featured";
+  matchingStallNumbers?: string[];
 };
 
 /** A participating vendor's stall within an event — replaces the retired offer-card (see 20260928180000). */
-export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode }: Props) {
+export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode, layout = "grid", matchingStallNumbers = [] }: Props) {
   const { t } = useTranslation("customer");
   const firstStall = vendor.stalls[0];
   const image = firstStall?.stallPosterUrl || vendor.vendorLogoUrl;
+  const isFeatured = mode === "detail" && layout === "featured";
   // A product sold at several locations is still one item to the customer.
   const productCount = new Set(vendor.stalls.flatMap((stall) => stall.products.map((product) => product.name))).size;
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="relative aspect-[16/8] overflow-hidden bg-gradient-to-br from-primary/10 via-secondary to-highlight-yellow/20">
+    <article className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm${isFeatured ? " sm:grid sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]" : ""}`}>
+      <div className={`relative aspect-[16/8] overflow-hidden bg-gradient-to-br from-primary/10 via-secondary to-highlight-yellow/20${isFeatured ? " sm:aspect-auto sm:min-h-60" : ""}`}>
         {image ? (
           <Image src={image} alt={vendor.vendorName} fill sizes="(max-width: 768px) 100vw, 50vw" unoptimized={image.startsWith("http://") || image.startsWith("https://")} className="object-cover" />
         ) : (
@@ -41,6 +44,18 @@ export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode }: Prop
           <span className="mt-1 inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">{t("ui.eventPartners.badge")}</span>
         )}
         {mode === "detail" && firstStall && <p className="mt-2 line-clamp-3 break-words text-sm leading-6 text-muted-foreground">{firstStall.stallDescription}</p>}
+        {mode === "detail" && matchingStallNumbers.length > 0 && (
+          <div className="mt-3" role="group" aria-label={t("ui.promotionCampaigns.matchingStalls")}>
+            <p className="text-xs font-semibold text-primary">{t("ui.promotionCampaigns.matchingStalls")}</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {matchingStallNumbers.map((stallNumber) => (
+                <span key={stallNumber} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-primary">
+                  {stallNumber}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         {productCount > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">{t("ui.promotionCampaigns.productCount", { count: productCount })}</p>
         )}

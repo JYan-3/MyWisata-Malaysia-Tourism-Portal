@@ -18,21 +18,17 @@ export async function POST(request: Request, { params }: Props) {
   const { data: order } = await service.from('orders').select('id,total_amount,status,user_id').eq('id', orderId).eq('user_id', user.id).maybeSingle();
   if (!order) return apiFail('NOT_FOUND', 'Order not found', 404);
   if (order.status !== 'paid' && order.status !== 'completed') return apiFail('INVALID_STATE', 'Only paid orders can be refunded', 409);
-  const { data: payment } = await service.from('payments').select('id,status').eq('order_id', orderId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-  if (!payment || payment.status !== 'succeeded') return apiFail('INVALID_STATE', 'A successful payment is required', 409);
-  const { data: existingRefund, error: existingRefundError } = await service
-    .from('refunds')
-    .select('id,status')
-    .eq('payment_id', payment.id)
-    .in('status', ['pending', 'approved', 'processed'])
-    .limit(1)
-    .maybeSingle();
-  if (existingRefundError) return apiFail('DB_ERROR', 'Unable to verify refund state', 500);
-  if (existingRefund) {
-    return apiFail('REFUND_ALREADY_REQUESTED', 'A refund is already active or completed for this payment', 409);
+  const { data, error } = await service.rpc('request_order_refund', {
+    p_order_id: orderId,
+    p_user_id: user.id,
+    p_reason: parsed.data.reason,
+  });
+  if (error) {
+    if (error.message?.includes('refund_already_active')) return apiFail('REFUND_ALREADY_REQUESTED', 'A refund is already active or completed for this order', 409);
+    if (error.message?.includes('refund_payment_ambiguous')) return apiFail('INVALID_STATE', 'The successful payment could not be verified safely. Contact support before requesting a refund.', 409);
+    if (error.message?.includes('refund_funding_ledger_mismatch')) return apiFail('INVALID_STATE', 'The original payment allocation could not be verified safely. Contact support before requesting a refund.', 409);
+    return apiFail('DB_ERROR', 'Unable to create the refund request', 500);
   }
-  const { data, error } = await service.from('refunds').insert({ payment_id: payment.id, order_id: orderId, amount: order.total_amount, reason: parsed.data.reason, status: 'pending' }).select('id,status,amount,reason,created_at').single();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
 
   const { data: items } = await service.from('order_items').select('vendor_id,outlet_id').eq('order_id', orderId);
   for (const item of (items ?? []) as Array<{ vendor_id: string | null; outlet_id: string | null }>) {
@@ -46,7 +42,7 @@ export async function POST(request: Request, { params }: Props) {
       type: 'vendor_order_refund_requested',
       title: 'Refund requested',
       body: `A customer requested a refund for order ${orderId}.`,
-      link: `/vendor/orders/${orderId}`,
+      link: `/vendor/orders?orderId=${encodeURIComponent(orderId)}`,
       email: true,
       reference: orderId,
       metadata: { reason: parsed.data.reason },

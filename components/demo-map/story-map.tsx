@@ -4,8 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
-import { ArrowRight, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Clock3, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
 import { DEMO_STATES, getState } from "@/lib/demo-map/data";
+import { getStateFlagSrc } from "@/lib/demo-map/state-flags";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { useWishlist } from "@/components/providers/wishlist";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
@@ -22,27 +23,8 @@ import { HIDDEN_GEM_SYMBOL } from "@/lib/i18n/invariant-tokens";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const STATE_FLAG_CODES: Record<string, string> = {
-  perlis: "pls",
-  kedah: "kdh",
-  penang: "png",
-  perak: "prk",
-  selangor: "sgr",
-  "kuala-lumpur": "kul",
-  putrajaya: "pjy",
-  "negeri-sembilan": "nsn",
-  melaka: "mlk",
-  johor: "jhr",
-  kelantan: "ktn",
-  terengganu: "trg",
-  pahang: "phg",
-  sarawak: "swk",
-  sabah: "sbh",
-  labuan: "lbn",
-};
-
 function StateOptionContent({ stateId, label }: { stateId: string | null; label: string }) {
-  const flagSrc = stateId ? `/flags/states/${STATE_FLAG_CODES[stateId]}.svg` : "/flags/my.svg";
+  const flagSrc = getStateFlagSrc(stateId);
 
   return (
     <span className="flex min-w-0 items-center gap-3">
@@ -165,9 +147,9 @@ function StateDetailPanel({
                           </span>
                         )}
                         <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
+                          <span className="flex min-w-0 flex-wrap items-center gap-1.5 break-words text-sm font-bold text-foreground">
                             {activity.name}
-                            {activity.sponsorship && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
+                            {activity.sponsorship && <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-900">{t("ui.labels.sponsored")}</span>}
                           </span>
                           {activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}
                         </span>
@@ -181,7 +163,6 @@ function StateDetailPanel({
           </>
         ) : (
           <>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("ui.map.compareRegions")}</p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <div className="rounded-2xl bg-secondary px-3 py-3">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{t("ui.map.regions")}</p>
@@ -316,58 +297,77 @@ export function StoryMap({
   const categoryFilterPanel = (
     <aside
       id="explore-category-filter"
-      className="mt-3 rounded-2xl border border-border bg-secondary/60 p-3"
+      className="mt-3 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-5"
       aria-label={t("ui.map.moreFilters")}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{t("ui.map.moreFilters")}</p>
-          <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">{t("ui.map.refineResults")}</h3>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{t("ui.map.moreFilters")}</p>
+          <h3 className="mt-1 text-base font-bold text-foreground">{t("ui.map.refineResults")}</h3>
         </div>
-        <MapPin size={18} className="mt-1 text-cta-orange" />
+        <SlidersHorizontal size={18} className="text-primary" aria-hidden="true" />
       </div>
 
-      <div className="mt-3 max-h-[min(45vh,20rem)] overflow-y-auto pr-1">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
         {Object.entries(CATEGORY_DETAILS).map(([slug, detail]) => {
           const allTypeSlugs = detail.types.map((t) => t.slug);
           return (
-            <div key={slug} className="mb-2.5 last:mb-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold text-foreground"><CategoryIcon category={slug} size={14} strokeWidth={1.8} />{t(`categories.${slug}`)}</p>
-              <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1">
+            <details key={slug} className="group rounded-xl border border-border/70 bg-background p-3">
+              <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 items-center gap-2"><CategoryIcon category={slug} size={16} strokeWidth={1.8} />{t(`categories.${slug}`)}</span>
+                <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-primary transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {detail.types.map((typeOption) => (
-                  <label key={typeOption.slug} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <input type="checkbox" checked={isTypeChecked(slug, typeOption.slug)} onChange={() => toggleType(slug, typeOption.slug, allTypeSlugs)} className="h-3 w-3 accent-primary" />
+                  <button
+                    key={typeOption.slug}
+                    type="button"
+                    aria-pressed={isTypeChecked(slug, typeOption.slug)}
+                    onClick={() => toggleType(slug, typeOption.slug, allTypeSlugs)}
+                    className={`inline-flex min-h-10 items-center rounded-full border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${isTypeChecked(slug, typeOption.slug) ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
+                  >
                     {t(`ui.map.types.${typeOption.slug}`)}
-                  </label>
+                  </button>
                 ))}
               </div>
-            </div>
+            </details>
           );
         })}
 
-        <label className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-sm font-bold text-foreground">
-          <input type="checkbox" checked={filters.hiddenGemOnly} onChange={() => toggleBadge("hidden_gem")} className="h-3.5 w-3.5 accent-primary" />
-          <span className="flex-1">{HIDDEN_GEM_SYMBOL} {t("ui.labels.hiddenGem")}</span>
-          <span className="text-[11px] font-normal text-muted-foreground">{activities.filter((activity) => activity.isHiddenGem).length}</span>
-        </label>
-
-        <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">{t("ui.outlet.goodToKnow")}</p>
-          <div className="flex flex-col gap-1">
-            {BADGE_OPTIONS.map((b) => (
-              <label key={b.key} className="flex items-center gap-2 text-xs text-foreground">
-                <input type="checkbox" checked={b.key === "family_friendly" ? filters.familyFriendlyOnly : filters.coupleFriendlyOnly} onChange={() => toggleBadge(b.key)} className="h-3.5 w-3.5 accent-primary" />
-                {t(`ui.map.badges.${b.key}`)}
-              </label>
-            ))}
+        <div className="rounded-xl border border-border/70 bg-background p-3">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-primary">{t("ui.outlet.goodToKnow")}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-pressed={filters.hiddenGemOnly}
+              onClick={() => toggleBadge("hidden_gem")}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${filters.hiddenGemOnly ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
+            >
+              {HIDDEN_GEM_SYMBOL} {t("ui.labels.hiddenGem")}
+              <span className={`text-[10px] ${filters.hiddenGemOnly ? "text-white/80" : "text-muted-foreground"}`}>{activities.filter((activity) => activity.isHiddenGem).length}</span>
+            </button>
+            {BADGE_OPTIONS.map((b) => {
+              const selected = b.key === "family_friendly" ? filters.familyFriendlyOnly : filters.coupleFriendlyOnly;
+              return (
+                <button
+                  key={b.key}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleBadge(b.key)}
+                  className={`inline-flex min-h-10 items-center rounded-full border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
+                >
+                  {t(`ui.map.badges.${b.key}`)}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {activeFilterCount > 0 && (
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-            <span className="text-[11px] text-muted-foreground">{t("ui.map.activeFilters", { count: activeFilterCount })}</span>
-          <button type="button" onClick={clearFilters} className="text-[11px] font-bold text-muted-foreground hover:text-destructive">{t("ui.actions.clearFilters")}</button>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+          <span className="text-xs text-muted-foreground">{t("ui.map.activeFilters", { count: activeFilterCount })}</span>
+          <button type="button" onClick={clearFilters} className="rounded-full px-3 py-2 text-xs font-bold text-primary hover:bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.clearFilters")}</button>
         </div>
       )}
     </aside>
@@ -395,7 +395,7 @@ export function StoryMap({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{selectedActivity.category}</span>
-                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
+                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900">{t("ui.labels.sponsored")}</span>}
                   </div>
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
@@ -423,7 +423,7 @@ export function StoryMap({
 
         </div>
 
-        <section id="explore-experiences" className="mt-5 flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card p-3 shadow-[0_12px_28px_rgba(1,0,102,0.08)] sm:p-4 2xl:p-5">
+        <section id="explore-experiences" className="mt-5 flex min-h-0 flex-col rounded-[1.5rem] border border-border bg-card p-3 shadow-[0_12px_28px_rgba(1,0,102,0.08)] sm:p-4 2xl:p-5">
             <div className="flex shrink-0 items-end justify-between gap-3">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary 2xl:text-[10px]">{t("ui.map.exploreMalaysia")}</p>
@@ -435,56 +435,66 @@ export function StoryMap({
               </div>
             </div>
 
-            <div className="mt-1 flex shrink-0 flex-wrap gap-1.5 2xl:mt-2" aria-label={t("ui.map.experienceFilters")}>
-              <button type="button" onClick={clearFilters} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${activeFilterCount === 0 ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}>{t("ui.search.allMalaysia")}</button>
+            <div className="mt-3 flex shrink-0 flex-wrap items-center gap-2 2xl:mt-4" aria-label={t("ui.map.experienceFilters")}>
+              <button type="button" aria-pressed={activeFilterCount === 0} onClick={clearFilters} className={`inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${activeFilterCount === 0 ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}>{t("ui.search.allMalaysia")}</button>
               {Object.entries(CATEGORY_META).map(([slug]) => (
                 <button
                   key={slug}
                   type="button"
+                  aria-pressed={filters.categories.includes(slug)}
                   onClick={() => toggleCategory(slug)}
-                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filters.categories.includes(slug) ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}
+                  className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${filters.categories.includes(slug) ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
                 >
                   <CategoryIcon category={slug} size={14} strokeWidth={1.8} /> {t(`categories.${slug}`)}
                 </button>
               ))}
-              <button type="button" onClick={() => toggleBadge("hidden_gem")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filters.hiddenGemOnly ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}><CategoryIcon category="hidden_gem" size={12} strokeWidth={1.8} /> {t("ui.labels.hiddenGem")}</button>
-              <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="explore-category-filter" className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filtersOpen || activeFilterCount > 0 ? "border-primary/30 bg-secondary text-primary" : "border-border text-muted-foreground hover:bg-secondary"}`}>
-                <SlidersHorizontal size={13} /> {t("ui.map.moreFilters")}{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
+              <button type="button" aria-pressed={filters.hiddenGemOnly} onClick={() => toggleBadge("hidden_gem")} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${filters.hiddenGemOnly ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}><CategoryIcon category="hidden_gem" size={14} strokeWidth={1.8} /> {t("ui.labels.hiddenGem")}</button>
+              <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="explore-category-filter" aria-label={activeFilterCount > 0 ? `${t("ui.map.moreFilters")} (${t("ui.map.activeFilters", { count: activeFilterCount })})` : t("ui.map.moreFilters")} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-primary/20 bg-secondary/50 px-4 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/40 hover:bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+                <SlidersHorizontal size={14} aria-hidden="true" /> {t("ui.map.moreFilters")}
+                {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}
+                <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
               </button>
             </div>
 
             {filtersOpen && categoryFilterPanel}
 
-            <div className="mt-2 min-h-0 overflow-hidden 2xl:mt-3">
+            <div className="mt-4 min-h-0 2xl:mt-5">
               {activities.length === 0 ? (
                 <div className="rounded-2xl border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">{t("ui.states.loadingError")}</div>
               ) : (
-                <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {activities.slice(0, 8).map((activity) => (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {activities.slice(0, 4).map((activity) => (
                     <button
                       key={activity.id}
                       type="button"
                       aria-label={t("ui.map.openPlace", { name: activity.name })}
                       aria-pressed={activity.id === selectedPlaceId}
                       onClick={() => setSelectedPlaceId(activity.id)}
-                      className={`group min-h-[56px] rounded-xl border bg-background p-1.5 text-left shadow-[0_5px_16px_rgba(1,0,102,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(1,0,102,0.1)] sm:p-2 2xl:min-h-[64px] 2xl:p-3 ${activity.id === selectedPlaceId ? "border-cta-orange bg-orange-50/50" : "border-border"}`}
-                     >
-                      <div className="flex items-center gap-2 2xl:gap-3">
-                         {activity.image ? (
+                      className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-[0_5px_16px_rgba(1,0,102,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(1,0,102,0.12)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 motion-reduce:transform-none motion-reduce:transition-none ${activity.id === selectedPlaceId ? "border-cta-orange ring-2 ring-cta-orange/20" : "border-border hover:border-primary/40"}`}
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-secondary">
+                        {activity.image ? (
                           // eslint-disable-next-line @next/next/no-img-element -- catalogue image, not an optimizable static asset
-                          <img src={activity.image} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover 2xl:h-12 2xl:w-12" />
+                          <img src={activity.image} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-focus-visible:scale-105 motion-reduce:transform-none motion-reduce:transition-none" />
                         ) : (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground 2xl:h-12 2xl:w-12">
-                            <ImageOff size={16} strokeWidth={1.5} aria-hidden="true" />
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <ImageOff size={28} strokeWidth={1.5} aria-hidden="true" />
                           </div>
                         )}
-                         <div className="min-w-0 flex-1">
-                           <p className="break-words whitespace-normal text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
-                           {activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
-                           <p className="mt-0.5 break-words whitespace-normal text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}{activity.outlet.hours ? ` · ${activity.outlet.hours}` : ""}</p>
-                         </div>
-                        <ReferencePrice amountMYR={Number(activity.price)} className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm" />
-                       </div>
+                        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/40 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none" />
+                        {activity.sponsorship && <span className="absolute left-3 top-3 rounded-full bg-amber-400 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-slate-950 shadow-sm">{t("ui.labels.sponsored")}</span>}
+                        <div className="pointer-events-none absolute inset-x-3 bottom-3 space-y-1 text-left text-white opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 motion-reduce:transition-none">
+                          <p className="flex items-start gap-1.5 text-xs font-semibold leading-snug">
+                            <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+                            <span>{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</span>
+                          </p>
+                          {activity.outlet.hours && <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85"><Clock3 size={12} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{activity.outlet.hours}</span></p>}
+                        </div>
+                      </div>
+                      <div className="flex min-h-20 w-full flex-1 flex-col justify-between gap-2 p-3 sm:p-3.5">
+                        <p className="break-words whitespace-normal text-sm font-bold leading-snug text-foreground 2xl:text-base">{activity.name}</p>
+                        <ReferencePrice amountMYR={Number(activity.price)} className="font-[family-name:var(--font-mono)] text-sm font-bold text-primary" />
+                      </div>
                     </button>
                   ))}
                 </div>

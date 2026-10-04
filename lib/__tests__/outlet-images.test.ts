@@ -25,4 +25,26 @@ describe("resolveOutletImage", () => {
       managedPlaceImages: [{ name: "Kek Lok Si Temple", imageUrl: "https://example.com/place.jpg" }],
     })).toBeNull();
   });
+
+  it("falls back to the first ordered outlet gallery photo and ignores logo media", () => {
+    expect(resolveOutletImage({
+      outletName: "Kooya Handicraft",
+      outletHeroUrl: null,
+      managedPlaceImages: [],
+      outletGalleryImages: [
+        { url: "https://example.com/kooya-logo.png", alt_text: "Kooya logo", media_type: "image", sort_order: -1 },
+        { url: "https://example.com/kooya-second.jpg", alt_text: "Beaded craft display", media_type: "image", sort_order: 1 },
+        { url: "https://example.com/kooya-first.jpg", alt_text: "Handmade beaded slippers", media_type: "image", sort_order: 0 },
+      ],
+    })).toBe("https://example.com/kooya-first.jpg");
+  });
+
+  it("prefers an outlet gallery photo over a same-name managed place fallback", () => {
+    expect(resolveOutletImage({
+      outletName: "Kooya Handicraft — Jalan Hang Jebat",
+      outletHeroUrl: null,
+      managedPlaceImages: [{ name: "Kooya Handicraft — Jalan Hang Jebat", imageUrl: "https://example.com/old-cemetery.jpg" }],
+      outletGalleryImages: [{ url: "https://example.com/melaka-retail.jpg", alt_text: "Retail stalls in Melaka", media_type: "image", sort_order: 0 }],
+    })).toBe("https://example.com/melaka-retail.jpg");
+  });
 });

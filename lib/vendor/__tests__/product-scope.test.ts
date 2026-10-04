@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
+import { describe, expect, it, vi } from 'vitest';
+import { getOutletStock, getScopedProduct, isInventoryConfiguredForOutlets, isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
 
 describe('resolveProductOutlet', () => {
   it('keeps a shared product visible through an outlet offer in scope', () => {
@@ -47,4 +47,58 @@ describe('resolveProductOutlet', () => {
       outlet_offers: [{ outlet_id: 'assigned', status: 'active' }],
     }, ['assigned'])).toBe(true);
   });
+});
+
+describe('isInventoryConfiguredForOutlets', () => {
+  it('requires an active variant and an inventory row for each outlet in scope', () => {
+    expect(isInventoryConfiguredForOutlets([], ['outlet-1'])).toBe(false);
+    expect(isInventoryConfiguredForOutlets([
+      { is_active: true, inventory: [{ outlet_id: 'outlet-1', quantity: 0 }] },
+    ], ['outlet-1'])).toBe(true);
+    expect(isInventoryConfiguredForOutlets([
+      { is_active: true, inventory: [{ outlet_id: 'outlet-1', quantity: 2 }] },
+    ], ['outlet-1', 'outlet-2'])).toBe(false);
+  });
+
+  it('ignores inactive variants when checking whether configured active stock exists', () => {
+    expect(isInventoryConfiguredForOutlets([
+      { is_active: false, inventory: [] },
+      { is_active: true, inventory: [{ outlet_id: 'outlet-1', quantity: 0 }] },
+    ], ['outlet-1'])).toBe(true);
+    expect(isInventoryConfiguredForOutlets([
+      { is_active: false, inventory: [{ outlet_id: 'outlet-1', quantity: 5 }] },
+    ], ['outlet-1'])).toBe(false);
+  });
+
+  it('does not treat an empty outlet scope as configured inventory', () => {
+    expect(isInventoryConfiguredForOutlets([
+      { is_active: true, inventory: [{ outlet_id: 'outlet-1', quantity: 5 }] },
+    ], [])).toBe(false);
+  });
+});
+
+describe('getOutletStock', () => {
+  it('does not count inventory attached to an inactive variant as sellable stock', () => {
+    expect(getOutletStock([
+      { is_active: false, inventory: [{ outlet_id: 'outlet-1', quantity: 9, reserved: 0, low_stock_threshold: 2 }] },
+      { is_active: true, inventory: [{ outlet_id: 'outlet-1', quantity: 3, reserved: 1, low_stock_threshold: 2 }] },
+    ], ['outlet-1'])).toEqual({ availableStock: 2, lowStockThreshold: 2 });
+  });
+});
+
+
+it('prunes other outlets from nested data before returning a shared product', async () => {
+  const product = {
+    outlet_id: null,
+    outlet_offers: [{ outlet_id: 'assigned', status: 'active' }, { outlet_id: 'outside', status: 'active' }],
+    product_variants: [{ id: 'variant', inventory: [{ outlet_id: 'outside', quantity: 999 }, { outlet_id: 'assigned', quantity: 2 }] }],
+    booking_slots: [{ outlet_id: 'outside', id: 'private-slot' }, { outlet_id: 'assigned', id: 'visible-slot' }],
+  };
+  const query = { select: vi.fn(), eq: vi.fn(), or: vi.fn(), maybeSingle: vi.fn().mockResolvedValue({ data: product, error: null }) };
+  query.select.mockReturnValue(query); query.eq.mockReturnValue(query); query.or.mockReturnValue(query);
+  const result = await getScopedProduct({ from: () => query } as never, 'vendor', 'product', ['assigned'], '*');
+  expect(result.data?.outlet_offers).toEqual([{ outlet_id: 'assigned', status: 'active' }]);
+  expect(result.data?.booking_slots).toEqual([{ outlet_id: 'assigned', id: 'visible-slot' }]);
+  expect(result.data?.product_variants).toEqual([{ id: 'variant', inventory: [{ outlet_id: 'assigned', quantity: 2 }] }]);
+  expect(product.booking_slots).toHaveLength(2);
 });

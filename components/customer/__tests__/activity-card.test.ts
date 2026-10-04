@@ -40,6 +40,16 @@ describe("customer activity image handling", () => {
     expect(cardSource).toContain("<OperatingHoursSummary");
   });
 
+  it("supports a bottom caption reveal and preserves the explicit full details panel", () => {
+    expect(cardSource).toContain('detailsRevealStyle?: "panel" | "caption"');
+    expect(cardSource).toContain('import { CardMediaHoverCaption } from "@/components/customer/card-media-hover-caption"');
+    expect(cardSource).toContain("<CardMediaHoverCaption>");
+    expect(cardSource).toContain("{activity.outlet.city} · {categoryLabel}");
+    expect(cardSource).toContain("activity.outlet.hours");
+    expect(cardSource).toContain('id={detailsId}');
+    expect(cardSource).toContain('onClick={() => setDetailsOpen((open) => !open)}');
+  });
+
   it("uses the reusable save toggle instead of a card-local heart icon", () => {
     expect(cardSource).toContain('import { SaveToggleButton } from "@/components/customer/save-toggle-button"');
     expect(cardSource).toContain("<SaveToggleButton");

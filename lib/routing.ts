@@ -113,6 +113,7 @@ export interface RouteResult {
   geometry: [number, number][]; // [lat, lng][]
   distanceKm: number;
   durationMin: number;
+  legs?: Array<{ distanceKm: number; durationMin: number }>;
   hasTolls?: boolean; // driving only; ORS tollways extra_info
   traffic?: RouteTraffic;
 }

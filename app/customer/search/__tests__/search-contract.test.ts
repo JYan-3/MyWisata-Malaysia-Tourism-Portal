@@ -36,9 +36,16 @@ describe("customer vendor search contract", () => {
   it("renders vendors as the primary search result", () => {
     expect(clientSource).toContain("filteredVendors");
     expect(clientSource).toContain("recommendedVendors");
-    expect(clientSource).toContain('t("ui.search.approvedPartnerDescription")');
+    expect(clientSource).toContain("detailsRevealOnHover");
+    expect(clientSource).not.toContain('t("ui.search.approvedPartnerDescription")');
     expect(clientSource).not.toContain("<ActivityCard");
     expect(clientSource).not.toContain("<PlaceActivityCard");
+  });
+
+  it("shows four vendor cards per page and keeps pagination tied to that page size", () => {
+    expect(clientSource).toContain("const RESULTS_PER_PAGE = 4");
+    expect(clientSource).toContain("Math.ceil(filteredVendors.length / RESULTS_PER_PAGE)");
+    expect(clientSource).toContain("filteredVendors.slice(pageStart, pageStart + RESULTS_PER_PAGE)");
   });
 
   it("also gives place-bound activities their own discovery path", () => {
@@ -93,14 +100,16 @@ describe("customer vendor search contract", () => {
     expect(vendorIndex).toBeGreaterThan(filterIndex);
   });
 
-  it("places partner filtering between the introduction and sponsored recommendations", () => {
-    const introductionIndex = clientSource.indexOf('t("ui.search.description")');
+  it("removes explanatory blurbs while keeping discovery before featured recommendations", () => {
+    const titleIndex = clientSource.indexOf('t("ui.search.title")');
     const sponsoredIndex = clientSource.indexOf("<SponsoredPartnerRail");
     const filterIndex = clientSource.indexOf("<CustomerDiscoveryFilterPanel");
-    expect(introductionIndex).toBeGreaterThan(-1);
+    expect(clientSource).not.toContain('t("ui.search.description")');
+    expect(clientSource).not.toContain('t("ui.search.directoryDescription")');
+    expect(titleIndex).toBeGreaterThan(-1);
     expect(sponsoredIndex).toBeGreaterThan(-1);
     expect(filterIndex).toBeGreaterThan(-1);
-    expect(introductionIndex).toBeLessThan(filterIndex);
+    expect(titleIndex).toBeLessThan(filterIndex);
     expect(filterIndex).toBeLessThan(sponsoredIndex);
   });
 

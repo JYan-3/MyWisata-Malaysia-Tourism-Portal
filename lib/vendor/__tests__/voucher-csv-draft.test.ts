@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyVoucherCsvDraft } from '@/lib/vendor/voucher-csv-builder';
+import { emptyVoucherCsvDraft, type VoucherCsvDraft } from '@/lib/vendor/voucher-csv-builder';
 import {
   getVoucherCsvDraftStorageKey,
   getVoucherCsvDraftBlockingError,
@@ -24,6 +24,14 @@ describe('voucher CSV draft contract', () => {
     expect(normalized.title).toBe('Summer campaign');
     expect(normalized.codePrefix).toBe('TRAVEL');
     expect(normalized.rows[0].name).toBe('Malaysia Welcome');
+  });
+
+  it('defaults older CSV draft rows to online redemption', () => {
+    const legacyRow = { ...emptyVoucherCsvDraft(), name: 'Legacy voucher', discountValue: '10' };
+    delete (legacyRow as Partial<VoucherCsvDraft>).redemptionMode;
+    const normalized = normalizeVoucherCsvDraft(documentWith([legacyRow as VoucherCsvDraft]));
+
+    expect(normalized.rows[0].redemptionMode).toBe('online');
   });
 
   it('summarizes rows that are ready, invalid, and missing codes', () => {

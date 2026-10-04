@@ -4,13 +4,16 @@ import { getRecommendedFeed } from "@/backend/domains/recommend";
 import type { ReasonTag } from "@/backend/domains/recommend-score";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
-import { selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
+import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import type { ComputedActivity } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
 import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import { resolvePromotionCampaignImages } from "@/lib/promotion-campaigns/images";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import type { EventPartner } from "@/components/customer/event-partners-section";
+import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
+import { nextVendorEvent } from "@/lib/promotion-campaigns/vendor-events";
 
 export default async function CustomerHomePage() {
   const db = await createClient();
@@ -42,8 +45,10 @@ export default async function CustomerHomePage() {
     db.rpc("get_public_promotion_campaigns", { p_slug: null }),
   ]);
 
-  const vendorIds = (vendorRows.data ?? []).map((vendor) => vendor.id);
-  const [feed, vendorMediaRows] = await Promise.all([
+  const publicCampaigns = resolvePromotionCampaignImages(Array.isArray(campaignResult.data) ? campaignResult.data as unknown as PromotionCampaignPublic[] : []);
+  const eventVendorIds = Array.from(new Set(publicCampaigns.flatMap((campaign) => campaign.vendors.map((vendor) => vendor.vendorId))));
+  const vendorIds = Array.from(new Set([...(vendorRows.data ?? []).map((vendor) => vendor.id), ...eventVendorIds]));
+  const [feed, vendorMediaRows, eventPartnerVendorResult] = await Promise.all([
     getRecommendedFeed(user?.id ?? null, { limit: 8, candidates: activities }, db),
     vendorIds.length
       ? db
@@ -55,6 +60,13 @@ export default async function CustomerHomePage() {
         .order("sort_order")
         .then(({ data }) => data ?? [])
       : Promise.resolve([]),
+    eventVendorIds.length
+      ? db
+        .from("vendors")
+        .select("id,name,description,logo_url,cover_url")
+        .eq("status", "approved")
+        .in("id", eventVendorIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const recommended = feed.map((item) => ({
@@ -85,8 +97,29 @@ export default async function CustomerHomePage() {
     .filter((vendor) => vendor.outlets.length > 0);
 
   const featuredVendors = rankFeaturedVendors(vendors, activities, 24);
-  const publicCampaigns = resolvePromotionCampaignImages(Array.isArray(campaignResult.data) ? campaignResult.data as unknown as PromotionCampaignPublic[] : []);
   const featuredCampaigns = selectFeaturedPublicCampaigns(publicCampaigns);
+  const today = getMalaysiaDateInputValue();
+  const featuredEventPartners: EventPartner[] = (eventPartnerVendorResult.data ?? [])
+    .map((vendor) => {
+      const mediaRows = mediaByVendorId.get(vendor.id) ?? [];
+      const visual = getVendorVisual({ name: vendor.name, logoUrl: vendor.logo_url, coverUrl: vendor.cover_url });
+      const next = nextVendorEvent(publicCampaigns, vendor.id, today);
+      return {
+        id: vendor.id,
+        name: vendor.name,
+        description: vendor.description,
+        logoUrl: visual.logoUrl ?? selectEntityLogo(mediaRows),
+        coverUrl: visual.coverUrl ?? selectEntityGallery(mediaRows, 1)[0]?.url ?? null,
+        next: next && {
+          campaignTitle: next.campaignTitle,
+          locationName: next.location.name,
+          startsOn: next.location.startsOn,
+          endsOn: next.location.endsOn,
+        },
+      };
+    })
+    .filter((partner) => partner.next)
+    .sort((a, b) => (a.next?.startsOn ?? "9999").localeCompare(b.next?.startsOn ?? "9999") || a.name.localeCompare(b.name));
 
-  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={Boolean(campaignResult.error)} />;
+  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} eventPartners={featuredEventPartners} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={Boolean(campaignResult.error)} />;
 }

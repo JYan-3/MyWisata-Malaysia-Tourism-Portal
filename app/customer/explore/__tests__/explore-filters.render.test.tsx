@@ -252,4 +252,12 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ q: "rain forest" }));
     expect(mocks.filterComputedActivities).not.toHaveBeenCalled();
   });
+
+  it("shows the localized loading error instead of claiming the catalogue is empty during an outage", async () => {
+    mocks.params = new URLSearchParams();
+    await render(root, <ExploreClient initialActivities={[]} dataUnavailable />);
+
+    expect(findOne(container, (element) => element.getAttribute("role") === "status").textContent).toBe("ui.states.loadingError");
+    expect(findElements(container, (element) => element.textContent === "ui.explore.noExperiences")).toHaveLength(0);
+  });
 });

@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 import type { CustomerVoucher, CustomerVoucherClaim, CustomerVoucherTab } from "@/lib/customer/voucher-claims";
-import { resolveOutletImage, type ManagedPlaceImage } from "@/lib/outlet-images";
+import { resolveOutletImage, type ManagedPlaceImage, type OutletGalleryImage } from "@/lib/outlet-images";
+import { vendorImageUrl } from "@/lib/storage/vendor-image";
 import { signVoucherStoreToken } from "@/lib/vouchers/store-token";
 
 type Relation<T> = T | T[] | null;
-type OutletSummary = { id: string; name: string; city: string | null; state: string | null; status?: string; review_status?: string; outlet_pages: Relation<{ hero_url: string | null }> };
+type OutletSummary = { id: string; name: string; city: string | null; state: string | null; status?: string; review_status?: string; outlet_pages: Relation<{ hero_url: string | null }>; media_assets: OutletGalleryImage[] | null };
 type ProductOffer = { outlet_id: string; status: string | null; outlets: Relation<OutletSummary> };
 type EligibleProduct = { id: string; name: string; status: string | null; review_status: string | null };
 type EligibleOfferRow = { outlet_id: string; product_id: string; status: string | null; products: Relation<EligibleProduct> };
@@ -24,7 +25,7 @@ type VoucherRow = {
   uses_count: number;
   redemption_mode: "online" | "in_store" | "both";
   product_id: string | null;
-  vendors: Relation<{ id: string; name: string; logo_url: string | null }>;
+  vendors: Relation<{ id: string; name: string; logo_url: string | null; cover_url: string | null }>;
   outlets: Relation<OutletSummary>;
   products: Relation<{ id: string; name: string; status: string | null; review_status: string | null; outlet_offers: ProductOffer[] | null }>;
 };
@@ -37,7 +38,7 @@ function relation<T>(value: Relation<T>): T | null {
 function getOutletImage(outlet: OutletSummary | null, managedPlaceImages: ManagedPlaceImage[]) {
   if (!outlet) return null;
   const outletPage = relation(outlet.outlet_pages);
-  return resolveOutletImage({ outletName: outlet.name, outletHeroUrl: outletPage?.hero_url, managedPlaceImages });
+  return resolveOutletImage({ outletName: outlet.name, outletHeroUrl: outletPage?.hero_url, managedPlaceImages, outletGalleryImages: outlet.media_assets ?? [] });
 }
 
 function mapVoucher(row: VoucherRow, claim: ClaimRow | undefined, eligibleProductsByOutlet: Map<string, EligibleProduct[]>, managedPlaceImages: ManagedPlaceImage[]): CustomerVoucher {
@@ -64,7 +65,8 @@ function mapVoucher(row: VoucherRow, claim: ClaimRow | undefined, eligibleProduc
     id: row.id,
     vendorId: row.vendor_id,
     vendorName: vendor?.name ?? "Verified partner",
-    vendorLogoUrl: vendor?.logo_url ?? null,
+    vendorLogoUrl: vendorImageUrl(vendor?.logo_url),
+    vendorCoverUrl: vendorImageUrl(vendor?.cover_url),
     outletId: row.outlet_id,
     outletName: outlet?.name ?? null,
     outletImageUrl,
@@ -108,7 +110,7 @@ export async function GET(request: Request) {
   const tab = rawTab as CustomerVoucherTab;
 
   const voucherQuery = db.from("vouchers")
-    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url),outlets(id,name,city,state,status,review_status,outlet_pages(hero_url)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url))))");
+    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url,cover_url),outlets(id,name,city,state,status,review_status,outlet_pages(hero_url),media_assets(url,alt_text,media_type,sort_order)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url),media_assets(url,alt_text,media_type,sort_order))))");
   const filteredVoucherQuery = tab === "deals"
     ? voucherQuery.eq("is_active", true).eq("review_status", "approved").eq("is_claimable", true).in("redemption_mode", ["online", "in_store", "both"])
     : voucherQuery.eq("review_status", "approved");

@@ -9,6 +9,7 @@ const rowSchema = z.object({
   code: z.string().max(50),
   name: z.string().max(255),
   voucherType: z.enum(['fixed', 'percent', 'bogo']),
+  redemptionMode: z.enum(['online', 'in_store', 'both']).default('online'),
   discountValue: z.string().max(32),
   minSpend: z.string().max(32),
   maxUses: z.string().max(32),

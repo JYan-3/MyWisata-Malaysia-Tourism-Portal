@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const workspace = process.cwd();
 const mapSource = readFileSync(resolve(workspace, "components/demo-map/malaysia-state-map.tsx"), "utf8");
 const storySource = readFileSync(resolve(workspace, "components/demo-map/story-map.tsx"), "utf8");
+const stateFlagSource = readFileSync(resolve(workspace, "lib/demo-map/state-flags.ts"), "utf8");
 
 describe("calm interactive Explore map", () => {
   it("uses progressive disclosure instead of rendering every state label by default", () => {
@@ -22,6 +23,7 @@ describe("calm interactive Explore map", () => {
 
   it("provides a responsive selected-state detail panel", () => {
     expect(storySource).toContain('aria-label={t("ui.map.selectedStateDetails")}');
+    expect(storySource).not.toContain('t("ui.map.compareRegions")');
     expect(storySource).toContain('t("ui.map.selectStateToExplore")');
     expect(storySource).toContain("lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]");
     expect(storySource).toContain("selectedStateId ?");
@@ -29,7 +31,8 @@ describe("calm interactive Explore map", () => {
     expect(storySource).toContain('value={selectedStateId ?? "all"}');
     expect(storySource).toContain('value === "all" ? null : value');
     expect(storySource).toContain("<SelectItem key={state.id} value={state.id}");
-    expect(storySource).toContain("/flags/states/${STATE_FLAG_CODES[stateId]}.svg");
+    expect(stateFlagSource).toContain("/flags/states/${code}.svg");
+    expect(storySource).toContain("getStateFlagSrc(stateId)");
   });
 
   it("keeps map and detail panels at a fixed desktop height while preserving mobile sizing", () => {

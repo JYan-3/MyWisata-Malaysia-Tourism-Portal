@@ -53,6 +53,9 @@ interface ProductData {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   variants?: any[];
   availableStock?: number;
+  inventoryConfigured?: boolean;
+  availableSlotCount?: number;
+  fullFutureSlotCount?: number;
   lowStockThreshold?: number;
 }
 
@@ -292,7 +295,7 @@ export default function VendorProductsPage() {
   const stats = useMemo(() => {
     const active = products.filter((p) => p.status === 'active').length;
     const lowStockOrBooking = products.filter(
-      (p) => p.requires_booking || (p.availableStock !== undefined && p.availableStock <= (p.lowStockThreshold ?? 5))
+      (p) => p.requires_booking || (p.product_type !== 'digital' && (p.inventoryConfigured === false || (p.inventoryConfigured && p.availableStock !== undefined && p.availableStock <= (p.lowStockThreshold ?? 5))))
     ).length;
     const archived = products.filter((p) => p.status === 'archived').length;
     return {
@@ -310,7 +313,7 @@ export default function VendorProductsPage() {
       { header: 'Type', accessor: (p) => p.product_type },
       { header: 'Outlet', accessor: (p) => p.outlet?.name || '' },
       { header: 'Base Price (RM)', accessor: (p) => Number(p.base_price).toFixed(2) },
-      { header: 'Stock / Booking', accessor: (p) => p.requires_booking ? 'Booking' : String(p.availableStock ?? 0) },
+      { header: 'Stock / Booking', accessor: (p) => p.requires_booking ? 'Booking' : p.inventoryConfigured === false ? t('ui.products.inventorySetupNeeded') : String(p.availableStock ?? 0) },
       { header: 'Status', accessor: (p) => p.status },
     ];
     exportToCsv(`products-${new Date().toISOString().slice(0, 10)}`, columns, products);
@@ -584,9 +587,10 @@ export default function VendorProductsPage() {
                     <span className="block text-sm font-semibold text-gray-900">
                       {toRM(Number(product.base_price))}
                     </span>
-                    <span className={`mt-0.5 block text-[11px] font-semibold ${product.requires_booking ? 'text-gray-400' : product.availableStock === 0 ? 'text-red-600' : product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? 'text-amber-700' : 'text-primary'}`}>
-                      {product.requires_booking ? t('ui.products.timeSlots') : product.availableStock === 0 ? t('ui.products.outOfStock') : t('ui.products.stockCount', { count: product.availableStock, low: product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? t('ui.products.lowStockSuffix') : '' })}
+                    <span className={`mt-0.5 block text-[11px] font-semibold ${product.requires_booking || product.product_type === 'digital' ? 'text-gray-400' : product.inventoryConfigured === false ? 'text-amber-700' : product.availableStock === 0 ? 'text-red-600' : product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? 'text-amber-700' : 'text-primary'}`}>
+                      {product.requires_booking ? product.availableSlotCount ? t('ui.products.futureSlots', { count: product.availableSlotCount }) : product.fullFutureSlotCount ? t('ui.products.futureSlotsFull', { count: product.fullFutureSlotCount }) : t('ui.products.noFutureSlots') : product.product_type === 'digital' ? t('ui.products.digitalAvailability') : product.inventoryConfigured === false ? t('ui.products.inventorySetupNeeded') : product.availableStock === 0 ? t('ui.products.outOfStock') : t('ui.products.stockCount', { count: product.availableStock, low: product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? t('ui.products.lowStockSuffix') : '' })}
                     </span>
+                    {product.requires_booking && !product.availableSlotCount && canManageOutlet && <button type="button" onClick={() => router.push(`/vendor/bookings?tab=operating-hours&productId=${product.id}&create=1`)} className="mt-1 text-[11px] font-semibold text-primary underline underline-offset-2">{t('ui.products.manageSchedule')}</button>}
                   </div>
 
                   {/* STATUS column: StatusBadge */}
@@ -742,7 +746,7 @@ export default function VendorProductsPage() {
       )}
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, ticketEntryPolicy: editingProduct.ticket_entry_policy ?? 'single_entry', ticketEntryLimit: editingProduct.ticket_entry_limit ?? 1, ticketValidityDays: editingProduct.ticket_validity_days ?? undefined, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
+      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, ticketEntryPolicy: editingProduct.ticket_entry_policy ?? 'single_entry', ticketEntryLimit: editingProduct.ticket_entry_limit ?? 1, ticketValidityDays: editingProduct.ticket_validity_days ?? undefined, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), availableStock: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.availableStock : undefined, lowStockThreshold: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.lowStockThreshold : undefined, inventoryConfigured: editingProduct.inventoryConfigured, inventorySetupSingleEntry: (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length <= 1, defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
     </div>
   );
 }

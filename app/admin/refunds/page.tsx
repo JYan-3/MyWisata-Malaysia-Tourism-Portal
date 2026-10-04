@@ -17,6 +17,7 @@ import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatMYR } from "@/lib/i18n/format";
 
@@ -30,6 +31,10 @@ type RefundRow = {
   provider: string | null;
   method: string | null;
   providerRefundId: string | null;
+  manualReference: string | null;
+  walletTopupSen: number;
+  walletEarningsSen: number;
+  externalAmountSen: number;
   failureCode: string | null;
   failureMessage: string | null;
   attemptCount: number;
@@ -71,6 +76,7 @@ function providerLabel(
 export default function AdminRefundsPage() {
   const { t, i18n } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
+  const { prompt } = useAppDialog();
   const locale = isAppLocale(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LOCALE;
@@ -172,14 +178,24 @@ export default function AdminRefundsPage() {
     return t(`refunds.status.${knownStatuses.has(value) ? value : "unknown"}`);
   }
 
-  async function review(refundId: string, action: "approve" | "reject") {
+  async function review(refund: RefundRow, action: "approve" | "reject") {
+    let manualReference: string | undefined;
+    if (action === "approve"
+      && refund.method !== "wallet"
+      && refund.provider !== "stripe"
+      && !SIMULATOR_PROVIDERS.has(refund.provider ?? "")) {
+      const value = await prompt(t("refunds.manualReferencePrompt"));
+      manualReference = value?.trim() || undefined;
+      if (!manualReference || manualReference.length < 5) return;
+    }
+    const refundId = refund.id;
     setBusyId(refundId);
     setError(null);
     try {
       const response = await fetch(`/api/admin/refunds/${refundId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...(manualReference ? { manualReference } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok)
@@ -418,6 +434,18 @@ export default function AdminRefundsPage() {
                           <p className="mt-1 text-[11px] text-muted-foreground">
                             {refund.method ?? "—"}
                           </p>
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            {t("refunds.fundingSummary", {
+                              walletTopup: formatMYR(refund.walletTopupSen / 100, locale),
+                              walletEarnings: formatMYR(refund.walletEarningsSen / 100, locale),
+                              provider: formatMYR(refund.externalAmountSen / 100, locale),
+                            })}
+                          </p>
+                          {refund.manualReference && (
+                            <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                              {t("refunds.manualReferenceLabel")}: {refund.manualReference}
+                            </p>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">
@@ -450,7 +478,7 @@ export default function AdminRefundsPage() {
                                 size="sm"
                                 variant="outline"
                                 disabled={busy}
-                                onClick={() => void review(refund.id, "reject")}
+                                onClick={() => void review(refund, "reject")}
                               >
                                 {t("refunds.actions.reject")}
                               </Button>
@@ -458,7 +486,7 @@ export default function AdminRefundsPage() {
                                 size="sm"
                                 disabled={busy}
                                 onClick={() =>
-                                  void review(refund.id, "approve")
+                                  void review(refund, "approve")
                                 }
                               >
                                 {t("refunds.actions.approve")}

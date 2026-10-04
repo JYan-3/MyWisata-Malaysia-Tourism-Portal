@@ -4,7 +4,11 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { z } from 'zod';
 import { processRefund } from '@/lib/refunds/process-refund';
 
-const schema = z.object({ action: z.enum(['approve', 'reject']), note: z.string().trim().max(500).optional() }).strict();
+const schema = z.object({
+  action: z.enum(['approve', 'reject']),
+  note: z.string().trim().max(500).optional(),
+  manualReference: z.string().trim().min(5).max(255).optional(),
+}).strict();
 interface Props { params: Promise<{ refundId: string }> }
 
 export async function POST(request: Request, { params }: Props) {
@@ -27,7 +31,7 @@ export async function POST(request: Request, { params }: Props) {
     if (error) return apiFail('DB_ERROR', error.message, 500);
     return apiOk({ refundId, status: 'rejected' });
   }
-  const result = await processRefund({ service, walletDb: db, refundId, actorId: user.id, note: parsed.data.note ?? null });
+  const result = await processRefund({ service, walletDb: db, refundId, actorId: user.id, note: parsed.data.note ?? null, manualReference: parsed.data.manualReference ?? null });
   if (!result.ok) return apiFail(result.code, result.message, result.status);
   return apiOk(result.data);
 }

@@ -2919,6 +2919,9 @@
       "simulateSuccess": "Simulate success"
     },
     "attempt": "Attempt {{count}}",
+    "fundingSummary": "Wallet top-up {{walletTopup}} · wallet earnings {{walletEarnings}} · provider {{provider}}",
+    "manualReferenceLabel": "Manual refund reference",
+    "manualReferencePrompt": "Enter the completed bank or provider refund transaction reference",
     "detail": {
       "noReason": "No reason supplied"
     },
@@ -3027,7 +3030,7 @@
     "description": "Review live order, payment and outlet fulfilment details from the customer checkout flow.",
     "refresh": "Refresh",
     "searchLabel": "Order ID",
-    "searchPlaceholder": "Paste a complete order ID",
+    "searchPlaceholder": "Order ID or order number",
     "search": "Search",
     "status": "Status",
     "statuses": {

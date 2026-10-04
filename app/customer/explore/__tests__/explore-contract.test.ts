@@ -12,6 +12,10 @@ const filterSource = read("components/customer/discovery-filters.tsx");
 const storyMapSource = read("components/demo-map/story-map.tsx");
 
 describe("customer discovery filter contract", () => {
+  it("omits the generic helper sentence from the Explore header", () => {
+    expect(exploreSource).not.toContain('t("ui.explore.description")');
+  });
+
   it("shares the searchable category-card controls", () => {
     expect(filterSource).toContain("placeholder");
     expect(filterSource).toContain('headingKey = "ui.explore.filterByCategory"');
@@ -57,9 +61,10 @@ describe("customer discovery filter contract", () => {
     expect(showAllAction).toContain("onClick={() => setVisibleLimit(activities.length)}");
   });
 
-  it("keeps sponsored analytics metadata and labels sponsored places in the customer UI", () => {
+  it("keeps sponsored analytics metadata and discloses Sponsored labels in the Explore map", () => {
     expect(exploreSource).toContain("sponsorship");
     expect(exploreSource).toContain("onSponsoredClick");
+    expect(storyMapSource).toContain("sponsorship");
     expect(storyMapSource).toContain('t("ui.labels.sponsored")');
   });
 

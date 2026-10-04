@@ -24,6 +24,8 @@ function mapboxResponse() {
       distance: 21_200,
       duration: 1_560,
       legs: [{
+        distance: 6_200,
+        duration: 480,
         annotation: {
           congestion: ["low", "heavy"],
           congestion_numeric: [8, 68],
@@ -69,6 +71,7 @@ describe("POST /api/route traffic-aware routing", () => {
       geometry: [[5, 100], [5.1, 100.1], [5.2, 100.2]],
       distanceKm: 21.2,
       durationMin: 26,
+      legs: [{ distanceKm: 6.2, durationMin: 8 }],
       traffic: {
         provider: "mapbox",
         basis: "live",
@@ -111,7 +114,10 @@ describe("POST /api/route traffic-aware routing", () => {
       return new Response(JSON.stringify({
         features: [{
           geometry: { coordinates: [[100, 5], [100.2, 5.2]] },
-          properties: { summary: { distance: 20_000, duration: 1_200 } },
+          properties: {
+            summary: { distance: 20_000, duration: 1_200 },
+            segments: [{ distance: 20_000, duration: 1_200 }],
+          },
         }],
       }), { status: 200, headers: { "content-type": "application/json" } });
     });
@@ -126,6 +132,33 @@ describe("POST /api/route traffic-aware routing", () => {
     expect(providerFetch.mock.calls[1][1]?.signal).toBeInstanceOf(AbortSignal);
     expect(body.data.routes[0].traffic).toBeUndefined();
     expect(body.data.routes[0].geometry).toEqual([[5, 100], [5.2, 100.2]]);
+    expect(body.data.routes[0].legs).toEqual([{ distanceKm: 20, durationMin: 20 }]);
+  });
+
+  it("returns OSRM leg metrics for multi-stop routes", async () => {
+    vi.stubEnv("MAPBOX_ACCESS_TOKEN", "");
+    vi.stubEnv("ORS_API_KEY", "");
+    const providerFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      routes: [{
+        geometry: { coordinates: [[100, 5], [100.2, 5.2], [100.3, 5.3]] },
+        distance: 30_000,
+        duration: 1_800,
+        legs: [
+          { distance: 12_000, duration: 720 },
+          { distance: 18_000, duration: 1_080 },
+        ],
+      }],
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", providerFetch);
+
+    const response = await POST(request({ mode: "DRIVING", points: [[5, 100], [5.2, 100.2], [5.3, 100.3]] }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.routes[0].legs).toEqual([
+      { distanceKm: 12, durationMin: 12 },
+      { distanceKm: 18, durationMin: 18 },
+    ]);
   });
 
   it("rejects invalid coordinates and unknown request fields", async () => {
