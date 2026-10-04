@@ -14,7 +14,7 @@ describe('outlet-aware inventory write contract', () => {
   });
 
   it('upserts edited product inventory on the composite variant and outlet identity', () => {
-    expect(productPatchRoute).toMatch(/upsert\(\{\s*variant_id:\s*variant\.id,\s*outlet_id:\s*productOutlet\.id/);
+    expect(productPatchRoute).toMatch(/upsert\(\{\s*variant_id:\s*inventoryVariant\.id,\s*outlet_id:\s*productOutlet\.id/);
     expect(productPatchRoute).toContain("onConflict: 'variant_id,outlet_id'");
   });
 
