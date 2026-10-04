@@ -156,10 +156,10 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
       </div>
 
       {slots.length === 0 ? (
-        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">{t("ui.states.noSlots")} {t("ui.states.scheduleHelp")}</p>
+        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">{t("ui.states.noSlots")}</p>
       ) : bookableDateGroups.length === 0 ? (
         <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
-          {upcomingSlotState === "full" ? t("ui.states.allDatesFull") : t("ui.states.noDates")} {t("ui.states.scheduleHelp")}
+          {upcomingSlotState === "full" ? t("ui.states.allDatesFull") : t("ui.states.noDates")}
         </p>
       ) : (
         <>
