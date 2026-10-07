@@ -163,6 +163,8 @@ export type AssignmentRecord = {
   id: string;
   subjectType: string;
   subjectId: string;
+  subjectName?: string | null;
+  subjectEmail?: string | null;
   capabilityKey: string;
   effect: string;
   startsAt: string;

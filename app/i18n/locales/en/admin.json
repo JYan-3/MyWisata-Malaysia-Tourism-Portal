@@ -149,6 +149,19 @@
     "eyebrow": "Security governance",
     "title": "Access Control",
     "description": "Manage capability metadata, versioned policies, targeted assignments, and the linked global audit history.",
+    "capabilityNames": {
+      "platform_browse": "Authenticated browsing",
+      "commerce_booking": "Customer booking",
+      "commerce_purchase": "Customer purchase",
+      "commerce_checkout": "Customer checkout",
+      "ai_basic_recommendation": "Basic AI recommendation",
+      "recommendation_submit": "Recommendation submission",
+      "affiliate_limited": "Limited affiliate",
+      "affiliate_full": "Full affiliate",
+      "affiliate_earn_commission": "Affiliate commission earning",
+      "wallet_request_withdrawal": "Withdrawal request",
+      "wallet_approve_withdrawal": "Withdrawal approval"
+    },
     "tabs": {
       "overview": "Overview",
       "capabilities": "Capabilities",
@@ -439,7 +452,7 @@
       "confirm": "Confirm governed action"
     },
     "capabilities": {
-      "key": "Immutable key",
+      "key": "Capability",
       "category": "Category",
       "risk": "Risk",
       "visibility": "Customer visible",
@@ -475,6 +488,7 @@
       "impactPreview": "Impact preview",
       "impactSummary": "{{effect}} across {{groups}} alternative group(s) and {{requirements}} requirement(s). Hard guards still apply.",
       "requirementCount": "requirements",
+      "requirementSummary": "Group {{group}}: {{fact}} {{operator}} {{value}}",
       "compare": "Compare",
       "actionReason": "Provide a reason before confirming this high-impact action."
     },
@@ -513,7 +527,14 @@
       "hardGuardNote": "Allow assignments never bypass verification, account, ownership, or money hard guards.",
       "subjectType": "Subject type",
       "subjectId": "Subject identifier",
-      "subjectPlaceholder": "UUID, role, plan, or partner identifier",
+      "subjectPlaceholder": "Role, plan, or partner identifier",
+      "selectUser": "Select user",
+      "userSearchPlaceholder": "Search by name or email",
+      "searchingUsers": "Searching users…",
+      "noUsers": "No matching users found.",
+      "userSearchError": "Unable to search users.",
+      "changeUser": "Change user",
+      "unavailableUser": "User unavailable",
       "capability": "Capability",
       "selectCapability": "Select an available capability",
       "systemManagedOption": "System managed; manual allow unavailable",
@@ -3101,6 +3122,7 @@
     }
   },
   "promotionCampaigns": {
+    "allLocationsCancelled": "All locations have been cancelled. This event is hidden from discovery.",
     "eyebrow": "Customer events",
     "title": "Vendor-fair event manager",
     "description": "Set up a vendor-fair event and publish it — vendors register their own stalls once it's live.",
@@ -3113,13 +3135,14 @@
       "slug": "Page address",
       "summary": "Short description",
       "description": "Full description",
-      "startsAt": "Starts",
-      "endsAt": "Ends",
-      "operatingHours": "Operating hours",
-      "operatingHoursFrom": "Opens",
-      "operatingHoursTo": "Closes",
-      "timezone": "All times use Malaysia time (UTC+08:00).",
-      "invalidRange": "The end time must be after the start time.",
+      "startsAt": "First date",
+      "endsAt": "Last date",
+      "operatingHours": "Daily operating hours",
+      "operatingHoursFrom": "Opens each day",
+      "operatingHoursTo": "Closes each day",
+      "timezone": "Dates and daily hours use Malaysia time (UTC+08:00).",
+      "invalidRange": "The last date must be on or after the first date.",
+      "invalidOperatingHours": "Daily closing time must be later than opening time.",
       "poster": "Event poster",
       "choosePoster": "Choose image",
       "removePoster": "Remove poster",
@@ -3129,6 +3152,33 @@
       "changesSaved": "Changes saved."
     },
     "locations": {
+      "changeReason": "Reason for the change",
+      "impact": "Affected reservations: {{affectedReservations}} · Vendors: {{affectedVendors}} · Incompatible slots: {{incompatibleSlots}}",
+      "previewConfirm": "This change will notify {{affectedVendors}} vendor owners. Save these arrangements?",
+      "notificationQueued": "Saved. Vendor email and App notification have been queued.",
+      "errors": {
+        "CONFLICT": "These arrangements changed. Refresh before editing again.",
+        "LOCATION_CHANGE_HAS_RESERVATIONS": "This change affects existing reservations or payments in progress. Resolve them before changing the arrangements.",
+        "LOCATION_CHANGE_HAS_SLOTS": "Adjust incompatible pickup slots before changing these dates or hours.",
+        "LOCATION_CANCELLED": "This location was cancelled and cannot be changed.",
+        "LOCATION_ENDED": "This location has finished operating.",
+        "REASON_REQUIRED": "Enter a reason of 5–500 characters to notify participating vendors.",
+        "NOTICE_RECIPIENT_UNAVAILABLE": "The vendor owner cannot receive the notice. Check their contact details before saving.",
+        "INVALID_STATE": "This arrangement is not open for changes.",
+        "VALIDATION_FAILED": "Check the arrangement details.",
+        "SAVE_FAILED": "Unable to save these arrangements.",
+        "OUTSIDE_EVENT": "Location dates must fall within the event dates.",
+        "FORBIDDEN": "You do not have permission to change these arrangements.",
+        "NOT_FOUND": "The event, location or registration was not found.",
+        "STALL_CONFLICT": "This booth is already assigned at this location.",
+        "CAPACITY_UNCONFIRMED": "Confirm location capacity before approving vendors.",
+        "CAPACITY_FULL": "There are no confirmed booths available.",
+        "CAPACITY_BELOW_OCCUPIED": "Capacity cannot be below the occupied booth count.",
+        "APPLICATIONS_CLOSED": "New applications have closed.",
+        "APPROVALS_CLOSED": "The approval deadline has passed.",
+        "INTAKE_SCHEDULE_INVALID": "Set application and approval deadlines before setup and first opening.",
+        "SETUP_STARTED": "Intake cannot be reopened after setup starts."
+      },
       "title": "Locations",
       "description": "Each location has its own dates and daily hours. Vendors register per location.",
       "empty": "No locations yet. Add at least one before publishing.",
@@ -3153,7 +3203,7 @@
       "toggle_one": "Location ({{count}})",
       "toggle_other": "Locations ({{count}})",
       "required": "Add at least one location before publishing.",
-      "invalid": "Check the location: it needs a name, the last day can't be before the first day, and closing must be after opening.",
+      "invalid": "Check the location name, dates, daily hours and capacity. Set application and approval deadlines before setup, and setup before the first opening.",
       "saveError": "Unable to save this location.",
       "savedAsDraft": "The event was saved as a draft. Add its locations from the list below, then publish it.",
       "cancelLocation": "Cancel location",
@@ -3164,7 +3214,18 @@
       "changesSaved": "Changes saved.",
       "search": "Search for a place",
       "searchPlaceholder": "Search a place or address, or drag the red pin",
-      "searchEmpty": "No places found. Try a different name."
+      "searchEmpty": "No places found. Try a different name.",
+      "maxStalls": "Maximum confirmed booths",
+      "capacityUnconfirmed": "Capacity not confirmed. Confirm capacity before approving vendors.",
+      "capacitySummary": "{{occupied}} / {{capacity}} booths occupied · {{remaining}} available",
+      "reviewCounts": "{{pending}} pending review · {{corrections}} awaiting corrections",
+      "intakeOpen": "Accepting new applications",
+      "intakeClosed": "New applications closed",
+      "acceptApplications": "Accept new vendor applications",
+      "applicationsCloseAt": "Applications close (Malaysia time)",
+      "approvalsCloseAt": "Approvals close (Malaysia time)",
+      "setupStartsAt": "Setup starts (Malaysia time)",
+      "intakeScheduleHint": "Applications close → approvals close → setup starts → first opening. Closing applications does not pause customer reservations."
     },
     "list": {
       "title": "Event workflow",
@@ -3191,16 +3252,17 @@
       "submit": "Publish",
       "approve": "Approve",
       "reject": "Request changes",
-      "pause": "Pause",
+      "pause": "Pause new reservations",
       "resume": "Resume",
       "archive": "Archive"
     },
     "prompts": {
       "rejectReason": "Explain the required changes in at least 10 characters.",
       "confirm": {
+        "resume": "Resume new reservations? Active locations and their dates will be checked.",
         "submit": "Publish this event now? It will immediately be visible to customers and open for vendor registration.",
         "approve": "Approve this campaign for publication?",
-        "pause": "Pause this campaign now?",
+        "pause": "Pause new reservations? Existing reservations remain valid and can still be collected.",
         "archive": "Archive this campaign?"
       }
     },
@@ -3213,6 +3275,14 @@
     }
   },
   "eventRegistrations": {
+    "changeStall": "Change stall number",
+    "stallNumberLabel": "New stall number",
+    "changeReason": "Reason for the change",
+    "confirmStallChange": "Save stall change",
+    "stallChangeInvalid": "Enter a stall number and a reason of at least 5 characters.",
+    "notificationQueued": "Saved. Vendor email and App notification have been queued.",
+    "stallUnchanged": "The stall number is unchanged.",
+    "stallNotificationDescription": "A successful change sends the vendor owner an email and App notification with the old and new stall number.",
     "eyebrow": "Governance",
     "title": "Event Registrations",
     "description": "Review vendor stall registrations for vendor-fair events before they go live.",
@@ -3227,7 +3297,7 @@
     "productsHeading": "What this stall sells",
     "confirm": {
       "approveTitle": "Approve this stall registration?",
-      "approveDescription": "The vendor's stall will appear on the public event page.",
+      "approveDescription": "Confirm participation and assign booth {{number}}. The vendor owner will be notified.",
       "requestChangesTitle": "Request changes from the vendor?",
       "requestChangesDescription": "The vendor will see your note and can edit and resubmit.",
       "rejectTitle": "Reject this stall registration?",
@@ -3285,7 +3355,11 @@
     "closedNote": {
       "withdrawn": "The vendor withdrew: {{note}}",
       "removed": "Removed from this location: {{note}}"
-    }
+    },
+    "confirmedStall": "Confirmed booth number",
+    "confirmedStallRequired": "Enter the confirmed booth number before approval.",
+    "preferredStall": "Preferred booth: {{number}}",
+    "adminAllocate": "Admin allocation requested"
   },
   "announcements": {
     "eyebrow": "Governance",

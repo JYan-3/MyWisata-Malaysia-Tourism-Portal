@@ -61,6 +61,14 @@ describe('GET /api/admin/orders', () => {
     expect(mocks.tables.order_items.select).not.toHaveBeenCalledWith(expect.stringContaining('!fk_oi_outlet'));
   });
 
+  it('loads a Guest-only order page from contact snapshots without querying account users', async () => {
+    mocks.tables.orders = builder({ data: [{ id: '11111111-1111-4111-8111-111111111111', display_id: 'ORD-GUEST', user_id: null, contact_name: 'Guest Buyer', contact_email: 'guest@example.test', status: 'paid' }], count: 1, error: null });
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.orders[0].customer).toEqual({ name: 'Guest Buyer', email: 'guest@example.test' });
+    expect(mocks.from).not.toHaveBeenCalledWith('users');
+  });
+
   it('accepts display IDs with or without a hash and keeps every payment leg', async () => {
     const response = await GET(request('?search=%23ORD-2026-0042'));
     expect(response.status).toBe(200);

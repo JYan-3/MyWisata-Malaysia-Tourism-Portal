@@ -11,7 +11,7 @@ import { emitOrderVendorEvent } from '@/lib/vendor-notifications/order-events';
 type CheckoutSettlementResult = {
   checkout_session_id: string;
   order_id: string;
-  user_id: string;
+  user_id: string | null;
   status: string;
   idempotent: boolean;
 };
@@ -94,7 +94,7 @@ export async function settleSimulatorEvent(
   const result = data as CheckoutSettlementResult;
   if (!result.idempotent && result.status === 'paid') {
     try {
-      await enqueueUserTransactionEmail({
+      if (result.user_id) await enqueueUserTransactionEmail({
         userId: result.user_id,
         eventType: 'checkout_succeeded',
         eventKey: `simulator-checkout:${payload.eventId}`,

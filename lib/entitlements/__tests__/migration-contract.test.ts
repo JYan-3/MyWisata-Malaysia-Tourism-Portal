@@ -17,13 +17,14 @@ function migrationSql(): string {
 describe("entitlement migration domain contract", () => {
   it("seeds every stable capability key exactly once in the catalog values", () => {
     const sql = migrationSql();
+    const addedSeed = readFileSync(resolve(process.cwd(), "supabase/migrations/20261002004600_email_verified_commerce.sql"), "utf8").match(/INSERT INTO public\.capabilities[\s\S]+?ON CONFLICT\(key\) DO NOTHING;/i)?.[0];
     const catalogSeed = sql.match(
       /INSERT INTO public\.capabilities[\s\S]+?ON CONFLICT \(key\) DO NOTHING;/i,
     )?.[0];
 
     expect(catalogSeed, "capability catalog seed must be present").toBeDefined();
     for (const capability of CAPABILITY_KEYS) {
-      expect(catalogSeed?.match(new RegExp(`'${capability.replace(".", "\\.")}'`, "g"))).toHaveLength(1);
+      expect(((catalogSeed ?? "") + (addedSeed ?? ""))?.match(new RegExp(`'${capability.replace(".", "\\.")}'`, "g"))).toHaveLength(1);
     }
   });
 

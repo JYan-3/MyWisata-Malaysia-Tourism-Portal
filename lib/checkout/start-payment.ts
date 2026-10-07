@@ -1,3 +1,5 @@
+import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import type { CheckoutBuyer } from './subject';
 import { NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -34,15 +36,17 @@ export type PreparedCheckout = Record<string, unknown> & {
 export function planCheckoutPayment(
   paymentMethod: string,
   paymentProvider: string | undefined,
-  user: User,
+  user: User | CheckoutBuyer,
 ): { ok: true; plan: CheckoutPaymentPlan } | { ok: false; response: NextResponse } {
+  const contact = 'subject' in user ? user.contact : { email: user.email ?? '', phone: user.phone ?? null };
+  if ('subject' in user && user.subject.kind === 'guest' && ['wallet', 'wallet_split'].includes(paymentMethod)) return { ok: false, response: privateCheckoutJson({ error: { code: 'GUEST_ACCOUNT_FEATURE_DENIED', message: 'Sign in to use a wallet.' } }, { status: 403 }) };
   let checkoutProvider;
   try {
     checkoutProvider = resolveCheckoutProvider(paymentMethod, paymentProvider);
   } catch {
     return {
       ok: false,
-      response: NextResponse.json({
+      response: privateCheckoutJson({
         data: null,
         error: {
           code: 'PAYMENT_PROVIDER_MISMATCH',
@@ -56,7 +60,7 @@ export function planCheckoutPayment(
   if (simulatorProvider && !isPaymentSimulatorEnabled()) {
     return {
       ok: false,
-      response: NextResponse.json({
+      response: privateCheckoutJson({
         data: null,
         error: {
           code: 'PAYMENT_SIMULATOR_UNAVAILABLE',
@@ -65,19 +69,19 @@ export function planCheckoutPayment(
       }, { status: 503 }),
     };
   }
-  if (isToyyibPay && !user.email?.trim()) {
+  if (isToyyibPay && !contact.email?.trim()) {
     return {
       ok: false,
-      response: NextResponse.json({
+      response: privateCheckoutJson({
         data: null,
         error: { code: 'TOYYIBPAY_EMAIL_REQUIRED', message: 'An email address is required for this payment method.' },
       }, { status: 422 }),
     };
   }
-  if (isToyyibPay && !user.phone?.trim()) {
+  if (isToyyibPay && !contact.phone?.trim()) {
     return {
       ok: false,
-      response: NextResponse.json({
+      response: privateCheckoutJson({
         data: null,
         error: { code: 'TOYYIBPAY_PHONE_REQUIRED', message: 'A phone number is required for this payment method.' },
       }, { status: 422 }),
@@ -97,14 +101,15 @@ export function planCheckoutPayment(
 }
 
 /** Starts payment for a prepared checkout session: wallet, ToyyibPay, simulator or Stripe. */
-export async function startCheckoutPayment({ db, user, request, prepared, total, plan }: {
+export async function startCheckoutPayment({ db, user, prepared, total, plan }: {
   db: SupabaseClient;
-  user: User;
+  user: User | CheckoutBuyer;
   request: Request;
   prepared: PreparedCheckout;
   total: number;
   plan: CheckoutPaymentPlan;
 }): Promise<NextResponse> {
+  const buyer: CheckoutBuyer = 'subject' in user ? user : { subject: { kind: 'account', userId: user.id }, contact: { email: user.email ?? '', phone: user.phone ?? null, name: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null } };
   const { paymentMethod, walletSplit, walletReservation, isToyyibPay, simulatorProvider } = plan;
   let response: Record<string, unknown> = { ...(prepared as Record<string, unknown>), total: total };
   if (walletReservation) {
@@ -118,7 +123,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         p_provider_payment_id: null,
         p_provider_event_id: null,
       });
-      return NextResponse.json({ error: { code: 'WALLET_RESERVATION_FAILED', message: 'Your wallet reservation could not be completed. Please try again.' } }, { status: 409 });
+      return privateCheckoutJson({ error: { code: 'WALLET_RESERVATION_FAILED', message: 'Your wallet reservation could not be completed. Please try again.' } }, { status: 409 });
     }
     const walletAmountSen = Number(split.wallet_amount_sen);
     const reservedExternalAmountSen = Number(split.external_amount_sen);
@@ -138,7 +143,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
           p_provider_event_id: null,
         });
       }
-      return NextResponse.json({ error: { code: 'WALLET_RESERVATION_INVALID', message: 'The wallet reservation could not be verified. Please refresh checkout.' } }, { status: 409 });
+      return privateCheckoutJson({ error: { code: 'WALLET_RESERVATION_INVALID', message: 'The wallet reservation could not be verified. Please refresh checkout.' } }, { status: 409 });
     }
     if (!walletSplit && reservedExternalAmountSen !== 0) {
       await createServiceClient().rpc('finalize_checkout', {
@@ -147,7 +152,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         p_provider_payment_id: null,
         p_provider_event_id: null,
       });
-      return NextResponse.json({
+      return privateCheckoutJson({
         error: { code: 'WALLET_INSUFFICIENT', message: 'Your wallet balance is not enough for this order.' },
       }, { status: 409 });
     }
@@ -157,7 +162,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
   if (isToyyibPay && prepared?.status !== 'paid') {
     const provider = new ToyyibPayProvider();
     if (!provider.isConfigured()) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: { code: 'TOYYIBPAY_UNAVAILABLE', message: 'ToyyibPay is not configured.' },
       }, { status: 503 });
@@ -167,7 +172,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
     try {
       appUrl = resolvePaymentAppUrl();
     } catch {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: { code: 'PAYMENT_APP_URL_INVALID', message: 'The payment return URL is not configured safely.' },
       }, { status: 503 });
@@ -180,7 +185,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
       p_checkout_session_id: checkoutSessionId,
     });
     if (beginError || !beginData || typeof beginData !== 'object') {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: { code: 'TOYYIBPAY_PREPARE_FAILED', message: 'The ToyyibPay checkout could not be prepared.' },
       }, { status: 503 });
@@ -188,7 +193,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
 
     const begin = beginData as Record<string, unknown>;
     if (begin.state === 'indeterminate') {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: {
           code: 'TOYYIBPAY_CREATE_INDETERMINATE',
@@ -203,18 +208,18 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         || begin.currency !== 'MYR'
         || Number(begin.amount_sen) !== externalAmountSen
       ) {
-        return NextResponse.json({
+        return privateCheckoutJson({
           data: null,
           error: { code: 'TOYYIBPAY_PREPARE_CONFLICT', message: 'The provider checkout does not match this order.' },
         }, { status: 409 });
       }
       try {
-        return NextResponse.json({
+        return privateCheckoutJson({
           data: { ...response, toyyibpayUrl: resolveToyyibPayActionUrl(begin.provider_payment_id) },
           error: null,
         });
       } catch {
-        return NextResponse.json({
+        return privateCheckoutJson({
           data: null,
           error: { code: 'TOYYIBPAY_UNAVAILABLE', message: 'ToyyibPay is not configured.' },
         }, { status: 503 });
@@ -231,7 +236,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
       || !Number.isSafeInteger(amountSen)
       || amountSen <= 0
     ) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: { code: 'TOYYIBPAY_PREPARE_CONFLICT', message: 'The provider checkout does not match this order.' },
       }, { status: 409 });
@@ -245,17 +250,15 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         amountSen,
         currency: 'MYR',
         customer: {
-          name: typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name.trim()
-            ? user.user_metadata.full_name.trim()
-            : user.email!.split('@')[0],
-          email: user.email!.trim(),
-          phone: user.phone!.trim(),
+          name: buyer.contact.name ?? buyer.contact.email.split('@')[0],
+          email: buyer.contact.email,
+          phone: buyer.contact.phone!,
         },
-        returnUrl: `${appUrl}/customer/checkout?toyyibpay_return=1`,
+        returnUrl: `${appUrl}/customer/orders/${orderId}`,
         callbackUrl: `${appUrl}/api/payments/toyyibpay/callback`,
       });
     } catch {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: { code: 'TOYYIBPAY_PREPARE_FAILED', message: 'ToyyibPay could not create the payment bill.' },
       }, { status: 503 });
@@ -272,7 +275,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
       || (completeData as Record<string, unknown>).state !== 'created'
       || (completeData as Record<string, unknown>).provider_payment_id !== providerSession.providerPaymentId
     ) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: {
           code: 'TOYYIBPAY_CREATE_INDETERMINATE',
@@ -281,7 +284,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
       }, { status: 503 });
     }
 
-    return NextResponse.json({
+    return privateCheckoutJson({
       data: { ...response, toyyibpayUrl: providerSession.actionUrl },
       error: null,
     });
@@ -306,7 +309,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
       updated_at: new Date().toISOString(),
     }).eq('id', checkoutSessionId);
     if (paymentUpdateError || sessionUpdateError) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: {
           code: 'PAYMENT_SIMULATOR_PREPARE_FAILED',
@@ -314,13 +317,14 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         },
       }, { status: 503 });
     }
-    return NextResponse.json({
+    return privateCheckoutJson({
       data: { ...response, simulatorUrl: simulatorSession.actionUrl },
       error: null,
     });
   }
   if ((paymentMethod === 'stripe_card' || walletSplit) && prepared?.status !== 'paid' && externalAmountSen > 0) {
-    const origin = request.headers.get('origin') ?? 'http://localhost:3000';
+    let origin: string;
+    try { origin = resolvePaymentAppUrl(); } catch { return privateCheckoutJson({error:{code:'PAYMENT_APP_URL_INVALID',message:'The payment return URL is not configured safely.'}},{status:503}); }
     const checkoutSessionId = String(prepared.checkout_session_id);
     const stripeSession = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -333,7 +337,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         },
         quantity: 1,
       }],
-      metadata: { user_id: user.id, checkout_session_id: checkoutSessionId, order_id: String(prepared.order_id), payment_kind: 'order' },
+      metadata: { ...(buyer.subject.kind === 'account' ? { user_id: buyer.subject.userId } : { guest_subject_id: buyer.subject.guestSubjectId }), subject_kind: buyer.subject.kind, checkout_session_id: checkoutSessionId, order_id: String(prepared.order_id), payment_kind: 'order' },
       success_url: `${origin}/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/customer/checkout?stripe_cancelled=1`,
     });
@@ -345,7 +349,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         .select('id')
         .maybeSingle();
       if (paymentUpdateError || !paymentLink) {
-        return NextResponse.json({
+        return privateCheckoutJson({
           data: null,
           error: {
             code: 'PAYMENT_SESSION_PERSIST_FAILED',
@@ -360,7 +364,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         .select('id')
         .maybeSingle();
       if (checkoutUpdateError || !checkoutLink) {
-        return NextResponse.json({
+        return privateCheckoutJson({
           data: null,
           error: {
             code: 'PAYMENT_SESSION_PERSIST_FAILED',
@@ -369,7 +373,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         }, { status: 503 });
       }
     } catch {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: {
           code: 'PAYMENT_SESSION_PERSIST_FAILED',
@@ -377,7 +381,7 @@ export async function startCheckoutPayment({ db, user, request, prepared, total,
         },
       }, { status: 503 });
     }
-    return NextResponse.json({ data: { ...response, stripeUrl: stripeSession.url }, error: null });
+    return privateCheckoutJson({ data: { ...response, stripeUrl: stripeSession.url }, error: null });
   }
-  return NextResponse.json({ data: response, error: null });
+  return privateCheckoutJson({ data: response, error: null });
 }

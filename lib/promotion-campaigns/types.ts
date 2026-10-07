@@ -34,6 +34,8 @@ export type PromotionCampaignPublicLocation = {
   /** HH:MM, Malaysia local time. */
   opensAt: string;
   closesAt: string;
+  intake?: { maxStalls: number | null; occupiedStalls: number; remainingStalls: number | null; applicationsOpen: boolean;
+    applicationsCloseAt: string | null; approvalsCloseAt: string | null; setupStartsAt: string | null };
 };
 
 /** One approved registration of a vendor at one event location. */
@@ -67,6 +69,8 @@ export type PromotionCampaignPublic = {
   startsAt: string;
   endsAt: string;
   visibility: PromotionCampaignVisibility;
+  /** Derived from active location dates/hours, separate from discovery visibility. */
+  operationalStatus?: "upcoming" | "operating" | "between_sessions";
   locations: PromotionCampaignPublicLocation[];
   vendors: PromotionCampaignPublicVendor[];
 };

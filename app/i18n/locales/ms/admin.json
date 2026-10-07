@@ -149,6 +149,19 @@
     "eyebrow": "Tadbir urus keselamatan",
     "title": "Kawalan akses",
     "description": "Urus metadata keupayaan, polisi berversi, tugasan bersasar dan sejarah audit global yang dipautkan.",
+    "capabilityNames": {
+      "platform_browse": "Pelayaran pengguna berdaftar",
+      "commerce_booking": "Tempahan pelanggan",
+      "commerce_purchase": "Pembelian pelanggan",
+      "commerce_checkout": "Bayaran pelanggan",
+      "ai_basic_recommendation": "Cadangan AI asas",
+      "recommendation_submit": "Hantar cadangan",
+      "affiliate_limited": "Afiliasi terhad",
+      "affiliate_full": "Afiliasi penuh",
+      "affiliate_earn_commission": "Pendapatan komisen afiliasi",
+      "wallet_request_withdrawal": "Permohonan pengeluaran",
+      "wallet_approve_withdrawal": "Kelulusan pengeluaran"
+    },
     "tabs": {
       "overview": "Ringkasan",
       "capabilities": "Keupayaan",
@@ -439,7 +452,7 @@
       "confirm": "Sahkan tindakan bertadbir"
     },
     "capabilities": {
-      "key": "Kunci kekal",
+      "key": "Keupayaan",
       "category": "Kategori",
       "risk": "Risiko",
       "visibility": "Dilihat pelanggan",
@@ -475,6 +488,7 @@
       "impactPreview": "Pratonton impak",
       "impactSummary": "{{effect}} merentas {{groups}} kumpulan alternatif dan {{requirements}} syarat. Kawalan keras masih terpakai.",
       "requirementCount": "syarat",
+      "requirementSummary": "Kumpulan {{group}}: {{fact}} {{operator}} {{value}}",
       "compare": "Banding",
       "actionReason": "Berikan sebab sebelum mengesahkan tindakan berimpak tinggi ini."
     },
@@ -513,7 +527,14 @@
       "hardGuardNote": "Tugasan benarkan tidak pernah memintas kawalan pengesahan, akaun, pemilikan atau wang.",
       "subjectType": "Jenis subjek",
       "subjectId": "Pengecam subjek",
-      "subjectPlaceholder": "UUID, peranan, pelan atau pengecam rakan kongsi",
+      "subjectPlaceholder": "Pengecam peranan, pelan atau rakan kongsi",
+      "selectUser": "Pilih pengguna",
+      "userSearchPlaceholder": "Cari mengikut nama atau e-mel",
+      "searchingUsers": "Mencari pengguna…",
+      "noUsers": "Tiada pengguna yang sepadan.",
+      "userSearchError": "Tidak dapat mencari pengguna.",
+      "changeUser": "Tukar pengguna",
+      "unavailableUser": "Pengguna tidak tersedia",
       "capability": "Keupayaan",
       "selectCapability": "Pilih keupayaan yang tersedia",
       "systemManagedOption": "Diurus sistem; kebenaran manual tidak tersedia",
@@ -3101,6 +3122,7 @@
     }
   },
   "promotionCampaigns": {
+    "allLocationsCancelled": "Semua lokasi telah dibatalkan. Acara ini disembunyikan daripada penemuan.",
     "eyebrow": "Acara pelanggan",
     "title": "Pengurus acara pesta vendor",
     "description": "Sediakan acara pesta vendor dan terbitkannya — vendor mendaftar gerai mereka sendiri apabila acara sudah diterbitkan.",
@@ -3113,13 +3135,14 @@
       "slug": "Alamat halaman",
       "summary": "Penerangan ringkas",
       "description": "Penerangan penuh",
-      "startsAt": "Bermula",
-      "endsAt": "Berakhir",
-      "operatingHours": "Waktu operasi",
-      "operatingHoursFrom": "Buka",
-      "operatingHoursTo": "Tutup",
-      "timezone": "Semua waktu menggunakan waktu Malaysia (UTC+08:00).",
-      "invalidRange": "Waktu tamat mesti selepas waktu mula.",
+      "startsAt": "Hari pertama",
+      "endsAt": "Hari terakhir",
+      "operatingHours": "Waktu operasi setiap hari",
+      "operatingHoursFrom": "Buka setiap hari",
+      "operatingHoursTo": "Tutup setiap hari",
+      "timezone": "Tarikh dan waktu operasi menggunakan waktu Malaysia (UTC+08:00).",
+      "invalidRange": "Hari terakhir mesti pada atau selepas hari pertama.",
+      "invalidOperatingHours": "Waktu tutup setiap hari mesti selepas waktu buka.",
       "poster": "Poster acara",
       "choosePoster": "Pilih imej",
       "removePoster": "Buang poster",
@@ -3129,6 +3152,33 @@
       "changesSaved": "Perubahan disimpan."
     },
     "locations": {
+      "changeReason": "Sebab perubahan",
+      "impact": "Tempahan terjejas: {{affectedReservations}} · Vendor: {{affectedVendors}} · Slot tidak serasi: {{incompatibleSlots}}",
+      "previewConfirm": "Perubahan ini akan memaklumkan {{affectedVendors}} pemilik vendor. Simpan aturan ini?",
+      "notificationQueued": "Disimpan. E-mel dan pemberitahuan aplikasi vendor telah dimasukkan ke dalam baris gilir.",
+      "errors": {
+        "CONFLICT": "Aturan ini telah berubah. Muat semula sebelum mengedit.",
+        "LOCATION_CHANGE_HAS_RESERVATIONS": "Perubahan ini menjejaskan tempahan atau pembayaran sedang diproses. Selesaikannya dahulu.",
+        "LOCATION_CHANGE_HAS_SLOTS": "Laraskan slot pengambilan yang tidak serasi sebelum menukar tarikh atau waktu.",
+        "LOCATION_CANCELLED": "Lokasi ini telah dibatalkan dan tidak boleh diubah.",
+        "LOCATION_ENDED": "Lokasi ini telah tamat beroperasi.",
+        "REASON_REQUIRED": "Masukkan sebab 5–500 aksara untuk memaklumkan vendor yang mengambil bahagian.",
+        "NOTICE_RECIPIENT_UNAVAILABLE": "Pemilik vendor tidak dapat menerima notis. Semak maklumat hubungan sebelum menyimpan.",
+        "INVALID_STATE": "Aturan ini tidak dibuka untuk perubahan.",
+        "VALIDATION_FAILED": "Semak butiran aturan.",
+        "SAVE_FAILED": "Tidak dapat menyimpan aturan ini.",
+        "OUTSIDE_EVENT": "Tarikh lokasi mesti berada dalam tarikh acara.",
+        "FORBIDDEN": "Anda tiada kebenaran untuk mengubah aturan ini.",
+        "NOT_FOUND": "Acara, lokasi atau pendaftaran tidak ditemui.",
+        "STALL_CONFLICT": "Gerai ini telah diperuntukkan di lokasi ini.",
+        "CAPACITY_UNCONFIRMED": "Sahkan kapasiti lokasi sebelum meluluskan peniaga.",
+        "CAPACITY_FULL": "Tiada gerai tersedia.",
+        "CAPACITY_BELOW_OCCUPIED": "Kapasiti tidak boleh kurang daripada gerai yang digunakan.",
+        "APPLICATIONS_CLOSED": "Permohonan baharu telah ditutup.",
+        "APPROVALS_CLOSED": "Tarikh akhir kelulusan telah berlalu.",
+        "INTAKE_SCHEDULE_INVALID": "Tetapkan tarikh akhir permohonan dan kelulusan sebelum persediaan dan pembukaan.",
+        "SETUP_STARTED": "Permohonan tidak boleh dibuka semula selepas persediaan bermula."
+      },
       "title": "Lokasi",
       "description": "Setiap lokasi mempunyai tarikh dan waktu harian tersendiri. Vendor mendaftar mengikut lokasi.",
       "empty": "Belum ada lokasi. Tambah sekurang-kurangnya satu sebelum menerbitkan.",
@@ -3153,7 +3203,7 @@
       "toggle_one": "Lokasi ({{count}})",
       "toggle_other": "Lokasi ({{count}})",
       "required": "Tambah sekurang-kurangnya satu lokasi sebelum menerbitkan.",
-      "invalid": "Semak lokasi: ia memerlukan nama, hari terakhir tidak boleh sebelum hari pertama, dan waktu tutup mesti selepas waktu buka.",
+      "invalid": "Semak nama lokasi, tarikh, waktu harian dan kapasiti. Tetapkan tarikh akhir permohonan dan kelulusan sebelum persediaan, dan persediaan sebelum pembukaan pertama.",
       "saveError": "Tidak dapat menyimpan lokasi ini.",
       "savedAsDraft": "Acara disimpan sebagai draf. Tambah lokasinya daripada senarai di bawah, kemudian terbitkannya.",
       "cancelLocation": "Batalkan lokasi",
@@ -3164,7 +3214,18 @@
       "changesSaved": "Perubahan disimpan.",
       "search": "Cari tempat",
       "searchPlaceholder": "Cari tempat atau alamat, atau seret pin merah",
-      "searchEmpty": "Tiada tempat ditemui. Cuba nama lain."
+      "searchEmpty": "Tiada tempat ditemui. Cuba nama lain.",
+      "maxStalls": "Maksimum gerai disahkan",
+      "capacityUnconfirmed": "Kapasiti belum disahkan. Sahkan kapasiti sebelum meluluskan peniaga.",
+      "capacitySummary": "{{occupied}} / {{capacity}} gerai digunakan · {{remaining}} tersedia",
+      "reviewCounts": "{{pending}} menunggu semakan · {{corrections}} menunggu pembetulan",
+      "intakeOpen": "Menerima permohonan baharu",
+      "intakeClosed": "Permohonan baharu ditutup",
+      "acceptApplications": "Terima permohonan peniaga baharu",
+      "applicationsCloseAt": "Permohonan ditutup (waktu Malaysia)",
+      "approvalsCloseAt": "Kelulusan ditutup (waktu Malaysia)",
+      "setupStartsAt": "Persediaan bermula (waktu Malaysia)",
+      "intakeScheduleHint": "Permohonan ditutup → kelulusan ditutup → persediaan → pembukaan pertama. Penutupan permohonan tidak menghentikan tempahan pelanggan."
     },
     "list": {
       "title": "Aliran kerja acara",
@@ -3191,16 +3252,17 @@
       "submit": "Terbitkan",
       "approve": "Luluskan",
       "reject": "Minta perubahan",
-      "pause": "Jeda",
+      "pause": "Jeda tempahan baharu",
       "resume": "Sambung semula",
       "archive": "Arkibkan"
     },
     "prompts": {
       "rejectReason": "Terangkan perubahan yang diperlukan dalam sekurang-kurangnya 10 aksara.",
       "confirm": {
+        "resume": "Sambung tempahan baharu? Lokasi aktif dan tarikhnya akan disemak.",
         "submit": "Terbitkan acara ini sekarang? Ia akan terus dilihat oleh pelanggan dan terbuka untuk pendaftaran vendor.",
         "approve": "Luluskan kempen ini untuk diterbitkan?",
-        "pause": "Jeda kempen ini sekarang?",
+        "pause": "Jeda tempahan baharu? Tempahan sedia ada kekal sah dan masih boleh diambil.",
         "archive": "Arkibkan kempen ini?"
       }
     },
@@ -3213,6 +3275,14 @@
     }
   },
   "eventRegistrations": {
+    "changeStall": "Tukar nombor gerai",
+    "stallNumberLabel": "Nombor gerai baharu",
+    "changeReason": "Sebab perubahan",
+    "confirmStallChange": "Simpan perubahan gerai",
+    "stallChangeInvalid": "Masukkan nombor gerai dan sebab sekurang-kurangnya 5 aksara.",
+    "notificationQueued": "Disimpan. E-mel dan pemberitahuan aplikasi vendor telah dimasukkan ke dalam baris gilir.",
+    "stallUnchanged": "Nombor gerai tidak berubah.",
+    "stallNotificationDescription": "Perubahan yang berjaya menghantar e-mel dan pemberitahuan aplikasi kepada pemilik vendor dengan nombor gerai lama dan baharu.",
     "eyebrow": "Governans",
     "title": "Pendaftaran Acara",
     "description": "Semak pendaftaran gerai vendor untuk acara pesta vendor sebelum ia disiarkan.",
@@ -3227,7 +3297,7 @@
     "productsHeading": "Apa yang dijual gerai ini",
     "confirm": {
       "approveTitle": "Luluskan pendaftaran gerai ini?",
-      "approveDescription": "Gerai vendor akan dipaparkan di halaman acara awam.",
+      "approveDescription": "Sahkan penyertaan dan peruntukkan gerai {{number}}. Pemilik peniaga akan dimaklumkan.",
       "requestChangesTitle": "Minta perubahan daripada vendor?",
       "requestChangesDescription": "Vendor akan melihat nota anda dan boleh menyunting serta menghantar semula.",
       "rejectTitle": "Tolak pendaftaran gerai ini?",
@@ -3285,7 +3355,11 @@
     "closedNote": {
       "withdrawn": "Vendor menarik diri: {{note}}",
       "removed": "Dikeluarkan dari lokasi ini: {{note}}"
-    }
+    },
+    "confirmedStall": "Nombor gerai disahkan",
+    "confirmedStallRequired": "Masukkan nombor gerai disahkan sebelum kelulusan.",
+    "preferredStall": "Gerai pilihan: {{number}}",
+    "adminAllocate": "Peruntukan oleh Admin diminta"
   },
   "announcements": {
     "eyebrow": "Governans",

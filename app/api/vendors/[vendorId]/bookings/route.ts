@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: Props) {
   // booking slot whose outlet was later rehomed, while the order item still
   // retains the vendor/outlet that sold the reservation. Scope through the
   // embedded order item so legacy and current bookings remain visible.
-  let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(product_name,quantity,line_total,slot_starts_at,product_id,vendor_id,outlet_id,products(name,cover_url),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' })
+  let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(orders(contact_name,contact_email),product_name,quantity,line_total,slot_starts_at,product_id,vendor_id,outlet_id,products(name,cover_url),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' })
     .eq('order_items.vendor_id', vendorId)
     .in('order_items.outlet_id', outletIds);
   if (linkedBookingId) query = query.eq('id', linkedBookingId);
@@ -66,7 +66,12 @@ export async function GET(request: Request, { params }: Props) {
   }, {});
   const items = (data || []).map((booking: { users: unknown; order_items: unknown; booking_slots: unknown; [key: string]: unknown }) => ({
     ...booking,
-    customer: Array.isArray(booking.users) ? booking.users[0] : booking.users,
+    customer: (() => {
+      const customer = Array.isArray(booking.users) ? booking.users[0] : booking.users;
+      const item = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items;
+      const order = Array.isArray(item?.orders) ? item.orders[0] : item?.orders;
+      return customer ?? { full_name: order?.contact_name ?? "Guest", email: order?.contact_email ?? null };
+    })(),
     orderItem: (() => { const item = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items; return item ? { ...item, outlets: item.outlets ? { ...item.outlets, full_name: item.outlets.name, name: outletShortName(item.outlets.name) } : item.outlets } : item; })(),
     slot: (() => { const slot = Array.isArray(booking.booking_slots) ? booking.booking_slots[0] : booking.booking_slots; return slot ? { ...slot, outlets: slot.outlets ? { ...slot.outlets, full_name: slot.outlets.name, name: outletShortName(slot.outlets.name) } : slot.outlets } : slot; })(),
   }));

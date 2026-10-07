@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import { apiFail } from '@/lib/validation/schemas';
+import { authorizeOrder } from '@/lib/checkout/order-access';
 import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
 import { resolveToyyibPayActionUrl } from '@/lib/payments/app-url';
@@ -28,7 +29,7 @@ type PaymentRow = {
 };
 
 function unavailable(reason: 'expired' | 'processing' | 'unsupported') {
-  return NextResponse.json({ data: { canResume: false, reason }, error: null });
+  return privateCheckoutJson({ data: { canResume: false, reason }, error: null });
 }
 
 function safeStripeCheckoutUrl(value: string | null): string | null {
@@ -53,22 +54,15 @@ async function finalizeExpiredCheckout(service: ReturnType<typeof createServiceC
   return !error;
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   const { orderId } = await params;
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await authorizeOrder(request, orderId);
+  if (!access) return apiFail("NOT_FOUND", "Order not found", 404);
+  const order = access.order;
 
-  const { data: order, error: orderError } = await db
-    .from('orders')
-    .select('id,status')
-    .eq('id', orderId)
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (orderError) return NextResponse.json({ error: 'Order status is temporarily unavailable' }, { status: 503 });
-  if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  if (!order) return privateCheckoutJson({ error: 'Order not found' }, { status: 404 });
   if (String(order.status).toLowerCase() !== 'pending_payment') {
-    return NextResponse.json({ error: 'This order is not waiting for payment' }, { status: 409 });
+    return privateCheckoutJson({ error: 'This order is not waiting for payment' }, { status: 409 });
   }
 
   try {
@@ -78,13 +72,13 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .from('checkout_sessions')
       .select('id,user_id,order_id,payment_method,status,currency,total_amount,expires_at')
       .eq('order_id', orderId)
-      .eq('user_id', user.id)
+      .eq(access.userId ? 'user_id' : 'guest_subject_id', access.userId ?? access.guestSubjectId!)
       .in('status', ['requires_action', 'pending_payment'])
       .gt('expires_at', now)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (checkoutError) return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+    if (checkoutError) return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
     if (!checkout) return unavailable('expired');
 
     const session = checkout as CheckoutSessionRow;
@@ -96,7 +90,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (paymentError) return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+    if (paymentError) return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
     if (!payment) return unavailable('expired');
 
     const providerPayment = payment as PaymentRow;
@@ -112,11 +106,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
       try {
         stripeSession = await stripe.checkout.sessions.retrieve(providerPayment.provider_payment_id);
       } catch {
-        return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+        return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
       }
 
       if (
-        stripeSession.metadata?.user_id !== user.id
+        (access.userId ? stripeSession.metadata?.user_id !== access.userId : stripeSession.metadata?.guest_subject_id !== access.guestSubjectId)
         || stripeSession.metadata?.order_id !== orderId
         || stripeSession.metadata?.checkout_session_id !== session.id
         || stripeSession.mode !== 'payment'
@@ -139,7 +133,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         return unavailable('unsupported');
       }
 
-      return NextResponse.json({ data: { canResume: true, provider: 'stripe', url: stripeUrl }, error: null });
+      return privateCheckoutJson({ data: { canResume: true, provider: 'stripe', url: stripeUrl }, error: null });
     }
 
     if (providerPayment.provider === 'toyyibpay' && session.payment_method === 'bank_transfer') {
@@ -153,7 +147,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
           || paymentAmountSen !== checkoutAmountSen
         ) return unavailable('unsupported');
         const url = resolveToyyibPayActionUrl(providerPayment.provider_payment_id);
-        return NextResponse.json({ data: { canResume: true, provider: 'toyyibpay', url }, error: null });
+        return privateCheckoutJson({ data: { canResume: true, provider: 'toyyibpay', url }, error: null });
       } catch {
         return unavailable('unsupported');
       }
@@ -164,7 +158,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       && process.env.NODE_ENV !== 'production'
       && process.env.PAYMENT_SIMULATOR_MODE === 'enabled'
     ) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: { canResume: true, provider: providerPayment.provider, url: `/customer/checkout/simulator/${session.id}` },
         error: null,
       });
@@ -172,26 +166,18 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
     return unavailable('unsupported');
   } catch {
-    return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+    return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
   }
 }
 
-export async function POST(_request: Request, { params }: RouteContext) {
+export async function POST(request: Request, { params }: RouteContext) {
   const { orderId } = await params;
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: order, error: orderError } = await db
-    .from('orders')
-    .select('id,status')
-    .eq('id', orderId)
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (orderError) return NextResponse.json({ error: 'Order status is temporarily unavailable' }, { status: 503 });
-  if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  const access = await authorizeOrder(request,orderId);
+  if (!access) return apiFail("NOT_FOUND","Order not found",404);
+  const order = access.order;
+  if (!order) return privateCheckoutJson({ error: 'Order not found' }, { status: 404 });
   if (String(order.status).toLowerCase() !== 'pending_payment') {
-    return NextResponse.json({ error: 'This order is not waiting for payment' }, { status: 409 });
+    return privateCheckoutJson({ error: 'This order is not waiting for payment' }, { status: 409 });
   }
 
   try {
@@ -200,11 +186,11 @@ export async function POST(_request: Request, { params }: RouteContext) {
       .from('checkout_sessions')
       .select('id,user_id,order_id,payment_method,status,currency,total_amount,expires_at')
       .eq('order_id', orderId)
-      .eq('user_id', user.id)
+      .eq(access.userId ? 'user_id' : 'guest_subject_id', access.userId ?? access.guestSubjectId!)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (checkoutError) return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+    if (checkoutError) return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
     if (!checkout) return unavailable('unsupported');
 
     const session = checkout as CheckoutSessionRow;
@@ -219,17 +205,17 @@ export async function POST(_request: Request, { params }: RouteContext) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (paymentError) return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+    if (paymentError) return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
     if (!payment || payment.provider !== 'stripe' || !payment.provider_payment_id) return unavailable('unsupported');
 
     let stripeSession;
     try {
       stripeSession = await stripe.checkout.sessions.retrieve(payment.provider_payment_id);
     } catch {
-      return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+      return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
     }
     if (
-      stripeSession.metadata?.user_id !== user.id
+      (access.userId ? stripeSession.metadata?.user_id !== access.userId : stripeSession.metadata?.guest_subject_id !== access.guestSubjectId)
       || stripeSession.metadata?.order_id !== orderId
       || stripeSession.metadata?.checkout_session_id !== session.id
       || stripeSession.mode !== 'payment'
@@ -239,24 +225,24 @@ export async function POST(_request: Request, { params }: RouteContext) {
     }
     if (stripeSession.status === 'expired') {
       if (!await finalizeExpiredCheckout(service, session.id)) {
-        return NextResponse.json({ error: 'The expired checkout could not be finalized safely' }, { status: 503 });
+        return privateCheckoutJson({ error: 'The expired checkout could not be finalized safely' }, { status: 503 });
       }
-      return NextResponse.json({ data: { canReviewCart: true }, error: null });
+      return privateCheckoutJson({ data: { canReviewCart: true }, error: null });
     }
     if (stripeSession.status !== 'open' || stripeSession.payment_status !== 'unpaid') return unavailable('unsupported');
 
     const checkoutIsActive = new Date(session.expires_at).getTime() > Date.now()
       && ['pending_payment', 'requires_action'].includes(session.status);
     if (checkoutIsActive) {
-      return NextResponse.json({ data: { canReviewCart: false, reason: 'active' }, error: null });
+      return privateCheckoutJson({ data: { canReviewCart: false, reason: 'active' }, error: null });
     }
 
     try {
       await stripe.checkout.sessions.expire(payment.provider_payment_id);
       if (!await finalizeExpiredCheckout(service, session.id)) {
-        return NextResponse.json({ error: 'The expired checkout could not be finalized safely' }, { status: 503 });
+        return privateCheckoutJson({ error: 'The expired checkout could not be finalized safely' }, { status: 503 });
       }
-      return NextResponse.json({ data: { canReviewCart: true }, error: null });
+      return privateCheckoutJson({ data: { canReviewCart: true }, error: null });
     } catch {
       // A payment can complete between retrieval and expiration. Re-read Stripe
       // before allowing a retry so the user is never encouraged to pay twice.
@@ -267,16 +253,16 @@ export async function POST(_request: Request, { params }: RouteContext) {
         }
         if (latestSession.status === 'expired') {
           if (!await finalizeExpiredCheckout(service, session.id)) {
-            return NextResponse.json({ error: 'The expired checkout could not be finalized safely' }, { status: 503 });
+            return privateCheckoutJson({ error: 'The expired checkout could not be finalized safely' }, { status: 503 });
           }
-          return NextResponse.json({ data: { canReviewCart: true }, error: null });
+          return privateCheckoutJson({ data: { canReviewCart: true }, error: null });
         }
       } catch {
         // Fall through to the stable unavailable response.
       }
-      return NextResponse.json({ error: 'The old payment session could not be closed safely' }, { status: 503 });
+      return privateCheckoutJson({ error: 'The old payment session could not be closed safely' }, { status: 503 });
     }
   } catch {
-    return NextResponse.json({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
+    return privateCheckoutJson({ error: 'Payment status is temporarily unavailable' }, { status: 503 });
   }
 }

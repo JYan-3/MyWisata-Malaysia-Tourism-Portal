@@ -28,6 +28,7 @@ export interface VendorCampaignRegistration {
   locationName: string;
   vendorId: string;
   stallNumber: string;
+  requestedStallNumber: string | null;
   stallDescription: string;
   stallPosterUrl: string;
   status: CampaignRegistrationStatus;
@@ -54,7 +55,8 @@ type RegistrationRow = {
   campaign_id: string;
   event_location_id: string;
   vendor_id: string;
-  stall_number: string;
+  stall_number: string | null;
+  requested_stall_number: string | null;
   stall_description: string;
   stall_poster_url: string;
   status: CampaignRegistrationStatus;
@@ -83,7 +85,7 @@ function single<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-const REGISTRATION_COLUMNS = 'id,campaign_id,event_location_id,vendor_id,stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,created_at,promotion_campaigns(title),location:promotion_campaign_locations(name)';
+const REGISTRATION_COLUMNS = 'id,campaign_id,event_location_id,vendor_id,stall_number,requested_stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,created_at,promotion_campaigns(title),location:promotion_campaign_locations(name)';
 const PRODUCT_COLUMNS = 'id,registration_id,product_id,name,price,image_url,position,item_kind,daily_quantity,active,products(name,base_price,cover_url)';
 
 function toProduct(row: ProductRow): VendorCampaignProduct {
@@ -143,7 +145,8 @@ function toRegistration(row: RegistrationRow, products: VendorCampaignProduct[],
     locationId: row.event_location_id,
     locationName: single(row.location)?.name ?? '',
     vendorId: row.vendor_id,
-    stallNumber: row.stall_number,
+    stallNumber: row.stall_number ?? '',
+    requestedStallNumber: row.requested_stall_number ?? null,
     stallDescription: row.stall_description,
     stallPosterUrl: row.stall_poster_url,
     status: row.status,
@@ -199,7 +202,7 @@ export async function submitCampaignRegistration(
   });
   if (!error) return { ok: true, id: data as string };
   if (error.message.includes('forbidden')) return { ok: false, code: 'forbidden' };
-  if (error.message.includes('campaign_not_open')) return { ok: false, code: 'campaign_not_open' };
+  if (error.message.includes('campaign_not_open') || error.message.includes('location_cancelled') || error.message.includes('location_ended') || error.message.includes('event_applications_closed')) return { ok: false, code: 'campaign_not_open' };
   if (error.message.includes('already_registered')) return { ok: false, code: 'already_registered' };
   if (error.message.includes('invalid') || error.message.includes('required') || error.message.includes('not_owned')) return { ok: false, code: 'invalid' };
   return { ok: false, code: 'unknown' };
@@ -219,6 +222,7 @@ export async function resubmitCampaignRegistration(
   });
   if (!error) return { ok: true };
   if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
+  if (error.message.includes('event_approvals_closed') || error.message.includes('campaign_not_open') || error.message.includes('location_cancelled') || error.message.includes('location_ended')) return { ok: false, code: 'not_editable' };
   if (error.message.includes('not_editable')) return { ok: false, code: 'not_editable' };
   if (error.message.includes('forbidden')) return { ok: false, code: 'forbidden' };
   if (error.message.includes('invalid') || error.message.includes('required') || error.message.includes('not_owned')) return { ok: false, code: 'invalid' };

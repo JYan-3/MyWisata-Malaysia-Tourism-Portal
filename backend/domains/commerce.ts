@@ -50,7 +50,7 @@ async function getCartRows(userId: string): Promise<CartItemRow[]> {
   );
 }
 
-function mapCartItem(row: CartItemRow): CartItem {
+export function mapCartItem(row: CartItemRow): CartItem {
   const productId = relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id;
   return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, priceOverride: row.unit_price > 0 ? Number(row.unit_price) : undefined };
 }
@@ -146,7 +146,10 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
 
 type OrderRow = {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  contact_email?: string | null;
+  contact_name?: string | null;
+  contact_phone?: string | null;
   status: string;
   subtotal: number;
   discount_amount: number;
@@ -157,13 +160,14 @@ type OrderRow = {
   order_items: OrderItemRow[];
 };
 
-const ORDER_SELECT =
-  "id,user_id,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id,products(cover_url))";
+export const ORDER_SELECT =
+  "id,user_id,contact_email,contact_name,contact_phone,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id,products(cover_url))";
 
-function mapOrder(row: OrderRow): Order {
+export function mapOrder(row: OrderRow): Order {
   return {
     id: row.id,
     userId: row.user_id,
+    contact: { email: row.contact_email ?? null, name: row.contact_name ?? null, phone: row.contact_phone ?? null },
     items: (row.order_items ?? []).map(mapOrderItem),
     subtotal: Number(row.subtotal),
     discount: Number(row.discount_amount),
@@ -245,7 +249,7 @@ type BookingRow = {
   ticket_passes?: TicketPassRow | TicketPassRow[] | null;
 };
 
-function mapBooking(row: BookingRow): Booking | null {
+export function mapBooking(row: BookingRow): Booking | null {
   // order_items can be undefined if the RLS join returns no related row
   if (!row.order_items) return null;
   const pass = Array.isArray(row.ticket_passes) ? row.ticket_passes[0] : row.ticket_passes;
@@ -286,7 +290,7 @@ function mapBooking(row: BookingRow): Booking | null {
   };
 }
 
-const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
+export const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
 const SETTLED_BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity,orders!inner(status)),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {

@@ -9,9 +9,10 @@ import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/cus
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
 import { Input } from "@/components/ui/input";
-import { formatDateTime } from "@/lib/i18n/format";
+import { formatDate, formatDateTime } from "@/lib/i18n/format";
+import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { formatEventDateRange, formatEventHours } from "@/lib/promotion-campaigns/locations";
+import { formatEventDateRange, formatEventHours, getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 type Props = {
@@ -103,12 +104,12 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             )}
             <div className="min-w-0 p-5 sm:p-7 lg:flex lg:flex-col lg:justify-center">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${campaign.visibility === "live" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
-                  {t(campaign.visibility === "live" ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${(campaign.operationalStatus ? campaign.operationalStatus === "operating" : campaign.visibility === "live") ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                  {t(getEventOperationalLabelKey(campaign))}
                 </span>
                 <CalendarDays size={14} className="ml-1 text-primary" />
                 <span className="text-sm text-muted-foreground">
-                  {formatDateTime(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {formatDateTime(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
+                  {(isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime)(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {(isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime)(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                 </span>
               </div>
               {campaign.locations.length > 0 && (

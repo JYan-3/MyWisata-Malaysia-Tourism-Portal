@@ -1,3 +1,5 @@
+import { sendOrderReceiptEmail } from '@/lib/email/order-receipt';
+import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
 import { createServiceClient } from '@/lib/supabase/service';
 import {
   sendAccountEmail,
@@ -14,6 +16,7 @@ import type {
   TransactionEmailType,
   VendorEmailInput,
   VendorEmailType,
+  EventVendorChange,
 } from '@/lib/email/templates';
 
 export type EmailEventType =
@@ -42,8 +45,10 @@ type OutboxRow = {
     amountRm?: number;
     vendorName?: string;
     reference?: string;
+    guestAccessToken?: string;
     reason?: string;
     occurredAt?: string;
+    eventChange?: EventVendorChange;
   };
   status: 'pending' | 'sending' | 'sent' | 'failed';
   attempts: number;
@@ -63,6 +68,7 @@ export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted:
   if ('vendorName' in input) payload.vendorName = input.vendorName;
   if ('reference' in input) payload.reference = input.reference ?? undefined;
   if ('reason' in input) payload.reason = input.reason;
+  if ('eventChange' in input) payload.eventChange = input.eventChange;
 
   const { data, error } = await db
     .from('email_outbox')
@@ -91,7 +97,16 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
   let failed = 0;
   for (const row of (claimed ?? []) as OutboxRow[]) {
     try {
-      if (row.event_type === 'recommendation_approved') {
+      if (row.payload?.guestAccessToken && !row.payload.reason) {
+        const {data:order,error}=await db.from('orders').select('id,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,order_items(product_name,variant_name,unit_price,quantity)').eq('id',row.payload.reference).is('user_id',null).single();
+        if (error || !order || order.contact_email !== row.to_email) throw new Error('Guest receipt unavailable');
+        await sendOrderReceiptEmail({
+          recipientEmail:row.to_email,recipientName:order.contact_name ?? 'Guest',orderId:order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
+          items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? 'Standard',unitPrice:Number(item.unit_price),qty:item.quantity})),
+          subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
+          accessUrl:`${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}`,
+        });
+      } else if (row.event_type === 'recommendation_approved') {
         await sendRecommendationEmail({
           eventType: row.event_type,
           recipientName: row.payload?.recipientName ?? null,
@@ -107,6 +122,8 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           reason: String(row.payload?.reason ?? 'Vendor notification update'),
           reference: row.payload?.reference ?? null,
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
+          eventChange: row.payload?.eventChange,
+          actionUrl: row.event_type === 'vendor_event_update' ? `${resolvePaymentAppUrl()}/vendor/events` : undefined,
           to: row.to_email,
         });
       } else if (row.event_type.startsWith('account_')) {
@@ -125,11 +142,13 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           reference: String(row.payload?.reference ?? row.id),
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
           reason: row.payload?.reason,
+          accessUrl: row.payload?.guestAccessToken ? `${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}` : undefined,
           to: row.to_email,
         });
       }
       await db.from('email_outbox').update({
         status: 'sent',
+        ...(row.payload?.guestAccessToken ? { payload: { ...row.payload, guestAccessToken: undefined } } : {}),
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         last_error: null,

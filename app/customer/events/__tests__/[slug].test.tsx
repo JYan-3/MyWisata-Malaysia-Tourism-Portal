@@ -62,6 +62,20 @@ describe("customer promotion campaign detail", () => {
     expect(markup).toContain(`href="/customer/events/${campaign.slug}/${vendor.vendorId}"`);
     expect(markup).not.toContain("ui.promotionCampaigns.loading");
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledWith(campaign.slug);
+    expect(markup).toContain("8:00 PM");
+  });
+
+  it("shows only dates for an event that covers full Malaysia calendar days", async () => {
+    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [{
+      ...campaign,
+      startsAt: "2026-09-30T16:00:00.000Z",
+      endsAt: "2026-10-08T15:59:59.999Z",
+    }], error: false });
+
+    const markup = renderToStaticMarkup(await CustomerEventDetailPage({ params: Promise.resolve({ slug: campaign.slug }) }));
+    expect(markup).toContain("Oct 1, 2026");
+    expect(markup).toContain("Oct 8, 2026");
+    expect(markup).not.toContain("11:59 PM");
   });
 
   it("shows a not-found state for a valid but unpublished campaign slug", async () => {

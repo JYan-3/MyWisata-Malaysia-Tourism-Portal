@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import { authorizeCheckoutSession } from '@/lib/checkout/order-access';
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, checkoutFinalizeSchema } from '@/lib/validation/schemas';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
@@ -10,16 +11,23 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const parsed = await parseBody(request, checkoutFinalizeSchema);
   if (!parsed.ok) return parsed.response;
+  if (!user) {
+    const access = await authorizeCheckoutSession(request,parsed.data.checkoutSessionId);
+    if (authError && authError.name !== 'AuthSessionMissingError' || !access?.guestSubjectId) return privateCheckoutJson({ error: 'Unauthorized' }, { status: 401 });
+    if (parsed.data.outcome === 'succeeded') return privateCheckoutJson({ error: { code: 'PROVIDER_CONFIRMATION_REQUIRED', message: 'External payments must be confirmed by the payment provider.' } }, { status: 403 });
+    const { data, error } = await createServiceClient().rpc('guest_cancel_checkout',{ p_checkout_session_id:access.session.id,p_guest_subject_id:access.guestSubjectId,p_outcome:parsed.data.outcome });
+    return privateCheckoutJson({data:error?null:data,error:error?{code:'CHECKOUT_FAILED',message:'Unable to cancel checkout.'}:null},{status:error?409:200});
+  }
   const { data, error } = await db.rpc('finalize_customer_wallet_checkout', {
     p_checkout_session_id: parsed.data.checkoutSessionId,
     p_outcome: parsed.data.outcome,
   });
   if (error) {
     if ((error.message ?? '').toLowerCase().includes('provider_confirmation_required')) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: {
           code: 'PROVIDER_CONFIRMATION_REQUIRED',
@@ -28,7 +36,7 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
     const code = getCheckoutErrorCode(error.message);
-    return NextResponse.json(
+    return privateCheckoutJson(
       { data: null, error: { code, message: getCheckoutErrorMessage(error.message) } },
       { status: 409 },
     );
@@ -45,5 +53,5 @@ export async function POST(request: Request) {
       email: true,
     }).catch((notificationError) => console.error('[vendor-notifications] checkout order event failed', notificationError));
   }
-  return NextResponse.json({ data, error: null });
+  return privateCheckoutJson({ data, error: null });
 }

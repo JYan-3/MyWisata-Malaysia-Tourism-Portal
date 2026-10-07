@@ -134,6 +134,7 @@ export const PRIOR_TASK_FILES = [
 /** Pure presentation helpers are part of the inventory but do not render text directly. */
 export const ADMIN_NON_RENDERING_FILES = [
   "components/admin/access-control/audit-log-presentation.ts",
+  "components/admin/access-control/capability-label.ts",
 ] as const;
 
 /** Non-rendering code is inventory-visible but does not need a translation hook. */

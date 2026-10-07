@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PROMOTION_CAMPAIGN_STATUSES } from "./types";
+import { malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
 
 export const campaignSlugSchema = z.string().trim().min(3).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
@@ -54,6 +55,11 @@ export const campaignLocationSchema = z.object({
   endsOn: isoDateSchema,
   opensAt: clockTimeSchema,
   closesAt: clockTimeSchema,
+  maxStalls: z.number().int().positive().max(2147483647).nullable().optional(),
+  applicationsOpen: z.boolean().optional(),
+  applicationsCloseAt: z.string().datetime({ offset: true }).nullable().optional(),
+  approvalsCloseAt: z.string().datetime({ offset: true }).nullable().optional(),
+  setupStartsAt: z.string().datetime({ offset: true }).nullable().optional(),
 }).strict().superRefine((value, context) => {
   if ((value.lat === null) !== (value.lng === null)) {
     context.addIssue({ code: "custom", path: ["lat"], message: "Set both coordinates or neither" });
@@ -65,9 +71,32 @@ export const campaignLocationSchema = z.object({
   if (value.closesAt <= value.opensAt) {
     context.addIssue({ code: "custom", path: ["closesAt"], message: "Closing time must be after opening time" });
   }
+  const deadlines = [value.applicationsCloseAt, value.approvalsCloseAt, value.setupStartsAt];
+  if (value.applicationsOpen || deadlines.some(Boolean)) {
+    let valid = deadlines.every(Boolean);
+    if (valid) {
+      try {
+        const [applications, approvals, setup] = deadlines.map((deadline) => Date.parse(deadline!));
+        valid = applications <= approvals && approvals <= setup
+          && setup < Date.parse(malaysiaDateTimeLocalToIso(`${value.startsOn}T${value.opensAt}`));
+      } catch { valid = false; }
+    }
+    if (!valid) context.addIssue({ code: "custom", path: ["applicationsCloseAt"], message: "Keep application and approval deadlines before setup and the first opening" });
+  }
 });
 
 export type CampaignLocationInput = z.infer<typeof campaignLocationSchema>;
+
+export const campaignLocationMutationSchema = campaignLocationSchema.safeExtend({
+  expectedUpdatedAt: z.string().datetime({ offset: true }),
+  reason: z.string().trim().min(5).max(500).optional(),
+});
+export const campaignStallChangeSchema = z.object({
+  stallNumber: z.string().trim().min(1).max(40),
+  expectedUpdatedAt: z.string().datetime({ offset: true }),
+  reason: z.string().trim().min(5).max(500).optional(),
+}).strict();
+export type CampaignLocationMutation = z.infer<typeof campaignLocationMutationSchema>;
 
 export const campaignAdminPatchSchema = z.union([
   z.object({ action: z.literal("save_draft"), campaign: campaignDraftUpdateSchema }).strict(),

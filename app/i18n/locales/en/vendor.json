@@ -1592,7 +1592,8 @@
         "productName": "Product name",
         "productPrice": "Price (RM)",
         "addPhoto": "Add photo",
-        "newForEvent": "new for this event"
+        "newForEvent": "new for this event",
+        "preferredStallNumber": "Preferred booth number (optional)"
       },
       "actions": {
         "register": "Register",
@@ -1679,7 +1680,15 @@
           "withdrawn": "You withdrew from this location.",
           "removed": "You were removed from this location by the organiser."
         }
-      }
+      },
+      "adminAllocate": "Admin allocation requested",
+      "intakeOpen": "Accepting new applications",
+      "intakeClosed": "New applications closed",
+      "noConfirmedSpaces": "No confirmed spaces are available. An application does not guarantee a booth.",
+      "applicationDeadline": "Applications close (Malaysia time)",
+      "approvalDeadline": "Approvals close (Malaysia time)",
+      "setupStarts": "Setup starts (Malaysia time)",
+      "approvalWindowClosed": "The approval window has closed. Contact the organiser about this application."
     },
     "eventOrders": {
       "title": "Event reservations",

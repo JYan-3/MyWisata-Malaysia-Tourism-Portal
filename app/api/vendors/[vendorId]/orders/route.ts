@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: Props) {
   let query = supabase
     .from('orders')
     .select(`
-      id, display_id, user_id, status, paid_at, completed_at, created_at,
+      id, display_id, user_id, contact_name, contact_email, status, paid_at, completed_at, created_at,
       users(full_name, email),
       order_items!inner(
         id, order_id, product_name, variant_name, slot_starts_at, quantity, line_total, fulfil_status, food_fulfilment_mode, food_qr_scanned_at, created_at, vendor_id,
@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: Props) {
       const { data: userOrders } = await supabase.from('orders').select('id').in('user_id', userIds).limit(10000);
       matchingOrderIds.push(...(userOrders || []).map((item: { id: string }) => item.id));
     }
-    const conditions = [];
+    const conditions = [`contact_name.ilike.%${q}%`, `contact_email.ilike.%${q}%`];
     if (matchingOrderIds.length) conditions.push(`id.in.(${[...new Set(matchingOrderIds)].join(',')})`);
     if (!conditions.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });
     query = query.or(conditions.join(','));
@@ -100,6 +100,7 @@ export async function GET(request: Request, { params }: Props) {
 
     return {
       ...order,
+      users: order.users ?? { full_name: order.contact_name ?? "Guest", email: order.contact_email ?? null },
       vendor_total: total,
       vendor_items: vendorItems,
       outlets_summary: uniqueOutlets.length > 1 ? 'Multiple outlets' : (uniqueOutlets[0] || 'Unknown outlet'),

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { authorizeOrder } from '@/lib/checkout/order-access';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { z } from 'zod';
@@ -8,21 +8,26 @@ const schema = z.object({ reason: z.string().trim().min(5).max(500) }).strict();
 interface Props { params: Promise<{ orderId: string }> }
 
 export async function POST(request: Request, { params }: Props) {
-  const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return apiFail('VALIDATION_FAILED', 'A refund reason is required', 422);
   const { orderId } = await params;
   const service = createServiceClient();
-  const { data: order } = await service.from('orders').select('id,total_amount,status,user_id').eq('id', orderId).eq('user_id', user.id).maybeSingle();
+  const access = await authorizeOrder(request,orderId);
+  const order = access?.order;
+
   if (!order) return apiFail('NOT_FOUND', 'Order not found', 404);
   if (order.status !== 'paid' && order.status !== 'completed') return apiFail('INVALID_STATE', 'Only paid orders can be refunded', 409);
-  const { data, error } = await service.rpc('request_order_refund', {
-    p_order_id: orderId,
-    p_user_id: user.id,
-    p_reason: parsed.data.reason,
-  });
+  const { data, error } = access.guestSubjectId
+    ? await service.rpc('guest_request_order_refund', {
+      p_order_id: orderId,
+      p_guest_subject_id: access.guestSubjectId,
+      p_reason: parsed.data.reason,
+    })
+    : await service.rpc('request_order_refund', {
+      p_order_id: orderId,
+      p_user_id: access.userId,
+      p_reason: parsed.data.reason,
+    });
   if (error) {
     if (error.message?.includes('refund_already_active')) return apiFail('REFUND_ALREADY_REQUESTED', 'A refund is already active or completed for this order', 409);
     if (error.message?.includes('refund_payment_ambiguous')) return apiFail('INVALID_STATE', 'The successful payment could not be verified safely. Contact support before requesting a refund.', 409);

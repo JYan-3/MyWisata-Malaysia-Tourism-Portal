@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 type SettlementResult = {
   checkout_session_id: string;
   order_id: string;
-  user_id: string;
+  user_id: string | null;
   status: string;
   idempotent: boolean;
 };
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
   const result = data as SettlementResult;
   if (outcome === 'succeeded' && !result.idempotent && result.status === 'paid') {
     try {
-      await enqueueUserTransactionEmail({
+      if (result.user_id) await enqueueUserTransactionEmail({
         userId: result.user_id,
         eventType: 'checkout_succeeded',
         eventKey: `toyyibpay-checkout:${refno}:${status}`,

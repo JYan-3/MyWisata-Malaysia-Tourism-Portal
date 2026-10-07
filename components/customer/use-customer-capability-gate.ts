@@ -15,7 +15,7 @@ export type CustomerCapabilityGate = {
 };
 
 export function useCustomerCapabilityGate(): CustomerCapabilityGate {
-  const { capabilities, refreshUser } = useAuth();
+  const { capabilities, refreshUser, currentUser } = useAuth();
   const { showCapabilityGate } = useCustomerCapabilityGateDialog();
   const pathname = usePathname();
 
@@ -24,12 +24,13 @@ export function useCustomerCapabilityGate(): CustomerCapabilityGate {
   ), [pathname]);
 
   const gate = useCallback((capability: CustomerCapability, nextPath?: string) => {
+    if (!currentUser && ["commerce.purchase", "commerce.booking", "commerce.checkout"].includes(capability)) return true;
     const decision = capabilities[capability];
     if (decision.allowed) return true;
 
     showCapabilityGate({ capability, decision, nextPath: nextPath ?? currentPath() });
     return false;
-  }, [capabilities, currentPath, showCapabilityGate]);
+  }, [capabilities, currentUser, currentPath, showCapabilityGate]);
 
   const handleResponse = useCallback(async (response: Response, nextPath?: string) => {
     if (response.ok) return false;

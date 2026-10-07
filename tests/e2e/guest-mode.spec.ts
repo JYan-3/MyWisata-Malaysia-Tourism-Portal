@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-const CUSTOMER_EMAIL = "customer1@demo.local";
-
 test("Guest Mode enters Home and Trip navigation requires sign-in", async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("button", { name: /guest mode/i }).click();
@@ -18,54 +16,12 @@ test("Guest Mode enters Home and Trip navigation requires sign-in", async ({ pag
   await expect(page).toHaveURL(/\/customer$/);
 });
 
-test("Guest Mode signs out and booking requires sign-in", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByRole("button", { name: /guest mode/i }).click();
-  await expect(page).toHaveURL(/\/customer$/, { timeout: 15_000 });
+test("Guest cart navigation opens the existing cart without a sign-in gate", async ({ page }) => {
+  await page.route("**/api/guest/cart", route => route.fulfill({json:{data:{items:[]},error:null}}));
   await page.goto("/customer/explore");
-
-  await page.getByRole("button", { name: /^Open / }).first().click();
-  await page.getByRole("link", { name: "View destination", exact: true }).click();
-  await expect(page).toHaveURL(/\/customer\/activity\//);
-  const listingUrl = page.url();
-  const purchase = page.getByRole("button", { name: /add (to cart|booking to cart)|book now|buy now/i }).last();
-  const mutations: string[] = [];
-  page.on("request", (request) => {
-    if (request.method() === "POST" && /cart_items|\/api\/customer\/chat/.test(request.url())) mutations.push(request.url());
-  });
-  await purchase.click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(listingUrl);
-  await dialog.getByRole("button", { name: "Continue browsing", exact: true }).click();
-  await expect(dialog).not.toBeVisible();
-  await expect(page).toHaveURL(listingUrl);
-  expect(mutations).toEqual([]);
-  await purchase.click();
-  await dialog.getByRole("button", { name: "Sign in / Register", exact: true }).click();
-  await expect(page).toHaveURL(/\/login\?next=%2Fcustomer%2Factivity%2F/);
-  await page.getByPlaceholder("Email address").fill(CUSTOMER_EMAIL);
-  await page.getByPlaceholder("Password").fill("demo123456");
-  await page.getByRole("button", { name: "Sign in", exact: true }).last().click();
-  await expect(page).toHaveURL(/\/customer\/activity\//, { timeout: 15_000 });
-});
-
-test("Guest private navigation offers one login-page button, with registration available there", async ({ page }) => {
-  await page.goto("/customer/explore");
-  const cart = page.getByRole("link", { name: "Shopping cart", exact: true });
-  await cart.click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(/\/customer\/explore$/);
-  await page.keyboard.press("Escape");
-  await expect(dialog).not.toBeVisible();
-  await expect(page).toHaveURL(/\/customer\/explore$/);
-  await cart.click();
-  await expect(dialog.getByRole("button", { name: "Create account", exact: true })).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Sign in / Register", exact: true }).click();
-  await expect(page).toHaveURL(/\/login\?next=%2Fcustomer%2Fcart$/);
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page.getByPlaceholder("Confirm password", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Shopping cart", exact: true }).click();
+  await expect(page).toHaveURL(/\/customer\/cart$/);
+  await expect(page.getByRole("button", {name:"Sign in / Register",exact:true})).toHaveCount(0);
 });
 
 test("Guest Mode can open an approved vendor", async ({ page }) => {

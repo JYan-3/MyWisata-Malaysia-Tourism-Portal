@@ -53,6 +53,7 @@ function request(body: Record<string, unknown>) {
 describe('POST /api/customer/event-reservations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('APP_URL','http://localhost:3000');
     mocks.getUser.mockResolvedValue({ data: { user: { id: '99999999-9999-4999-8999-999999999999', email: 'c@example.com' } }, error: null });
     mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
       capability, allowed: true, blockerCode: null, qualificationPaths: [], entitlementGeneration: 1, source: 'policy',
@@ -63,7 +64,7 @@ describe('POST /api/customer/event-reservations', () => {
   });
 
   it('prepares the reservation in SQL and charges the total SQL returns, never a client price', async () => {
-    mocks.rpc.mockImplementation(async (name: string) => name === 'prepare_event_checkout'
+    mocks.rpc.mockImplementation(async (name: string) => name === 'account_prepare_event_checkout'
       ? { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment', total: 28 }, error: null }
       : { data: null, error: null });
 
@@ -71,7 +72,7 @@ describe('POST /api/customer/event-reservations', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_event_checkout', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_event_checkout', expect.objectContaining({
       p_listing_id: LISTING_ID, p_pickup_date: '2026-10-05', p_slot_id: SLOT_ID, p_quantity: 2, p_payment_method: 'stripe_card',
     }));
     expect(mocks.stripeCreate).toHaveBeenCalledWith(expect.objectContaining({
@@ -83,7 +84,7 @@ describe('POST /api/customer/event-reservations', () => {
   it('rejects a price or total sent by the client', async () => {
     const response = await POST(request({ price: 0 }));
     expect(response.status).toBe(422);
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_event_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_event_checkout', expect.anything());
   });
 
   it('confirms a free reservation without any payment provider', async () => {
@@ -98,7 +99,7 @@ describe('POST /api/customer/event-reservations', () => {
 
   it('prepares a wallet split as a card payment, like the cart checkout', async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'prepare_event_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment', total: 28 }, error: null };
+      if (name === 'account_prepare_event_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment', total: 28 }, error: null };
       if (name === 'reserve_wallet_split_checkout') return { data: { wallet_amount_sen: 800, external_amount_sen: 2000, status: 'reserved' }, error: null };
       return { data: null, error: null };
     });
@@ -106,7 +107,7 @@ describe('POST /api/customer/event-reservations', () => {
     const response = await POST(request({ paymentMethod: 'wallet_split' }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_event_checkout', expect.objectContaining({ p_payment_method: 'stripe_card' }));
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_event_checkout', expect.objectContaining({ p_payment_method: 'stripe_card' }));
     expect(mocks.stripeCreate).toHaveBeenCalledWith(expect.objectContaining({
       line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 2000 }) })],
     }));
@@ -135,6 +136,6 @@ describe('POST /api/customer/event-reservations', () => {
     const response = await POST(request({}));
 
     expect(response.status).toBe(403);
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_event_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_event_checkout', expect.anything());
   });
 });

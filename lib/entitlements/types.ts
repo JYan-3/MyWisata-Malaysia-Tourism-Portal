@@ -8,6 +8,7 @@ export const CAPABILITY_KEYS = [
   "affiliate.limited",
   "affiliate.full",
   "affiliate.earn_commission",
+  "wallet.top_up",
   "wallet.request_withdrawal",
   "wallet.approve_withdrawal",
 ] as const;

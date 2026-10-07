@@ -46,6 +46,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/map/page.tsx",
   "app/customer/notifications/page.tsx",
   "app/customer/orders/[id]/page.tsx",
+  "app/customer/orders/access/page.tsx",
   "app/customer/orders/page.tsx",
   "app/customer/outlet/[outletId]/page.tsx",
   "app/customer/page.tsx",

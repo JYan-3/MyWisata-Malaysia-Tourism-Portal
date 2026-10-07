@@ -37,7 +37,7 @@ describe("customer capability compatibility", () => {
     expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.WITHDRAWAL))
       .toMatchObject({ allowed: true });
     expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.CHECKOUT))
-      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
+      .toMatchObject({ allowed: true });
   });
 
   it("exposes a stable capability snapshot", () => {
@@ -49,7 +49,7 @@ describe("customer capability compatibility", () => {
   });
 
   it("maps an entitlement blocker to the legacy access result", () => {
-    expect(resolveCustomerAccess(customerFacts(), CUSTOMER_CAPABILITY.CHECKOUT))
+    expect(resolveCustomerAccess(customerFacts(), CUSTOMER_CAPABILITY.WALLET_TOP_UP))
       .toBe("phone_verification_required");
     expect(resolveCustomerAccess(customerFacts({ phoneVerified: true }), CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT))
       .toBe("profile_completion_required");

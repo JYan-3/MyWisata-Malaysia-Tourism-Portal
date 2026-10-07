@@ -100,8 +100,15 @@ async function selectValue(element: TestElement, value: string) {
 }
 
 async function selectModule(key: string) {
+  const labelByKey: Record<string, string> = {
+    kyc_review: "KYC Review",
+    vendor_approvals: "Vendor Approvals",
+    catalogue_review: "Catalogue Review",
+    support_tickets: "Support Tickets",
+    chat_reports: "Chat Reports",
+  };
   const label = findOne(container, (element) =>
-    element.tagName === "LABEL" && element.textContent.includes(key));
+    element.tagName === "LABEL" && element.textContent.includes(labelByKey[key] ?? key));
   const checkbox = findOne(label, (element) =>
     element.tagName === "INPUT" && element.type === "checkbox");
   (checkbox as TestElement & { checked: boolean }).checked = true;
@@ -215,7 +222,8 @@ describe("StaffRolesTab", () => {
 
     const inputs = findElements(container, (element) => element.tagName === "INPUT");
     const textareas = findElements(container, (element) => element.tagName === "TEXTAREA");
-    expect(container.textContent).toContain("kyc_review");
+    expect(container.textContent).toContain("KYC Review");
+    expect(container.textContent).not.toContain("kyc_review");
     await setValue(inputs.find((input) => (input as TestElement & { name?: string }).name === "role-name")!, "Operations Reviewer");
     await setValue(textareas[0]!, "Reviews vendors and KYC");
     await selectModule("kyc_review");
@@ -243,8 +251,8 @@ describe("StaffRolesTab", () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
 
     await selectModule("vendor_approvals");
-    const vendorLabel = findOne(container, (element) => element.tagName === "LABEL" && element.textContent.includes("vendor_approvals"));
-    const catalogueLabel = findOne(container, (element) => element.tagName === "LABEL" && element.textContent.includes("catalogue_review"));
+    const vendorLabel = findOne(container, (element) => element.tagName === "LABEL" && element.textContent.includes("Vendor Approvals"));
+    const catalogueLabel = findOne(container, (element) => element.tagName === "LABEL" && element.textContent.includes("Catalogue Review"));
     expect((findOne(vendorLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked).toBe(true);
     expect((findOne(catalogueLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked).toBe(true);
     expect(container.textContent).toContain("accessControl.staffRoles.lockedGroup");
@@ -268,7 +276,7 @@ describe("StaffRolesTab", () => {
       element.tagName === "ARTICLE" && element.textContent.includes("Legacy Wallet Approver"));
     expect(legacyWalletCard.textContent).toContain("accessControl.staffRoles.systemPreset");
     expect(legacyWalletCard.textContent).toContain("accessControl.staffRoles.permissionLabels.withdrawalApprove");
-    expect(legacyWalletCard.textContent).toContain("admin.withdrawal.approve");
+    expect(legacyWalletCard.textContent).not.toContain("admin.withdrawal.approve");
     expect(findElements(legacyWalletCard, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.editRole"))).toHaveLength(0);
 
@@ -291,7 +299,7 @@ describe("StaffRolesTab", () => {
 
     const templateCard = findOne(container, (element) =>
       element.tagName === "ARTICLE" && element.textContent.includes("Sponsored Placement Manager"));
-    expect(templateCard.textContent).toContain("admin.map_campaign.manage");
+    expect(templateCard.textContent).not.toContain("admin.map_campaign.manage");
     expect(findElements(templateCard, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.editRole"))).toHaveLength(0);
     const roleSelects = findElements(container, (element) => element.tagName === "SELECT");
@@ -305,12 +313,13 @@ describe("StaffRolesTab", () => {
     expect(roleName.value).toBe("Sponsor Manager");
 
     const moduleLabels = findElements(container, (element) =>
-      element.tagName === "LABEL" && element.textContent.includes("sponsored_placements"));
-    const selectedModuleKeys = moduleLabels
+      element.tagName === "LABEL" && element.textContent.includes("Sponsored Placements"));
+    const selectedModuleLabels = moduleLabels
       .filter((label) => (findOne(label, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked)
       .map((label) => label.textContent);
-    expect(selectedModuleKeys).toHaveLength(1);
-    expect(selectedModuleKeys[0]).toContain("sponsored_placements");
+    expect(selectedModuleLabels).toHaveLength(1);
+    expect(selectedModuleLabels[0]).toContain("Sponsored Placements");
+    expect(selectedModuleLabels[0]).not.toContain("sponsored_placements");
   });
 
   it("reviews and sends a new employee invitation using only a custom role", async () => {

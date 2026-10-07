@@ -8,10 +8,12 @@ import { useTranslation } from "react-i18next";
 import { FeaturedSplitCard } from "@/components/customer/featured-split-card";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/lib/i18n/format";
+import { formatDate, formatDateTime } from "@/lib/i18n/format";
+import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 
 export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = false }: { campaign: PromotionCampaignPublic | null; campaigns?: PromotionCampaignPublic[]; unavailable?: boolean }) {
   const { t, i18n } = useTranslation("customer");
@@ -25,6 +27,8 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
   const providedList = campaigns && campaigns.length > 0 ? campaigns : (campaign ? [campaign] : []);
   const list = providedList.length > 0 ? providedList : recoveredCampaigns;
   const displayCampaign = list.length > 0 ? list[activeIndex % list.length] : null;
+  const formatCampaignDate = displayCampaign && isMalaysiaFullDayRange(displayCampaign.startsAt, displayCampaign.endsAt)
+    ? formatDate : formatDateTime;
 
   const refresh = useCallback(async () => {
     setRetrying(true);
@@ -55,7 +59,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
   }
 
   const image = displayCampaign?.posterUrl ?? null;
-  const live = displayCampaign?.visibility === "live";
+  const live = displayCampaign?.operationalStatus ? displayCampaign.operationalStatus === "operating" : displayCampaign?.visibility === "live";
   const hasMultiple = list.length > 1;
 
   const spotlight = (
@@ -85,8 +89,8 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
               <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/90">
                 <CalendarDays size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span className="min-w-0">
-                  <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{t(live ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}</span>{" "}
-                  {displayCampaign.title} · {formatDateTime(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {formatDateTime(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
+                  <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{t(getEventOperationalLabelKey(displayCampaign))}</span>{" "}
+                  {displayCampaign.title} · {formatCampaignDate(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {formatCampaignDate(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                 </span>
               </p>
               {displayCampaign.operatingHours && <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85"><Clock3 size={12} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{displayCampaign.operatingHours}</span></p>}
@@ -126,12 +130,12 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
               <span className="inline-flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
-                  {t(live ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}
+                  {t(getEventOperationalLabelKey(displayCampaign))}
                 </span>
                 <span className="text-sm">
-                  {formatDateTime(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
+                  {formatCampaignDate(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                   {" – "}
-                  {formatDateTime(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
+                  {formatCampaignDate(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                 </span>
               </span>
               <span className="shrink-0 font-semibold text-foreground">

@@ -80,7 +80,7 @@ describe('GET simulator checkout session', () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     const response = await GET(new Request('http://localhost'), { params: Promise.resolve({ sessionId: SESSION_ID }) });
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(404);
     expect(mocks.serviceFrom).not.toHaveBeenCalled();
   });
 
