@@ -64,6 +64,36 @@ export function malaysiaDateTimeLocalToIso(value: string) {
   return new Date(malaysiaTimestamp(value)).toISOString();
 }
 
+/** Inclusive calendar-day boundaries for an HTML date in Malaysia time. */
+export function malaysiaCalendarDateToIso(value: string, boundary: "start" | "end") {
+  const start = malaysiaTimestamp(`${value}T00:00`);
+  return new Date(start + (boundary === "end" ? 24 * 60 * 60 * 1000 - 1 : 0)).toISOString();
+}
+
+export function isInvalidMalaysiaDateRange(startsOn: string, endsOn: string) {
+  if (!startsOn || !endsOn) return false;
+  try {
+    return malaysiaCalendarDateToIso(endsOn, "start") < malaysiaCalendarDateToIso(startsOn, "start");
+  } catch {
+    return true;
+  }
+}
+
+export function isMalaysiaFullDayRange(startsAt: string, endsAt: string) {
+  if (!startsAt || !endsAt) return false;
+  try {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return false;
+    const startDate = new Date(start.getTime() + MALAYSIA_OFFSET_MILLISECONDS).toISOString().slice(0, 10);
+    const endDate = new Date(end.getTime() + MALAYSIA_OFFSET_MILLISECONDS).toISOString().slice(0, 10);
+    return start.getTime() === Date.parse(malaysiaCalendarDateToIso(startDate, "start"))
+      && end.getTime() === Date.parse(malaysiaCalendarDateToIso(endDate, "end"));
+  } catch {
+    return false;
+  }
+}
+
 /** Incomplete ranges remain valid while the user is still filling the form. */
 export function isInvalidDateTimeRange(startsAt: string, endsAt: string) {
   if (!startsAt || !endsAt) return false;

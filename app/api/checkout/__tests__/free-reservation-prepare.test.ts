@@ -71,7 +71,7 @@ function request(foodServiceModes?: { outletId: string; mode: "dine_in" | "takea
 describe('POST /api/checkout/prepare with free_reservation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getUser.mockResolvedValue({ data: { user: { id: 'usr-customer-1' } }, error: null });
+    mocks.getUser.mockResolvedValue({ data: { user: { email: 'customer@example.com', id: 'usr-customer-1' } }, error: null });
     mocks.resolveEffectiveCapability.mockResolvedValue({
       state: 'granted',
       reasonCode: 'ok',
@@ -118,7 +118,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
     mocks.unitPrice.mockReturnValue(0);
     mocks.cartTotals.mockReturnValue({ subtotal: 0, discount: 0, total: 0 });
     mocks.rpc.mockImplementation((name: string) => {
-      if (name === 'prepare_checkout') {
+      if (name === 'account_prepare_checkout') {
         return Promise.resolve({
           data: {
             checkout_session_id: CHECKOUT_ID,
@@ -145,7 +145,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
     expect(body.data.status).toBe('paid');
     expect(mocks.stripeCreate).not.toHaveBeenCalled();
     expect(mocks.rpc).toHaveBeenCalledWith(
-      'prepare_checkout',
+      'account_prepare_checkout',
       expect.objectContaining({
         p_payment_method: 'free_reservation',
         p_subtotal: 0,
@@ -193,7 +193,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
 
     const res = await POST(request([{ outletId: OUTLET_ID, mode: "takeaway" }]));
     expect(res.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith("prepare_checkout_with_food_service_modes", expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith("account_prepare_checkout_with_food_service_modes", expect.objectContaining({
       p_claim_id: null,
       p_food_service_modes: [{ outlet_id: OUTLET_ID, mode: "takeaway" }],
     }));

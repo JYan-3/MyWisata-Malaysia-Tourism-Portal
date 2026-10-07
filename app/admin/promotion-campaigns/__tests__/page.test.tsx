@@ -1,7 +1,7 @@
 import React, { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
+import { findElements, findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -46,6 +46,23 @@ async function click(element: TestElement) {
     element.dispatchEvent(new TestEvent("click", { bubbles: true }));
     await Promise.resolve();
     await Promise.resolve();
+  });
+}
+
+async function setInputValue(input: TestElement, value: string) {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
+    setter?.call(input, value);
+    input.dispatchEvent(new TestEvent("input", { bubbles: true }));
+  });
+}
+
+async function renderLoadedPage() {
+  await act(async () => {
+    root.render(<PromotionCampaignsPage />);
+    await Promise.resolve();
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
 
@@ -130,5 +147,64 @@ describe("Admin promotion campaign workbench", () => {
     expect(container.textContent).toContain("promotionCampaigns.form.removePoster");
     expect(container.textContent).not.toContain("promotionCampaigns.form.offerType");
     expect(container.textContent).not.toContain("promotionCampaigns.form.chooseSource");
+  });
+
+  it("uses inclusive event dates and rejects equal daily opening and closing times", async () => {
+    await renderLoadedPage();
+    const dates = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+    expect(dates).toHaveLength(2);
+    expect(findElements(container, (element) => element.tagName === "INPUT" && element.type === "datetime-local")).toHaveLength(0);
+
+    await setInputValue(dates[0], "2026-10-01");
+    await setInputValue(dates[1], "2026-10-01");
+    expect(container.textContent).not.toContain("promotionCampaigns.form.invalidRange");
+
+    const hours = findElements(container, (element) => element.tagName === "INPUT" && element.type === "time");
+    await setInputValue(hours[0], "01:22");
+    await setInputValue(hours[1], "01:22");
+    expect(container.textContent).toContain("promotionCampaigns.form.invalidOperatingHours");
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.form.saveDraft")).disabled).toBe(true);
+
+    await setInputValue(hours[1], "01:23");
+    expect(container.textContent).not.toContain("promotionCampaigns.form.invalidOperatingHours");
+  });
+
+  it("preserves legacy timestamps when editing copy without changing event dates", async () => {
+    await renderLoadedPage();
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
+    const dates = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+    expect(dates.map((date) => date.value)).toEqual(["2026-09-25", "2027-03-13"]);
+
+    await act(async () => {
+      findOne(container, (element) => element.tagName === "FORM").dispatchEvent(new TestEvent("submit", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const patch = mocks.fetch.mock.calls.find(([url, init]) => url === "/api/admin/promotion-campaigns/campaign-1" && (init as RequestInit | undefined)?.method === "PATCH");
+    expect(patch).toBeDefined();
+    expect(JSON.parse(String((patch![1] as RequestInit).body)).campaign).toMatchObject({
+      startsAt: "2026-09-25T10:50:00.000Z",
+      endsAt: "2027-03-12T23:00:00.000Z",
+    });
+  });
+
+  it("normalizes both boundaries when an admin changes a legacy event date", async () => {
+    await renderLoadedPage();
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
+    const dates = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+    await setInputValue(dates[0], "2026-10-01");
+    await setInputValue(dates[1], "2026-10-08");
+
+    await act(async () => {
+      findOne(container, (element) => element.tagName === "FORM").dispatchEvent(new TestEvent("submit", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const patch = mocks.fetch.mock.calls.find(([url, init]) => url === "/api/admin/promotion-campaigns/campaign-1" && (init as RequestInit | undefined)?.method === "PATCH");
+    expect(patch).toBeDefined();
+    expect(JSON.parse(String((patch![1] as RequestInit).body)).campaign).toMatchObject({
+      startsAt: "2026-09-30T16:00:00.000Z",
+      endsAt: "2026-10-08T15:59:59.999Z",
+    });
   });
 });

@@ -166,7 +166,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   function permissionLabel(key: string) {
     const permission = permissionsByKey.get(key);
     const translationKey = PERMISSION_LABEL_KEYS[key];
-    if (!translationKey) return permission?.description ?? key;
+    if (!translationKey) return permission?.description ?? key.replace(/[._]/g, " ");
     return t(translationKey);
   }
 
@@ -406,7 +406,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
               <input type="checkbox" checked={form.moduleKeys.includes(module.key)} onChange={(event) => toggleModule(module, event.target.checked)} />
               <span>
                 <span className="block font-medium">{module.label}</span>
-                <span className="mt-1 block font-mono text-xs text-muted-foreground">{module.key}</span>
                 {module.groupKey && <span className="mt-1 block text-xs text-primary">{t("accessControl.staffRoles.lockedGroup", { group: module.groupName })}</span>}
               </span>
             </label>)}</div>
@@ -429,10 +428,9 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${role.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(role.isActive ? "accessControl.status.active" : "accessControl.status.inactive")}</span>
             </div>
             <ul className="mt-3 space-y-1.5">{role.moduleKeys.map((key) => <li key={key} className="rounded-lg bg-muted/30 px-3 py-2">
-              <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key}</span>
-              <span className="block font-mono text-[11px] text-muted-foreground">{key}</span>
+              <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
             </li>)}</ul>
-            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="font-mono text-[11px] text-muted-foreground">{permissionLabel(key)} · {key}</li>)}</ul>
+            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
             <div className="mt-3 flex justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
               <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>
@@ -467,7 +465,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
               {selectedAssignmentRole && <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{selectedAssignmentRole.name}</span><span className="rounded-full bg-background px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{t(selectedAssignmentRole.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></div>
                 <p className="mt-2 text-xs font-medium">{t("accessControl.staffRoles.addsPermissions", { count: selectedAssignmentPermissions.length })}</p>
-                <ul className="mt-2 space-y-1">{selectedAssignmentPermissions.map((permission) => <li key={permission.key} className="text-xs"><span className="font-medium">{permission.label}</span><span className="ml-1 font-mono text-muted-foreground">({permission.key})</span></li>)}</ul>
+                <ul className="mt-2 space-y-1">{selectedAssignmentPermissions.map((permission) => <li key={permission.key} className="text-xs"><span className="font-medium">{permission.label}</span></li>)}</ul>
                 <p className="mt-2 text-xs text-muted-foreground">{t("accessControl.staffRoles.existingPermissionsUnchanged")}</p>
               </div>}
             </li>
@@ -508,7 +506,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         <dl className="space-y-2">
           <div><dt className="font-medium text-foreground">{t("accessControl.staffRoles.confirmEmployee")}</dt><dd>{selectedStaff.name} · {selectedStaff.email}</dd></div>
           <div><dt className="font-medium text-foreground">{t("accessControl.staffRoles.confirmRole")}</dt><dd>{selectedAssignmentRole.name}</dd></div>
-          <div><dt className="font-medium text-foreground">{t("accessControl.staffRoles.confirmPermissions")}</dt><dd><ul className="mt-1 space-y-1">{selectedAssignmentPermissions.map((permission) => <li key={permission.key}><span className="font-medium">{permission.label}</span> <span className="font-mono text-xs">({permission.key})</span></li>)}</ul></dd></div>
+          <div><dt className="font-medium text-foreground">{t("accessControl.staffRoles.confirmPermissions")}</dt><dd><ul className="mt-1 space-y-1">{selectedAssignmentPermissions.map((permission) => <li key={permission.key}><span className="font-medium">{permission.label}</span> </li>)}</ul></dd></div>
           <div><dt className="font-medium text-foreground">{t("accessControl.staffRoles.confirmReason")}</dt><dd>{assignmentReason.trim()}</dd></div>
         </dl>
         <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs">{t("accessControl.staffRoles.existingPermissionsUnchanged")}</p>

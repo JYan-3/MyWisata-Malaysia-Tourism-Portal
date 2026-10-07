@@ -1,3 +1,4 @@
+import { checkoutContactSchema } from "@/lib/checkout/contact";
 // P-TMF (Trust & Money Flow) — Input validation schemas
 // EVERY API route in this domain MUST pass request body through .parse() or .safeParse()
 // before hitting the DB. Never trust `await request.json()` directly.
@@ -82,10 +83,13 @@ export type EventPromotionSettingsPatch = z.infer<typeof eventPromotionSettingsP
 export const campaignRegistrationReviewSchema = z.object({
   action: z.enum(['approve', 'reject', 'request_changes']),
   note: z.string().trim().min(10).max(1000).optional(),
+  stallNumber: z.string().trim().min(1).max(40).optional(),
+  expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 }).strict().refine(
   (data) => data.action === 'approve' || Boolean(data.note),
   { message: 'A note of at least 10 characters is required for reject or request changes', path: ['note'] },
-);
+).refine((data) => data.action !== 'approve' || Boolean(data.stallNumber && data.expectedUpdatedAt),
+  { message: 'Confirm a booth number and reload the current application before approval', path: ['stallNumber'] });
 
 export type CampaignRegistrationReview = z.infer<typeof campaignRegistrationReviewSchema>;
 
@@ -178,6 +182,7 @@ export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4
 
 /** Reserve-now checkout for one event item: price, stock and slot are decided in SQL. */
 export const eventCheckoutSchema = z.object({
+  contact: checkoutContactSchema.optional(),
   listingId: uuid,
   pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   slotId: uuid,
@@ -193,6 +198,7 @@ export const eventCheckoutSchema = z.object({
 }).strict();
 
 export const checkoutPrepareSchema = z.object({
+  contact: checkoutContactSchema.optional(),
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
   voucherCode: z.string().trim().max(50).nullable().optional(),
   claimId: uuid.nullable().optional(),

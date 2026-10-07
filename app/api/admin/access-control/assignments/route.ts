@@ -1,5 +1,7 @@
 import { setEntitlementAssignment } from "@/lib/entitlements/admin";
+import { getAdminUserLabel } from "@/lib/admin/identity";
 import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
+import { createServiceClient } from "@/lib/supabase/service";
 import { apiOk, parseBody } from "@/lib/validation/schemas";
 import {
   assignmentSchema,
@@ -57,7 +59,25 @@ export async function GET(request: Request) {
     && (!filters.effect || item.effect === filters.effect)
     && (!filters.status || item.status === filters.status));
 
-  return apiOk({ ...paginate(items, filters.page, filters.pageSize), generation: result.state.generation });
+  const page = paginate(items, filters.page, filters.pageSize);
+  const userIds = [...new Set(page.items.filter((item) => item.subjectType === "user" && item.subjectId).map((item) => item.subjectId!))];
+  const users = userIds.length
+    ? await createServiceClient().from("users").select("id,full_name,display_name,email").in("id", userIds)
+    : { data: [], error: null };
+  if (users.error) return accessControlFailure(users.error);
+  const userById = new Map((users.data ?? []).map((user) => [user.id, user]));
+  return apiOk({
+    ...page,
+    items: page.items.map((item) => {
+      const subject = item.subjectType === "user" ? userById.get(item.subjectId ?? "") : null;
+      return {
+        ...item,
+        subjectName: subject ? getAdminUserLabel({ fullName: subject.full_name, displayName: subject.display_name, email: subject.email }) : null,
+        subjectEmail: subject?.email ?? null,
+      };
+    }),
+    generation: result.state.generation,
+  });
 }
 
 export async function POST(request: Request) {

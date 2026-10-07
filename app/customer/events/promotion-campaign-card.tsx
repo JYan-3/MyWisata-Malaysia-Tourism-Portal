@@ -6,7 +6,9 @@ import { ArrowRight, CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
-import { formatDateTime } from "@/lib/i18n/format";
+import { formatDate, formatDateTime } from "@/lib/i18n/format";
+import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
+import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
@@ -49,6 +51,8 @@ export function PromotionCampaignCard({
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const isLive = campaign.visibility === "live";
+  const isOperating = campaign.operationalStatus ? campaign.operationalStatus === "operating" : isLive;
+  const formatCampaignDate = isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime;
   const previewVendors = campaign.vendors.slice(0, 3);
 
   if (variant === "compact") {
@@ -58,12 +62,12 @@ export function PromotionCampaignCard({
           <CampaignPoster campaign={campaign} className="aspect-[4/3] lg:aspect-auto lg:min-h-72" sizes="(max-width: 1023px) 100vw, (max-width: 1440px) 16vw, 15vw" />
           <div className="flex min-w-0 flex-col p-4 sm:p-5 lg:min-h-72 lg:p-6">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isLive ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
-                {t(isLive ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                {t(getEventOperationalLabelKey(campaign))}
               </span>
               <span className="text-sm text-muted-foreground">
                 {t(isLive ? "ui.promotionCampaigns.endsAt" : "ui.promotionCampaigns.startsAt", {
-                  date: formatDateTime(isLive ? campaign.endsAt : campaign.startsAt, locale, {
+                  date: formatCampaignDate(isLive ? campaign.endsAt : campaign.startsAt, locale, {
                     timeZone: "Asia/Kuala_Lumpur",
                   }),
                 })}
@@ -97,12 +101,12 @@ export function PromotionCampaignCard({
           <CampaignPoster campaign={campaign} className="aspect-[16/9] lg:aspect-[4/3]" sizes="(max-width: 1023px) 100vw, 40vw" />
           <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6 lg:p-7">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isLive ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
-                {t(isLive ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming")}
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                {t(getEventOperationalLabelKey(campaign))}
               </span>
               <span className="text-sm text-muted-foreground">
                 {t(isLive ? "ui.promotionCampaigns.endsAt" : "ui.promotionCampaigns.startsAt", {
-                  date: formatDateTime(isLive ? campaign.endsAt : campaign.startsAt, locale, {
+                  date: formatCampaignDate(isLive ? campaign.endsAt : campaign.startsAt, locale, {
                     timeZone: "Asia/Kuala_Lumpur",
                   }),
                 })}

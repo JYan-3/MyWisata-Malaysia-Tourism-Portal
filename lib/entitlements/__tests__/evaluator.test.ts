@@ -40,7 +40,7 @@ describe("independent entitlement evaluator", () => {
       .toMatchObject({ allowed: true });
     expect(evaluateEntitlementDecision(emailKycOnly, "wallet.request_withdrawal", allowPolicy))
       .toMatchObject({ allowed: true });
-    expect(evaluateEntitlementDecision(emailKycOnly, "commerce.checkout", allowPolicy))
+    expect(evaluateEntitlementDecision(emailKycOnly, "wallet.top_up", allowPolicy))
       .toMatchObject({
         allowed: false,
         blockerCode: "PHONE_VERIFICATION_REQUIRED",
@@ -48,12 +48,12 @@ describe("independent entitlement evaluator", () => {
   });
 
   it.each([
-    ["email only", facts(), "commerce.checkout", "PHONE_VERIFICATION_REQUIRED"],
+    ["email only", facts(), "wallet.top_up", "PHONE_VERIFICATION_REQUIRED"],
     ["phone only", facts({ phoneVerified: true }), "recommendation.submit", "PROFILE_OR_KYC_REQUIRED"],
-    ["profile only", facts({ profileComplete: true }), "commerce.checkout", "PHONE_VERIFICATION_REQUIRED"],
+    ["profile only", facts({ profileComplete: true }), "wallet.top_up", "PHONE_VERIFICATION_REQUIRED"],
     ["phone and profile", facts({ phoneVerified: true, profileComplete: true }), "affiliate.full", "KYC_REQUIRED"],
     ["phone and KYC", facts({ phoneVerified: true, kycStatus: "approved" }), "affiliate.limited", "ENTITLEMENT_DENIED"],
-    ["profile and KYC", facts({ profileComplete: true, kycStatus: "approved" }), "commerce.checkout", "PHONE_VERIFICATION_REQUIRED"],
+    ["profile and KYC", facts({ profileComplete: true, kycStatus: "approved" }), "wallet.top_up", "PHONE_VERIFICATION_REQUIRED"],
   ] as const)("keeps %s qualifications independent", (_label, verificationFacts, capability, blockerCode) => {
     expect(evaluateEntitlementDecision(verificationFacts, capability, allowPolicy))
       .toMatchObject({ allowed: false, blockerCode });
@@ -81,7 +81,7 @@ describe("independent entitlement evaluator", () => {
       kycStatus: "approved",
     });
 
-    expect(evaluateEntitlementDecision(allComplete, "commerce.checkout", allowPolicy).allowed).toBe(true);
+    expect(evaluateEntitlementDecision(allComplete, "wallet.top_up", allowPolicy).allowed).toBe(true);
     expect(evaluateEntitlementDecision(allComplete, "recommendation.submit", allowPolicy).allowed).toBe(true);
     expect(evaluateEntitlementDecision(allComplete, "affiliate.full", allowPolicy).allowed).toBe(true);
     expect(evaluateEntitlementDecision(allComplete, "affiliate.earn_commission", allowPolicy).allowed).toBe(true);
@@ -113,7 +113,7 @@ describe("independent entitlement evaluator", () => {
   });
 
   it("routes Phone hard-guard recovery to the independent Phone page", () => {
-    expect(evaluateEntitlementDecision(facts(), "commerce.checkout", allowPolicy))
+    expect(evaluateEntitlementDecision(facts(), "wallet.top_up", allowPolicy))
       .toMatchObject({
         qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
       });
@@ -149,7 +149,7 @@ describe("independent entitlement evaluator", () => {
       source: "assignment",
       entitlementGeneration: 4,
     })).toMatchObject({ allowed: false, blockerCode: "ENTITLEMENT_DENIED", source: "assignment" });
-    expect(evaluateEntitlementDecision(complete, "commerce.checkout", allowPolicy))
+    expect(evaluateEntitlementDecision(complete, "wallet.top_up", allowPolicy))
       .toMatchObject({ allowed: true, source: "policy" });
     expect(evaluateEntitlementDecision(complete, "commerce.checkout", noPolicy))
       .toMatchObject({ allowed: false, blockerCode: "ENTITLEMENT_DENIED", source: "default_deny" });
@@ -174,5 +174,17 @@ describe("independent entitlement evaluator", () => {
       blockerCode: "ENTITLEMENT_DENIED",
       source: "default_deny",
     });
+  });
+});
+
+ describe("email-verified commerce", () => {
+  it.each(["commerce.purchase", "commerce.booking", "commerce.checkout"] as const)("allows %s without phone, profile or KYC", (capability) => {
+    expect(evaluateEntitlementDecision(facts(), capability, allowPolicy)).toMatchObject({ allowed: true });
+    expect(evaluateEntitlementDecision(facts({ emailVerified: false }), capability, allowPolicy)).toMatchObject({ allowed: false, blockerCode: "EMAIL_VERIFICATION_REQUIRED" });
+  });
+  it("keeps wallet top-up and basic AI phone-gated", () => {
+    for (const capability of ["wallet.top_up", "ai.basic_recommendation"] as const) {
+      expect(evaluateEntitlementDecision(facts(), capability, allowPolicy)).toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
+    }
   });
 });

@@ -20,7 +20,7 @@ type PaymentCandidate = {
 type CheckoutCandidate = {
   id: string;
   order_id: string;
-  user_id: string;
+  user_id: string | null;
   currency: string;
   total_amount: number | string;
   status: string;
@@ -29,7 +29,7 @@ type CheckoutCandidate = {
 
 type SettlementResult = {
   order_id: string;
-  user_id: string;
+  user_id: string | null;
   status: string;
   idempotent: boolean;
 };
@@ -152,7 +152,7 @@ export async function GET(request: Request) {
     const result = data as SettlementResult;
     if (outcome === 'succeeded' && !result.idempotent && result.status === 'paid') {
       try {
-        await enqueueUserTransactionEmail({
+        if (result.user_id) await enqueueUserTransactionEmail({
           userId: result.user_id,
           eventType: 'checkout_succeeded',
           eventKey: `toyyibpay-checkout:${eventId}`,

@@ -1,7 +1,8 @@
 import { requireStaffPermission } from "@/lib/staff-permissions/server";
 import { apiFail, apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
-import { campaignLocationSchema } from "@/lib/promotion-campaigns/validation";
-import { locationFailure, saveCampaignLocation } from "@/lib/admin/campaign-locations";
+import { campaignLocationMutationSchema } from "@/lib/promotion-campaigns/validation";
+import { locationFailure, protectedLocationParameters } from "@/lib/admin/campaign-locations";
+import { processEmailOutbox } from "@/lib/email/outbox";
 
 type Context = { params: Promise<{ id: string; locationId: string }> };
 
@@ -18,11 +19,14 @@ export async function PATCH(request: Request, context: Context) {
   const { id, locationId, valid } = await ids(context);
   if (!valid) return apiFail("INVALID_ID", "Location id is invalid", 422);
 
-  const parsed = await parseBody(request, campaignLocationSchema);
+  const parsed = await parseBody(request, campaignLocationMutationSchema);
   if (!parsed.ok) return parsed.response;
 
-  const { data, error } = await saveCampaignLocation(auth.db, id, locationId, parsed.data);
+  const { data, error } = await auth.db.rpc("save_promotion_campaign_location_protected", protectedLocationParameters(id, locationId, parsed.data));
   if (error) return locationFailure(error);
+  if (data?.notificationQueued) {
+    try { await processEmailOutbox(20); } catch { console.error("[event-notice] Delivery deferred to the outbox processor"); }
+  }
   return apiOk(data);
 }
 

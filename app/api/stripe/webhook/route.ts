@@ -37,15 +37,10 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;
 
-    if (!userId || !session.amount_total) {
-      log('error', '[stripe-webhook] Missing user_id metadata or amount_total', { requestId, sessionId: session.id });
-      return NextResponse.json({ error: 'Missing metadata', requestId }, { status: 400 });
-    }
-
     const db = createServiceClient();
 
     if (session.metadata?.payment_kind === 'order' && session.metadata.checkout_session_id) {
-      if (session.payment_status !== 'paid' || !session.currency) {
+      if (session.payment_status !== 'paid' || !session.amount_total || !session.currency) {
         return NextResponse.json({ error: 'Order payment is not confirmed as paid' }, { status: 409 });
       }
       const { error: environmentError } = await db.rpc('mark_checkout_payment_environment', {
@@ -69,11 +64,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Failed to finalize order', requestId }, { status: 500 });
       }
       const idempotent = Boolean(finalizeData && typeof finalizeData === 'object' && 'idempotent' in finalizeData && finalizeData.idempotent);
-      const orderId = finalizeData && typeof finalizeData === 'object' && 'order_id' in finalizeData && typeof finalizeData.order_id === 'string' ? finalizeData.order_id : session.metadata.order_id ?? null;
+      const orderId = finalizeData && typeof finalizeData === 'object' && 'order_id' in finalizeData && typeof finalizeData.order_id === 'string' ? finalizeData.order_id : null;
       if (!idempotent) {
         const paymentEmail = getPaymentEmailType('order');
         try {
-          await enqueueUserTransactionEmail({
+          if (userId) await enqueueUserTransactionEmail({
             userId,
             eventType: paymentEmail.eventType,
             eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
@@ -97,6 +92,11 @@ export async function POST(req: Request) {
         }).catch((notificationError) => log('error', '[vendor-notifications] webhook order event failed', { requestId, error: notificationError instanceof Error ? notificationError.message : String(notificationError) }));
       }
       return NextResponse.json({ received: true });
+    }
+
+    if (!userId || !session.amount_total) {
+      log('error', '[stripe-webhook] Missing user_id metadata or amount_total', { requestId, sessionId: session.id });
+      return NextResponse.json({ error: 'Missing metadata', requestId }, { status: 400 });
     }
 
     if (session.metadata?.payment_kind === 'event_promotion' && session.metadata.promotion_id) {

@@ -19,7 +19,7 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
-import { getBookingsForOrder, getOrder } from "@/backend/domains/commerce";
+
 import { getOutlets } from "@/backend/domains/catalogue";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -156,12 +156,15 @@ export default function OrderDetailPage() {
     let active = true;
     (async () => {
       try {
-        const [nextOrder, nextOutlets] = await Promise.all([getOrder(params.id), getOutlets()]);
+        const [nextOrder, nextOutlets] = await Promise.all([fetch(`/api/customer/orders/${params.id}`, { cache: "no-store" }).then(async response => {
+          if (!response.ok) return null;
+          return (await response.json()).data as { order: Order; bookings: Booking[] };
+        }), getOutlets()]);
         if (!active) return;
-        setOrder(nextOrder ?? null);
+        setOrder(nextOrder?.order ?? null);
         setOutlets(nextOutlets);
         if (nextOrder) {
-          const nextBookings = await getBookingsForOrder(nextOrder.id);
+          const nextBookings = nextOrder.bookings;
           if (active) setBookings(nextBookings);
         }
       } catch {
@@ -734,9 +737,9 @@ export default function OrderDetailPage() {
               {tCustomer("ui.orders.issuedTo")}
             </p>
             <p className="mt-1 font-bold text-sm text-gray-900">
-              {currentUser?.name || "Customer"}
+              {order.contact?.name || currentUser?.name || "Guest"}
             </p>
-            <p className="text-gray-600 mt-0.5">{currentUser?.email || ""}</p>
+            <p className="text-gray-600 mt-0.5">{order.contact?.email || currentUser?.email || ""}</p>
           </div>
         </div>
 

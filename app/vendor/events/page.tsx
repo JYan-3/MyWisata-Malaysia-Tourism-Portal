@@ -5,12 +5,15 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, PartyPopper } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { formatDate } from '@/lib/i18n/format';
+import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
 
 interface RegistrationSummary { campaignId: string; status: string }
 
 export default function VendorEventsPage() {
-  const { t } = useTranslation('vendor');
+  const { t, i18n } = useTranslation('vendor');
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { user } = useAuth();
   const vendorId = user?.activeVendorId;
 
@@ -71,7 +74,7 @@ export default function VendorEventsPage() {
                 <Link href={`/vendor/events/${campaign.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 hover:bg-secondary/40">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-foreground">{campaign.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{campaign.startsAt.slice(0, 10)} – {campaign.endsAt.slice(0, 10)} · {t('ui.events.locations.count', { count: campaign.locations.length })}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} · {t('ui.events.locations.count', { count: campaign.locations.length })}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     {joined > 0

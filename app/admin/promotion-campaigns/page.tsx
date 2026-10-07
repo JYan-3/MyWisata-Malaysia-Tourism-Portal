@@ -8,16 +8,18 @@ import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-s
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useAppDialog } from "@/components/providers/app-dialog";
-import { formatDateTime } from "@/lib/i18n/format";
+import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { getMalaysiaDateTimeRangeDefaults } from "@/lib/datetime/date-input";
-import { isInvalidDateTimeRange, malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
+import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
+import { isInvalidMalaysiaDateRange, isMalaysiaFullDayRange, malaysiaCalendarDateToIso } from "@/lib/datetime/malaysia";
 import type { PromotionCampaignStatus } from "@/lib/promotion-campaigns/types";
 import { EventLocationsEditor, toLocationPayload, type EditableLocation, type LocationDefaults } from "./event-locations-editor";
 
 type LocationRow = {
   id: string; name: string; address: string | null; lat: number | null; lng: number | null;
-  starts_on: string; ends_on: string; opens_at: string; closes_at: string; status?: string;
+  starts_on: string; ends_on: string; opens_at: string; closes_at: string; status?: string; updated_at?: string;
+  max_stalls?: number | null; applications_open?: boolean; applications_close_at?: string | null;
+  approvals_close_at?: string | null; setup_starts_at?: string | null; registrations?: { status: string }[];
 };
 type CampaignRow = {
   id: string; slug: string; title: string; summary: string; description: string;
@@ -34,6 +36,12 @@ function toEditableLocations(rows: LocationRow[] | undefined): EditableLocation[
       id: row.id, key: row.id, name: row.name, address: row.address ?? "", lat: row.lat, lng: row.lng,
       startsOn: row.starts_on, endsOn: row.ends_on, opensAt: row.opens_at.slice(0, 5), closesAt: row.closes_at.slice(0, 5),
       status: row.status === "cancelled" ? "cancelled" as const : "active" as const,
+      updatedAt: row.updated_at,
+      maxStalls: row.max_stalls ?? null, applicationsOpen: row.applications_open ?? false,
+      applicationsCloseAt: row.applications_close_at ?? null, approvalsCloseAt: row.approvals_close_at ?? null, setupStartsAt: row.setup_starts_at ?? null,
+      occupiedStalls: row.registrations?.filter((r) => r.status === "approved").length ?? 0,
+      pendingReviewCount: row.registrations?.filter((r) => r.status === "pending").length ?? 0,
+      changesRequestedCount: row.registrations?.filter((r) => r.status === "changes_requested").length ?? 0,
     }));
 }
 type DraftForm = {
@@ -51,7 +59,7 @@ function malaysiaLocalDateTime(value: string) {
 }
 
 function initialForm(): DraftForm {
-  const defaults = getMalaysiaDateTimeRangeDefaults();
+  const defaults = getMalaysiaDateRangeDefaults();
   return { title: "", slug: "", summary: "", description: "", startsAt: defaults.from, endsAt: defaults.to, posterUrl: null, operatingHours: "" };
 }
 
@@ -151,8 +159,8 @@ export default function PromotionCampaignsPage() {
       slug: campaign.slug,
       summary: campaign.summary,
       description: campaign.description,
-      startsAt: malaysiaLocalDateTime(campaign.starts_at),
-      endsAt: malaysiaLocalDateTime(campaign.ends_at),
+      startsAt: malaysiaLocalDateTime(campaign.starts_at).slice(0, 10),
+      endsAt: malaysiaLocalDateTime(campaign.ends_at).slice(0, 10),
       posterUrl: campaign.poster_url,
       operatingHours: campaign.operating_hours ?? "",
     });
@@ -208,7 +216,7 @@ export default function PromotionCampaignsPage() {
 
   async function saveDraft(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isInvalidDateTimeRange(form.startsAt, form.endsAt)) return;
+    if (isInvalidMalaysiaDateRange(form.startsAt, form.endsAt) || (hoursFrom && hoursTo && hoursTo <= hoursFrom)) return;
     if (!editing && formLocations.length === 0) {
       setError(t("promotionCampaigns.locations.required"));
       return;
@@ -216,9 +224,13 @@ export default function PromotionCampaignsPage() {
     setBusy(true);
     setError(null);
     try {
+      const datesUnchanged = editing
+        && form.startsAt === malaysiaLocalDateTime(editing.starts_at).slice(0, 10)
+        && form.endsAt === malaysiaLocalDateTime(editing.ends_at).slice(0, 10);
       const campaignPayload = {
         title: form.title, slug: form.slug, summary: form.summary, description: form.description,
-        startsAt: malaysiaDateTimeLocalToIso(form.startsAt), endsAt: malaysiaDateTimeLocalToIso(form.endsAt),
+        startsAt: datesUnchanged ? editing.starts_at : malaysiaCalendarDateToIso(form.startsAt, "start"),
+        endsAt: datesUnchanged ? editing.ends_at : malaysiaCalendarDateToIso(form.endsAt, "end"),
         posterUrl: form.posterUrl, operatingHours: form.operatingHours,
       };
       const response = await fetch(editing ? `/api/admin/promotion-campaigns/${editing.id}` : "/api/admin/promotion-campaigns", {
@@ -273,6 +285,7 @@ export default function PromotionCampaignsPage() {
         case "submit": confirmationMessage = t("promotionCampaigns.prompts.confirm.submit"); break;
         case "approve": confirmationMessage = t("promotionCampaigns.prompts.confirm.approve"); break;
         case "pause": confirmationMessage = t("promotionCampaigns.prompts.confirm.pause"); break;
+        case "resume": confirmationMessage = t("promotionCampaigns.prompts.confirm.resume"); break;
         case "archive": confirmationMessage = t("promotionCampaigns.prompts.confirm.archive"); break;
       }
       if (confirmationMessage && !await confirm(confirmationMessage)) return;
@@ -321,8 +334,8 @@ export default function PromotionCampaignsPage() {
               <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.slug")}<input required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" minLength={3} maxLength={120} value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value.toLowerCase().replace(/\s+/g, "-") })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
               <label className="text-sm font-semibold text-foreground md:col-span-2">{t("promotionCampaigns.form.summary")}<input required minLength={10} maxLength={240} value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
               <label className="text-sm font-semibold text-foreground md:col-span-2">{t("promotionCampaigns.form.description")}<textarea required minLength={10} maxLength={5000} rows={4} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.startsAt")}<input required type="datetime-local" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
-              <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.endsAt")}<input required type="datetime-local" value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
+              <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.startsAt")}<input required type="date" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
+              <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.endsAt")}<input required type="date" min={form.startsAt || undefined} value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal" /></label>
               <div className="md:col-span-2">
                 <span className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.operatingHours")}</span>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
@@ -330,6 +343,7 @@ export default function PromotionCampaignsPage() {
                   <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.form.operatingHoursTo")}<input required type="time" value={hoursTo} min={hoursFrom || undefined} onChange={(event) => updateOperatingHours(hoursFrom, event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 font-normal text-foreground" /></label>
                 </div>
                 {form.operatingHours && <p className="mt-1.5 text-xs text-muted-foreground">{form.operatingHours}</p>}
+                {hoursFrom && hoursTo && hoursTo <= hoursFrom && <p role="alert" className="mt-1.5 text-xs text-destructive">{t("promotionCampaigns.form.invalidOperatingHours")}</p>}
               </div>
             </div>
             <div>
@@ -359,8 +373,8 @@ export default function PromotionCampaignsPage() {
                 onSaved={load}
               />
             </div>
-            {isInvalidDateTimeRange(form.startsAt, form.endsAt) && <p role="alert" className="text-sm text-destructive">{t("promotionCampaigns.form.invalidRange")}</p>}
-            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || uploading || isInvalidDateTimeRange(form.startsAt, form.endsAt)}><Send size={15} /> {editing ? t("promotionCampaigns.form.saveChanges") : t("promotionCampaigns.form.saveDraft")}</Button><span className="self-center text-xs text-muted-foreground">{t("promotionCampaigns.form.timezone")}</span></div>
+            {isInvalidMalaysiaDateRange(form.startsAt, form.endsAt) && <p role="alert" className="text-sm text-destructive">{t("promotionCampaigns.form.invalidRange")}</p>}
+            <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || uploading || isInvalidMalaysiaDateRange(form.startsAt, form.endsAt) || Boolean(hoursFrom && hoursTo && hoursTo <= hoursFrom)}><Send size={15} /> {editing ? t("promotionCampaigns.form.saveChanges") : t("promotionCampaigns.form.saveDraft")}</Button><span className="self-center text-xs text-muted-foreground">{t("promotionCampaigns.form.timezone")}</span></div>
           </form>
 
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -378,8 +392,9 @@ export default function PromotionCampaignsPage() {
                 </div>
               )}
               <div className="min-w-0"><h3 className="break-words font-semibold text-foreground">{campaign.title}</h3><p className="mt-1 break-all text-xs text-muted-foreground">/customer/events/{campaign.slug}</p>{campaign.rejection_note && <p className="mt-2 break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span></p>}</div>
-              <div className="text-xs text-muted-foreground"><p><span>{t("promotionCampaigns.form.startsAt")}</span><span aria-hidden="true">: </span><span>{formatDateTime(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p><p className="mt-1"><span>{t("promotionCampaigns.form.endsAt")}</span><span aria-hidden="true">: </span><span>{formatDateTime(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p></div>
-              <span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
+              <div className="text-xs text-muted-foreground"><p><span>{t("promotionCampaigns.form.startsAt")}</span><span aria-hidden="true">: </span><span>{isMalaysiaFullDayRange(campaign.starts_at, campaign.ends_at) ? formatDate(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) : formatDateTime(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p><p className="mt-1"><span>{t("promotionCampaigns.form.endsAt")}</span><span aria-hidden="true">: </span><span>{isMalaysiaFullDayRange(campaign.starts_at, campaign.ends_at) ? formatDate(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) : formatDateTime(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p></div>
+              <div><span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
+              {campaign.locations?.length && campaign.locations.every((location) => location.status === "cancelled") ? <p className="text-xs text-destructive">{t("promotionCampaigns.allLocationsCancelled")}</p> : null}</div>
               <div className="flex flex-wrap gap-2 xl:justify-end"><Button type="button" variant="outline" size="sm" aria-expanded={openLocationsFor === campaign.id} onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}><MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}</Button>{(campaign.status === "draft" || campaign.status === "rejected") && <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
             </article>)}</div>}
           </section>

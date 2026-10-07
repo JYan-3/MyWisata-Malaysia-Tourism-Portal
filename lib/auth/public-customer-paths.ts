@@ -1,5 +1,8 @@
 const PUBLIC_CUSTOMER_ROOTS = [
   "/customer",
+  "/customer/cart",
+  "/customer/checkout",
+  "/customer/orders/access",
   "/customer/recommendations",
   "/customer/wallet",
   "/customer/affiliate",
@@ -21,6 +24,7 @@ const PUBLIC_CUSTOMER_PREFIXES = [
 
 /** Customer surfaces that are safe to render before sign-in. */
 export function isPublicCustomerPath(pathname: string): boolean {
+  if (/^\/customer\/(?:orders|checkout\/simulator)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname)) return true;
   if (PUBLIC_CUSTOMER_ROOTS.includes(pathname as (typeof PUBLIC_CUSTOMER_ROOTS)[number])) return true;
   return PUBLIC_CUSTOMER_PREFIXES.some((prefix) => {
     if (prefix.endsWith("/")) return pathname.startsWith(prefix);

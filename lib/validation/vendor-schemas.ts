@@ -380,7 +380,7 @@ export const pickupSlotSchema = z.object({
 }).strict().refine((slot) => slot.endsAt > slot.startsAt, { message: 'End time must be after start time', path: ['endsAt'] });
 
 export const campaignRegistrationSubmitSchema = z.object({
-  stallNumber: z.string().trim().min(1).max(40),
+  stallNumber: z.string().trim().max(40).default(''),
   stallDescription: z.string().trim().min(10).max(2000),
   stallPosterUrl: z.string().url().max(2000),
   products: z.array(campaignRegistrationProductSchema).min(1).max(30),

@@ -14,6 +14,7 @@ import type { Tier } from "@/lib/constants";
 
 export const CUSTOMER_CAPABILITY_KEY = {
   CHECKOUT: "commerce.checkout",
+  WALLET_TOP_UP: "wallet.top_up",
   BASIC_AI: "ai.basic_recommendation",
   RECOMMENDATION_SUBMIT: "recommendation.submit",
   AFFILIATE_LIMITED: "affiliate.limited",

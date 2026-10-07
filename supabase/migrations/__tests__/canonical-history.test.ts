@@ -229,6 +229,14 @@ const approvedForwardMigrations = [
   "20261004101605_restrict_public_storage_bucket_listing.sql",
   "20261004102210_remove_unscoped_legacy_table_writes.sql",
   "20261004111559_performance_advisor_safe_remediations.sql",
+  "20261002004600_email_verified_commerce.sql",
+  "20261002004601_guest_checkout_ownership.sql",
+  "20261002004602_guest_checkout_transactions.sql",
+  "20261002004603_guest_order_access.sql",
+  "20261007034900_event_management_guards.sql",
+  "20261007034901_event_vendor_change_notices.sql",
+  "20261007161233_event_booth_allocation_and_intake.sql",
+  "20261007175430_guest_refund_transaction_compatibility.sql",
 ];
 
 function migrationFiles() {

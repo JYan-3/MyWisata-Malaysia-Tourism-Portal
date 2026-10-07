@@ -35,7 +35,7 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
   };
 }
 
-export function buildCheckoutRequestHash(input: NormalizedCheckoutRequest): string {
+export function buildCheckoutRequestHash(input: NormalizedCheckoutRequest & { subject?: unknown; contact?: unknown }): string {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 

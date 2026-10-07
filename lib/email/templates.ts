@@ -31,7 +31,23 @@ export type VendorEmailType =
   | 'vendor_listing_review'
   | 'vendor_wallet_update'
   | 'vendor_account_update'
-  | 'vendor_permission_update';
+  | 'vendor_permission_update'
+  | 'vendor_event_update';
+
+export type EventVendorChange = {
+  kind?: 'approval' | 'arrangement';
+  eventTitle: string;
+  locationName: string;
+  startsOn: string;
+  endsOn: string;
+  changes: Array<{
+    field: 'stallNumber' | 'name' | 'address' | 'mapPin' | 'startsOn' | 'endsOn' | 'opensAt' | 'closesAt' | 'applicationsOpen' | 'applicationsCloseAt' | 'approvalsCloseAt' | 'setupStartsAt';
+    before: string;
+    after: string;
+  }>;
+  reason: string;
+  actionPath: '/vendor/events';
+};
 
 export type RecommendationEmailType = 'recommendation_approved';
 
@@ -42,6 +58,7 @@ export type TransactionEmailInput = {
   reference: string;
   occurredAt: string;
   reason?: string;
+  accessUrl?: string;
 };
 
 export type AccountEmailInput = {
@@ -58,6 +75,8 @@ export type VendorEmailInput = {
   reason: string;
   reference?: string | null;
   occurredAt: string;
+  eventChange?: EventVendorChange;
+  actionUrl?: string;
 };
 
 export type RecommendationEmailInput = {
@@ -168,6 +187,7 @@ export function renderTransactionEmail(input: TransactionEmailInput): RenderedEm
     `Reference: ${reference}`,
     `Time: ${occurredAt}`,
     reasonLine,
+    input.accessUrl ? `View your order: ${input.accessUrl}` : "",
     '',
     'This is an automated message from FYP App. Please do not reply with passwords or identity documents.',
   ].join('\n');
@@ -183,6 +203,7 @@ export function renderTransactionEmail(input: TransactionEmailInput): RenderedEm
     <tr><td><strong>Time</strong></td><td>${safeOccurredAt} (Malaysia time)</td></tr>
     ${reasonRow}
   </table>
+  ${input.accessUrl ? `<p><a href="${escapeHtml(input.accessUrl)}">View your order</a> — private link, valid for 7 days and usable once.</p>` : ""}
   <p>This is an automated message. Never reply with passwords or identity documents.</p>
 </body></html>`;
 
@@ -271,9 +292,11 @@ const VENDOR_SUBJECTS: Record<VendorEmailType, string> = {
   vendor_wallet_update: 'Vendor wallet update',
   vendor_account_update: 'Vendor account update',
   vendor_permission_update: 'Vendor permission update',
+  vendor_event_update: 'Your event arrangements changed',
 };
 
 export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
+  if (input.eventType === 'vendor_event_update') return renderEventVendorEmail(input);
   const subject = VENDOR_SUBJECTS[input.eventType];
   const name = input.recipientName?.trim() || 'there';
   const vendorName = sanitizeVendorText(input.vendorName.trim());
@@ -321,4 +344,35 @@ export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
 </body></html>`;
 
   return { subject, html, text };
+}
+
+function renderEventVendorEmail(input: VendorEmailInput): RenderedEmail {
+  const change = input.eventChange;
+  if (!change) throw new Error('Event change details are required');
+  // These are operational display values, including the real venue address.
+  // Do not use the provider-metadata sanitizer, which redacts addresses.
+  const clean = (value: string) => value
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[redacted]')
+    .replace(/\b(?:sk|rk|pk|pi|ch|cs|cus|acct|tok|whsec)_[A-Za-z0-9_-]+\b/g, '[redacted]')
+    .replace(/(?:https?:\/\/\S+\/storage\/\S+|(?:\/Users\/|\/var\/|\/tmp\/)\S+)/gi, '[redacted]')
+    .replace(/\b(?:password|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '[redacted]');
+  const fields: Record<EventVendorChange['changes'][number]['field'], string> = {
+    stallNumber: 'Stall', name: 'Venue name', address: 'Address', mapPin: 'Map pin',
+    startsOn: 'First date', endsOn: 'Last date', opensAt: 'Opening time', closesAt: 'Closing time',
+    applicationsOpen: 'Applications open', applicationsCloseAt: 'Applications close', approvalsCloseAt: 'Approvals close', setupStartsAt: 'Setup starts',
+  };
+  const subject = change.kind === 'approval' ? 'Your event participation is approved' : VENDOR_SUBJECTS.vendor_event_update;
+  const actionUrl = input.actionUrl || '/vendor/events';
+  const lines = [
+    `Hi ${clean(input.recipientName?.trim() || 'there')},`, subject,
+    `Vendor: ${clean(input.vendorName)}`, `Event: ${clean(change.eventTitle)}`,
+    `Venue: ${clean(change.locationName)}`, `Dates: ${clean(change.startsOn)} – ${clean(change.endsOn)}`,
+    ...change.changes.map((item) => `${fields[item.field]}: ${clean(item.before)} → ${clean(item.after)}`),
+    `Reason: ${clean(change.reason)}`, `View your latest arrangements: ${actionUrl}`,
+  ];
+  return {
+    subject,
+    text: lines.join('\n'),
+    html: `<!doctype html><html lang="en"><body>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}<p><a href="${escapeHtml(actionUrl)}">View event arrangements</a></p></body></html>`,
+  };
 }

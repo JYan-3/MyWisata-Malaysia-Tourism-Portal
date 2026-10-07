@@ -2,7 +2,7 @@ import { requireStaffPermission } from "@/lib/staff-permissions/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { campaignCreateSchema } from "@/lib/promotion-campaigns/validation";
 
-const CAMPAIGN_COLUMNS = "id,slug,title,summary,description,poster_url,operating_hours,status,starts_at,ends_at,created_by,approved_by,approved_at,rejection_note,created_at,updated_at,locations:promotion_campaign_locations(id,name,address,lat,lng,starts_on,ends_on,opens_at,closes_at,status)";
+const CAMPAIGN_COLUMNS = "id,slug,title,summary,description,poster_url,operating_hours,status,starts_at,ends_at,created_by,approved_by,approved_at,rejection_note,created_at,updated_at,locations:promotion_campaign_locations(id,name,address,lat,lng,starts_on,ends_on,opens_at,closes_at,status,updated_at,max_stalls,applications_open,applications_close_at,approvals_close_at,setup_starts_at,registrations:promotion_campaign_vendors!promotion_campaign_vendors_location_fkey(status))";
 
 function databaseFailure(error: { message?: string; code?: string } | null, fallback: string) {
   const message = (error?.message ?? "").toLowerCase();

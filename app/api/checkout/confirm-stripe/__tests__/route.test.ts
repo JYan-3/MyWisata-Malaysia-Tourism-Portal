@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   service: { rpc: vi.fn() },
 }));
 
+vi.mock('@/lib/checkout/order-access', () => ({ authorizeCheckoutSession: vi.fn(async () => ({userId: USER_ID,guestSubjectId:null,order:{id:ORDER_ID,user_id:USER_ID},session:{id:CHECKOUT_ID,order_id:ORDER_ID}})) }));
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })),
 }));
@@ -76,7 +78,7 @@ describe('POST /api/checkout/confirm-stripe', () => {
       payment_status: 'unpaid',
       amount_total: 5000,
       currency: 'myr',
-      metadata: { user_id: USER_ID, checkout_session_id: CHECKOUT_ID },
+      metadata: { user_id: USER_ID, checkout_session_id: CHECKOUT_ID, order_id:ORDER_ID,payment_kind:'order' },
     });
 
     const response = await POST(request());

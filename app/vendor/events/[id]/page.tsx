@@ -13,8 +13,9 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useAppDialog } from '@/components/providers/app-dialog';
-import { formatMYR } from '@/lib/i18n/format';
+import { formatDate, formatMYR } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import { formatDateTime } from '@/lib/i18n/format';
 import { formatEventDateRange, formatEventHours } from '@/lib/promotion-campaigns/locations';
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
 import { EventListingsManager, type RegistrationListing } from './event-listings-manager';
@@ -40,6 +41,7 @@ interface Registration {
   campaignId: string;
   locationId: string;
   stallNumber: string;
+  requestedStallNumber?: string | null;
   stallDescription: string;
   stallPosterUrl: string;
   status: 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'withdrawn' | 'removed';
@@ -92,6 +94,11 @@ const EMPTY_FORM = { stallNumber: '', stallDescription: '', stallPosterUrl: '' a
 export default function VendorEventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t, i18n } = useTranslation('vendor');
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { user, isEventVendor } = useAuth();
   const { showFeedback } = useActionFeedback();
@@ -205,7 +212,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
 
   function startForm(existing?: Registration) {
     if (existing) {
-      setForm({ stallNumber: existing.stallNumber, stallDescription: existing.stallDescription, stallPosterUrl: existing.stallPosterUrl });
+      setForm({ stallNumber: existing.requestedStallNumber ?? '', stallDescription: existing.stallDescription, stallPosterUrl: existing.stallPosterUrl });
       setPicks(existing.products.map((product) => ({
         key: product.id,
         kind: product.productId ? 'existing' : 'new',
@@ -403,7 +410,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
             <h1 className="text-xl font-bold text-foreground">{campaign.title}</h1>
             <p className="mt-2 text-sm text-muted-foreground">{campaign.description}</p>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-              <span>{campaign.startsAt.slice(0, 10)} – {campaign.endsAt.slice(0, 10)}</span>
+              <span>{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</span>
             </div>
           </div>
 
@@ -451,6 +458,11 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
 
           {selectedLocation && <>
           <h2 className="text-base font-bold text-foreground">{t('ui.events.locations.selected', { name: selectedLocation.name })}</h2>
+          <p className="text-xs text-muted-foreground">{t(selectedLocation.intake?.applicationsOpen ? 'ui.events.intakeOpen' : 'ui.events.intakeClosed')}</p>
+          {selectedLocation.intake?.applicationsCloseAt && <p className="text-xs text-muted-foreground">{t('ui.events.applicationDeadline')}: {formatDateTime(selectedLocation.intake.applicationsCloseAt, locale)}</p>}
+          {selectedLocation.intake?.approvalsCloseAt && <p className="text-xs text-muted-foreground">{t('ui.events.approvalDeadline')}: {formatDateTime(selectedLocation.intake.approvalsCloseAt, locale)}</p>}
+          {selectedLocation.intake?.setupStartsAt && <p className="text-xs text-muted-foreground">{t('ui.events.setupStarts')}: {formatDateTime(selectedLocation.intake.setupStartsAt, locale)}</p>}
+          {selectedLocation.intake?.remainingStalls === 0 && <p className="text-xs text-muted-foreground">{t('ui.events.noConfirmedSpaces')}</p>}
 
           {draftBanner && !editing && (
             <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
@@ -468,7 +480,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
                 <h2 className="text-sm font-semibold text-foreground">{t('ui.events.yourRegistration')}</h2>
                 <StatusBadge status={registration.status} />
               </div>
-              <p className="text-sm text-foreground">{t('ui.events.fields.stallNumber')}: {registration.stallNumber}</p>
+              <p className="text-sm text-foreground">{t(registration.status === 'approved' ? 'ui.events.fields.stallNumber' : 'ui.events.fields.preferredStallNumber')}: {registration.status === 'approved' ? registration.stallNumber : registration.requestedStallNumber || t('ui.events.adminAllocate')}</p>
               <p className="text-sm text-muted-foreground">{registration.stallDescription}</p>
               {vendorId && (registration.status === 'pending' || registration.status === 'approved') && registration.products.length > 0 && (
                 <EventListingsManager vendorId={vendorId} listings={registration.products} onSaved={load} />
@@ -490,7 +502,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
               {registration.status === 'changes_requested' && (
                 <>
                   {registration.changesRequestedReason && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-900/20 dark:text-amber-300">{t('ui.events.changesRequestedNote', { note: registration.changesRequestedReason })}</p>}
-                  <Button type="button" size="sm" variant="outline" onClick={() => startForm(registration)}>{t('ui.events.actions.editAndResubmit')}</Button>
+                  <Button type="button" size="sm" variant="outline" disabled={!selectedLocation.intake?.approvalsCloseAt || Date.parse(selectedLocation.intake.approvalsCloseAt) <= clock} onClick={() => startForm(registration)}>{t('ui.events.actions.editAndResubmit')}</Button>
                 </>
               )}
             </section>
@@ -498,15 +510,15 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
 
           {!registration && !editing && (selectedLocation.endsOn < malaysiaToday()
             ? <p className="text-sm text-muted-foreground">{t('ui.events.locations.endedNote')}</p>
-            : <Button type="button" onClick={() => startForm()}>{t('ui.events.actions.register')}</Button>)}
+            : <Button type="button" disabled={!selectedLocation?.intake?.applicationsOpen} onClick={() => startForm()}>{t('ui.events.actions.register')}</Button>)}
 
           {editing && (
             <form onSubmit={(event) => void submit(event)} className="space-y-4 rounded-xl border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground">{registration ? t('ui.events.editHeading') : t('ui.events.registerHeading')}</h2>
 
               <div>
-                <label htmlFor="stall-number" className="mb-1 block text-xs font-semibold text-muted-foreground">{t('ui.events.fields.stallNumber')}</label>
-                <Input id="stall-number" value={form.stallNumber} onChange={(e) => setForm((prev) => ({ ...prev, stallNumber: e.target.value }))} maxLength={40} required />
+                <label htmlFor="stall-number" className="mb-1 block text-xs font-semibold text-muted-foreground">{t('ui.events.fields.preferredStallNumber')}</label>
+                <Input id="stall-number" value={form.stallNumber} onChange={(e) => setForm((prev) => ({ ...prev, stallNumber: e.target.value }))} maxLength={40} />
               </div>
 
               <div>

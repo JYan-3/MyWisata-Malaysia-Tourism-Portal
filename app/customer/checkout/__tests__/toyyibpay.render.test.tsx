@@ -87,8 +87,9 @@ describe('ToyyibPay checkout presentation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (globalThis.window as unknown as { location: { search: string; href: string } }).location = {
+    (globalThis.window as unknown as { location: { search: string; href: string; assign?: (url: string) => void } }).location = {
       search: '', href: 'https://mywisata.example/customer/checkout',
+      assign: (url: string) => { (globalThis.window as unknown as { location: { href: string } }).location.href = url; },
     };
     mocks.gate.mockReturnValue(true);
     mocks.handleResponse.mockResolvedValue(false);
@@ -138,7 +139,7 @@ describe('ToyyibPay checkout presentation', () => {
   });
 
   it('shows a non-settling awaiting state after provider return even when the cart is empty', async () => {
-    (globalThis.window as unknown as { location: { search: string; href: string } }).location.search = '?toyyibpay_return=1&status_id=1';
+    (globalThis.window as unknown as { location: { search: string; href: string; assign?: (url: string) => void } }).location.search = '?toyyibpay_return=1&status_id=1';
     mocks.cart.mockReturnValue({ selectedItems: [], selectedKeys: new Set(), totals: () => ({ subtotal: 0, discount: 0, total: 0 }) });
     const container = document.createElement('div');
     document.body.appendChild(container);
