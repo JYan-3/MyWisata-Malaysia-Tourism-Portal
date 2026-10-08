@@ -152,6 +152,43 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(optionFor(capabilitySelect, "wallet.request_withdrawal").disabled).toBe(true);
   });
 
+  it("selects a named user and submits the UID only in the request", async () => {
+    const chosenId = "11111111-1111-4111-8111-111111111111";
+    const otherId = "22222222-2222-4222-8222-222222222222";
+    const baseFetch = mocks.fetch.getMockImplementation()!;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/admin/access-control/user-candidates?search=Alex") {
+        return response({ data: { candidates: [
+          { id: chosenId, name: "Alex Tan", email: "alex.one@example.com" },
+          { id: otherId, name: "Alex Tan", email: "alex.two@example.com" },
+        ] }, error: null });
+      }
+      if (url === "/api/admin/access-control/assignments" && init?.method === "POST") {
+        return response({ data: { assignmentId: "assignment-1", auditEventId: "audit-1", generation: 2 }, error: null });
+      }
+      return baseFetch(url, init);
+    });
+
+    await act(async () => { root?.render(<AssignmentsTab focusId={null} onViewAudit={vi.fn()} />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
+    const reviewButton = findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.reviewAssignment"));
+    expect(reviewButton.disabled).toBe(true);
+    const searchInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.assignments.userSearchPlaceholder");
+    await selectValue(searchInput, "Alex");
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 280)); });
+    const candidate = findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("alex.two@example.com"));
+    await click(candidate);
+    expect(container.textContent).toContain("alex.two@example.com");
+    expect(container.textContent).not.toContain(chosenId);
+    expect(container.textContent).not.toContain(otherId);
+    await selectValue(findOne(container, (element) => element.tagName === "TEXTAREA"), "Temporary support exception");
+    await click(reviewButton);
+    await click(findOne(container, (element) => element.getAttribute("data-testid") === "confirm-assignment"));
+    const request = mocks.fetch.mock.calls.find(([url, init]) => url === "/api/admin/access-control/assignments" && init?.method === "POST");
+    expect(JSON.parse(request?.[1]?.body as string)).toMatchObject({ subjectType: "user", subjectId: otherId });
+  });
+
   it("clears stale capability choices when the governed catalogue cannot be refreshed", async () => {
     let capabilityRequestCount = 0;
     mocks.fetch.mockImplementation(async (url: string) => {
@@ -191,10 +228,13 @@ describe("AssignmentsTab capability eligibility", () => {
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
 
+    const subjectTypeSelect = findElements(container, (element) =>
+      element.tagName === "SELECT" && element.textContent.includes("accessControl.subjectTypes.role")).at(-1)!;
+    await selectValue(subjectTypeSelect, "role");
     const subjectInput = findOne(container, (element) =>
       element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.assignments.subjectPlaceholder");
     const reasonInput = findOne(container, (element) => element.tagName === "TEXTAREA");
-    await selectValue(subjectInput, "customer-user-id");
+    await selectValue(subjectInput, "customer");
     await selectValue(reasonInput, "Temporary customer support exception");
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.reviewAssignment")));

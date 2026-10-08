@@ -149,6 +149,19 @@
     "eyebrow": "安全治理",
     "title": "访问控制",
     "description": "管理能力元数据、版本化策略、定向分配以及关联的全平台审计历史。",
+    "capabilityNames": {
+      "platform_browse": "登录后浏览",
+      "commerce_booking": "顾客预订",
+      "commerce_purchase": "顾客购买",
+      "commerce_checkout": "顾客结账",
+      "ai_basic_recommendation": "基础 AI 推荐",
+      "recommendation_submit": "提交推荐",
+      "affiliate_limited": "有限联盟权限",
+      "affiliate_full": "完整联盟权限",
+      "affiliate_earn_commission": "赚取联盟佣金",
+      "wallet_request_withdrawal": "申请提现",
+      "wallet_approve_withdrawal": "批准提现"
+    },
     "tabs": {
       "overview": "概览",
       "capabilities": "能力",
@@ -439,7 +452,7 @@
       "confirm": "确认治理操作"
     },
     "capabilities": {
-      "key": "不可变键",
+      "key": "能力",
       "category": "类别",
       "risk": "风险",
       "visibility": "客户可见",
@@ -475,6 +488,7 @@
       "impactPreview": "影响预览",
       "impactSummary": "{{effect}} 覆盖 {{groups}} 个替代组和 {{requirements}} 个条件。硬性保护仍然适用。",
       "requirementCount": "个条件",
+      "requirementSummary": "分组 {{group}}：{{fact}} {{operator}} {{value}}",
       "compare": "比较",
       "actionReason": "确认此高影响操作前，请填写原因。"
     },
@@ -513,7 +527,14 @@
       "hardGuardNote": "允许分配绝不会绕过验证、账户、所有权或资金硬性保护。",
       "subjectType": "主体类型",
       "subjectId": "主体标识",
-      "subjectPlaceholder": "UUID、角色、方案或合作伙伴标识",
+      "subjectPlaceholder": "角色、方案或合作伙伴标识",
+      "selectUser": "选择用户",
+      "userSearchPlaceholder": "输入姓名或邮箱搜索",
+      "searchingUsers": "正在搜索用户…",
+      "noUsers": "找不到匹配的用户。",
+      "userSearchError": "无法搜索用户。",
+      "changeUser": "更换用户",
+      "unavailableUser": "用户不可用",
       "capability": "能力",
       "selectCapability": "选择可用能力",
       "systemManagedOption": "由系统管理，不能人工允许",
@@ -3101,6 +3122,7 @@
     }
   },
   "promotionCampaigns": {
+    "allLocationsCancelled": "所有地点已取消，此活动已从活动发现页面隐藏。",
     "eyebrow": "顾客活动",
     "title": "商家市集活动管理",
     "description": "设置商家市集活动并发布——活动发布后，商家自行注册摊位加入。",
@@ -3113,13 +3135,14 @@
       "slug": "页面地址",
       "summary": "简短介绍",
       "description": "详细介绍",
-      "startsAt": "开始时间",
-      "endsAt": "结束时间",
-      "operatingHours": "营业时间",
-      "operatingHoursFrom": "开始营业",
-      "operatingHoursTo": "结束营业",
-      "timezone": "所有时间均为马来西亚时间（UTC+08:00）。",
-      "invalidRange": "结束时间必须晚于开始时间。",
+      "startsAt": "首日日期",
+      "endsAt": "最后一天日期",
+      "operatingHours": "每天营业时间",
+      "operatingHoursFrom": "每天开始营业",
+      "operatingHoursTo": "每天结束营业",
+      "timezone": "日期与每天营业时间均为马来西亚时间（UTC+08:00）。",
+      "invalidRange": "最后一天不能早于首日。",
+      "invalidOperatingHours": "每天结束营业时间必须晚于开始营业时间。",
       "poster": "活动海报",
       "choosePoster": "选择图片",
       "removePoster": "移除海报",
@@ -3129,6 +3152,33 @@
       "changesSaved": "更改已保存。"
     },
     "locations": {
+      "changeReason": "修改原因",
+      "impact": "受影响预订：{{affectedReservations}} · 商家：{{affectedVendors}} · 不兼容时段：{{incompatibleSlots}}",
+      "previewConfirm": "此修改会通知 {{affectedVendors}} 位商家负责人。确定保存安排？",
+      "notificationQueued": "保存成功，商家邮件及站内通知已加入发送队列。",
+      "errors": {
+        "CONFLICT": "安排已被修改，请刷新后再编辑。",
+        "LOCATION_CHANGE_HAS_RESERVATIONS": "此修改会影响已有预订或正在付款的订单，请先处理预订再修改安排。",
+        "LOCATION_CHANGE_HAS_SLOTS": "请先调整不兼容的取货时段，再修改日期或营业时间。",
+        "LOCATION_CANCELLED": "此地点已取消，不能修改。",
+        "LOCATION_ENDED": "此地点已结束营业。",
+        "REASON_REQUIRED": "请填写 5–500 个字符的原因，以通知参与商家。",
+        "NOTICE_RECIPIENT_UNAVAILABLE": "商家负责人无法接收通知，请先检查其联系资料。",
+        "INVALID_STATE": "当前安排不能修改。",
+        "VALIDATION_FAILED": "请检查活动安排资料。",
+        "SAVE_FAILED": "无法保存活动安排。",
+        "OUTSIDE_EVENT": "地点日期必须在活动日期范围内。",
+        "FORBIDDEN": "你没有权限修改此安排。",
+        "NOT_FOUND": "找不到活动、地点或报名。",
+        "STALL_CONFLICT": "这个摊位已分配给同地点另一家商家。",
+        "CAPACITY_UNCONFIRMED": "请先确认场地容量，再批准商家。",
+        "CAPACITY_FULL": "已没有可分配的摊位。",
+        "CAPACITY_BELOW_OCCUPIED": "容量不能少于已分配的摊位数。",
+        "APPLICATIONS_CLOSED": "新报名已截止。",
+        "APPROVALS_CLOSED": "审批截止时间已过。",
+        "INTAKE_SCHEDULE_INVALID": "请依次设置报名截止、审批截止、布展开始，且布展必须早于首日开门。",
+        "SETUP_STARTED": "布展已经开始，不能重新开放或延长报名审批。"
+      },
       "title": "活动地点",
       "description": "每个地点都有各自的日期和每日营业时间。商家按地点注册。",
       "empty": "还没有地点。发布前请至少添加一个。",
@@ -3153,7 +3203,7 @@
       "toggle_one": "活动地点（{{count}}）",
       "toggle_other": "活动地点（{{count}}）",
       "required": "发布前请至少添加一个地点。",
-      "invalid": "请检查地点：需要填写名称，最后一天不能早于首日，结束营业时间必须晚于开始时间。",
+      "invalid": "请检查地点名称、日期、每日营业时间和容量。报名截止不得晚于审批截止，审批不得晚于布展，布展必须早于首日开门。",
       "saveError": "无法保存此地点。",
       "savedAsDraft": "活动已保存为草稿。请在下方列表中添加地点，然后发布。",
       "cancelLocation": "取消地点",
@@ -3164,7 +3214,18 @@
       "changesSaved": "更改已保存。",
       "search": "搜索地点",
       "searchPlaceholder": "搜索地点或地址，或拖动红色标记",
-      "searchEmpty": "未找到地点，请尝试其他名称。"
+      "searchEmpty": "未找到地点，请尝试其他名称。",
+      "maxStalls": "最多可分配摊位数",
+      "capacityUnconfirmed": "容量待确认。确认场地容量后才能批准商家。",
+      "capacitySummary": "已分配 {{occupied}} / {{capacity}} 个摊位 · 剩余 {{remaining}} 个",
+      "reviewCounts": "待审核 {{pending}} 家 · 待补资料 {{corrections}} 家",
+      "intakeOpen": "接受新报名",
+      "intakeClosed": "新报名已关闭",
+      "acceptApplications": "接受商家新报名",
+      "applicationsCloseAt": "报名截止（马来西亚时间）",
+      "approvalsCloseAt": "审批截止（马来西亚时间）",
+      "setupStartsAt": "布展开始（马来西亚时间）",
+      "intakeScheduleHint": "报名截止 → 审批截止 → 布展开始 → 首日开门。关闭报名不会暂停顾客预订。"
     },
     "list": {
       "title": "活动工作流",
@@ -3191,16 +3252,17 @@
       "submit": "发布",
       "approve": "批准",
       "reject": "要求修改",
-      "pause": "暂停",
+      "pause": "暂停新预订",
       "resume": "恢复",
       "archive": "归档"
     },
     "prompts": {
       "rejectReason": "请说明需要修改的内容（至少10个字符）。",
       "confirm": {
+        "resume": "确定恢复新预订？系统将检查有效地点和活动日期。",
         "submit": "确定立即发布此活动吗？发布后顾客将立即可见，商家也可以开始注册。",
         "approve": "确定批准发布此活动吗？",
-        "pause": "确定立即暂停此活动吗？",
+        "pause": "确定暂停新预订？已有预订仍然有效，顾客仍可取货。",
         "archive": "确定归档此活动吗？"
       }
     },
@@ -3213,6 +3275,14 @@
     }
   },
   "eventRegistrations": {
+    "changeStall": "修改摊位号",
+    "stallNumberLabel": "新摊位号",
+    "changeReason": "修改原因",
+    "confirmStallChange": "保存摊位修改",
+    "stallChangeInvalid": "请填写摊位号，以及至少 5 个字符的修改原因。",
+    "notificationQueued": "保存成功，商家邮件及站内通知已加入发送队列。",
+    "stallUnchanged": "摊位号没有变化。",
+    "stallNotificationDescription": "修改成功后，会通过邮件及站内通知告知商家负责人原摊位号和新摊位号。",
     "eyebrow": "治理",
     "title": "活动摊位注册",
     "description": "在上线前审核商家市集活动的摊位注册。",
@@ -3227,7 +3297,7 @@
     "productsHeading": "此摊位售卖的商品",
     "confirm": {
       "approveTitle": "批准此摊位注册？",
-      "approveDescription": "商家的摊位将显示在活动公开页面上。",
+      "approveDescription": "确认批准并分配摊位 {{number}}，系统会通知商家负责人。",
       "requestChangesTitle": "要求商家修改？",
       "requestChangesDescription": "商家将看到您的备注，并可修改后重新提交。",
       "rejectTitle": "拒绝此摊位注册？",
@@ -3285,7 +3355,11 @@
     "closedNote": {
       "withdrawn": "商家已退出：{{note}}",
       "removed": "已从此地点移除：{{note}}"
-    }
+    },
+    "confirmedStall": "正式分配摊位号",
+    "confirmedStallRequired": "请填写正式分配的摊位号，再批准。",
+    "preferredStall": "希望的摊位号：{{number}}",
+    "adminAllocate": "由 Admin 分配"
   },
   "announcements": {
     "eyebrow": "治理",

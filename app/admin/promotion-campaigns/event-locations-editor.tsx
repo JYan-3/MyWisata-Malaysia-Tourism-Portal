@@ -1,14 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Ban, CalendarDays, Clock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { MapView } from "@/components/map/map-view";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { LocationSearch, type PlaceHit } from "./location-search";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { campaignLocationSchema } from "@/lib/promotion-campaigns/validation";
+import { malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
+import { formatDateTime } from "@/lib/i18n/format";
+import { getMalaysiaDateTimeLocalValue } from "@/lib/datetime/date-input";
 import { formatEventDateRange, formatEventHours } from "@/lib/promotion-campaigns/locations";
 
 export type EditableLocation = {
@@ -25,6 +30,15 @@ export type EditableLocation = {
   closesAt: string;
   /** Cancelled locations stay listed but can no longer be edited. */
   status?: "active" | "cancelled";
+  updatedAt?: string;
+  maxStalls?: number | null;
+  applicationsOpen?: boolean;
+  applicationsCloseAt?: string | null;
+  approvalsCloseAt?: string | null;
+  setupStartsAt?: string | null;
+  occupiedStalls?: number;
+  pendingReviewCount?: number;
+  changesRequestedCount?: number;
 };
 
 export type LocationDefaults = Pick<EditableLocation, "startsOn" | "endsOn" | "opensAt" | "closesAt">;
@@ -52,14 +66,16 @@ export function toLocationPayload(location: EditableLocation) {
     endsOn: location.endsOn,
     opensAt: location.opensAt,
     closesAt: location.closesAt,
+    ...(location.maxStalls !== undefined ? { maxStalls: location.maxStalls } : {}),
+    ...(location.applicationsOpen !== undefined ? { applicationsOpen: location.applicationsOpen } : {}),
+    ...(location.applicationsCloseAt !== undefined ? { applicationsCloseAt: location.applicationsCloseAt } : {}),
+    ...(location.approvalsCloseAt !== undefined ? { approvalsCloseAt: location.approvalsCloseAt } : {}),
+    ...(location.setupStartsAt !== undefined ? { setupStartsAt: location.setupStartsAt } : {}),
   };
 }
 
 function isValid(location: EditableLocation) {
-  return location.name.trim().length >= 2
-    && Boolean(location.startsOn && location.endsOn && location.opensAt && location.closesAt)
-    && location.endsOn >= location.startsOn
-    && location.closesAt > location.opensAt;
+  return campaignLocationSchema.safeParse(toLocationPayload(location)).success;
 }
 
 export function EventLocationsEditor({ campaignId, locations, defaults, onLocalChange, onSaved, disabled = false }: Props) {
@@ -68,19 +84,28 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [draft, setDraft] = useState<EditableLocation | null>(null);
   const [busy, setBusy] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   const [error, setError] = useState<string | null>(null);
+  const [changeReason, setChangeReason] = useState("");
+  const [impact, setImpact] = useState<{ affectedReservations: number; affectedVendors: number; incompatibleSlots: number } | null>(null);
   const [searchText, setSearchText] = useState("");
   const reverseRequest = useRef(0);
   const { showFeedback } = useActionFeedback();
 
   function openDraft(location: EditableLocation) {
     setError(null);
+    setChangeReason("");
+    setImpact(null);
     setSearchText(location.address);
     setDraft(location);
   }
 
   function startAdd() {
-    openDraft({ id: null, key: `new-${Date.now()}`, name: "", address: "", lat: null, lng: null, ...defaults });
+    openDraft({ id: null, key: `new-${Date.now()}`, name: "", address: "", lat: null, lng: null, maxStalls: null, applicationsOpen: false, applicationsCloseAt: null, approvalsCloseAt: null, setupStartsAt: null, ...defaults });
   }
 
   /** A search result drops the pin there and fills an empty address. */
@@ -121,16 +146,35 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
       const url = draft.id
         ? `/api/admin/promotion-campaigns/${campaignId}/locations/${draft.id}`
         : `/api/admin/promotion-campaigns/${campaignId}/locations`;
+      let expectedUpdatedAt = draft.updatedAt;
+      if (draft.id) {
+        if (!expectedUpdatedAt) throw new Error(t("promotionCampaigns.locations.errors.CONFLICT"));
+        const previewResponse = await fetch(`${url}/preview`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...toLocationPayload(draft), expectedUpdatedAt }),
+        });
+        const preview = await previewResponse.json();
+        if (!previewResponse.ok) throw new Error(t(`promotionCampaigns.locations.errors.${preview.error?.code || "SAVE_FAILED"}`));
+        setImpact(preview.data);
+        expectedUpdatedAt = preview.data.locationUpdatedAt;
+        if (preview.data.blockingReasons?.length) throw new Error(t(`promotionCampaigns.locations.errors.${preview.data.blockingReasons[0]}`));
+        const original = locations.find((location) => location.id === draft.id);
+        const changed = !original || JSON.stringify(toLocationPayload(original)) !== JSON.stringify(toLocationPayload(draft));
+        if (changed && (preview.data.affectedVendors > 0 || preview.data.requiresReason)) {
+          if (changeReason.trim().length < 5) throw new Error(t("promotionCampaigns.locations.errors.REASON_REQUIRED"));
+          if (preview.data.affectedVendors > 0 && !await confirm(t("promotionCampaigns.locations.previewConfirm", { affectedVendors: Number(preview.data.affectedVendors) }))) return;
+        }
+      }
       const response = await fetch(url, {
         method: draft.id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toLocationPayload(draft)),
+        body: JSON.stringify({ ...toLocationPayload(draft), ...(draft.id ? { expectedUpdatedAt, ...(changeReason.trim() ? { reason: changeReason.trim() } : {}) } : {}) }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error?.message || t("promotionCampaigns.locations.saveError"));
+      if (!response.ok) throw new Error(t(`promotionCampaigns.locations.errors.${payload.error?.code || "SAVE_FAILED"}`));
       setDraft(null);
       await onSaved?.();
-      showFeedback("success", t("promotionCampaigns.locations.changesSaved"));
+      showFeedback("success", t(payload.data?.notificationQueued ? "promotionCampaigns.locations.notificationQueued" : "promotionCampaigns.locations.changesSaved"));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("promotionCampaigns.locations.saveError"));
     } finally {
@@ -209,6 +253,17 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
                   <span className="flex items-center gap-1"><CalendarDays size={12} aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
                   <span className="flex items-center gap-1"><Clock size={12} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
                 </p>
+                <p className="mt-1 pl-5 text-xs text-muted-foreground">{location.maxStalls == null
+                  ? t("promotionCampaigns.locations.capacityUnconfirmed")
+                  : t("promotionCampaigns.locations.capacitySummary", { occupied: location.occupiedStalls ?? 0, capacity: location.maxStalls,
+                    remaining: Math.max(0, location.maxStalls - (location.occupiedStalls ?? 0)) })}</p>
+                <p className="mt-1 pl-5 text-xs text-muted-foreground">{t("promotionCampaigns.locations.reviewCounts", {
+                  pending: location.pendingReviewCount ?? 0, corrections: location.changesRequestedCount ?? 0 })}</p>
+                <p className="mt-1 pl-5 text-xs text-muted-foreground">{t(location.applicationsOpen && location.applicationsCloseAt && Date.parse(location.applicationsCloseAt) > clock
+                  ? "promotionCampaigns.locations.intakeOpen" : "promotionCampaigns.locations.intakeClosed")}</p>
+                {location.applicationsCloseAt && <p className="mt-1 pl-5 text-xs text-muted-foreground">{t("promotionCampaigns.locations.applicationsCloseAt")}: {formatDateTime(location.applicationsCloseAt, locale)}</p>}
+                {location.approvalsCloseAt && <p className="mt-1 pl-5 text-xs text-muted-foreground">{t("promotionCampaigns.locations.approvalsCloseAt")}: {formatDateTime(location.approvalsCloseAt, locale)}</p>}
+                {location.setupStartsAt && <p className="mt-1 pl-5 text-xs text-muted-foreground">{t("promotionCampaigns.locations.setupStartsAt")}: {formatDateTime(location.setupStartsAt, locale)}</p>}
               </div>
               {!disabled && location.status !== "cancelled" && (
                 <div className="flex flex-wrap gap-2">
@@ -233,6 +288,23 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
       {draft ? (
         <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/[0.03] p-4">
           <div className="grid gap-3 md:grid-cols-2">
+            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.maxStalls")}
+              <input type="number" min="1" step="1" value={draft.maxStalls ?? ""} className={inputClass}
+                onChange={(event) => update({ maxStalls: event.target.value ? Number(event.target.value) : null })} />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" checked={draft.applicationsOpen ?? false} onChange={(event) => update({ applicationsOpen: event.target.checked })} />
+              {t("promotionCampaigns.locations.acceptApplications")}
+            </label>
+            {([{ field: "applicationsCloseAt", label: t("promotionCampaigns.locations.applicationsCloseAt") },
+              { field: "approvalsCloseAt", label: t("promotionCampaigns.locations.approvalsCloseAt") },
+              { field: "setupStartsAt", label: t("promotionCampaigns.locations.setupStartsAt") }] as const).map(({ field, label }) => (
+              <label key={field} className="text-xs font-semibold text-muted-foreground">{label}
+                <input type="datetime-local" className={inputClass} value={draft[field] ? getMalaysiaDateTimeLocalValue(new Date(draft[field]!)) : ""}
+                  onChange={(event) => update({ [field]: event.target.value ? malaysiaDateTimeLocalToIso(event.target.value) : null })} />
+              </label>
+            ))}
+            <p className="text-xs text-muted-foreground md:col-span-2">{t("promotionCampaigns.locations.intakeScheduleHint")}</p>
             <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.name")}
               <input value={draft.name} maxLength={120} onChange={(event) => update({ name: event.target.value })} className={inputClass} />
             </label>
@@ -278,6 +350,13 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
               </Button>
             )}
           </div>
+          {draft.id && (
+            <label className="block text-sm font-semibold text-foreground">
+              {t("promotionCampaigns.locations.changeReason")}
+              <Textarea className="mt-1" value={changeReason} maxLength={500} onChange={(event) => setChangeReason(event.target.value)} />
+            </label>
+          )}
+          {impact && <p role="status" className="text-xs text-muted-foreground">{t("promotionCampaigns.locations.impact", impact)}</p>}
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
             <Button type="button" size="sm" disabled={busy} onClick={() => void saveDraft()}>{t("promotionCampaigns.locations.save")}</Button>

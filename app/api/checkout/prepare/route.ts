@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import { resolveCheckoutSubject, resolveCheckoutContact } from '@/lib/checkout/subject';
 import { parseBody, checkoutPrepareSchema } from '@/lib/validation/schemas';
 import { buildCheckoutRequestHash, normalizeCheckoutRequest } from '@/lib/checkout/idempotency';
 import { getCachedActivities } from '@/lib/cache/catalogue-cache';
@@ -7,8 +7,6 @@ import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import { planCheckoutPayment, startCheckoutPayment } from '@/lib/checkout/start-payment';
-import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
-import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -28,47 +26,38 @@ function relation<T>(value: Relation<T>): T | null {
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return customerCapabilityFailure(
-    CUSTOMER_CAPABILITY.CHECKOUT,
-    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT),
-    'Sign in before checkout',
-  )!;
-
-  const checkoutDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.CHECKOUT);
-  const checkoutFailure = customerCapabilityFailure(
-    CUSTOMER_CAPABILITY.CHECKOUT,
-    checkoutDecision,
-    'Phone verification is required before checkout',
-  );
-  if (checkoutFailure) return checkoutFailure;
-
-  const parsed = await parseBody(request, checkoutPrepareSchema);
+  const context = await resolveCheckoutSubject(request);
+  if (!context.ok) return context.response;
+  const { db, subject } = context;
+  const parsed = await parseBody(request, checkoutPrepareSchema, context.subject.kind === 'guest' ? { maxBytes: 32768 } : {});
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+  const contact = await resolveCheckoutContact(context, body.contact);
+  if (!contact) return privateCheckoutJson({ error: { code: 'CONTACT_REQUIRED', message: 'Enter a valid contact email.' } }, { status: 422 });
+  if (subject.kind === 'guest' && (body.voucherCode || body.claimId || ['wallet', 'wallet_split'].includes(body.paymentMethod))) return privateCheckoutJson({ error: { code: 'GUEST_ACCOUNT_FEATURE_DENIED', message: 'Sign in to use account benefits.' } }, { status: 403 });
+  const user = { subject, contact };
   const normalized = normalizeCheckoutRequest(body);
   const planned = planCheckoutPayment(normalized.paymentMethod, normalized.paymentProvider ?? undefined, user);
   if (!planned.ok) return planned.response;
   const { walletSplit } = planned.plan;
-  const requestHash = buildCheckoutRequestHash(normalized);
+  const requestHash = buildCheckoutRequestHash({ ...normalized, subject, contact });
 
-  const { data: cart, error: cartError } = await db.from('carts').select('id').eq('user_id', user.id).maybeSingle();
-  if (cartError) return NextResponse.json({ error: cartError.message }, { status: 500 });
-  if (!cart) return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+  const { data: cart, error: cartError } = await db.from('carts').select('id').eq(subject.kind === 'account' ? 'user_id' : 'guest_subject_id', subject.kind === 'account' ? subject.userId : subject.guestSubjectId).maybeSingle();
+  if (cartError) return privateCheckoutJson({ error: { code: 'CART_LOOKUP_FAILED', message: 'Unable to load cart.' } }, { status: 500 });
+  if (!cart) return privateCheckoutJson({ error: 'Cart is empty' }, { status: 400 });
 
   const { data: rows, error: rowsError } = await db
     .from('cart_items')
     .select('id,variant_id,slot_id,outlet_id,quantity,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
     .eq('cart_id', cart.id)
     .order('created_at');
-  if (rowsError) return NextResponse.json({ error: rowsError.message }, { status: 500 });
+  if (rowsError) return privateCheckoutJson({ error: { code: 'CART_LOOKUP_FAILED', message: 'Unable to load cart items.' } }, { status: 500 });
 
   let activities;
   try {
     activities = await getCachedActivities();
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load catalogue' }, { status: 503 });
+  } catch {
+    return privateCheckoutJson({ error: { code: 'PRODUCT_LOOKUP_FAILED', message: 'Unable to load catalogue.' } }, { status: 503 });
   }
   const activityMap = new Map(activities.map((activity) => [activity.id, activity]));
   const typedRows = (rows ?? []) as unknown as CartRow[];
@@ -81,7 +70,7 @@ export async function POST(request: Request) {
     const key = `${productId}|${row.variant_id ?? ''}|${row.slot_id ?? ''}|${row.outlet_id ?? ''}`;
     return !body.selectedKeys?.length || body.selectedKeys.includes(key);
   });
-  if (!selectedRows.length) return NextResponse.json({ error: 'Select at least one cart item' }, { status: 400 });
+  if (!selectedRows.length) return privateCheckoutJson({ error: 'Select at least one cart item' }, { status: 400 });
 
   let voucher: Voucher | undefined;
   if (body.voucherCode) {
@@ -92,8 +81,8 @@ export async function POST(request: Request) {
       .eq('review_status', 'approved')
       .in('redemption_mode', ['online', 'both'])
       .maybeSingle();
-    if (voucherError) return NextResponse.json({ error: voucherError.message }, { status: 500 });
-    if (!voucherRow) return NextResponse.json({ error: 'Voucher is not available' }, { status: 422 });
+    if (voucherError) return privateCheckoutJson({ error: { code: 'VOUCHER_LOOKUP_FAILED', message: 'Unable to load voucher.' } }, { status: 500 });
+    if (!voucherRow) return privateCheckoutJson({ error: 'Voucher is not available' }, { status: 422 });
     voucher = {
       id: voucherRow.id,
       code: voucherRow.code,
@@ -121,7 +110,7 @@ export async function POST(request: Request) {
   const { data: productRows, error: productRowsError } = await db.from('products')
     .select('id,outlet_id,vendor_id,name,cover_url,base_price,requires_booking,categories(slug)')
     .in('id', productIds);
-  if (productRowsError) return NextResponse.json({
+  if (productRowsError) return privateCheckoutJson({
     error: {
       code: 'PRODUCT_LOOKUP_FAILED',
       message: 'We could not verify cart items right now. Please try again shortly.',
@@ -149,7 +138,7 @@ export async function POST(request: Request) {
       .in('product_id', sharedOutletProductIds)
       .in('outlet_id', sharedOutletIds)
       .eq('status', 'active');
-    if (error) return NextResponse.json({
+    if (error) return privateCheckoutJson({
       error: {
         code: 'PRODUCT_LOOKUP_FAILED',
         message: 'We could not verify cart items right now. Please try again shortly.',
@@ -211,7 +200,7 @@ export async function POST(request: Request) {
       },
     };
   });
-  if (candidateLines.some((line) => line === null)) return NextResponse.json({
+  if (candidateLines.some((line) => line === null)) return privateCheckoutJson({
     error: {
       code: 'CART_ITEM_UNAVAILABLE',
       message: 'One or more cart items are no longer available. Refresh your cart and try again.',
@@ -220,7 +209,7 @@ export async function POST(request: Request) {
   const pricedLines = candidateLines.filter((line) => line !== null);
   const lines = pricedLines.map(({ line }) => line);
   const totals = cartTotals(pricedLines.map(({ cartItem }) => cartItem), activities, voucher);
-  if (voucher && totals.voucherError) return NextResponse.json({ error: totals.voucherError }, { status: 422 });
+  if (voucher && totals.voucherError) return privateCheckoutJson({ error: totals.voucherError }, { status: 422 });
 
   const selectedFoodOutlets = [...new Set(lines.flatMap((line) => {
     const product = productMap.get(line.product_id) as { categories?: { slug?: string } | { slug?: string }[] | null } | undefined;
@@ -229,7 +218,7 @@ export async function POST(request: Request) {
   }))];
   const selectedModes = normalized.foodServiceModes;
   if (selectedModes.length !== selectedFoodOutlets.length || new Set(selectedModes.map((selection) => selection.outletId)).size !== selectedModes.length) {
-    return NextResponse.json({
+    return privateCheckoutJson({
       data: null,
       error: { code: 'FOOD_SERVICE_MODE_REQUIRED', message: 'Choose dine-in or takeaway for every food outlet in checkout.' },
     }, { status: 422 });
@@ -238,10 +227,10 @@ export async function POST(request: Request) {
     const { data: foodOutlets, error: outletModesError } = await db.from('outlets')
       .select('id,food_service_modes')
       .in('id', selectedFoodOutlets);
-    if (outletModesError) return NextResponse.json({ error: 'Food service options could not be verified. Please try again.' }, { status: 503 });
+    if (outletModesError) return privateCheckoutJson({ error: 'Food service options could not be verified. Please try again.' }, { status: 503 });
     const allowedModes = new Map((foodOutlets ?? []).map((outlet: { id: string; food_service_modes: string[] }) => [outlet.id, outlet.food_service_modes]));
     if (selectedModes.some((selection) => !selectedFoodOutlets.includes(selection.outletId) || !allowedModes.get(selection.outletId)?.includes(selection.mode))) {
-      return NextResponse.json({
+      return privateCheckoutJson({
         data: null,
         error: { code: 'FOOD_SERVICE_MODE_UNAVAILABLE', message: 'The selected food service option is unavailable at this outlet. Refresh checkout and try again.' },
       }, { status: 422 });
@@ -265,11 +254,11 @@ export async function POST(request: Request) {
   const rpcArgs = selectedFoodOutlets.length > 0
     ? { ...checkoutArgs, p_claim_id: normalized.claimId, p_food_service_modes: selectedModes.map(({ outletId, mode }) => ({ outlet_id: outletId, mode })) }
     : checkoutArgs;
-  const { data: prepared, error: prepareError } = await db.rpc(checkoutFunction, rpcArgs);
+  const { data: prepared, error: prepareError } = await db.rpc(subject.kind === 'guest' ? `guest_${checkoutFunction}` : `account_${checkoutFunction}`, { ...rpcArgs, ...(subject.kind === 'guest' ? { p_guest_subject_id: subject.guestSubjectId, p_contact: contact } : { p_contact: contact }) });
   if (prepareError) {
     const rawMessage = prepareError.message ?? "checkout_failed";
     const code = getCheckoutErrorCode(rawMessage);
-    return NextResponse.json(
+    return privateCheckoutJson(
       { error: { code, message: getCheckoutErrorMessage(code) } },
       { status: 409 },
     );

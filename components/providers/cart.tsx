@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import * as guestCart from "@/lib/customer/guest-cart";
 import * as commerce from "@/backend/domains/commerce";
 import { getActivitiesByIds } from "@/backend/domains/catalogue";
 import { cartItemKey, cartTotals } from "@/backend/core/helpers";
@@ -42,6 +42,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
+  const ownerKey = currentUser?.id ?? "guest";
+  const activeOwner = useRef(ownerKey);
+  useEffect(() => { activeOwner.current = ownerKey; }, [ownerKey]);
   const activityIdsKey = JSON.stringify([...new Set(items.map((item) => item.activityId))].sort());
   const activities = useMemo(
     () => activityData.key === activityIdsKey ? activityData.activities : [],
@@ -53,6 +56,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(false);
+    setItems([]);
+    setSelectedKeysState(new Set());
     if (currentUser) {
       commerce.getCart(currentUser.id)
         .then((nextItems) => {
@@ -73,7 +78,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           setMounted(true);
         });
     }
-    else { setItems([]); setMounted(true); }
+    else {
+      guestCart.getGuestCart().then((nextItems) => {
+        if (!active) return;
+        setItems(nextItems); setSelectedKeysState(new Set(nextItems.map(cartItemKey))); setMounted(true);
+      }).catch(() => { if (active) { setItems([]); setSelectedKeysState(new Set()); setMounted(true); } });
+    }
     return () => { active = false; };
   }, [currentUser]);
 
@@ -163,25 +173,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   const addItem = useCallback(async (item: CartItem) => {
-    if (!currentUser) return;
-    setItems(await commerce.addToCart(currentUser.id, item));
-  }, [currentUser]);
+    const nextItems = currentUser ? await commerce.addToCart(currentUser.id, item) : await guestCart.addGuestCartItem(item);
+    if (activeOwner.current === ownerKey) setItems(nextItems);
+  }, [currentUser, ownerKey]);
 
   const updateQty = useCallback(async (index: number, qty: number) => {
-    if (!currentUser) return;
-    setItems(await commerce.updateCartQty(currentUser.id, index, qty));
-  }, [currentUser]);
+    if (!items[index]) return;
+    const nextItems = currentUser ? await commerce.updateCartQty(currentUser.id, index, qty) : await guestCart.updateGuestCartQty(cartItemKey(items[index]), qty);
+    if (activeOwner.current === ownerKey) setItems(nextItems);
+  }, [currentUser, items, ownerKey]);
 
   const removeItem = useCallback(async (index: number) => {
-    if (!currentUser) return;
-    setItems(await commerce.removeFromCart(currentUser.id, index));
-  }, [currentUser]);
+    if (!items[index]) return;
+    const nextItems = currentUser ? await commerce.removeFromCart(currentUser.id, index) : await guestCart.removeGuestCartItem(cartItemKey(items[index]));
+    if (activeOwner.current === ownerKey) setItems(nextItems);
+  }, [currentUser, items, ownerKey]);
 
   const clear = useCallback(async () => {
-    if (!currentUser) return;
-    await commerce.clearCart(currentUser.id);
-    setItems([]);
-  }, [currentUser]);
+    if (currentUser) await commerce.clearCart(currentUser.id);
+    else await guestCart.clearGuestCart();
+    if (activeOwner.current === ownerKey) setItems([]);
+  }, [currentUser, ownerKey]);
 
   const selectedItems = items.filter((item) => selectedKeys.has(cartItemKey(item)));
 

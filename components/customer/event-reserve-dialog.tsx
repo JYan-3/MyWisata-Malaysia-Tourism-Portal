@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { CalendarCheck, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
+import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
@@ -52,6 +53,10 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const choices = currentUser ? PAYMENT_CHOICES : PAYMENT_CHOICES.filter(choice => !["wallet", "wallet_split"].includes(choice.paymentMethod));
   const ended = firstDate > endsOn;
   const slot = availability?.slots.find((entry) => entry.id === slotId) ?? null;
   const maxQuantity = Math.max(0, Math.min(20, availability?.itemRemaining ?? 0, slot?.remaining ?? 20));
@@ -79,7 +84,7 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
 
   function openDialog(next: boolean) {
     setOpen(next);
-    if (next && currentUser && !ended) void loadAvailability(date);
+    if (next && !ended) void loadAvailability(date);
   }
 
   function changeDate(value: string) {
@@ -88,15 +93,21 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
   }
 
   async function reserve() {
+    if (!gate(CUSTOMER_CAPABILITY.CHECKOUT, pathname)) return;
     if (!slot || quantity < 1 || quantity > maxQuantity) return;
-    const choice = PAYMENT_CHOICES.find((entry) => entry.id === methodId) ?? PAYMENT_CHOICES[0];
+    const choice = choices.find((entry) => entry.id === methodId) ?? choices[0];
     setSubmitting(true);
     setError(null);
     try {
+      if (!currentUser) {
+        const ready = await fetch("/api/guest/session", { method: "POST" });
+        if (!ready.ok) throw new Error(t("guestCheckout.unavailable"));
+      }
       const response = await fetch("/api/customer/event-reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          contact: currentUser ? (contactPhone ? { email: currentUser.email, phone: contactPhone } : undefined) : { email: contactEmail, name: contactName || null, phone: contactPhone || null },
           listingId,
           pickupDate: date,
           slotId: slot.id,
@@ -117,7 +128,7 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
       }
       const redirect = body.data.stripeUrl ?? body.data.toyyibpayUrl ?? body.data.simulatorUrl;
       if (redirect) {
-        window.location.href = redirect;
+        window.location.assign(redirect);
         return;
       }
       if (body.data.status !== "paid") {
@@ -149,12 +160,6 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
             <DialogDescription>{t("ui.reserve.description", { location: locationName })}</DialogDescription>
           </DialogHeader>
 
-          {!currentUser ? (
-            <div className="space-y-3 text-sm">
-              <p className="text-muted-foreground">{t("ui.reserve.signInHint")}</p>
-              <Button asChild className="w-full rounded-full"><Link href={`/login?next=${encodeURIComponent(pathname)}`}>{t("ui.reserve.signIn")}</Link></Button>
-            </div>
-          ) : (
             <div className="space-y-4 text-sm">
               <label className="block text-xs font-semibold text-muted-foreground">
                 {t("ui.reserve.date")}
@@ -196,11 +201,17 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
                 <label className="block text-xs font-semibold text-muted-foreground">
                   {t("ui.reserve.payment")}
                   <select value={methodId} onChange={(e) => setMethodId(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground">
-                    {PAYMENT_CHOICES.map((choice) => <option key={choice.id} value={choice.id}>{t(choice.labelKey)}</option>)}
+                    {choices.map((choice) => <option key={choice.id} value={choice.id}>{t(choice.labelKey)}</option>)}
                   </select>
                 </label>
               )}
 
+              {!currentUser && <>
+                <p className="text-xs text-muted-foreground">{t("guestCheckout.eventHint")}</p>
+                <label className="block">{t("guestCheckout.email")}<Input type="email" autoComplete="email" required value={contactEmail} onChange={event => setContactEmail(event.target.value)} /></label>
+                <label className="block">{t("guestCheckout.name")}<Input autoComplete="name" value={contactName} onChange={event => setContactName(event.target.value)} /></label>
+              </>}
+              {!isFree && choices.find(choice => choice.id === methodId)?.paymentProvider === "toyyibpay" && <label className="block">{t("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>}
               <p className="text-xs text-muted-foreground">{t("ui.reserve.qrNote")}</p>
               {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-destructive">{error}</p>}
 
@@ -209,7 +220,6 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
                 {submitting ? t("ui.reserve.submitting") : isFree ? t("ui.reserve.confirmFree") : t("ui.reserve.pay", { amount: formatMYR(price * quantity) })}
               </Button>
             </div>
-          )}
         </DialogContent>
       </Dialog>
     </>

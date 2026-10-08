@@ -369,7 +369,8 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
-  userId: string;
+  userId: string | null;
+  contact?: { email: string | null; name: string | null; phone: string | null };
   items: OrderItem[];
   subtotal: number;
   discount: number;

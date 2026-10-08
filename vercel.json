@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/process-email-outbox",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/wallet-maintenance",
       "schedule": "0 1 * * *"
     },

@@ -6,6 +6,8 @@ import { databaseUuidSchema } from "@/lib/validation/schemas";
 
 function databaseFailure(error: { message?: string; code?: string } | null) {
   const message = (error?.message ?? "").toLowerCase();
+  if (message.includes("locations_outside_event")) return apiFail("LOCATIONS_OUTSIDE_EVENT", "Keep every active location within the event dates", 409);
+  if (message.includes("no_active_location")) return apiFail("NO_ACTIVE_LOCATION", "Add an active location that has not ended before publishing or resuming", 409);
   if (error?.code === "23505" || message.includes("promotion_campaigns_slug_key")) {
     return apiFail("SLUG_EXISTS", "That campaign address is already in use", 409);
   }

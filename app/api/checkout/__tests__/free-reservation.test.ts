@@ -104,7 +104,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
 
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: { email: 'customer@example.com', id: userId } }, error: null }),
       },
       from: vi.fn().mockImplementation((table: string) => {
         if (table === "carts") {
@@ -168,7 +168,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
 
     // Verified: Database RPC received free_reservation payment method and zero total
-    expect(mockRpc).toHaveBeenCalledWith("prepare_checkout", expect.objectContaining({
+    expect(mockRpc).toHaveBeenCalledWith("account_prepare_checkout", expect.objectContaining({
       p_payment_method: "free_reservation",
       p_total: 0,
       p_subtotal: 0,

@@ -55,6 +55,20 @@ describe("promotion campaign home spotlight", () => {
     expect(getPanelActions(markup, ["ui.promotionCampaigns.exploreCampaign", "ui.promotionCampaigns.allCampaigns"])).toContain("text-primary");
   });
 
+  it("shows dates for a full-day event and retains the precise time for a legacy event", () => {
+    const fullDay = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={{
+      ...campaign,
+      startsAt: "2026-09-30T16:00:00.000Z",
+      endsAt: "2026-10-08T15:59:59.999Z",
+    }} />);
+    expect(fullDay).toContain("Oct 1, 2026");
+    expect(fullDay).toContain("Oct 8, 2026");
+    expect(fullDay).not.toContain("11:59 PM");
+
+    const legacy = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
+    expect(legacy).toContain("8:00 PM");
+  });
+
   it("distinguishes an unavailable projection from a genuine empty campaign list", () => {
     const unavailable = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={null} unavailable />);
     const empty = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={null} />);

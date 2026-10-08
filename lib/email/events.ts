@@ -76,6 +76,7 @@ export async function enqueueVendorEmail(input: VendorEmailEventInput): Promise<
     reason: input.reason,
     reference: input.reference ?? null,
     occurredAt: input.occurredAt,
+    eventChange: input.eventChange,
   });
 
   try {

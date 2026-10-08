@@ -107,10 +107,11 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       booking_slots: null,
     };
     vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('APP_URL', 'http://localhost:3000');
     vi.stubEnv('PAYMENT_SIMULATOR_MODE', 'enabled');
     vi.stubEnv('PAYMENT_SIMULATOR_WEBHOOK_SECRET', 'local-simulator-secret');
 
-    mocks.getUser.mockResolvedValue({ data: { user: { id: '99999999-9999-4999-8999-999999999999' } }, error: null });
+    mocks.getUser.mockResolvedValue({ data: { user: { email: 'customer@example.com', id: '99999999-9999-4999-8999-999999999999' } }, error: null });
     mocks.getActivities.mockResolvedValue([{ id: PRODUCT_ID, vendorId: VENDOR_ID, outletId: OUTLET_ID }]);
     mocks.cartTotals.mockReturnValue({ subtotal: 50, discount: 0, total: 50 });
     mocks.unitPrice.mockReturnValue(50);
@@ -119,7 +120,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       entitlementGeneration: 7, source: 'policy',
     }));
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'prepare_checkout') {
+      if (name === 'account_prepare_checkout') {
         return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
       }
       return { data: null, error: null };
@@ -170,7 +171,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
 
   it('reserves the full wallet balance before ordinary wallet checkout can be finalized', async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
+      if (name === 'account_prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
       if (name === 'reserve_wallet_split_checkout') return { data: { wallet_amount_sen: 5000, external_amount_sen: 0, status: 'reserved' }, error: null };
       return { data: null, error: null };
     });
@@ -185,7 +186,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
 
   it('does not create an underfunded ordinary wallet order and releases its reservation', async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
+      if (name === 'account_prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
       if (name === 'reserve_wallet_split_checkout') return { data: { wallet_amount_sen: 1000, external_amount_sen: 4000, status: 'reserved' }, error: null };
       return { data: { status: 'failed' }, error: null };
     });
@@ -242,7 +243,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
   it('charges only the external remainder to Stripe for a wallet split', async () => {
     mocks.stripeCreate.mockResolvedValue({ id: 'cs_test_2', url: 'https://checkout.stripe.test/cs_test_2' });
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
+      if (name === 'account_prepare_checkout') return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
       if (name === 'reserve_wallet_split_checkout') return { data: { wallet_amount_sen: 2000, external_amount_sen: 3000, status: 'reserved' }, error: null };
       return { data: null, error: null };
     });
@@ -255,7 +256,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({ p_payment_method: 'stripe_card' }));
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_checkout', expect.objectContaining({ p_payment_method: 'stripe_card' }));
     expect(mocks.stripeCreate).toHaveBeenCalledWith(expect.objectContaining({
       line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 3000 }) })],
     }));
@@ -276,7 +277,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       expect.any(Array),
       undefined,
     );
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_checkout', expect.objectContaining({
       p_lines: [expect.objectContaining({ outlet_id: OUTLET_ID, unit_price: 37.5, line_total: 37.5 })],
     }));
   });
@@ -305,7 +306,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_checkout', expect.objectContaining({
       p_subtotal: 99.5,
       p_lines: expect.arrayContaining([
         expect.objectContaining({ cart_item_id: CART_ITEM_ID, outlet_id: OUTLET_ID, unit_price: 37.5, line_total: 37.5 }),
@@ -321,7 +322,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'CART_ITEM_UNAVAILABLE' } });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 
   it('does not use another outlet product price for this cart line', async () => {
@@ -331,7 +332,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'CART_ITEM_UNAVAILABLE' } });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 
   it('keeps vendor and outlet voucher scope when checkout recalculates the discount', async () => {
@@ -364,7 +365,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       expect.any(Array),
       expect.objectContaining({ vendorId: VENDOR_ID, outletId: OUTLET_ID }),
     );
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_checkout', expect.objectContaining({
       p_discount: 5,
       p_total: 45,
     }));
@@ -395,7 +396,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
 
     expect(response.status).toBe(200);
     expect(body.data.simulatorUrl).toBe(`/customer/checkout/simulator/${CHECKOUT_ID}`);
-    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_checkout', expect.objectContaining({
       p_lines: [expect.objectContaining({
         product_id: PRODUCT_ID,
         variant_id: null,
@@ -419,7 +420,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
         message: 'One or more cart items are no longer available. Refresh your cart and try again.',
       },
     });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 
   it('returns a service error when product availability cannot be checked', async () => {
@@ -430,7 +431,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
 
     expect(response.status).toBe(503);
     expect(body.error.code).toBe('PRODUCT_LOOKUP_FAILED');
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 
   it('fails closed when simulator configuration is unavailable', async () => {
@@ -442,7 +443,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'PAYMENT_SIMULATOR_UNAVAILABLE' },
     });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 
   it('rejects a provider that does not belong to the selected method', async () => {
@@ -452,6 +453,6 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'PAYMENT_PROVIDER_MISMATCH' },
     });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 });

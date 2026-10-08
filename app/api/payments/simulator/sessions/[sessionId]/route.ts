@@ -1,34 +1,26 @@
-import { NextResponse } from 'next/server';
+import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import { authorizeCheckoutSession } from '@/lib/checkout/order-access';
 import { z } from 'zod';
 import { isSimulatorCheckoutProvider } from '@/lib/payments/providers';
 import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
 type RouteContext = { params: Promise<{ sessionId: string }> };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   if (!isPaymentSimulatorEnabled()) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return privateCheckoutJson({ error: 'Not found' }, { status: 404 });
   }
 
   const { sessionId } = await params;
   if (!z.uuid().safeParse(sessionId).success) {
-    return NextResponse.json({ error: 'Invalid simulator session' }, { status: 400 });
+    return privateCheckoutJson({ error: 'Invalid simulator session' }, { status: 400 });
   }
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: session, error: sessionError } = await db
-    .from('checkout_sessions')
-    .select('id,user_id,order_id,status,currency,expires_at')
-    .eq('id', sessionId)
-    .maybeSingle();
-  if (sessionError) return NextResponse.json({ error: 'Unable to load simulator session' }, { status: 503 });
-  if (!session || session.user_id !== user.id) return NextResponse.json({ error: 'Simulator session not found' }, { status: 404 });
+  const access = await authorizeCheckoutSession(request,sessionId);
+  if (!access) return privateCheckoutJson({ error: 'Simulator session not found' }, { status: 404 });
+  const session = access.session;
 
   const service = createServiceClient();
   const { data: payment, error: paymentError } = await service
@@ -38,12 +30,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (paymentError) return NextResponse.json({ error: 'Unable to load simulator payment' }, { status: 503 });
+  if (paymentError) return privateCheckoutJson({ error: 'Unable to load simulator payment' }, { status: 503 });
   if (!payment || !isSimulatorCheckoutProvider(payment.provider) || !payment.provider_payment_id) {
-    return NextResponse.json({ error: 'Simulator payment not found' }, { status: 404 });
+    return privateCheckoutJson({ error: 'Simulator payment not found' }, { status: 404 });
   }
 
-  return NextResponse.json({
+  return privateCheckoutJson({
     data: {
       sessionId: session.id,
       orderId: session.order_id,

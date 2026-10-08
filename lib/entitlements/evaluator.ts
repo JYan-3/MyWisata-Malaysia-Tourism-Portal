@@ -23,13 +23,12 @@ const CUSTOMER_CAPABILITIES = new Set<CapabilityKey>([
   "affiliate.limited",
   "affiliate.full",
   "affiliate.earn_commission",
+  "wallet.top_up",
   "wallet.request_withdrawal",
 ]);
 
 const PHONE_CAPABILITIES = new Set<CapabilityKey>([
-  "commerce.booking",
-  "commerce.purchase",
-  "commerce.checkout",
+  "wallet.top_up",
   "ai.basic_recommendation",
 ]);
 

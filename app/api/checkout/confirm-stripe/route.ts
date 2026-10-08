@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import { authorizeCheckoutSession } from '@/lib/checkout/order-access';
 import { createHash } from 'node:crypto';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
 import { enqueueUserTransactionEmail } from '@/lib/email/events';
@@ -9,20 +9,18 @@ import { emitOrderVendorEvent } from '@/lib/vendor-notifications/order-events';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   let body: { stripeSessionId?: unknown };
-  try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
+  try { body = await request.json(); } catch { return privateCheckoutJson({ error: 'Invalid JSON' }, { status: 400 }); }
   const stripeSessionId = typeof body.stripeSessionId === 'string' ? body.stripeSessionId : '';
-  if (!stripeSessionId) return NextResponse.json({ error: 'Missing Stripe session' }, { status: 400 });
+  if (!stripeSessionId) return privateCheckoutJson({ error: 'Missing Stripe session' }, { status: 400 });
 
   const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
-  if (session.metadata?.user_id !== user.id || !session.metadata?.checkout_session_id) {
-    return NextResponse.json({ error: 'Stripe session does not belong to this account' }, { status: 403 });
+  const access = session.metadata?.checkout_session_id ? await authorizeCheckoutSession(request,session.metadata.checkout_session_id) : null;
+  if (!access || session.metadata?.payment_kind !== 'order' || session.metadata?.order_id !== access.order.id) {
+    return privateCheckoutJson({ error: 'Stripe session does not belong to this account' }, { status: 403 });
   }
   if (session.payment_status !== 'paid' || !session.amount_total || !session.currency) {
-    return NextResponse.json({ error: 'Stripe payment is not confirmed as paid' }, { status: 409 });
+    return privateCheckoutJson({ error: 'Stripe payment is not confirmed as paid' }, { status: 409 });
   }
   const canonicalEvent = JSON.stringify({
     stripeSessionId: session.id,
@@ -37,7 +35,7 @@ export async function POST(request: Request) {
     p_provider_payment_id: session.id,
     p_is_live: session.livemode === true,
   });
-  if (environmentError) return NextResponse.json({ error: 'Unable to record verified payment environment' }, { status: 500 });
+  if (environmentError) return privateCheckoutJson({ error: 'Unable to record verified payment environment' }, { status: 500 });
   const { data, error } = await service.rpc('settle_provider_checkout', {
     p_checkout_session_id: session.metadata.checkout_session_id,
     p_provider: 'stripe',
@@ -48,13 +46,13 @@ export async function POST(request: Request) {
     p_amount_sen: session.amount_total,
     p_currency: session.currency.toUpperCase(),
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 });
+  if (error) return privateCheckoutJson({ error: error.message }, { status: 409 });
   const orderId = data && typeof data === 'object' && 'order_id' in data && typeof data.order_id === 'string' ? data.order_id : null;
   const idempotent = Boolean(data && typeof data === 'object' && 'idempotent' in data && data.idempotent);
   if (!idempotent && orderId) {
     try {
-      await enqueueUserTransactionEmail({
-        userId: user.id,
+      if (access.userId) await enqueueUserTransactionEmail({
+        userId: access.userId!,
         eventType: 'checkout_succeeded',
         eventKey: `stripe-checkout:${session.id}`,
         reference: session.id,
@@ -73,5 +71,5 @@ export async function POST(request: Request) {
       email: true,
     }).catch((notificationError) => console.error('[vendor-notifications] stripe order event failed', notificationError));
   }
-  return NextResponse.json({ data, error: null });
+  return privateCheckoutJson({ data, error: null });
 }

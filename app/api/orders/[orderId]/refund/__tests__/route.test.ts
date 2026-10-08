@@ -6,6 +6,7 @@ const REFUND_ID = '33333333-3333-4333-8333-333333333333';
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
+  accountFrom: vi.fn(),
   serviceFrom: vi.fn(),
   serviceRpc: vi.fn(),
   emitVendorNotification: vi.fn(),
@@ -21,7 +22,7 @@ function queryResult(data: unknown, error: unknown = null) {
 }
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })),
+  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.accountFrom })),
 }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.serviceRpc })),
@@ -44,11 +45,10 @@ describe('POST /api/orders/:orderId/refund', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
-    mocks.serviceFrom.mockImplementation((table: string) => queryResult(
-      table === 'orders'
-        ? { id: ORDER_ID, total_amount: 28, status: 'paid', user_id: USER_ID }
-        : [{ vendor_id: 'vendor-1', outlet_id: 'outlet-1' }],
+    mocks.accountFrom.mockImplementation((table: string) => queryResult(
+      table === 'orders' ? { id: ORDER_ID, total_amount: 28, status: 'paid', user_id: USER_ID } : null,
     ));
+    mocks.serviceFrom.mockImplementation(() => queryResult([{ vendor_id: 'vendor-1', outlet_id: 'outlet-1' }]));
     mocks.serviceRpc.mockResolvedValue({ data: { id: REFUND_ID, status: 'pending' }, error: null });
     mocks.emitVendorNotification.mockResolvedValue(undefined);
   });
@@ -87,7 +87,7 @@ describe('POST /api/orders/:orderId/refund', () => {
   });
 
   it('does not reveal another customer order or create a refund', async () => {
-    mocks.serviceFrom.mockImplementation(() => queryResult(null));
+    mocks.accountFrom.mockImplementation(() => queryResult(null));
     const response = await POST(request({ reason: 'Change of plans' }), {
       params: Promise.resolve({ orderId: ORDER_ID }),
     });
@@ -98,11 +98,7 @@ describe('POST /api/orders/:orderId/refund', () => {
   });
 
   it('rejects orders that are not paid or completed', async () => {
-    mocks.serviceFrom.mockImplementation((table: string) => queryResult(
-      table === 'orders'
-        ? { id: ORDER_ID, total_amount: 28, status: 'cancelled', user_id: USER_ID }
-        : [],
-    ));
+    mocks.accountFrom.mockImplementation(() => queryResult({ id: ORDER_ID, total_amount: 28, status: 'cancelled', user_id: USER_ID }));
     const response = await POST(request({ reason: 'Change of plans' }), {
       params: Promise.resolve({ orderId: ORDER_ID }),
     });

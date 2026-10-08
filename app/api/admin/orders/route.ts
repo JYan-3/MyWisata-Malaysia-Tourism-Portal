@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   try {
     const service = createServiceClient();
     let ordersQuery = service.from('orders')
-      .select('id,display_id,user_id,status,subtotal,discount_amount,total_amount,currency,payment_method,voucher_code,paid_at,created_at', { count: 'exact' })
+      .select('id,display_id,user_id,contact_name,contact_email,status,subtotal,discount_amount,total_amount,currency,payment_method,voucher_code,paid_at,created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (status !== 'all') ordersQuery = ordersQuery.eq('status', status);
@@ -42,11 +42,13 @@ export async function GET(request: Request) {
 
     const orderRows = orders ?? [];
     const orderIds = orderRows.map((order) => order.id);
-    const userIds = [...new Set(orderRows.map((order) => order.user_id))];
+    const userIds = [...new Set(orderRows.map((order) => order.user_id).filter(Boolean))];
     if (orderIds.length === 0) return apiOk({ orders: [], page, pageSize: PAGE_SIZE, total: count ?? 0 });
 
     const [usersResult, itemsResult, paymentsResult] = await Promise.all([
-      service.from('users').select('id,full_name,email').in('id', userIds),
+      userIds.length > 0
+        ? service.from('users').select('id,full_name,email').in('id', userIds)
+        : Promise.resolve({ data: [], error: null }),
       service.from('order_items')
         .select('id,order_id,vendor_id,outlet_id,product_name,quantity,line_total,fulfil_status,vendors(name),outlets(name)')
         .in('order_id', orderIds)
@@ -83,7 +85,7 @@ export async function GET(request: Request) {
         ...order,
         customer: (() => {
           const customer = usersById.get(order.user_id);
-          return { name: customer?.full_name ?? null, email: customer?.email ?? null };
+          return { name: customer?.full_name ?? order.contact_name ?? "Guest", email: customer?.email ?? order.contact_email ?? null };
         })(),
         items: (itemsByOrder.get(order.id) ?? []).map((item) => ({
           id: item.id,

@@ -17,15 +17,15 @@ export async function POST(req: Request) {
   const { data: { user: authUser }, error: authErr } = await db.auth.getUser();
   if (authErr || !authUser) {
     return customerCapabilityFailure(
-      CUSTOMER_CAPABILITY.CHECKOUT,
-      resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT),
+      CUSTOMER_CAPABILITY.WALLET_TOP_UP,
+      resolveCustomerCapability(null, CUSTOMER_CAPABILITY.WALLET_TOP_UP),
       'Sign in before topping up your wallet',
     )!;
   }
 
-  const topUpDecision = await resolveServerCustomerCapability(authUser.id, CUSTOMER_CAPABILITY.CHECKOUT);
+  const topUpDecision = await resolveServerCustomerCapability(authUser.id, CUSTOMER_CAPABILITY.WALLET_TOP_UP);
   const topUpFailure = customerCapabilityFailure(
-    CUSTOMER_CAPABILITY.CHECKOUT,
+    CUSTOMER_CAPABILITY.WALLET_TOP_UP,
     topUpDecision,
     'Phone verification is required before wallet top-up',
   );

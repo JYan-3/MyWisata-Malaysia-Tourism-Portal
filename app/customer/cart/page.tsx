@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, ImageOff, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
@@ -75,6 +76,7 @@ export default function CartPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { items, activities = [], activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
+  const { currentUser } = useAuth();
   const [code, setCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [appliedClaimId, setAppliedClaimId] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export default function CartPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingActivityKey]);
 
-  const { subtotal, discount, total } = totals(appliedVoucher ?? undefined);
+  const { subtotal, discount, total } = totals(currentUser ? appliedVoucher ?? undefined : undefined);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const selectableKeys = useMemo(
     () => items.flatMap((item) => {
@@ -297,6 +299,7 @@ export default function CartPage() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   async function applyVoucherCode(rawCode: string, knownVoucher?: Voucher, claimId?: string | null) {
+    if (!currentUser) return;
     const normalizedCode = rawCode.trim().toUpperCase();
     if (!normalizedCode) return;
     if (appliedVoucher) return;
@@ -331,11 +334,11 @@ export default function CartPage() {
   }
 
   useEffect(() => {
-    if (!deepLinkedVoucher || appliedVoucher || voucherValidationItems.length === 0) return;
+    if (!currentUser || !deepLinkedVoucher || appliedVoucher || voucherValidationItems.length === 0) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDeepLinkedVoucher(null);
     void applyVoucherCode(deepLinkedVoucher.code, undefined, deepLinkedVoucher.claimId);
-  }, [appliedVoucher, applyVoucherCode, deepLinkedVoucher, voucherValidationItems.length]);
+  }, [currentUser, appliedVoucher, applyVoucherCode, deepLinkedVoucher, voucherValidationItems.length]);
 
   useEffect(() => {
     if (!activitiesReady || bookingSlotsStatus === "loading") return;
@@ -509,7 +512,7 @@ export default function CartPage() {
         ))}
       </div>
 
-      <div className="mb-6 rounded-xl border border-border p-4">
+      {currentUser ? <div className="mb-6 rounded-xl border border-border p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Tag size={14} className="text-primary" />
@@ -571,9 +574,9 @@ export default function CartPage() {
           </div>
         )}
         {voucherError && <p className="mt-2 text-xs text-destructive">{voucherError}</p>}
-      </div>
+      </div> : <p className="mb-6 text-sm text-muted-foreground">{tCustomer("guestCheckout.hint")}</p>}
 
-      {showAllVouchers && (
+      {currentUser && showAllVouchers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-labelledby="all-vouchers-title">
           <div className="flex max-h-[min(720px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">

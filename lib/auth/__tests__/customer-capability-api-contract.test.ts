@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const ROUTES = [
   ["app/api/checkout/prepare/route.ts", "CHECKOUT"],
   ["app/api/stripe/create-order-checkout/route.ts", "CHECKOUT"],
-  ["app/api/stripe/create-checkout/route.ts", "CHECKOUT"],
+  ["app/api/stripe/create-checkout/route.ts", "WALLET_TOP_UP"],
   ["app/api/dev/simulate-purchase/route.ts", "CHECKOUT"],
   ["app/api/personalized-recommendations/route.ts", "BASIC_AI"],
   ["app/api/recommendations/route.ts", "RECOMMENDATION_SUBMIT"],
@@ -16,7 +16,7 @@ const ROUTES = [
 
 describe("protected customer API capability contract", () => {
   it.each(ROUTES)("uses the shared resolver and stable envelope in %s", (file, capability) => {
-    const source = readFileSync(resolve(process.cwd(), file), "utf8");
+    const source = readFileSync(resolve(process.cwd(), file), "utf8") + (file === "app/api/checkout/prepare/route.ts" ? readFileSync(resolve(process.cwd(), "lib/checkout/subject.ts"), "utf8") : "");
 
     expect(source).toContain("resolveServerCustomerCapability");
     expect(source).toContain("customerCapabilityFailure");
@@ -36,7 +36,7 @@ describe("protected customer API capability contract", () => {
 
   it("does not use legacy tier or route-loaded verification facts as authorization input", () => {
     for (const [file] of ROUTES) {
-      const source = readFileSync(resolve(process.cwd(), file), "utf8");
+      const source = readFileSync(resolve(process.cwd(), file), "utf8") + (file === "app/api/checkout/prepare/route.ts" ? readFileSync(resolve(process.cwd(), "lib/checkout/subject.ts"), "utf8") : "");
 
       expect(source).not.toMatch(/resolveServerCustomerCapability\(\{[\s\S]*?tier:/);
       expect(source).not.toMatch(/resolveServerCustomerCapability\(\{[\s\S]*?kycStatus:/);

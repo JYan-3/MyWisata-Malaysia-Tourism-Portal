@@ -2553,6 +2553,8 @@
       "moreProducts_other": "+{{count}} lagi"
     },
     "promotionCampaigns": {
+      "operating": "Sedang dibuka",
+      "betweenSessions": "Antara sesi pembukaan",
       "eyebrow": "Acara masa terhad",
       "homeEyebrow": "Kempen pilihan",
       "live": "Sedang berlangsung",
@@ -3536,5 +3538,21 @@
       "helpCta": "Lawati Pusat Bantuan",
       "supportCta": "Hubungi sokongan"
     }
+  },
+  "guestCheckout": {
+    "title": "Pembayaran tetamu",
+    "hint": "Semak e-mel sebelum membayar. Kami akan menghantar resit dan pautan pesanan peribadi. Dompet dan baucar akaun memerlukan log masuk.",
+    "email": "E-mel untuk dihubungi",
+    "name": "Nama (pilihan)",
+    "phone": "Nombor telefon untuk pembayaran (tanpa pengesahan SMS)",
+    "unavailable": "Pembayaran tetamu tidak tersedia buat sementara waktu.",
+    "accessTitle": "Akses pesanan tetamu anda",
+    "recoveryHint": "Minta pautan peribadi baharu menggunakan nombor pesanan dan e-mel semasa pembayaran.",
+    "orderNumber": "Nombor pesanan",
+    "emailLink": "Hantar pautan pesanan melalui e-mel",
+    "requested": "Jika maklumat sepadan dengan pesanan tetamu, pautan akses akan dihantar melalui e-mel.",
+    "requestFailed": "Pautan tidak dapat diminta. Sila cuba lagi kemudian.",
+    "opening": "Membuka pesanan anda…",
+    "eventHint": "Semak e-mel sebelum mengesahkan. Kami akan menghantar resit dan pautan pesanan peribadi."
   }
 }

@@ -4,7 +4,7 @@ import type { PromotionCampaignPublic, PromotionCampaignPublicVendor } from "@/l
 
 const mocks = vi.hoisted(() => ({ getPublicPromotionCampaigns: vi.fn() }));
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, options?: { date?: string }) => options?.date ? `${key} ${options.date}` : key, i18n: { resolvedLanguage: "en" } }) }));
 vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: vi.fn(async () => ({ t: (key: string) => key })) }));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({
   useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn(async () => false) }),
@@ -92,6 +92,20 @@ describe("customer promotion campaign listing", () => {
 
     expect(markup).toContain("ui.promotionCampaigns.startsAt");
     expect(markup).not.toContain("ui.promotionCampaigns.endsAt");
+  });
+
+  it("lists full-day events by date while retaining legacy event times", async () => {
+    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [{
+      ...campaign,
+      startsAt: "2026-09-30T16:00:00.000Z",
+      endsAt: "2026-10-08T15:59:59.999Z",
+    }], error: false });
+    const fullDayMarkup = renderToStaticMarkup(await CustomerEventsPage());
+    expect(fullDayMarkup).toContain("Oct 8, 2026");
+    expect(fullDayMarkup).not.toContain("11:59 PM");
+
+    const legacyMarkup = renderToStaticMarkup(await CustomerEventsPage());
+    expect(legacyMarkup).toContain("8:00 PM");
   });
 
   it("shows a recoverable error when the server projection is unavailable", async () => {

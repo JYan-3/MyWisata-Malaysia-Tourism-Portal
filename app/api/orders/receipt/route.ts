@@ -1,13 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
+import { authorizeOrder } from '@/lib/checkout/order-access';
+import { reserveGuestRateLimit } from '@/lib/checkout/guest-session';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { sendOrderReceiptEmail } from '@/lib/email/order-receipt';
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
   let body: { orderId?: string };
   try { body = await request.json(); }
   catch { return apiFail('INVALID_BODY', 'Could not parse request body', 400); }
@@ -15,6 +12,13 @@ export async function POST(request: Request) {
   const { orderId } = body;
   if (!orderId) return apiFail('MISSING_ORDER_ID', 'orderId is required', 422);
 
+  const access = await authorizeOrder(request,orderId);
+  if (!access) return apiFail('ORDER_NOT_FOUND','Order not found',404);
+  if (access.guestSubjectId) {
+    if (await reserveGuestRateLimit(`receipt:${orderId}`,3,3600)) await createServiceClient().rpc('queue_guest_order_access',{p_order_id:orderId,p_event_key:`guest-receipt:${orderId}:${Math.floor(Date.now()/3600000)}`,p_reason:'Your requested order receipt.'});
+    return apiOk({sent:true});
+  }
+  const user = {id:access.userId!};
   const service = createServiceClient();
 
   // Verify the order belongs to this user

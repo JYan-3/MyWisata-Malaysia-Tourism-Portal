@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { authorizeOrder } from '@/lib/checkout/order-access';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -8,19 +8,20 @@ const schema = z.object({ slotId: z.string().uuid() }).strict();
 interface Props { params: Promise<{ bookingId: string }> }
 
 export async function POST(request: Request, { params }: Props) {
-  const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;
   const bookingId = (await params).bookingId;
-  const { data, error } = await db.rpc('reschedule_booking', { p_booking_id: bookingId, p_new_slot_id: parsed.data.slotId });
+  const service = createServiceClient();
+  const { data: parent } = await service.from('bookings').select('order_items!inner(order_id)').eq('id', bookingId).maybeSingle();
+  const itemParent = Array.isArray(parent?.order_items) ? parent.order_items[0] : parent?.order_items;
+  const access = itemParent?.order_id ? await authorizeOrder(request,itemParent.order_id) : null;
+  if (!access) return apiFail('NOT_FOUND','Booking not found',404);
+  const { data, error } = await access.db.rpc(access.guestSubjectId ? 'guest_reschedule_booking' : 'reschedule_booking', { p_booking_id: bookingId, p_new_slot_id: parsed.data.slotId, ...(access.guestSubjectId ? {p_guest_subject_id:access.guestSubjectId} : {}) });
   if (error) {
     if (/not_owned|auth_required/.test(error.message)) return apiFail('FORBIDDEN', 'Booking access denied', 403);
     if (/unavailable|reschedulable/.test(error.message)) return apiFail('INVALID_STATE', 'The selected slot is no longer available', 409);
     return apiFail('DB_ERROR', error.message, 500);
   }
-  const service = createServiceClient();
   const { data: booking } = await service.from('bookings').select('id,order_item_id').eq('id', bookingId).maybeSingle();
   if (booking?.order_item_id) {
     const { data: item } = await service.from('order_items').select('vendor_id,outlet_id').eq('id', booking.order_item_id).maybeSingle();

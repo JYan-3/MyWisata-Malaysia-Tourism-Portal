@@ -1592,7 +1592,8 @@
         "productName": "Nama produk",
         "productPrice": "Harga (RM)",
         "addPhoto": "Tambah foto",
-        "newForEvent": "baharu untuk acara ini"
+        "newForEvent": "baharu untuk acara ini",
+        "preferredStallNumber": "Nombor gerai pilihan (pilihan)"
       },
       "actions": {
         "register": "Daftar",
@@ -1679,7 +1680,15 @@
           "withdrawn": "Anda telah menarik diri dari lokasi ini.",
           "removed": "Anda telah dikeluarkan dari lokasi ini oleh penganjur."
         }
-      }
+      },
+      "adminAllocate": "Peruntukan oleh Admin diminta",
+      "intakeOpen": "Menerima permohonan baharu",
+      "intakeClosed": "Permohonan baharu ditutup",
+      "noConfirmedSpaces": "Tiada ruang yang disahkan tersedia. Permohonan tidak menjamin gerai.",
+      "applicationDeadline": "Permohonan ditutup (waktu Malaysia)",
+      "approvalDeadline": "Kelulusan ditutup (waktu Malaysia)",
+      "setupStarts": "Persediaan bermula (waktu Malaysia)",
+      "approvalWindowClosed": "Tempoh kelulusan telah ditutup. Hubungi penganjur mengenai permohonan ini."
     },
     "eventOrders": {
       "title": "Tempahan acara",

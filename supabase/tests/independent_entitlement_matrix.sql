@@ -112,15 +112,17 @@ SELECT extensions.is(
     'commerce.booking', pg_temp.capability_allowed('10000000-0000-0000-0000-000000000001', 'commerce.booking'),
     'commerce.purchase', pg_temp.capability_allowed('10000000-0000-0000-0000-000000000001', 'commerce.purchase'),
     'commerce.checkout', pg_temp.capability_allowed('10000000-0000-0000-0000-000000000001', 'commerce.checkout'),
+    'wallet.top_up', pg_temp.capability_allowed('10000000-0000-0000-0000-000000000001', 'wallet.top_up'),
     'ai.basic_recommendation', pg_temp.capability_allowed('10000000-0000-0000-0000-000000000001', 'ai.basic_recommendation')
   ),
   '{
-    "commerce.booking": false,
-    "commerce.purchase": false,
-    "commerce.checkout": false,
+    "commerce.booking": true,
+    "commerce.purchase": true,
+    "commerce.checkout": true,
+    "wallet.top_up": false,
     "ai.basic_recommendation": false
   }'::JSONB,
-  'Email plus approved KYC without Phone denies commerce and basic AI'
+  'Email plus approved KYC without Phone allows commerce and denies basic AI/top-up'
 );
 
 SELECT extensions.is(
@@ -157,12 +159,12 @@ SELECT extensions.is(
     'ai.basic_recommendation', pg_temp.capability_allowed('10000000-0000-0000-0000-000000000002', 'ai.basic_recommendation')
   ),
   '{
-    "commerce.booking": false,
-    "commerce.purchase": false,
-    "commerce.checkout": false,
+    "commerce.booking": true,
+    "commerce.purchase": true,
+    "commerce.checkout": true,
     "ai.basic_recommendation": false
   }'::JSONB,
-  'Email plus Profile without Phone denies commerce and basic AI'
+  'Email plus Profile without Phone allows commerce and denies basic AI/top-up'
 );
 
 SELECT extensions.is(

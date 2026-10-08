@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   )!;
 
   const checkoutDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.CHECKOUT);
-  const checkoutFailure = customerCapabilityFailure(CUSTOMER_CAPABILITY.CHECKOUT, checkoutDecision, 'Phone verification is required before checkout');
+  const checkoutFailure = customerCapabilityFailure(CUSTOMER_CAPABILITY.CHECKOUT, checkoutDecision, 'Email verification is required before checkout');
   if (checkoutFailure) return checkoutFailure;
 
   let body: { amount_rm?: unknown; voucher_code?: unknown } = {};

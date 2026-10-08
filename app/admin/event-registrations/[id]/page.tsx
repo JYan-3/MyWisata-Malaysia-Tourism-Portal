@@ -9,6 +9,7 @@ import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { formatMYR } from "@/lib/i18n/format";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/ui/badge";
 import { useAppDialog } from "@/components/providers/app-dialog";
@@ -32,6 +33,10 @@ interface AdminCampaignRegistrationDetail {
   vendorId: string;
   vendorName: string;
   stallNumber: string;
+  requestedStallNumber?: string | null;
+  locationMaxStalls?: number | null;
+  locationOccupiedStalls?: number;
+  locationApprovalsCloseAt?: string | null;
   stallDescription: string;
   stallPosterUrl: string;
   status: "pending" | "approved" | "rejected" | "changes_requested" | "withdrawn" | "removed";
@@ -40,6 +45,7 @@ interface AdminCampaignRegistrationDetail {
   changesRequestedReason: string | null;
   products: AdminCampaignProduct[];
   createdAt: string;
+  updatedAt: string;
 }
 
 type ReviewAction = "approve" | "reject" | "request_changes";
@@ -52,11 +58,36 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [confirmedStall, setConfirmedStall] = useState("");
   const [submittingAction, setSubmittingAction] = useState<ReviewAction | null>(null);
   const [pendingAction, setPendingAction] = useState<ReviewAction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [stallEditOpen, setStallEditOpen] = useState(false);
+  const [stallNumber, setStallNumber] = useState("");
+  const [stallReason, setStallReason] = useState("");
+  const [changingStall, setChangingStall] = useState(false);
   const { prompt } = useAppDialog();
+
+  async function saveStall() {
+    if (!detail || !stallNumber.trim() || (stallNumber.trim() !== detail.stallNumber && stallReason.trim().length < 5)) {
+      showFeedback("error", t("eventRegistrations.stallChangeInvalid")); return;
+    }
+    setChangingStall(true);
+    try {
+      const response = await fetch(`/api/admin/event-registrations/${id}/stall`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stallNumber: stallNumber.trim(), expectedUpdatedAt: detail.updatedAt,
+          ...(stallReason.trim() ? { reason: stallReason.trim() } : {}) }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(t(`promotionCampaigns.locations.errors.${body.error?.code || "SAVE_FAILED"}`));
+      showFeedback("success", t(body.data?.notificationQueued ? "eventRegistrations.notificationQueued" : "eventRegistrations.stallUnchanged"));
+      setStallEditOpen(false);
+      await load();
+    } catch (error) { showFeedback("error", error instanceof Error ? error.message : t("eventRegistrations.errors.review")); }
+    finally { setChangingStall(false); }
+  }
 
 
   const load = useCallback(async () => {
@@ -108,6 +139,9 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
       showFeedback("error", t("eventRegistrations.noteRequired"));
       return;
     }
+    if (action === "approve" && !confirmedStall.trim()) {
+      showFeedback("error", t("eventRegistrations.confirmedStallRequired")); return;
+    }
     setPendingAction(action);
   }
 
@@ -119,11 +153,12 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
       const response = await fetch(`/api/admin/event-registrations/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, note: action === "approve" ? undefined : note.trim() }),
+        body: JSON.stringify({ action, note: action === "approve" ? undefined : note.trim(),
+          ...(action === "approve" ? { stallNumber: confirmedStall.trim(), expectedUpdatedAt: detail?.updatedAt } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error?.message ?? t("eventRegistrations.errors.review"));
-      showFeedback("success", t(`eventRegistrations.actions.${action}Success`));
+      if (!response.ok) throw new Error(t(`promotionCampaigns.locations.errors.${body.error?.code || "SAVE_FAILED"}`));
+      showFeedback("success", t(body.data?.notificationQueued ? "eventRegistrations.notificationQueued" : `eventRegistrations.actions.${action}Success`));
       setNote("");
       await load();
     } catch (err) {
@@ -135,7 +170,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
   }
 
   const confirmCopy: Record<ReviewAction, { title: string; description: string; confirmLabel: string; confirmVariant: "default" | "destructive" }> = {
-    approve: { title: t("eventRegistrations.confirm.approveTitle"), description: t("eventRegistrations.confirm.approveDescription"), confirmLabel: t("eventRegistrations.actions.approve"), confirmVariant: "default" },
+    approve: { title: t("eventRegistrations.confirm.approveTitle"), description: t("eventRegistrations.confirm.approveDescription", { number: confirmedStall.trim() }), confirmLabel: t("eventRegistrations.actions.approve"), confirmVariant: "default" },
     request_changes: { title: t("eventRegistrations.confirm.requestChangesTitle"), description: t("eventRegistrations.confirm.requestChangesDescription"), confirmLabel: t("eventRegistrations.actions.requestChanges"), confirmVariant: "default" },
     reject: { title: t("eventRegistrations.confirm.rejectTitle"), description: t("eventRegistrations.confirm.rejectDescription"), confirmLabel: t("eventRegistrations.actions.reject"), confirmVariant: "destructive" },
   };
@@ -155,7 +190,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
         <>
           <AdminPageHeader
             title={detail.vendorName}
-            description={`${detail.campaignTitle} · ${detail.locationName} · ${t("eventRegistrations.stallLabel", { number: detail.stallNumber })}`}
+            description={`${detail.campaignTitle} · ${detail.locationName} · ${detail.status === "approved" ? t("eventRegistrations.stallLabel", { number: detail.stallNumber }) : t("eventRegistrations.preferredStall", { number: detail.requestedStallNumber || t("eventRegistrations.adminAllocate") })}`}
             actions={<StatusBadge status={detail.status} />}
           />
 
@@ -213,6 +248,15 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
           {detail.status === "pending" && (
             <section className="space-y-3 rounded-xl border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground">{t("eventRegistrations.reviewHeading")}</h2>
+              <label htmlFor="confirmed-stall-number" className="block text-sm font-semibold text-foreground">
+                {t("eventRegistrations.confirmedStall")}
+                <Input id="confirmed-stall-number" className="mt-1" value={confirmedStall} maxLength={40}
+                  onChange={(event) => setConfirmedStall(event.target.value)} />
+              </label>
+              <p className="text-xs text-muted-foreground">{detail.locationMaxStalls == null
+                ? t("promotionCampaigns.locations.capacityUnconfirmed")
+                : t("promotionCampaigns.locations.capacitySummary", { occupied: detail.locationOccupiedStalls ?? 0,
+                  capacity: detail.locationMaxStalls, remaining: Math.max(0, detail.locationMaxStalls - (detail.locationOccupiedStalls ?? 0)) })}</p>
               <Textarea
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
@@ -221,7 +265,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
                 rows={3}
               />
               <div className="flex flex-wrap gap-2">
-                <Button type="button" disabled={submittingAction !== null} onClick={() => requestReview("approve")}>
+                <Button type="button" disabled={submittingAction !== null || detail.locationMaxStalls == null || (detail.locationOccupiedStalls ?? 0) >= detail.locationMaxStalls} onClick={() => requestReview("approve")}>
                   {t("eventRegistrations.actions.approve")}
                 </Button>
                 <Button type="button" variant="outline" disabled={submittingAction !== null} onClick={() => requestReview("request_changes")}>
@@ -233,6 +277,28 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
               </div>
             </section>
           )}
+
+          {detail.status === "approved" && (
+            <Button type="button" variant="outline" onClick={() => { setStallNumber(detail.stallNumber); setStallReason(""); setStallEditOpen(true); }}>
+              {t("eventRegistrations.changeStall")}
+            </Button>
+          )}
+          <Dialog open={stallEditOpen} onOpenChange={(open) => { if (!changingStall) setStallEditOpen(open); }}>
+            <DialogContent>
+              <DialogTitle>{t("eventRegistrations.changeStall")}</DialogTitle>
+              <p className="text-sm text-muted-foreground">{detail.stallNumber} → {stallNumber || detail.stallNumber}</p>
+              <label className="text-sm font-semibold">
+                {t("eventRegistrations.stallNumberLabel")}
+                <Input value={stallNumber} maxLength={40} onChange={(event) => setStallNumber(event.target.value)} />
+              </label>
+              <label className="text-sm font-semibold">
+                {t("eventRegistrations.changeReason")}
+                <Textarea value={stallReason} maxLength={500} onChange={(event) => setStallReason(event.target.value)} />
+              </label>
+              <p className="text-xs text-muted-foreground">{t("eventRegistrations.stallNotificationDescription")}</p>
+              <Button disabled={changingStall} onClick={() => void saveStall()}>{t("eventRegistrations.confirmStallChange")}</Button>
+            </DialogContent>
+          </Dialog>
 
           {detail.status === "approved" && (
             <section className="space-y-2 rounded-xl border border-destructive/30 bg-card p-5">

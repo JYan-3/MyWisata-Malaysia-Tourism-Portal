@@ -112,8 +112,8 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
       };
     });
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'prepare_checkout') {
-        mocks.calls.push('prepare_checkout');
+      if (name === 'account_prepare_checkout') {
+        mocks.calls.push('account_prepare_checkout');
         return {
           data: {
             checkout_session_id: CHECKOUT_ID,
@@ -174,7 +174,7 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
       toyyibpayUrl: 'https://dev.toyyibpay.com/A1b2C3d4',
     });
     expect(mocks.calls).toEqual([
-      'prepare_checkout',
+      'account_prepare_checkout',
       'begin_toyyibpay_checkout',
       'provider.createPayment',
       'complete_toyyibpay_checkout',
@@ -187,7 +187,7 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
       customer: {
         name: 'Nur Aisyah', email: 'aisyah@example.com', phone: '+60123456789',
       },
-      returnUrl: 'https://mywisata.example/customer/checkout?toyyibpay_return=1',
+      returnUrl: `https://mywisata.example/customer/orders/${ORDER_ID}`,
       callbackUrl: 'https://mywisata.example/api/payments/toyyibpay/callback',
     });
     expect(JSON.stringify(body)).not.toContain('attacker.example');
@@ -245,7 +245,7 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
   });
 
   it.each([
-    [{ email: undefined, phone: '+60123456789' }, 'TOYYIBPAY_EMAIL_REQUIRED'],
+    [{ email: undefined, phone: '+60123456789' }, 'CONTACT_REQUIRED'],
     [{ email: 'aisyah@example.com', phone: undefined }, 'TOYYIBPAY_PHONE_REQUIRED'],
   ])('requires provider customer contact details without preparing checkout', async (contact, code) => {
     mocks.getUser.mockResolvedValue({
@@ -257,13 +257,13 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
 
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({ error: { code } });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 
   it('rejects mismatched methods through the existing provider boundary', async () => {
     const response = await POST(request('grabpay_simulator'));
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'PAYMENT_PROVIDER_MISMATCH' } });
-    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
   });
 });

@@ -26,6 +26,10 @@ export interface AdminCampaignRegistration {
   locationStartsOn: string | null;
   locationEndsOn: string | null;
   stallNumber: string;
+  requestedStallNumber: string | null;
+  locationMaxStalls: number | null;
+  locationOccupiedStalls: number;
+  locationApprovalsCloseAt: string | null;
   stallDescription: string;
   stallPosterUrl: string;
   status: CampaignRegistrationStatus;
@@ -35,13 +39,15 @@ export interface AdminCampaignRegistration {
   closedReason: string | null;
   products: AdminCampaignProduct[];
   createdAt: string;
+  updatedAt: string;
 }
 
 type RegistrationRow = {
   id: string;
   campaign_id: string;
   vendor_id: string;
-  stall_number: string;
+  stall_number: string | null;
+  requested_stall_number: string | null;
   stall_description: string;
   stall_poster_url: string;
   status: CampaignRegistrationStatus;
@@ -49,12 +55,13 @@ type RegistrationRow = {
   changes_requested_reason: string | null;
   closed_reason: string | null;
   created_at: string;
+  updated_at: string;
   vendors: { name: string } | { name: string }[] | null;
   promotion_campaigns: { title: string } | { title: string }[] | null;
   location: LocationEmbed | LocationEmbed[] | null;
 };
 
-type LocationEmbed = { name: string; starts_on: string; ends_on: string };
+type LocationEmbed = { name: string; starts_on: string; ends_on: string; max_stalls: number | null; approvals_close_at: string | null; registrations?: { status: string }[] };
 
 type ProductRow = {
   id: string;
@@ -73,7 +80,7 @@ function single<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
-const REGISTRATION_COLUMNS = 'id,campaign_id,vendor_id,stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,closed_reason,created_at,vendors(name),promotion_campaigns(title),location:promotion_campaign_locations(name,starts_on,ends_on)';
+const REGISTRATION_COLUMNS = 'id,campaign_id,vendor_id,stall_number,requested_stall_number,stall_description,stall_poster_url,status,rejection_reason,changes_requested_reason,closed_reason,created_at,updated_at,vendors(name),promotion_campaigns(title),location:promotion_campaign_locations(name,starts_on,ends_on,max_stalls,approvals_close_at,registrations:promotion_campaign_vendors!promotion_campaign_vendors_location_fkey(status))';
 const PRODUCT_COLUMNS = 'id,registration_id,position,name,price,image_url,item_kind,daily_quantity,active,products(name,base_price,cover_url)';
 
 function toProduct(row: ProductRow): AdminCampaignProduct {
@@ -99,7 +106,11 @@ function toRegistration(row: RegistrationRow, products: AdminCampaignProduct[]):
     locationName: single(row.location)?.name ?? '',
     locationStartsOn: single(row.location)?.starts_on ?? null,
     locationEndsOn: single(row.location)?.ends_on ?? null,
-    stallNumber: row.stall_number,
+    stallNumber: row.stall_number ?? '',
+    requestedStallNumber: row.requested_stall_number ?? null,
+    locationMaxStalls: single(row.location)?.max_stalls ?? null,
+    locationOccupiedStalls: single(row.location)?.registrations?.filter((entry) => entry.status === 'approved').length ?? 0,
+    locationApprovalsCloseAt: single(row.location)?.approvals_close_at ?? null,
     stallDescription: row.stall_description,
     stallPosterUrl: row.stall_poster_url,
     status: row.status,
@@ -108,6 +119,7 @@ function toRegistration(row: RegistrationRow, products: AdminCampaignProduct[]):
     closedReason: row.closed_reason,
     products,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -153,16 +165,20 @@ export async function reviewCampaignRegistration(
   registrationId: string,
   action: ReviewAction,
   note?: string,
-): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'not_pending' | 'admin_required' | 'note_required' | 'unknown' }> {
-  const { error } = await authDb.rpc('review_campaign_vendor_registration', {
+  stallNumber?: string,
+  expectedUpdatedAt?: string,
+): Promise<{ ok: true; notificationQueued: boolean } | { ok: false; code: 'not_found' | 'not_pending' | 'admin_required' | 'note_required' | 'unknown'; message?: string }> {
+  const { data, error } = await authDb.rpc('review_campaign_vendor_registration_with_stall', {
     p_registration_id: registrationId,
     p_action: action,
     p_note: note ?? null,
+    p_stall_number: stallNumber ?? null,
+    p_expected_updated_at: expectedUpdatedAt ?? null,
   });
-  if (!error) return { ok: true };
+  if (!error) return { ok: true, notificationQueued: Boolean(data?.notificationQueued) };
   if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
   if (error.message.includes('not_pending')) return { ok: false, code: 'not_pending' };
   if (error.message.includes('admin_required')) return { ok: false, code: 'admin_required' };
   if (error.message.includes('note_required')) return { ok: false, code: 'note_required' };
-  return { ok: false, code: 'unknown' };
+  return { ok: false, code: 'unknown', message: error.message };
 }

@@ -13,7 +13,7 @@ describe("Guest Mode navigation", () => {
     expect(typeof guestProtectedCustomerPath).toBe("function");
     const base = "https://mywisata.test/customer/explore";
     expect(guestProtectedCustomerPath("/customer/profile?tab=account#preferences", base)).toBe("/customer/profile?tab=account#preferences");
-    expect(guestProtectedCustomerPath("/customer/cart", base)).toBe("/customer/cart");
+    expect(guestProtectedCustomerPath("/customer/cart", base)).toBeNull();
     expect(guestProtectedCustomerPath("https://mywisata.test/customer/chat", base)).toBe("/customer/chat");
     expect(guestProtectedCustomerPath("/customer/wallet/withdrawals/123", base)).toBe("/customer/wallet/withdrawals/123");
   });

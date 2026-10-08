@@ -1592,7 +1592,8 @@
         "productName": "商品名称",
         "productPrice": "价格（RM）",
         "addPhoto": "添加照片",
-        "newForEvent": "此活动新增"
+        "newForEvent": "此活动新增",
+        "preferredStallNumber": "希望的摊位号（选填）"
       },
       "actions": {
         "register": "注册",
@@ -1679,7 +1680,15 @@
           "withdrawn": "您已退出此地点。",
           "removed": "主办方已将您从此地点移除。"
         }
-      }
+      },
+      "adminAllocate": "由 Admin 分配",
+      "intakeOpen": "接受新报名",
+      "intakeClosed": "新报名已关闭",
+      "noConfirmedSpaces": "目前没有可确认的空摊位。提交申请不代表已获分配。",
+      "applicationDeadline": "报名截止（马来西亚时间）",
+      "approvalDeadline": "审批截止（马来西亚时间）",
+      "setupStarts": "布展开始（马来西亚时间）",
+      "approvalWindowClosed": "审批时间已截止，请联系主办方处理申请。"
     },
     "eventOrders": {
       "title": "活动预订",

@@ -1,5 +1,7 @@
-import { apiFail, apiOk } from "@/lib/validation/schemas";
-import { createClient } from "@/lib/supabase/server";
+import { guestPrivateResponse } from '@/lib/checkout/guest-session';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { authorizeOrder } from '@/lib/checkout/order-access';
+import { apiFail } from "@/lib/validation/schemas";
 import { signTicketPassToken } from "@/lib/tickets/tokens";
 import { signFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
 import { signEventPickupToken } from "@/lib/events/event-pickup-token";
@@ -25,19 +27,13 @@ function isMissingFoodFulfilmentColumn(error: { code?: string; message?: string 
   );
 }
 
-export async function GET(_request: Request, { params }: Props) {
+export async function GET(request: Request, { params }: Props) {
   const { orderId } = await params;
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return apiFail("UNAUTHORIZED", "Sign in to view order passes", 401);
+  const access = await authorizeOrder(request, orderId);
+  if (!access) return apiFail("NOT_FOUND", "Order not found", 404);
+  const db = access.db;
+  const order = access.order;
 
-  const { data: order, error: orderError } = await db
-    .from("orders")
-    .select("id,status")
-    .eq("id", orderId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (orderError) return apiFail("DB_ERROR", orderError.message, 500);
   if (!order) return apiFail("NOT_FOUND", "Order not found", 404);
   if (!PAID_ORDER_STATES.has(String(order.status).toLowerCase())) {
     return apiFail("ORDER_NOT_PAID", "Pass codes become available after payment is complete", 409);
@@ -97,7 +93,7 @@ export async function GET(_request: Request, { params }: Props) {
     // Keep them available while an environment is waiting for that migration.
     const eventPickups = await loadEventPickups(db, orderId);
     if (!eventPickups) return apiFail("DB_ERROR", "Unable to load event pickup passes", 500);
-    return apiOk({ tickets, foodOrders: [], eventPickups });
+    return guestPrivateResponse({ tickets, foodOrders: [], eventPickups });
   }
   if (itemError) return apiFail("DB_ERROR", itemError.message, 500);
 
@@ -146,7 +142,7 @@ export async function GET(_request: Request, { params }: Props) {
   }));
   const eventPickups = await loadEventPickups(db, orderId);
   if (!eventPickups) return apiFail("DB_ERROR", "Unable to load event pickup passes", 500);
-  return apiOk({ tickets, foodOrders, eventPickups });
+  return guestPrivateResponse({ tickets, foodOrders, eventPickups });
 }
 
 type EventPickupRow = {
@@ -163,7 +159,7 @@ type EventPickupRow = {
 };
 
 /** Slot-bound codes are issued per saved vendor/location/date/slot group. */
-async function loadEventPickups(db: Awaited<ReturnType<typeof createClient>>, orderId: string) {
+async function loadEventPickups(db: SupabaseClient, orderId: string) {
   const { data, error } = await db
     .from("order_items")
     .select("vendor_id,event_location_id,pickup_date,pickup_slot_id,slot_starts_at,product_name,variant_name,quantity,fulfil_status,vendors(name)")

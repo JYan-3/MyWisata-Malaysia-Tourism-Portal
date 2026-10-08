@@ -2553,6 +2553,8 @@
       "moreProducts_other": "另有 {{count}} 件"
     },
     "promotionCampaigns": {
+      "operating": "营业中",
+      "betweenSessions": "非营业时段",
       "eyebrow": "限时活动",
       "homeEyebrow": "精选活动",
       "live": "正在进行",
@@ -3536,5 +3538,21 @@
       "helpCta": "访问帮助中心",
       "supportCta": "联系客服"
     }
+  },
+  "guestCheckout": {
+    "title": "游客结账",
+    "hint": "付款前请确认邮箱。我们会发送收据和私人订单链接。钱包及账号优惠券需要登录使用。",
+    "email": "联系邮箱",
+    "name": "联系人姓名（选填）",
+    "phone": "付款联系电话（无需短信认证）",
+    "unavailable": "游客结账暂时无法使用。",
+    "accessTitle": "查看游客订单",
+    "recoveryHint": "使用下单时的订单编号和联系邮箱，申请新的私人订单链接。",
+    "orderNumber": "订单编号",
+    "emailLink": "发送订单链接到邮箱",
+    "requested": "如果资料与游客订单匹配，我们会发送订单访问链接到邮箱。",
+    "requestFailed": "暂时无法申请链接，请稍后再试。",
+    "opening": "正在打开订单…",
+    "eventHint": "确认前请检查邮箱。我们会发送收据和私人订单链接。"
   }
 }

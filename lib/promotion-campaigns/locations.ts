@@ -1,5 +1,13 @@
 import { formatDate } from "@/lib/i18n/format";
 import type { AppLocale } from "@/lib/i18n/locale";
+import type { PromotionCampaignPublic } from "./types";
+
+export function getEventOperationalLabelKey(campaign: Pick<PromotionCampaignPublic, "visibility" | "operationalStatus">): string {
+  if (campaign.operationalStatus === "between_sessions") return "ui.promotionCampaigns.betweenSessions";
+  if (campaign.operationalStatus === "operating") return "ui.promotionCampaigns.operating";
+  if (campaign.operationalStatus === "upcoming") return "ui.promotionCampaigns.upcoming";
+  return campaign.visibility === "live" ? "ui.promotionCampaigns.live" : "ui.promotionCampaigns.upcoming";
+}
 
 // Location dates are plain calendar dates (YYYY-MM-DD) and hours are plain
 // wall-clock times (HH:MM), both already in Malaysia time. Formatting them in

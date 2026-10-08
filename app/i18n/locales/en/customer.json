@@ -2553,6 +2553,8 @@
       "moreProducts_other": "+{{count}} more"
     },
     "promotionCampaigns": {
+      "operating": "Open now",
+      "betweenSessions": "Between opening sessions",
       "eyebrow": "Limited-time events",
       "homeEyebrow": "Featured campaign",
       "live": "Live now",
@@ -3536,5 +3538,21 @@
       "helpCta": "Visit Help Center",
       "supportCta": "Contact support"
     }
+  },
+  "guestCheckout": {
+    "title": "Guest checkout",
+    "hint": "Check your email before paying. We will send your receipt and a private order link. Wallets and account vouchers require sign-in.",
+    "email": "Contact email",
+    "name": "Contact name (optional)",
+    "phone": "Contact phone for payment (no SMS verification)",
+    "unavailable": "Guest checkout is temporarily unavailable.",
+    "accessTitle": "Access your guest order",
+    "recoveryHint": "Request a new private link using the order number and email provided at checkout.",
+    "orderNumber": "Order number",
+    "emailLink": "Email me an order link",
+    "requested": "If the details match a guest order, an access link will be emailed.",
+    "requestFailed": "Unable to request a link. Please try again later.",
+    "opening": "Opening your order…",
+    "eventHint": "Check your email before confirming. We will send your receipt and a private order link."
   }
 }

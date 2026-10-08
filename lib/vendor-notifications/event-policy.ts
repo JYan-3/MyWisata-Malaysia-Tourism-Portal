@@ -23,4 +23,5 @@ export const VENDOR_EVENT_MATRIX = {
   walletSettlement: { audience: 'owner', category: 'vendor_wallet', email: true },
   vendorAccount: { audience: 'owner', category: 'vendor_account', email: true },
   managerPermission: { audience: 'owner_and_assigned_outlet', category: 'vendor_account', email: true },
+  eventArrangementsChanged: { audience: 'owner', category: 'vendor_account', email: true },
 } as const satisfies Record<string, VendorEventPolicy>;

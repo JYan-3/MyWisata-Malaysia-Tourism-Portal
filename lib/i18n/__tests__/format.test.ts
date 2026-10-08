@@ -39,6 +39,11 @@ describe("locale-aware formatters", () => {
     expect(formatNumber(1234567.89, "zh-CN")).toBe("1,234,567.89");
   });
 
+  it("shows Malaysia event dates rather than the preceding UTC date", () => {
+    expect(formatDate("2026-09-30T16:00:00.000Z", "en", { timeZone: "Asia/Kuala_Lumpur" })).toBe("Oct 1, 2026");
+    expect(formatDate("2026-10-08T15:59:59.999Z", "en", { timeZone: "Asia/Kuala_Lumpur" })).toBe("Oct 8, 2026");
+  });
+
   it("accepts explicit dateStyle/timeStyle options without mixing incompatible defaults", () => {
     const value = "2026-03-05T14:06:00.000Z";
     expect(() => formatDate(value, "en", { dateStyle: "long", timeZone: "UTC" })).not.toThrow();

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AlertCircle, Building2, QrCode, ShieldCheck } from "lucide-react";
-import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -42,11 +41,6 @@ export default function PaymentSimulatorPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      setSession(null);
-      return;
-    }
     let cancelled = false;
     fetch(`/api/payments/simulator/sessions/${params.sessionId}`)
       .then(async (response) => {
@@ -91,9 +85,6 @@ export default function PaymentSimulatorPage() {
     }
   }
 
-  if (!currentUser) {
-    return <div className="mx-auto max-w-lg px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("ui.checkout.phoneRequired")} description={tCustomer("ui.checkout.verifyPhone")} nextPath={`/customer/checkout/simulator/${params.sessionId}`} /></div>;
-  }
   if (loading) return <div className="mx-auto max-w-lg px-4 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
   if (!session) return <EmptyState title={tCustomer("ui.states.couldNotLoad")} description={error ?? tCustomer("ui.states.loadingError")} />;
 

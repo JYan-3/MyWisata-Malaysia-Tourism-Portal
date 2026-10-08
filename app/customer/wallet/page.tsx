@@ -467,7 +467,7 @@ function WalletContent() {
 
   async function handleTopUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/wallet")) return;
+    if (!gate(CUSTOMER_CAPABILITY.WALLET_TOP_UP, "/customer/wallet")) return;
     setTopUpError("");
     const amount = parseFloat(topUpAmount);
     if (!amount || amount <= 0 || !Number.isFinite(amount)) { setTopUpError(tCustomer("ui.wallet.validAmount")); return; }
@@ -537,7 +537,7 @@ function WalletContent() {
 
       <WalletBalanceSummary
         buckets={buckets}
-        onTopUp={() => { if (!gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/wallet")) return; setShowTopUp((value) => !value); setShowWithdraw(false); }}
+        onTopUp={() => { if (!gate(CUSTOMER_CAPABILITY.WALLET_TOP_UP, "/customer/wallet")) return; setShowTopUp((value) => !value); setShowWithdraw(false); }}
         onWithdraw={() => void openWithdraw()}
       />
 
