@@ -229,6 +229,7 @@ const approvedForwardMigrations = [
   "20261004101605_restrict_public_storage_bucket_listing.sql",
   "20261004102210_remove_unscoped_legacy_table_writes.sql",
   "20261004111559_performance_advisor_safe_remediations.sql",
+  "20261006174844_event_pickup_slot_time_validation.sql",
 ];
 
 function migrationFiles() {

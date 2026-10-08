@@ -74,6 +74,7 @@ describe("GET customer order QR passes", () => {
   });
 
   it.each(["food_fulfilment_mode", "food_qr_scanned_at"])("still returns booking passes when optional food column %s is not migrated", async (column) => {
+    let orderItemReads = 0;
     mocks.from.mockImplementation((table: string) => {
       if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([{
@@ -81,10 +82,11 @@ describe("GET customer order QR passes", () => {
         order_items: { outlet_id: "outlet-1", vendor_id: "vendor-a", outlets: { id: "outlet-1", name: "North Outlet", vendor_id: "vendor-a", vendors: { id: "vendor-a", name: "Vendor A" } } },
         ticket_passes: [{ id: "pass-1", policy: "single_entry", entry_limit: 1, entries_used: 0, status: "active", valid_from: null, valid_until: null }],
       }]);
-      return query(null, {
-        code: "42703",
-        message: `column order_items.${column} does not exist`,
-      });
+      if (table === "order_items" && orderItemReads++ === 0) return query(null, {
+          code: "42703",
+          message: `column order_items.${column} does not exist`,
+        });
+      return query([]);
     });
 
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });
@@ -144,25 +146,30 @@ describe("GET customer order QR passes", () => {
     expect((await response.json()).data.foodOrders[0].status).toBe("fulfilled");
   });
 
-  it("issues one pickup code per stall and date for event reservations, valid for that date", async () => {
+  it("issues a separate pickup code for each vendor, location, date, and slot", async () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([]);
       return query([
-        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", product_name: "Kuih", variant_name: "Main hall · 10:00–11:00", quantity: 2, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
-        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", product_name: "Teh", variant_name: "Main hall · 10:00–11:00", quantity: 1, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
-        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-30", product_name: "Kuih", variant_name: "Main hall · 12:00–13:00", quantity: 1, fulfil_status: "cancelled", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", pickup_slot_id: "44444444-4444-4444-8444-444444444444", slot_starts_at: "2099-12-31T02:00:00.000Z", product_name: "Kuih", variant_name: "Main hall · 10:00–11:00", quantity: 2, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", pickup_slot_id: "44444444-4444-4444-8444-444444444444", slot_starts_at: "2099-12-31T02:00:00.000Z", product_name: "Teh", variant_name: "Main hall · 10:00–11:00", quantity: 1, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", pickup_slot_id: "55555555-5555-4555-8555-555555555555", slot_starts_at: "2099-12-31T04:00:00.000Z", product_name: "Nasi", variant_name: "Main hall · 12:00–13:00", quantity: 1, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
+        { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-30", pickup_slot_id: "slot-old", slot_starts_at: "2099-12-30T04:00:00.000Z", product_name: "Kuih", variant_name: "Main hall · 12:00–13:00", quantity: 1, fulfil_status: "cancelled", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
       ]);
     });
 
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });
     const pickups = (await response.json()).data.eventPickups;
 
-    expect(pickups).toHaveLength(1);
-    expect(pickups[0]).toMatchObject({ vendorName: "Kuih Stall", pickupDate: "2099-12-31", pickupLabels: ["Main hall · 10:00–11:00"], status: "pending" });
-    expect(pickups[0].items).toEqual([{ name: "Kuih", quantity: 2 }, { name: "Teh", quantity: 1 }]);
-    const verified = verifyEventPickupToken(pickups[0].eventToken);
-    expect(verified.valid).toBe(true);
-    expect(verified.claims).toMatchObject({ orderId: "order-1", vendorId: "vendor-e", locationId: "loc-1", pickupDate: "2099-12-31" });
+    expect(pickups).toHaveLength(2);
+    const morning = pickups.find((pickup: { pickupLabels: string[] }) => pickup.pickupLabels[0] === "Main hall · 10:00–11:00");
+    const afternoon = pickups.find((pickup: { pickupLabels: string[] }) => pickup.pickupLabels[0] === "Main hall · 12:00–13:00");
+    expect(morning).toMatchObject({ vendorName: "Kuih Stall", pickupDate: "2099-12-31", pickupLabels: ["Main hall · 10:00–11:00"], status: "pending" });
+    expect(morning.items).toEqual([{ name: "Kuih", quantity: 2 }, { name: "Teh", quantity: 1 }]);
+    expect(afternoon.items).toEqual([{ name: "Nasi", quantity: 1 }]);
+    const verifiedMorning = verifyEventPickupToken(morning.eventToken);
+    expect(verifiedMorning.valid).toBe(true);
+    expect(verifiedMorning.claims).toMatchObject({ orderId: "order-1", vendorId: "vendor-e", locationId: "loc-1", pickupDate: "2099-12-31", pickupSlotId: "44444444-4444-4444-8444-444444444444" });
+    expect(verifyEventPickupToken(afternoon.eventToken).claims).toMatchObject({ pickupSlotId: "55555555-5555-4555-8555-555555555555" });
   });
 });

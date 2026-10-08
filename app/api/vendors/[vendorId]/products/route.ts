@@ -18,6 +18,22 @@ import {
 
 interface Props { params: Promise<{ vendorId: string }> }
 
+async function failIncompleteProductCreation(supabase: ReturnType<typeof import('@/lib/supabase/service').createServiceClient>, productId: string, message: string) {
+  let cleanupFailed = false;
+  try {
+    const { error } = await supabase.from('products').delete().eq('id', productId);
+    cleanupFailed = Boolean(error);
+    if (error) console.error('Failed to remove incomplete product after child write failure', { productId, error: error.message });
+  } catch (error) {
+    cleanupFailed = true;
+    console.error('Failed to remove incomplete product after child write failure', {
+      productId,
+      error: error instanceof Error ? error.message : 'Unknown cleanup error',
+    });
+  }
+  return apiFail('DB_ERROR', message, 500, cleanupFailed ? { incompleteProductId: productId } : undefined);
+}
+
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
   const access = await authorizeVendor(vendorId);
@@ -285,38 +301,44 @@ export async function POST(request: Request, { params }: Props) {
   const { data: product, error: prodErr } = productResult;
 
   if (prodErr) return apiFail('DB_ERROR', prodErr.message, 400);
+  if (!product) return apiFail('DB_ERROR', 'Product creation returned no record', 500);
 
   if (body.gallery?.length) {
     const { error: mediaError } = await supabase.from('media_assets').insert(body.gallery.map((media, index) => ({
       vendor_id: vendorId,
       outlet_id: body.outletId,
-      product_id: product!.id,
+      product_id: product.id,
       url: media.url,
       alt_text: media.alt || body.name,
       media_type: 'image',
       sort_order: index,
     })));
-    if (mediaError) return apiFail('DB_ERROR', mediaError.message, 500);
+    if (mediaError) return failIncompleteProductCreation(supabase, product.id, mediaError.message);
   }
 
   // Auto-create default variant "Standard"
-  const { data: variant } = await supabase.from('product_variants').insert({
-    product_id: product!.id,
+  const { data: variant, error: variantError } = await supabase.from('product_variants').insert({
+    product_id: product.id,
     name: 'Standard',
     price_offset: 0,
     is_default: true,
+    is_active: true,
   }).select().single();
+  if (variantError || !variant) {
+    return failIncompleteProductCreation(supabase, product.id, variantError?.message ?? 'Default product variant was not created');
+  }
 
   // Stock-backed products start with the explicitly configured quantity. A
   // digital product is file-backed and does not need a finite inventory row.
   if (!body.requiresBooking && body.productType !== 'digital' && variant) {
-    await supabase.from('inventory').insert({
+    const { error: inventoryError } = await supabase.from('inventory').insert({
       variant_id: variant.id,
       outlet_id: body.outletId,
       quantity: body.availableStock ?? 0,
       reserved: 0,
       low_stock_threshold: body.lowStockThreshold ?? 5,
     });
+    if (inventoryError) return failIncompleteProductCreation(supabase, product.id, inventoryError.message);
   }
 
   return apiOk(product, { status: 201 });

@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authorizeVendor: vi.fn(),
   from: vi.fn(),
+  revalidateTag: vi.fn(),
 }));
 
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor, authorizeVendorProductWrite: mocks.authorizeVendor }));
+vi.mock('next/cache', () => ({ revalidateTag: mocks.revalidateTag }));
 
-import { PATCH } from '../route';
+import { DELETE, PATCH } from '../route';
 import { GET as GETVariants } from '../variants/route';
 
 const vendorId = 'vendor-1';
@@ -69,6 +71,59 @@ describe('PATCH vendor product shared outlet scope', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.from).toHaveBeenCalledWith('products');
+    expect(mocks.revalidateTag).toHaveBeenCalledWith('activities', { expire: 0 });
+  });
+
+  it('does not invalidate the customer catalogue when the product update fails', async () => {
+    const productQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: {
+        id: productId, outlet_id: null, outlet_offers: [{ outlet_id: assignedOutletId, status: 'active' }],
+      }, error: null }),
+    };
+    const updateQuery = {
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data: null, error: { message: 'write failed' } }),
+    };
+    mocks.from.mockImplementationOnce(() => productQuery).mockImplementationOnce(() => updateQuery);
+
+    const response = await PATCH(
+      new Request('http://localhost', { method: 'PATCH', body: JSON.stringify({ status: 'active' }) }),
+      { params: Promise.resolve({ vendorId, productId }) },
+    );
+
+    expect(response.status).toBe(500);
+    expect(mocks.revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it('invalidates the customer catalogue after a successful product archive', async () => {
+    const productQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: {
+        id: productId, outlet_id: null, outlet_offers: [{ outlet_id: assignedOutletId, status: 'active' }],
+      }, error: null }),
+    };
+    const updateQuery = {
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+    };
+    mocks.from.mockImplementationOnce(() => productQuery).mockImplementationOnce(() => updateQuery);
+
+    const response = await DELETE(
+      new Request('http://localhost', { method: 'DELETE' }),
+      { params: Promise.resolve({ vendorId, productId }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.revalidateTag).toHaveBeenCalledWith('activities', { expire: 0 });
   });
 
   it('persists draft content with a draft review status', async () => {

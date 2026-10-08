@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
+  // E2E flows share the local Next.js server and seeded catalogue.
+  workers: 1,
   retries: 1,
   reporter: 'list',
   use: {

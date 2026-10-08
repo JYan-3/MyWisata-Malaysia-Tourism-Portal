@@ -79,4 +79,16 @@ describe('public outlet menu', () => {
     expect(source).toContain('t("strictMigration.outletNavigation.position"');
     expect(source).toContain('t("strictMigration.outletNavigation.viewAll"');
   });
+
+  it('scopes public inventory, variants, and booking slots to the current outlet', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
+
+    expect(source).toContain('inventory(outlet_id,quantity,reserved)');
+    expect(source).toContain('.eq("outlet_id", outletId)');
+    expect(source).toContain('product_variants(id,name,price_offset,is_default,is_active,inventory');
+    expect(source).toContain('getActiveDefaultOutletVariant(variants, outletScopedVariant)');
+    expect(source).toContain('const outletScopedVariant = product.requires_booking || product.product_type === "digital" ? undefined : outletId;');
+    expect(source).toContain('getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset)');
+    expect(source).toContain('getOutletAvailableStock(variants, outletId)');
+  });
 });

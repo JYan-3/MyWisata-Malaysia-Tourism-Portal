@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/maplibre-worker";
 import { useEffect, useMemo, useRef } from "react";
 import { Layer, Map as MapLibre, Marker, NavigationControl, Source, type MapRef } from "react-map-gl/maplibre";
 import type { Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";

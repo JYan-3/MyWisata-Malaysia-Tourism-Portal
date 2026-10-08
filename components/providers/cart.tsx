@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRef } from "react";
+import { usePathname } from "next/navigation";
 import * as commerce from "@/backend/domains/commerce";
 import { getActivitiesByIds } from "@/backend/domains/catalogue";
 import { cartItemKey, cartTotals } from "@/backend/core/helpers";
@@ -38,6 +40,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [selectedKeys, setSelectedKeysState] = useState<Set<string>>(new Set());
   const { currentUser } = useAuth();
+  const pathname = usePathname();
+  const previousPathname = useRef(pathname);
   const activityIdsKey = JSON.stringify([...new Set(items.map((item) => item.activityId))].sort());
   const activities = useMemo(
     () => activityData.key === activityIdsKey ? activityData.activities : [],
@@ -72,6 +76,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     else { setItems([]); setMounted(true); }
     return () => { active = false; };
   }, [currentUser]);
+
+  useEffect(() => {
+    const previous = previousPathname.current;
+    previousPathname.current = pathname;
+    const leftCheckoutForOrders =
+      (previous === "/customer/checkout" || previous.startsWith("/customer/checkout/"))
+      && (pathname === "/customer/orders" || pathname.startsWith("/customer/orders/"));
+    if (!currentUser || !mounted || !leftCheckoutForOrders) return;
+
+    // Checkout removes purchased lines on the server. Re-read the cart when the
+    // paid order opens so the persistent customer header cannot keep showing
+    // the pre-payment badge (and partial checkout keeps any unpurchased lines).
+    void commerce.getCart(currentUser.id).then(setItems).catch(() => undefined);
+  }, [currentUser, mounted, pathname]);
 
   useEffect(() => {
     const activityIds = JSON.parse(activityIdsKey) as string[];

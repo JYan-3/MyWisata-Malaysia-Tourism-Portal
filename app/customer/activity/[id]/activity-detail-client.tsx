@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckCircle, Clock3, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
@@ -20,8 +20,9 @@ import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getActivityCommerceMode, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
 import { outletShortName } from "@/lib/outlet-display";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
-import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
+import { buildActivityPath, getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
+import { getSelectedOutletStock } from "@/lib/customer/outlet-shop";
 import { formatMYR } from "@/lib/i18n/format";
 import { getDetailBody } from "./bodies";
 import { ReferencePrice } from "@/components/shared/reference-price";
@@ -48,6 +49,7 @@ export function ActivityDetailClient({
   relatedScope?: "vendor" | "outlet";
 }) {
   const { t } = useTranslation("customer");
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
@@ -71,9 +73,9 @@ export function ActivityDetailClient({
   const [addError, setAddError] = useState<string | null>(null);
   // Which outlet the customer is buying from. Price and stock are per-outlet,
   // so this is required before the item can go in the cart.
-  const [outletId, setOutletId] = useState<string>(initialOutletId);
-  const slots = initialSlots.filter((slot) => !slot.outletId || slot.outletId === outletId);
-  const selectedStock = activity?.stockByOutlet?.[outletId] ?? activity?.availableStock;
+  const [outletId] = useState<string>(initialOutletId);
+  const slots = initialSlots.filter((slot) => slot.outletId === outletId);
+  const selectedStock = getSelectedOutletStock(activity, outletId);
 
   // §11.2.7 view signal: beacon dwell time on unmount (best-effort, ignored for guests).
   useEffect(() => {
@@ -317,7 +319,7 @@ export function ActivityDetailClient({
                     <button
                       key={choice.outletId}
                       type="button"
-                      onClick={() => { setOutletId(choice.outletId); setSlotId(""); setAdded(false); }}
+                      onClick={() => router.replace(buildActivityPath(activity.id, returnTo, choice.outletId, searchParams.get("source") ?? undefined))}
                       aria-pressed={selected}
                       className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors"
                       style={{

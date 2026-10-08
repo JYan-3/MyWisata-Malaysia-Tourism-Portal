@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     ".worktrees/**",
+    "public/maplibre/**",
+    "vendor/braces/**",
     "next-env.d.ts",
     "Docs/**",
   ]),

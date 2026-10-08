@@ -1,4 +1,5 @@
 import { formatMYRNumber } from "@/lib/i18n/format";
+import { round2 } from "@/backend/core/money";
 
 export interface PublicOutletEmptyState {
   title: string;
@@ -41,6 +42,29 @@ export interface OutletProductActionInput {
 export type OutletProductAction =
   | { kind: 'cart'; variantId: string; slotId?: string }
   | { kind: 'details'; reason: 'slot_required' | 'selection_required' | 'out_of_stock' };
+
+export interface OutletInventoryVariant {
+  is_active?: boolean | null;
+  inventory?: readonly {
+    outlet_id: string;
+    quantity?: number | string | null;
+    reserved?: number | string | null;
+  }[] | null;
+}
+
+export interface OutletSelectableVariant extends OutletInventoryVariant {
+  id: string;
+  is_default?: boolean | null;
+  is_active?: boolean | null;
+}
+
+export interface SelectedOutletStockInput {
+  outletId: string;
+  offers?: readonly { outletId: string }[];
+  availableStock?: number;
+  stockByOutlet?: Record<string, number>;
+  requiresBooking: boolean;
+}
 
 export interface OutletProductCardModelInput {
   outletName: string;
@@ -91,6 +115,38 @@ const DEFAULT_OPERATING_HOURS = {
 
 function clean(value?: string | null) {
   return value?.trim() || '';
+}
+
+export function getOutletAvailableStock(variants: readonly OutletInventoryVariant[], outletId: string): number {
+  return variants
+    .filter((variant) => variant.is_active !== false)
+    .flatMap((variant) => variant.inventory ?? [])
+    .filter((inventory) => inventory.outlet_id === outletId)
+    .reduce((total, inventory) => total + Math.max(0, Number(inventory.quantity ?? 0) - Number(inventory.reserved ?? 0)), 0);
+}
+
+export function getActiveDefaultOutletVariant<T extends OutletSelectableVariant>(variants: readonly T[], outletId?: string): T | null {
+  const activeVariants = variants.filter((variant) => variant.is_active !== false);
+  const selectableVariants = outletId
+    ? activeVariants.filter((variant) => (variant.inventory ?? []).some((inventory) =>
+      inventory.outlet_id === outletId
+      && Math.max(0, Number(inventory.quantity ?? 0) - Number(inventory.reserved ?? 0)) > 0
+    ))
+    : activeVariants;
+  return selectableVariants.find((variant) => variant.is_default) ?? selectableVariants[0] ?? null;
+}
+
+export function getOutletVariantPrice(basePrice: number, priceOffset?: number | string | null): number {
+  return round2(basePrice + Number(priceOffset ?? 0));
+}
+
+export function getSelectedOutletStock(activity: SelectedOutletStockInput | null, outletId: string): number | undefined {
+  if (!activity || activity.requiresBooking) return undefined;
+  if (activity.stockByOutlet && Object.prototype.hasOwnProperty.call(activity.stockByOutlet, outletId)) {
+    return activity.stockByOutlet[outletId];
+  }
+  if (activity.offers?.some((offer) => offer.outletId === outletId)) return 0;
+  return activity.outletId === outletId ? activity.availableStock : undefined;
 }
 
 function slugify(value: string) {

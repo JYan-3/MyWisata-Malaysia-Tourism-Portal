@@ -4,13 +4,13 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { apiOk, parseBody } from "@/lib/validation/schemas";
+import { apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
 import { recordInteraction } from "@/lib/interactions";
 
 const schema = z.object({
   event: z.enum(["view", "book", "rate"]),
   entityType: z.enum(["vendor", "outlet", "product"]),
-  entityId: z.string().uuid(),
+  entityId: databaseUuidSchema,
   dwellMs: z.number().int().min(0).max(3_600_000).optional(),
 }).strict();
 

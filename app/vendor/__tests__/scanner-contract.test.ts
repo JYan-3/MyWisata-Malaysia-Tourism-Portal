@@ -53,4 +53,9 @@ describe("Vendor camera scanner contract", () => {
     expect(scanner).toContain('Recent activity panel');
     expect(scanner).toContain('t("ui.scanner.manualTab"');
   });
+
+  it("shows the admitted ticket count for every scan in recent activity and history", () => {
+    const scanner = read("components/vendor/redemption-scanner.tsx");
+    expect(scanner.match(/item\.item\.details/g)).toHaveLength(2);
+  });
 });

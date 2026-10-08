@@ -38,7 +38,7 @@ export function BookingQrCode({
   const [liveToken, setLiveToken] = useState(passToken);
   const [liveEntriesUsed, setLiveEntriesUsed] = useState(entriesUsed);
   const [liveValidUntil, setLiveValidUntil] = useState(validUntil);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(Boolean(orderId && !passToken));
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [enlargedQr, setEnlargedQr] = useState<{ token: string; dataUrl: string }>();
   const [enlargedQrError, setEnlargedQrError] = useState<string>();
@@ -163,7 +163,9 @@ export function BookingQrCode({
             </span>
           </button>
         ) : (
-          <span className="text-center text-[10px] text-muted-foreground">{t("ui.booking.qrUnavailable")}</span>
+          <span className="text-center text-[10px] text-muted-foreground">
+            {refreshing ? t("ui.booking.qrPreparing") : t("ui.booking.qrUnavailable")}
+          </span>
         )}
         {progress && (
           <div className="flex flex-col items-center gap-0.5 text-center">

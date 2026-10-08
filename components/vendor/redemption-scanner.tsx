@@ -36,7 +36,7 @@ type ResolvedScan =
 
 interface RecentScanItem {
   id: string;
-  kind: "voucher" | "ticket";
+  kind: "voucher" | "ticket" | "event_pickup";
   redeemedAt: string;
   outlet: { id: string; name: string };
   item: { code?: string; name: string; details: string; discountValue?: number };
@@ -118,10 +118,11 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   }, [outletId, outlets]);
 
   const loadStationData = useCallback(async () => {
-    if (!vendorId || !outletId) return;
+    if (!vendorId) return;
     setLoadingStats(true);
     try {
-      const params = new URLSearchParams({ outletId, pageSize: "8" });
+      const params = new URLSearchParams({ pageSize: "8" });
+      if (outletId) params.set("outletId", outletId);
       const response = await fetch(`/api/vendors/${vendorId}/redemptions?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json() as { data?: { stats?: RedemptionApiStats; items?: RecentScanItem[] } };
       if (response.ok && payload.data) {
@@ -569,13 +570,14 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                               className="flex min-w-0 items-start gap-2 rounded-xl border border-gray-100 bg-white p-2.5 text-xs shadow-sm"
                             >
                               <div className="mt-0.5 rounded-lg bg-secondary p-1.5 text-primary">
-                                {item.kind === "voucher" ? <Tag size={13} /> : <Ticket size={13} />}
+                                {item.kind === "voucher" ? <Tag size={13} /> : item.kind === "event_pickup" ? <Clock size={13} /> : <Ticket size={13} />}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate font-semibold text-gray-900">{item.item.name}</p>
                                 <p className="truncate text-[11px] text-gray-500">
-                                  {item.customer.name} · {formatScanTime(item.redeemedAt)}
+                                  {item.outlet.name} · {item.customer.name} · {formatScanTime(item.redeemedAt)}
                                 </p>
+                                <p className="truncate text-[11px] text-gray-500">{item.item.details}</p>
                               </div>
                             </div>
                           ))}
@@ -786,6 +788,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                               ({item.item.code})
                             </span>
                           )}
+                          <p className="mt-1 font-normal text-gray-500">{item.item.details}</p>
                         </td>
                         <td className="px-4 py-3 text-gray-600">
                           <span className="inline-flex items-center gap-1">

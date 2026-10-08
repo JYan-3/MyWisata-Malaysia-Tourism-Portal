@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, CloudRain, Loader2 } from "lucide-react";
+import "@/lib/maplibre-worker";
 import { Layer, Marker, Source } from "react-map-gl/maplibre";
 import type { FeatureCollection, Point } from "geojson";
 import type { FilterSpecification } from "maplibre-gl";

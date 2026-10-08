@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/components/providers/auth";
 
 type WishlistContextValue = {
   savedIds: ReadonlySet<string>;
@@ -12,11 +13,25 @@ type WishlistContextValue = {
 const WishlistContext = createContext<WishlistContextValue | null>(null);
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
+  const { currentUser, loading: authLoading } = useAuth();
+  const currentUserId = currentUser?.id;
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    if (authLoading) return () => { cancelled = true; };
+    if (!currentUserId) {
+      // Reset private client state as the auth identity transitions to guest.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSavedIds(new Set());
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    // Reset the previous identity's data before hydrating the active customer.
+    setSavedIds(new Set());
+    setLoading(true);
     fetch("/api/wishlist")
       .then(async (response) => {
         if (!response.ok) return;
@@ -33,7 +48,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, currentUserId]);
 
   const toggleSaved = useCallback(async (productId: string) => {
     const wasSaved = savedIds.has(productId);

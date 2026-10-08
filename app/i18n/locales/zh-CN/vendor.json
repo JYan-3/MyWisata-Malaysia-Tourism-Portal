@@ -850,7 +850,7 @@
       "vouchersUsed": "已核销优惠券",
       "storePromos": "门店优惠券",
       "ticketsAdmitted": "已签到门票",
-      "checkedInGuests": "已入场访客",
+      "checkedInGuests": "已记录入场次数",
       "allOutlets": "所有分店",
       "searchPlaceholder": "搜索券码、项目、员工...",
       "loading": "正在加载核销记录...",

@@ -3,6 +3,7 @@
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productUpdateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-authorization';
+import { revalidateTag } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getScopedProduct } from '@/lib/vendor/product-scope';
 import {
@@ -153,94 +154,98 @@ export async function PATCH(request: Request, { params }: Props) {
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
 
-  if (body.gallery?.length) {
-    const { data: existingMedia } = await access.access.serviceDb
-      .from('media_assets')
-      .select('url')
-      .eq('product_id', productId);
-    const existingUrls = new Set((existingMedia || []).map((media: { url: string }) => media.url));
-    const newMedia = body.gallery
-      .filter((media) => !existingUrls.has(media.url))
-      .map((media, index) => ({
-        vendor_id: vendorId,
-        outlet_id: existingProduct.outlet_id,
-        product_id: productId,
-        url: media.url,
-        alt_text: media.alt || String(body.name || 'Product image'),
-        media_type: 'image',
-        sort_order: (existingMedia?.length || 0) + index,
-      }));
-    if (newMedia.length) {
-      const { error: mediaError } = await access.access.serviceDb.from('media_assets').insert(newMedia);
-      if (mediaError) return apiFail('DB_ERROR', mediaError.message, 500);
+  try {
+    if (body.gallery?.length) {
+      const { data: existingMedia } = await access.access.serviceDb
+        .from('media_assets')
+        .select('url')
+        .eq('product_id', productId);
+      const existingUrls = new Set((existingMedia || []).map((media: { url: string }) => media.url));
+      const newMedia = body.gallery
+        .filter((media) => !existingUrls.has(media.url))
+        .map((media, index) => ({
+          vendor_id: vendorId,
+          outlet_id: existingProduct.outlet_id,
+          product_id: productId,
+          url: media.url,
+          alt_text: media.alt || String(body.name || 'Product image'),
+          media_type: 'image',
+          sort_order: (existingMedia?.length || 0) + index,
+        }));
+      if (newMedia.length) {
+        const { error: mediaError } = await access.access.serviceDb.from('media_assets').insert(newMedia);
+        if (mediaError) return apiFail('DB_ERROR', mediaError.message, 500);
+      }
     }
-  }
 
-  const stockProductType = body.productType ?? existingProduct.product_type;
-  const requiresBooking = body.requiresBooking ?? existingProduct.requires_booking;
-  if ((body.availableStock !== undefined || body.lowStockThreshold !== undefined) && !requiresBooking && stockProductType !== 'digital') {
-    const { data: variant, error: variantError } = await access.access.serviceDb
-      .from('product_variants')
-      .select('id')
-      .eq('product_id', productId)
-      .eq('is_default', true)
-      .eq('is_active', true)
-      .maybeSingle();
-    if (variantError) return apiFail('DB_ERROR', variantError.message, 500);
-
-    let inventoryVariant = variant;
-    if (!inventoryVariant && body.availableStock !== undefined) {
-      const { data: createdVariant, error: createVariantError } = await access.access.serviceDb
+    const stockProductType = body.productType ?? existingProduct.product_type;
+    const requiresBooking = body.requiresBooking ?? existingProduct.requires_booking;
+    if ((body.availableStock !== undefined || body.lowStockThreshold !== undefined) && !requiresBooking && stockProductType !== 'digital') {
+      const { data: variant, error: variantError } = await access.access.serviceDb
         .from('product_variants')
-        .insert({ product_id: productId, name: 'Standard', price_offset: 0, is_default: true, is_active: true })
         .select('id')
-        .single();
-      if (createVariantError || !createdVariant) return apiFail('DB_ERROR', createVariantError?.message || 'Unable to create the default stock variant', 500);
-      inventoryVariant = createdVariant;
+        .eq('product_id', productId)
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (variantError) return apiFail('DB_ERROR', variantError.message, 500);
+
+      let inventoryVariant = variant;
+      if (!inventoryVariant && body.availableStock !== undefined) {
+        const { data: createdVariant, error: createVariantError } = await access.access.serviceDb
+          .from('product_variants')
+          .insert({ product_id: productId, name: 'Standard', price_offset: 0, is_default: true, is_active: true })
+          .select('id')
+          .single();
+        if (createVariantError || !createdVariant) return apiFail('DB_ERROR', createVariantError?.message || 'Unable to create the default stock variant', 500);
+        inventoryVariant = createdVariant;
+      }
+
+      if (!inventoryVariant && body.lowStockThreshold !== undefined) {
+        return apiFail('INVENTORY_SETUP_REQUIRED', 'Enter the actual stock quantity before configuring inventory.', 400);
+      }
+
+      if (inventoryVariant && body.availableStock !== undefined) {
+        const { data: existingInventory, error: inventoryReadError } = await access.access.serviceDb
+          .from('inventory')
+          .select('quantity,reserved,low_stock_threshold')
+          .eq('variant_id', inventoryVariant.id)
+          .eq('outlet_id', productOutlet.id)
+          .maybeSingle();
+        if (inventoryReadError) return apiFail('DB_ERROR', inventoryReadError.message, 500);
+        const { error: inventoryError } = await access.access.serviceDb
+          .from('inventory')
+          .upsert({
+            variant_id: inventoryVariant.id,
+            outlet_id: productOutlet.id,
+            quantity: body.availableStock,
+            reserved: Number(existingInventory?.reserved ?? 0),
+            low_stock_threshold: body.lowStockThreshold ?? Number(existingInventory?.low_stock_threshold ?? 5),
+          }, { onConflict: 'variant_id,outlet_id' });
+        if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
+        await refreshStockStatus(access.access.serviceDb, vendorId, productId);
+      } else if (inventoryVariant && body.lowStockThreshold !== undefined) {
+        const { data: existingInventory, error: inventoryReadError } = await access.access.serviceDb
+          .from('inventory')
+          .select('quantity')
+          .eq('variant_id', inventoryVariant.id)
+          .eq('outlet_id', productOutlet.id)
+          .maybeSingle();
+        if (inventoryReadError) return apiFail('DB_ERROR', inventoryReadError.message, 500);
+        if (!existingInventory) return apiFail('INVENTORY_SETUP_REQUIRED', 'Enter the actual stock quantity before configuring inventory.', 400);
+        const { error: inventoryError } = await access.access.serviceDb
+          .from('inventory')
+          .update({ low_stock_threshold: body.lowStockThreshold })
+          .eq('variant_id', inventoryVariant.id)
+          .eq('outlet_id', productOutlet.id);
+        if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
+      }
     }
 
-    if (!inventoryVariant && body.lowStockThreshold !== undefined) {
-      return apiFail('INVENTORY_SETUP_REQUIRED', 'Enter the actual stock quantity before configuring inventory.', 400);
-    }
-
-    if (inventoryVariant && body.availableStock !== undefined) {
-      const { data: existingInventory, error: inventoryReadError } = await access.access.serviceDb
-        .from('inventory')
-        .select('quantity,reserved,low_stock_threshold')
-        .eq('variant_id', inventoryVariant.id)
-        .eq('outlet_id', productOutlet.id)
-        .maybeSingle();
-      if (inventoryReadError) return apiFail('DB_ERROR', inventoryReadError.message, 500);
-      const { error: inventoryError } = await access.access.serviceDb
-        .from('inventory')
-        .upsert({
-          variant_id: inventoryVariant.id,
-          outlet_id: productOutlet.id,
-          quantity: body.availableStock,
-          reserved: Number(existingInventory?.reserved ?? 0),
-          low_stock_threshold: body.lowStockThreshold ?? Number(existingInventory?.low_stock_threshold ?? 5),
-        }, { onConflict: 'variant_id,outlet_id' });
-      if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
-      await refreshStockStatus(access.access.serviceDb, vendorId, productId);
-    } else if (inventoryVariant && body.lowStockThreshold !== undefined) {
-      const { data: existingInventory, error: inventoryReadError } = await access.access.serviceDb
-        .from('inventory')
-        .select('quantity')
-        .eq('variant_id', inventoryVariant.id)
-        .eq('outlet_id', productOutlet.id)
-        .maybeSingle();
-      if (inventoryReadError) return apiFail('DB_ERROR', inventoryReadError.message, 500);
-      if (!existingInventory) return apiFail('INVENTORY_SETUP_REQUIRED', 'Enter the actual stock quantity before configuring inventory.', 400);
-      const { error: inventoryError } = await access.access.serviceDb
-        .from('inventory')
-        .update({ low_stock_threshold: body.lowStockThreshold })
-        .eq('variant_id', inventoryVariant.id)
-        .eq('outlet_id', productOutlet.id);
-      if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
-    }
+    return apiOk(data);
+  } finally {
+    revalidateTag('activities', { expire: 0 });
   }
-
-  return apiOk(data);
 }
 
 export async function DELETE(_request: Request, { params }: Props) {
@@ -265,5 +270,6 @@ export async function DELETE(_request: Request, { params }: Props) {
     .eq('vendor_id', vendorId);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  revalidateTag('activities', { expire: 0 });
   return apiOk({ id: productId, status: 'archived' });
 }

@@ -9,7 +9,10 @@ const state = vi.hoisted(() => ({
   },
   reviewRecord: null as Record<string, unknown> | null,
   insertError: null as { message: string } | null,
+  revalidateTag: vi.fn(),
 }));
+
+vi.mock("next/cache", () => ({ revalidateTag: state.revalidateTag }));
 
 vi.mock("@/lib/staff-permissions/server", () => ({
   requireStaffPermission: vi.fn(async () => ({ user: { id: "aaaaaaaa-0000-0000-0000-000000000001" } })),
@@ -47,6 +50,7 @@ describe("POST /api/admin/catalogue/reviews", () => {
   beforeEach(() => {
     state.reviewRecord = null;
     state.insertError = null;
+    state.revalidateTag.mockClear();
   });
 
   it.each([
@@ -70,6 +74,7 @@ describe("POST /api/admin/catalogue/reviews", () => {
     const payload = await response.json() as { data: { review_status: string } };
     expect(payload.data.review_status).toBe(expectedStoredAction);
     expect(state.reviewRecord?.action).toBe(expectedStoredAction);
+    expect(state.revalidateTag).toHaveBeenCalledWith("activities", { expire: 0 });
   });
 
   it("does not report a complete review when the review history insert fails", async () => {

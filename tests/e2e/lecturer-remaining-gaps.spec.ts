@@ -8,7 +8,14 @@ async function activityHrefs(page: Page) {
 
 async function openExperiences(page: Page) {
   await page.getByRole("button", { name: "Experiences", exact: true }).click();
+  await page.getByRole("button", { name: /^More filters/ }).click();
   await expect(page.getByRole("region", { name: "Advanced filters" })).toBeVisible();
+  await page.locator("summary").filter({ hasText: "Preferences" }).click();
+  // The server initially renders the unfiltered cached catalogue. Wait for the
+  // client-side filter and sponsored-placement request to settle before reading
+  // cards, otherwise a copied-URL refresh can compare the initial list to the
+  // final filtered list.
+  await page.waitForLoadState("networkidle");
   await expect(page.getByText(/\d+ results/, { exact: true })).toBeVisible();
 }
 

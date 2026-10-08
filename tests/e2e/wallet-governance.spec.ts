@@ -72,18 +72,17 @@ test.describe('Wallet governance browser flows', () => {
 
   test('Super Admin can grant a Wallet Approver with a clear reason', async ({ page }) => {
     const patches: PatchRecord[] = [];
-    await mockWalletSettings(page, []);
     await mockWalletApprovers(page, patches);
 
     await signIn(page, ADMIN_EMAIL);
-    await page.goto('/admin/wallet/settings');
-    await expect(page.getByRole('heading', { name: 'Wallet settings' })).toBeVisible();
+    await page.goto('/admin/wallet/approvers');
+    await expect(page.getByRole('heading', { name: 'Wallet approvers' })).toBeVisible();
 
-    await page.locator('textarea').nth(1).fill('Add a second reviewer for payout coverage');
-    await page.getByRole('combobox').nth(1).selectOption('user-2');
+    await page.locator('textarea').first().fill('Add a second reviewer for payout coverage');
+    await page.getByLabel('Eligible user').selectOption('user-2');
     await page.getByRole('button', { name: 'Grant access' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Grant access' }).click();
-    await expect(page.getByText('Wallet Approver granted.')).toBeVisible();
+    await expect(page.getByText('Wallet approver access changed: Grant.')).toBeVisible();
     expect(patches.at(-1)?.body).toMatchObject({ userId: 'user-2', action: 'grant' });
     await expect(page.getByText('Customer Bob', { exact: true })).toBeVisible();
   });
@@ -128,8 +127,8 @@ test.describe('Wallet governance browser flows', () => {
 
     await signIn(page, CUSTOMER_EMAIL);
     await page.goto('/customer/wallet/withdrawals/withdrawal-123');
-    await expect(page.getByRole('heading', { name: 'Withdrawal receipt' })).toBeVisible();
-    await expect(page.getByText('RM 70.00')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Withdrawal receipt' }).first()).toBeVisible();
+    await expect(page.getByText('RM70.00')).toBeVisible();
     await expect(page.getByText('Stripe Connect · •••• 1234')).toBeVisible();
     await expect(page.getByText('Payout reference: ••••po_1234')).toBeVisible();
     await expect(page.locator('body')).not.toContainText('acct_full_secret');
@@ -165,7 +164,7 @@ test.describe('Wallet governance browser flows', () => {
     await signIn(page, ADMIN_EMAIL);
     await page.goto('/admin/withdrawals/withdrawal-reject-1');
     await page.getByRole('button', { name: 'Reject', exact: true }).click();
-    await page.getByRole('combobox').selectOption('bank_details_mismatch');
+    await page.getByLabel('Reason for this decision').selectOption('bank_details_mismatch');
     await page.locator('textarea').fill(reason);
     await page.getByRole('button', { name: 'Continue to confirmation' }).click();
 
@@ -198,7 +197,7 @@ test.describe('Wallet governance browser flows', () => {
       customer: { displayName: 'Customer Bob', email: CUSTOMER_EMAIL, kycStatus: 'approved', kycApprovedAt: null },
       wallet: { topupSen: 0, earningsSen: 10000, pendingEarningsSen: 0, reservedSen: 10000, withdrawnSen: 0 },
       destinationLabel: 'Stripe Connect · •••• 1234', customerReason: status === 'hold' ? 'Please confirm your payout bank details.' : null,
-      approvals: [],
+      approvals: [], availableActions: status === 'hold' ? ['resume'] : ['hold'],
     });
     await page.route('**/api/admin/withdrawals?*', (route) => route.fulfill({ json: { data: { items: [detail()], total: 1, totalPages: 1 }, error: null } }));
     await page.route('**/api/admin/withdrawals/withdrawal-hold-1', (route) => route.fulfill({ json: { data: detail(), error: null } }));
@@ -213,17 +212,21 @@ test.describe('Wallet governance browser flows', () => {
 
     await signIn(page, ADMIN_EMAIL);
     await page.goto('/admin/withdrawals');
-    await page.getByRole('button', { name: /Customer Bob/ }).click();
-    await page.getByRole('combobox').last().selectOption('insufficient_payout_information');
-    await page.locator('textarea').fill('The payout account needs additional verification.');
+    await page.getByRole('link', { name: /Customer Bob/ }).click();
     await page.getByRole('button', { name: 'Hold', exact: true }).click();
+    await page.getByLabel('Reason for this decision').selectOption('insufficient_payout_information');
+    await page.locator('textarea').fill('The payout account needs additional verification.');
+    await page.getByRole('button', { name: 'Continue to confirmation' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm decision' }).click();
     await expect(page.getByRole('button', { name: 'Resume review' })).toBeVisible();
     expect(actions[0]).toMatchObject({ action: 'hold', body: { reasonCategory: 'insufficient_payout_information' } });
 
-    await page.getByRole('combobox').last().selectOption('additional_information_verified');
-    await page.locator('textarea').fill('The requested payout information has been verified.');
     await page.getByRole('button', { name: 'Resume review' }).click();
-    await expect(page.getByText('Status', { exact: true })).toBeVisible();
+    await page.getByLabel('Reason for this decision').selectOption('additional_information_verified');
+    await page.locator('textarea').fill('The requested payout information has been verified.');
+    await page.getByRole('button', { name: 'Continue to confirmation' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm decision' }).click();
+    await expect(page.getByText('Pending', { exact: true })).toBeVisible();
     expect(actions[1]).toMatchObject({ action: 'resume', body: { reasonCategory: 'additional_information_verified' } });
   });
 

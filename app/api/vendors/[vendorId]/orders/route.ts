@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: Props) {
 
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
-  if (linkedOrderId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(linkedOrderId)) {
+  if (linkedOrderId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(linkedOrderId)) {
     return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });
   }
 

@@ -80,20 +80,29 @@ export async function POST(request: Request, { params }: Props) {
     if (orderError) return apiFail("DB_ERROR", orderError.message, 500);
     if (!order || !["paid", "completed"].includes(String(order.status).toLowerCase())) return apiFail("ORDER_NOT_PAID", "This reservation has not been paid", 409);
 
-    const [{ data: rows, error: rowsError }, { data: vendor }] = await Promise.all([
-      access.access.serviceDb.from("order_items")
-        .select("id,product_name,variant_name,quantity,fulfil_status")
+    let pickupItemsQuery = access.access.serviceDb.from("order_items")
+        .select("id,product_name,variant_name,quantity,fulfil_status,pickup_slot_id,slot_starts_at")
         .eq("order_id", claims.orderId)
         .eq("vendor_id", vendorId)
         .eq("event_location_id", claims.locationId)
-        .eq("pickup_date", claims.pickupDate)
-        .neq("fulfil_status", "cancelled"),
+        .eq("pickup_date", claims.pickupDate);
+    if (claims.pickupSlotId) pickupItemsQuery = pickupItemsQuery.eq("pickup_slot_id", claims.pickupSlotId);
+    const [{ data: rows, error: rowsError }, { data: vendor }] = await Promise.all([
+      pickupItemsQuery.neq("fulfil_status", "cancelled"),
       access.access.serviceDb.from("vendors").select("name").eq("id", vendorId).maybeSingle(),
     ]);
     if (rowsError) return apiFail("DB_ERROR", rowsError.message, 500);
-    const items = (rows ?? []) as Array<{ id: string; product_name: string; variant_name: string | null; quantity: number; fulfil_status: string }>;
+    const items = ((rows ?? []) as Array<{ id: string; product_name: string; variant_name: string | null; quantity: number; fulfil_status: string; pickup_slot_id: string | null; slot_starts_at: string | null }>)
+      .filter((item) => !claims.pickupSlotId || item.pickup_slot_id === claims.pickupSlotId);
     if (items.length === 0) return apiFail("EVENT_PICKUP_NOT_FOUND", "No reservation matches this pickup code", 404);
     if (items.every((item) => item.fulfil_status === "fulfilled")) return apiFail("EVENT_PICKUP_COLLECTED", "This reservation has already been collected", 409);
+    const openItems = items.filter((item) => item.fulfil_status !== "fulfilled");
+    if (openItems.some((item) => !item.slot_starts_at || !Number.isFinite(new Date(item.slot_starts_at).getTime()))) {
+      return apiFail("EVENT_PICKUP_TIME_UNAVAILABLE", "The booked pickup time is unavailable", 409);
+    }
+    if (openItems.some((item) => new Date(item.slot_starts_at as string).getTime() > Date.now())) {
+      return apiFail("EVENT_PICKUP_NOT_YET", "This reservation cannot be collected before its booked time", 409);
+    }
     return apiOk({
       kind: "event_pickup",
       orderId: claims.orderId,
@@ -115,7 +124,7 @@ export async function POST(request: Request, { params }: Props) {
 
     const { data: booking, error } = await access.access.serviceDb
       .from("bookings")
-      .select("id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name,outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
+      .select("id,slot_id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name,outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
       .eq("id", ticket.bookingId)
       .maybeSingle();
     if (error) return apiFail("DB_ERROR", error.message, 500);
@@ -131,9 +140,25 @@ export async function POST(request: Request, { params }: Props) {
     const { data: order, error: orderError } = await access.access.serviceDb.from("orders").select("status").eq("id", rawOrderItem.order_id).maybeSingle();
     if (orderError) return apiFail("DB_ERROR", orderError.message, 500);
     if (!order || !["paid", "completed"].includes(String(order.status).toLowerCase())) return apiFail("ORDER_NOT_PAID", "This ticket is not active because its order is unpaid", 409);
+    const slotId = booking.slot_id;
+    if (typeof slotId === "string" && slotId) {
+      const { data: slot, error: slotError } = await access.access.serviceDb
+        .from("booking_slots")
+        .select("starts_at")
+        .eq("id", slotId)
+        .maybeSingle();
+      if (slotError) return apiFail("DB_ERROR", slotError.message, 500);
+      if (!slot?.starts_at || !Number.isFinite(new Date(slot.starts_at).getTime())) {
+        return apiFail("BOOKING_SLOT_UNAVAILABLE", "The booked time is no longer available", 409);
+      }
+      if (new Date(slot.starts_at).getTime() > Date.now()) {
+        return apiFail("TICKET_NOT_YET_VALID", "This ticket is not valid until the booked time", 409);
+      }
+    }
     if (!pass?.id || verification.claims?.passId !== pass.id || verification.claims?.outletId !== outlet.outletId) return apiFail("INVALID_TICKET", "This code does not match the ticket pass or outlet", 400);
     if (pass.status === "fully_redeemed" || pass.entries_used >= pass.entry_limit) return apiFail("TICKET_FULLY_REDEEMED", "This ticket has no entries remaining", 409);
     if (pass.status !== "active") return apiFail("TICKET_UNAVAILABLE", "This ticket pass is not active", 409);
+    if (!["confirmed", "in_use"].includes(String(booking.status))) return apiFail("INVALID_STATE", `Booking is ${booking.status}, cannot check in`, 409);
     if (pass.valid_from && new Date(pass.valid_from).getTime() > Date.now()) return apiFail("TICKET_NOT_YET_VALID", "This ticket is not valid yet", 409);
     if (pass.valid_until && new Date(pass.valid_until).getTime() < Date.now()) return apiFail("TICKET_EXPIRED", "This ticket has expired", 409);
     const ticketOutlet = rawOrderItem && typeof rawOrderItem === "object" && "outlets" in rawOrderItem

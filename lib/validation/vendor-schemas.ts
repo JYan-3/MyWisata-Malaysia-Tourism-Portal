@@ -6,6 +6,7 @@ import { databaseUuidSchema } from '@/lib/validation/schemas';
 import { TICKET_ENTRY_POLICIES } from '@/lib/tickets/product-ticket-policy';
 import { validateMalaysianPhone } from '@/lib/phone/normalize';
 import { parseInternationalPhone } from '@/lib/phone/international';
+import { malaysiaDateTimeLocalToIso } from '@/lib/datetime/malaysia';
 
 // ── Common building blocks ─────────────────────────────────
 
@@ -151,7 +152,7 @@ export const productCreateSchema = z.object({
   ticketEntryLimit: z.number().int().min(1).max(1000).default(1),
   ticketValidityDays: z.number().int().min(1).max(365).optional(),
   basePrice: rmMoney.min(0.01),
-  categoryId: uuid.optional(),
+  categoryId: optionalUuid.transform((value) => value || undefined),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
   tags: z.array(z.string().max(50)).max(20).optional(),
   submissionMode: z.enum(['draft', 'review']).default('review'),
@@ -188,15 +189,47 @@ export const variantUpdateSchema = z.object({
 
 // ── Booking Slot ───────────────────────────────────────────
 
-export const slotCreateSchema = z.object({
+const slotCreateFields = {
   productId: uuid,
   outletId: uuid,
-  startsAt: z.string().datetime(),
-  endsAt: z.string().datetime(),
   capacity: z.number().int().min(1).max(10_000),
   priceOverride: rmMoney.optional(),
+};
+
+function isValidSlotTimeRange(data: { startsAt: string; endsAt: string }) {
+  return new Date(data.endsAt) > new Date(data.startsAt);
+}
+
+export const slotCreateSchema = z.object({
+  ...slotCreateFields,
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime(),
+}).refine(
+  isValidSlotTimeRange,
+  { message: 'End time must be after start time', path: ['endsAt'] },
+);
+
+const malaysiaDateTimeLocal = z.string().transform((value, context) => {
+  try {
+    return malaysiaDateTimeLocalToIso(value);
+  } catch {
+    context.addIssue({ code: 'custom', message: 'Invalid local date and time' });
+    return z.NEVER;
+  }
+});
+
+/** Accepts the Malaysia wall times emitted by the vendor form and returns the API timestamp shape. */
+export const slotFormSchema = z.object({
+  ...slotCreateFields,
+  startsAt: malaysiaDateTimeLocal,
+  endsAt: malaysiaDateTimeLocal,
+  priceOverride: z.union([
+    rmMoney,
+    z.literal('').transform(() => undefined),
+    z.string().regex(/^\d+(?:\.\d{1,2})?$/).transform(Number).pipe(rmMoney),
+  ]).optional(),
 }).strict().refine(
-  (data) => new Date(data.endsAt) > new Date(data.startsAt),
+  isValidSlotTimeRange,
   { message: 'End time must be after start time', path: ['endsAt'] },
 );
 
@@ -373,7 +406,7 @@ const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 export const pickupSlotSchema = z.object({
   registrationId: databaseUuidSchema,
   slotId: databaseUuidSchema.nullable().optional(),
-  slotDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  slotDate: z.iso.date().nullable(),
   startsAt: clockTime,
   endsAt: clockTime,
   capacity: z.number().int().min(1).max(10_000),
@@ -402,6 +435,7 @@ export type ProductUpdate = z.infer<typeof productUpdateSchema>;
 export type VariantCreate = z.infer<typeof variantCreateSchema>;
 export type VariantUpdate = z.infer<typeof variantUpdateSchema>;
 export type SlotCreate = z.infer<typeof slotCreateSchema>;
+export type SlotFormInput = z.input<typeof slotFormSchema>;
 export type SlotUpdate = z.infer<typeof slotUpdateSchema>;
 export type VoucherCreate = z.infer<typeof voucherCreateSchema>;
 export type VoucherUpdate = z.infer<typeof voucherUpdateSchema>;
