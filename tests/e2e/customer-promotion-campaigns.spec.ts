@@ -9,6 +9,36 @@ async function readLiveCampaigns(page: import("@playwright/test").Page): Promise
 }
 
 test.describe("Customer vendor-fair event journeys", () => {
+  test("loads the event map without MapLibre runtime failures", async ({ page }) => {
+    const workerErrors: string[] = [];
+    const runtimeErrors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error" && message.text().includes("Worker failed to load")) {
+        workerErrors.push(message.text());
+      }
+    });
+    page.on("pageerror", (error) => runtimeErrors.push(`${error.message}\n${error.stack ?? ""}`));
+
+    await page.goto("/customer/events", { waitUntil: "domcontentloaded" });
+    const mapCanvas = page.locator(".mywisata-explore-map canvas.maplibregl-canvas");
+    await expect(mapCanvas).toBeVisible();
+    await page.waitForTimeout(1_500);
+    const bounds = await mapCanvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    if (bounds) {
+      await page.mouse.move(bounds.x + bounds.width * 0.7, bounds.y + bounds.height * 0.65);
+      await page.mouse.wheel(0, -180);
+      await page.mouse.move(bounds.x + bounds.width * 0.7, bounds.y + bounds.height * 0.65);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + bounds.width * 0.6, bounds.y + bounds.height * 0.65, { steps: 4 });
+      await page.mouse.up();
+      await page.waitForTimeout(500);
+    }
+
+    expect(workerErrors).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+  });
+
   test("home, Browse all, event detail, and a participating vendor's stall page are all reachable", async ({ page }) => {
     test.setTimeout(150_000);
     const campaigns = await readLiveCampaigns(page);

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // authorizeVendor therefore rejects them unless a route opts in with
 // { allowEventVendor: true }. This contract makes every opt-in deliberate.
 
-/** Routes an event vendor needs: event registration, listings, inbox of invitations, notifications. */
+/** Routes an event vendor needs: event registration, pickup, scan history, invitations, notifications. */
 const EVENT_VENDOR_ALLOWED = [
   "app/api/notifications/read-all/route.ts",
   "app/api/notifications/route.ts",
@@ -21,6 +21,7 @@ const EVENT_VENDOR_ALLOWED = [
   "app/api/vendors/[vendorId]/event-promotions/upload/route.ts",
   "app/api/vendors/[vendorId]/pickup-slots/[slotId]/route.ts",
   "app/api/vendors/[vendorId]/pickup-slots/route.ts",
+  "app/api/vendors/[vendorId]/redemptions/route.ts",
   "app/api/vendors/[vendorId]/scanner/fulfil-event-pickup/route.ts",
   "app/api/vendors/[vendorId]/scanner/resolve/route.ts",
 ];

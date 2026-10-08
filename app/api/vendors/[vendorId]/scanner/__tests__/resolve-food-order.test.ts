@@ -22,10 +22,29 @@ function query(data: unknown) {
   return builder;
 }
 
+function bookingQuery(data: Record<string, unknown>) {
+  let projectedData: Record<string, unknown> = data;
+  const builder: Record<string, unknown> = {};
+  builder.select = vi.fn((columns: string) => {
+    if (!columns.split(",").some((column) => column.trim() === "slot_id")) {
+      projectedData = { ...data };
+      delete projectedData.slot_id;
+    }
+    return builder;
+  });
+  builder.eq = vi.fn(() => builder);
+  builder.maybeSingle = vi.fn(() => Promise.resolve({ data: projectedData, error: null }));
+  return builder;
+}
+
 describe("vendor scanner food order resolution", () => {
   let ticketPass: { id: string; policy: string; entry_limit: number; entries_used: number; status: string; valid_from: string | null; valid_until: string | null };
+  let ticketSlotStartsAt: string | null;
+  let ticketBookingStatus: string;
   beforeEach(() => {
     vi.clearAllMocks();
+    ticketSlotStartsAt = null;
+    ticketBookingStatus = "confirmed";
     ticketPass = { id: "66666666-6666-4666-8666-666666666666", policy: "single_entry", entry_limit: 1, entries_used: 0, status: "active", valid_from: null, valid_until: null };
     mocks.authorizeVendor.mockResolvedValue({
       ok: true,
@@ -34,12 +53,15 @@ describe("vendor scanner food order resolution", () => {
     mocks.from.mockImplementation((table: string) => table === "orders"
       ? query({ id: ids.order, status: "paid" })
       : table === "bookings"
-      ? query({
+      ? bookingQuery({
             id: "55555555-5555-4555-8555-555555555555",
-            status: "confirmed",
+            status: ticketBookingStatus,
+        slot_id: ticketSlotStartsAt ? "slot-1" : null,
         order_items: { order_id: ids.order, vendor_id: ids.vendor, outlet_id: ids.outlet, quantity: 1, product_name: "Garden Entry", outlets: { id: ids.outlet, name: "North Outlet", vendor_id: ids.vendor, vendors: { id: ids.vendor, name: "Vendor A" } } },
         ticket_passes: [ticketPass],
       })
+      : table === "booking_slots"
+      ? query(ticketSlotStartsAt ? { starts_at: ticketSlotStartsAt } : null)
       : query([{
         id: "item-1",
         vendor_id: ids.vendor,
@@ -116,6 +138,48 @@ describe("vendor scanner food order resolution", () => {
     }), { params: Promise.resolve({ vendorId: ids.vendor }) });
     expect(response.status).toBe(200);
     expect((await response.json()).data).toMatchObject({ kind: "ticket", vendorName: "Vendor A", outletName: "North Outlet", pass: { id: passId, entries_used: 0, entry_limit: 1 } });
+  });
+
+  it("does not resolve a future-slot ticket as scannable before the booked time", async () => {
+    ticketSlotStartsAt = "2099-01-01T00:00:00.000Z";
+    const bookingId = "55555555-5555-4555-8555-555555555555";
+    const passToken = signTicketPassToken({ passId: ticketPass.id, bookingId, outletId: ids.outlet, issuedAt: Date.now() });
+    const response = await POST(new Request("http://localhost", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outletId: ids.outlet, rawValue: "http://localhost/customer/bookings/" + bookingId + "?t=" + passToken }),
+    }), { params: Promise.resolve({ vendorId: ids.vendor }) });
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("TICKET_NOT_YET_VALID");
+  });
+
+  it("resolves a scheduled ticket after the booked slot starts", async () => {
+    ticketSlotStartsAt = new Date(Date.now() - 60_000).toISOString();
+    const bookingId = "55555555-5555-4555-8555-555555555555";
+    const passToken = signTicketPassToken({ passId: ticketPass.id, bookingId, outletId: ids.outlet, issuedAt: Date.now() });
+    const response = await POST(new Request("http://localhost", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outletId: ids.outlet, rawValue: "http://localhost/customer/bookings/" + bookingId + "?t=" + passToken }),
+    }), { params: Promise.resolve({ vendorId: ids.vendor }) });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toMatchObject({ kind: "ticket", bookingId, pass: { id: ticketPass.id, remaining: 1 } });
+  });
+
+  it("rejects cancelled bookings during scan preview", async () => {
+    ticketBookingStatus = "cancelled";
+    const bookingId = "55555555-5555-4555-8555-555555555555";
+    const passToken = signTicketPassToken({ passId: ticketPass.id, bookingId, outletId: ids.outlet, issuedAt: Date.now() });
+    const response = await POST(new Request("http://localhost", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outletId: ids.outlet, rawValue: "http://localhost/customer/bookings/" + bookingId + "?t=" + passToken }),
+    }), { params: Promise.resolve({ vendorId: ids.vendor }) });
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("INVALID_STATE");
   });
 
   it.each([

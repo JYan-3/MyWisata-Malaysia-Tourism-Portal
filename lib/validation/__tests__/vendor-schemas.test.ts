@@ -4,12 +4,34 @@ import {
   campaignRegistrationProductSchema,
   contentReviewSchema,
   pickupSlotSchema,
+  productCreateSchema,
   vendorRegisterSchema,
   voucherCreateSchema,
   voucherValidateSchema,
 } from '@/lib/validation/vendor-schemas';
 
 const validId = '11111111-1111-4111-8111-111111111111';
+
+describe('productCreateSchema', () => {
+  const product = {
+    name: 'QA product',
+    productType: 'product' as const,
+    basePrice: 12.5,
+    outletId: validId,
+  };
+
+  it('allows no category and normalizes the empty form selection away', () => {
+    const result = productCreateSchema.safeParse({ ...product, categoryId: '' });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.categoryId).toBeUndefined();
+  });
+
+  it('retains a valid category ID and rejects malformed category IDs', () => {
+    expect(productCreateSchema.safeParse({ ...product, categoryId: validId }).success).toBe(true);
+    expect(productCreateSchema.safeParse({ ...product, categoryId: 'retail' }).success).toBe(false);
+  });
+});
 
 describe('contentReviewSchema', () => {
   it('accepts request changes with a meaningful note', () => {
@@ -138,5 +160,11 @@ describe('pickupSlotSchema', () => {
     expect(pickupSlotSchema.safeParse({ ...slot, startsAt: '25:00' }).success).toBe(false);
     expect(pickupSlotSchema.safeParse({ ...slot, capacity: 0 }).success).toBe(false);
     expect(pickupSlotSchema.safeParse({ ...slot, slotDate: '5/10/2026' }).success).toBe(false);
+  });
+
+  it('rejects dates that match the format but do not exist on the calendar', () => {
+    expect(pickupSlotSchema.safeParse({ ...slot, slotDate: '2026-02-31' }).success).toBe(false);
+    expect(pickupSlotSchema.safeParse({ ...slot, slotDate: '2026-13-01' }).success).toBe(false);
+    expect(pickupSlotSchema.safeParse({ ...slot, slotDate: '2024-02-29' }).success).toBe(true);
   });
 });

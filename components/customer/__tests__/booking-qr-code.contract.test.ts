@@ -10,6 +10,20 @@ const componentSource = readFileSync(
 const locales = ["en", "zh-CN", "ms"] as const;
 
 describe("customer booking QR enlarge interaction", () => {
+  it("shows a pending state while the initial order pass is being issued", () => {
+    expect(componentSource).toContain("useState(Boolean(orderId && !passToken))");
+    expect(componentSource).toContain('refreshing ? t("ui.booking.qrPreparing") : t("ui.booking.qrUnavailable")');
+
+    for (const locale of locales) {
+      const copy = JSON.parse(readFileSync(
+        resolve(process.cwd(), `app/i18n/locales/${locale}/customer.json`),
+        "utf8",
+      )) as { ui: { booking: Record<string, string> } };
+
+      expect(copy.ui.booking.qrPreparing).toBeTruthy();
+    }
+  });
+
   it("offers an accessible button and shared dialog with a crisp enlarged QR", () => {
     expect(componentSource).toContain("DialogContent");
     expect(componentSource).toContain('aria-label={t("ui.booking.qrEnlargeAction")}');

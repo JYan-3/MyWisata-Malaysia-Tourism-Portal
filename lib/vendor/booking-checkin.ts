@@ -55,6 +55,22 @@ export async function checkInBooking(request: Request, vendorId: string, booking
     return apiFail('ORDER_NOT_PAID', 'This ticket cannot be admitted until its order is paid', 409);
   }
 
+  const slotId = (booking as { slot_id?: unknown }).slot_id;
+  if (typeof slotId === 'string' && slotId) {
+    const { data: slot, error: slotError } = await supabase
+      .from('booking_slots')
+      .select('starts_at')
+      .eq('id', slotId)
+      .maybeSingle();
+    if (slotError) return apiFail('DB_ERROR', slotError.message, 500);
+    if (!slot?.starts_at || !Number.isFinite(new Date(slot.starts_at).getTime())) {
+      return apiFail('BOOKING_SLOT_UNAVAILABLE', 'The booked time is no longer available', 409);
+    }
+    if (new Date(slot.starts_at).getTime() > Date.now()) {
+      return apiFail('TICKET_NOT_YET_VALID', 'This ticket is not valid until the booked time', 409);
+    }
+  }
+
   // Retrieve or lazy-initialize ticket_pass
   let { data: pass } = await supabase
     .from('ticket_passes')
@@ -85,6 +101,12 @@ export async function checkInBooking(request: Request, vendorId: string, booking
     pass = createdPass;
   }
   if (tokenClaims && tokenClaims.passId !== pass.id) return apiFail('TOKEN_MISMATCH', 'Ticket token does not match the current pass', 400);
+  if (pass.valid_from && new Date(pass.valid_from).getTime() > Date.now()) {
+    return apiFail('TICKET_NOT_YET_VALID', 'This ticket is not valid yet', 409);
+  }
+  if (pass.valid_until && new Date(pass.valid_until).getTime() < Date.now()) {
+    return apiFail('TICKET_EXPIRED', 'This ticket has expired', 409);
+  }
 
   // Determine requested admissions
   const remaining = pass.entry_limit - pass.entries_used;

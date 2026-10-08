@@ -91,7 +91,9 @@ export async function GET(request: Request, { params }: Props) {
   if (isMissingFoodFulfilmentColumn(itemError)) {
     // Ticket QR passes are independent of the optional food fulfilment schema.
     // Keep them available while an environment is waiting for that migration.
-    return guestPrivateResponse({ tickets, foodOrders: [], eventPickups: await loadEventPickups(db, orderId) });
+    const eventPickups = await loadEventPickups(db, orderId);
+    if (!eventPickups) return apiFail("DB_ERROR", "Unable to load event pickup passes", 500);
+    return guestPrivateResponse({ tickets, foodOrders: [], eventPickups });
   }
   if (itemError) return apiFail("DB_ERROR", itemError.message, 500);
 
@@ -138,13 +140,17 @@ export async function GET(request: Request, { params }: Props) {
     status: allFulfilled ? "fulfilled" : group.mode === "dine_in" && allScanned ? "checked_in" : "pending",
     foodToken: signFoodFulfilmentToken({ orderId, outletId: group.outletId, issuedAt: Date.now() }),
   }));
-  return guestPrivateResponse({ tickets, foodOrders, eventPickups: await loadEventPickups(db, orderId) });
+  const eventPickups = await loadEventPickups(db, orderId);
+  if (!eventPickups) return apiFail("DB_ERROR", "Unable to load event pickup passes", 500);
+  return guestPrivateResponse({ tickets, foodOrders, eventPickups });
 }
 
 type EventPickupRow = {
   vendor_id: string;
   event_location_id: string;
   pickup_date: string;
+  pickup_slot_id: string | null;
+  slot_starts_at: string | null;
   product_name: string;
   variant_name: string | null;
   quantity: number;
@@ -152,13 +158,21 @@ type EventPickupRow = {
   vendors: { name: string } | { name: string }[] | null;
 };
 
-/** One pickup code per vendor, event location and pickup date; valid only on that date. */
+/** Slot-bound codes are issued per saved vendor/location/date/slot group. */
 async function loadEventPickups(db: SupabaseClient, orderId: string) {
   const { data, error } = await db
     .from("order_items")
-    .select("vendor_id,event_location_id,pickup_date,product_name,variant_name,quantity,fulfil_status,vendors(name)")
+    .select("vendor_id,event_location_id,pickup_date,pickup_slot_id,slot_starts_at,product_name,variant_name,quantity,fulfil_status,vendors(name)")
     .eq("order_id", orderId);
-  if (error) return [];
+  if (error) return null;
+  const rows = ((data ?? []) as EventPickupRow[]).filter((row) => row.event_location_id && row.pickup_date && row.fulfil_status !== "cancelled");
+  const dateGroups = new Map<string, EventPickupRow[]>();
+  for (const row of rows) {
+    const dateKey = `${row.vendor_id}:${row.event_location_id}:${row.pickup_date}`;
+    const group = dateGroups.get(dateKey) ?? [];
+    group.push(row);
+    dateGroups.set(dateKey, group);
+  }
   const groups = new Map<string, {
     vendorName: string;
     pickupDate: string;
@@ -167,26 +181,47 @@ async function loadEventPickups(db: SupabaseClient, orderId: string) {
     items: { name: string; quantity: number }[];
     token: string;
   }>();
-  for (const row of (data ?? []) as EventPickupRow[]) {
-    // Only event reservations carry a location and pickup date.
-    if (!row.event_location_id || !row.pickup_date || row.fulfil_status === "cancelled") continue;
-    const key = `${row.vendor_id}:${row.event_location_id}:${row.pickup_date}`;
-    let group = groups.get(key);
-    if (!group) {
-      const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
-      group = {
-        vendorName: vendor?.name ?? "",
-        pickupDate: row.pickup_date,
-        pickupLabels: [],
-        allFulfilled: true,
-        items: [],
-        token: signEventPickupToken({ orderId, vendorId: row.vendor_id, locationId: row.event_location_id, pickupDate: row.pickup_date, issuedAt: Date.now() }),
-      };
-      groups.set(key, group);
+  for (const dateRows of dateGroups.values()) {
+    // If a historical row lost its slot FK, keep a single date-only QR for the
+    // whole date group. The scanner and database then apply the stricter legacy
+    // rule: all still-open saved pickup times must have started.
+    const allRowsHaveSlot = dateRows.every((row) => Boolean(row.pickup_slot_id && row.slot_starts_at && Number.isFinite(new Date(row.slot_starts_at).getTime())));
+    const slotGroups = new Map<string, EventPickupRow[]>();
+    for (const row of dateRows) {
+      const key = allRowsHaveSlot ? (row.pickup_slot_id as string) : "legacy-date";
+      const group = slotGroups.get(key) ?? [];
+      group.push(row);
+      slotGroups.set(key, group);
     }
-    if (row.variant_name && !group.pickupLabels.includes(row.variant_name)) group.pickupLabels.push(row.variant_name);
-    if (row.fulfil_status !== "fulfilled") group.allFulfilled = false;
-    group.items.push({ name: row.product_name, quantity: row.quantity });
+    for (const [slotKey, slotRows] of slotGroups) {
+      const row = slotRows[0];
+      const key = `${row.vendor_id}:${row.event_location_id}:${row.pickup_date}:${slotKey}`;
+      let group = groups.get(key);
+      if (!group) {
+        const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+        group = {
+          vendorName: vendor?.name ?? "",
+          pickupDate: row.pickup_date,
+          pickupLabels: [],
+          allFulfilled: true,
+          items: [],
+          token: signEventPickupToken({
+            orderId,
+            vendorId: row.vendor_id,
+            locationId: row.event_location_id,
+            pickupDate: row.pickup_date,
+            ...(allRowsHaveSlot ? { pickupSlotId: row.pickup_slot_id as string } : {}),
+            issuedAt: Date.now(),
+          }),
+        };
+        groups.set(key, group);
+      }
+      for (const slotRow of slotRows) {
+        if (slotRow.variant_name && !group.pickupLabels.includes(slotRow.variant_name)) group.pickupLabels.push(slotRow.variant_name);
+        if (slotRow.fulfil_status !== "fulfilled") group.allFulfilled = false;
+        group.items.push({ name: slotRow.product_name, quantity: slotRow.quantity });
+      }
+    }
   }
   return [...groups.values()].map(({ allFulfilled, token, ...group }) => ({
     ...group,

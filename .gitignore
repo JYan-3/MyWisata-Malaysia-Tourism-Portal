@@ -24,6 +24,7 @@
 
 # locally generated exports
 /output/
+/public/maplibre/
 
 # local PDF renders and other temporary workspace files
 /tmp/

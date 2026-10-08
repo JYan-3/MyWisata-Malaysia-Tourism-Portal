@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/components/providers/auth";
 
 type SavedDestinationRecord = {
   state: string;
@@ -18,12 +19,28 @@ type SavedDestinationsContextValue = {
 const SavedDestinationsContext = createContext<SavedDestinationsContextValue | null>(null);
 
 export function SavedDestinationsProvider({ children }: { children: ReactNode }) {
+  const { currentUser, loading: authLoading } = useAuth();
+  const currentUserId = currentUser?.id;
   const [savedStates, setSavedStates] = useState<ReadonlySet<string>>(new Set());
   const [savedAt, setSavedAt] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    if (authLoading) return () => { cancelled = true; };
+    if (!currentUserId) {
+      // Reset private client state as the auth identity transitions to guest.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSavedStates(new Set());
+      setSavedAt(new Map());
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    // Reset the previous identity's data before hydrating the active customer.
+    setSavedStates(new Set());
+    setSavedAt(new Map());
+    setLoading(true);
     fetch("/api/saved-destinations")
       .then(async (response) => {
         if (!response.ok) return;
@@ -43,7 +60,7 @@ export function SavedDestinationsProvider({ children }: { children: ReactNode })
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, currentUserId]);
 
   const toggleSaved = useCallback(async (destinationState: string) => {
     const wasSaved = savedStates.has(destinationState);

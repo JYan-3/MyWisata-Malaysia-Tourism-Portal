@@ -50,6 +50,20 @@ describe("cart voucher outlet validation", () => {
 
   it("keeps saved selections until cart activity availability has finished loading", () => {
     expect(source).toContain("activitiesReady");
-    expect(source).toMatch(/if \(!activitiesReady\) return;[\s\S]*selectedKeys\.forEach/);
+    expect(source).toMatch(/if \(!activitiesReady \|\| bookingSlotsStatus === "loading"\) return;[\s\S]*selectedKeys\.forEach/);
+  });
+
+  it("uses one resolved slot availability decision for cart rows and bulk selection", () => {
+    expect(source).toContain("getCartLineAvailability");
+    expect(source).toMatch(/bookingSlotsLoad\.key === bookingActivityKey \? bookingSlotsLoad\.status : "loading"/);
+    expect(source).toMatch(/if \(!activitiesReady \|\| bookingSlotsStatus === "loading"\) return;/);
+    localeSources.forEach((localeSource) => {
+      expect(localeSource).toContain('"checkingAvailability"');
+      expect(localeSource).toContain('"availabilityCheckFailed"');
+    });
+  });
+
+  it("uses the resolved seat count before allowing a booking quantity increase", () => {
+    expect(source).toMatch(/disabled=\{\(stockLimit !== undefined && item\.qty >= stockLimit\) \|\| \(item\.slotId && availability\.status !== "available"\) \|\| \(availability\.seatsLeft !== undefined && item\.qty >= availability\.seatsLeft\)\}/);
   });
 });

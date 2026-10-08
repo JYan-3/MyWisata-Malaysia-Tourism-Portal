@@ -19,7 +19,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
   const bookingId = "33333333-3333-4333-8333-333333333333";
   const passId = "44444444-4444-4444-8444-444444444444";
 
-  function setupAuth({ policy = 'group_entry', entryLimit = 2, entriesUsed = 0, orderStatus = 'paid' }: { policy?: 'single_entry' | 'group_entry' | 'multi_entry'; entryLimit?: number; entriesUsed?: number; orderStatus?: string } = {}) {
+  function setupAuth({ policy = 'group_entry', entryLimit = 2, entriesUsed = 0, orderStatus = 'paid', slotStartsAt = null, passValidFrom = null, passValidUntil = null }: { policy?: 'single_entry' | 'group_entry' | 'multi_entry'; entryLimit?: number; entriesUsed?: number; orderStatus?: string; slotStartsAt?: string | null; passValidFrom?: string | null; passValidUntil?: string | null } = {}) {
     const state = { entriesUsed, rpc: vi.fn() };
     vi.mocked(authorizeVendor).mockResolvedValue({
       ok: true,
@@ -43,6 +43,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                         order_item_id: "oi-500",
                         customer_id: "cust-600",
                         status: state.entriesUsed >= entryLimit ? "checked_in" : state.entriesUsed > 0 ? "in_use" : "confirmed",
+                        slot_id: slotStartsAt ? "slot-1" : null,
                         order_items: {
                           order_id: "55555555-5555-4555-8555-555555555555",
                           vendor_id: vendorId,
@@ -61,6 +62,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                         order_item_id: "oi-500",
                         customer_id: "cust-600",
                         status: state.entriesUsed >= entryLimit ? "checked_in" : state.entriesUsed > 0 ? "in_use" : "confirmed",
+                        slot_id: slotStartsAt ? "slot-1" : null,
                         order_items: {
                           order_id: "55555555-5555-4555-8555-555555555555",
                           vendor_id: vendorId,
@@ -89,6 +91,8 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                         entry_limit: entryLimit,
                         entries_used: state.entriesUsed,
                         status: state.entriesUsed >= entryLimit ? "fully_redeemed" : "active",
+                        valid_from: passValidFrom,
+                        valid_until: passValidUntil,
                       },
                       error: null,
                     }),
@@ -102,6 +106,14 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                   eq: vi.fn().mockReturnValue({
                     maybeSingle: vi.fn().mockResolvedValue({ data: { status: orderStatus }, error: null }),
                   }),
+                }),
+              };
+            }
+            if (table === "booking_slots") {
+              const result = Promise.resolve({ data: slotStartsAt ? { starts_at: slotStartsAt } : null, error: null });
+              return {
+                select: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockReturnValue(result) }),
                 }),
               };
             }
@@ -202,6 +214,61 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error.code).toBe("EXCEEDS_ENTRY_LIMIT");
+  });
+
+  it("rejects a paid booking before its selected slot starts without admitting entries", async () => {
+    const state = setupAuth({ slotStartsAt: "2099-01-01T00:00:00.000Z" });
+    const req = new Request(`http://localhost:3000/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entriesAdmitted: 1 }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("TICKET_NOT_YET_VALID");
+    expect(state.rpc).not.toHaveBeenCalled();
+  });
+
+  it("admits a paid booking once its selected slot has started", async () => {
+    const state = setupAuth({ slotStartsAt: new Date(Date.now() - 60_000).toISOString() });
+    const req = new Request(`http://localhost:3000/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entriesAdmitted: 1 }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(200);
+    expect(state.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a pass before its validity window without admitting entries", async () => {
+    const state = setupAuth({ passValidFrom: new Date(Date.now() + 60_000).toISOString() });
+    const req = new Request(`http://localhost:3000/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entriesAdmitted: 1 }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("TICKET_NOT_YET_VALID");
+    expect(state.rpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects a pass after its validity window without admitting entries", async () => {
+    const state = setupAuth({ passValidUntil: new Date(Date.now() - 60_000).toISOString() });
+    const req = new Request(`http://localhost:3000/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entriesAdmitted: 1 }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("TICKET_EXPIRED");
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 
   it('admits one visit at a time for a multi-entry pass even when a client asks for more', async () => {

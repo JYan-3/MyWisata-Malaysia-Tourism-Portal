@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 import { formatDate, formatMYRNumber } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { getCartLineAvailability, type BookingSlotLookupStatus } from "@/lib/customer/cart-availability";
 
 type VoucherOption = {
   voucher: Voucher;
@@ -83,6 +84,7 @@ export default function CartPage() {
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
+  const [bookingSlotsLoad, setBookingSlotsLoad] = useState<{ key: string; status: BookingSlotLookupStatus }>({ key: "", status: "loaded" });
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [voucherOptions, setVoucherOptions] = useState<VoucherOption[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
@@ -108,12 +110,29 @@ export default function CartPage() {
     [items],
   );
   const bookingActivityKey = bookingActivityIds.join(",");
+  const bookingSlotsStatus = bookingSlotsLoad.key === bookingActivityKey ? bookingSlotsLoad.status : "loading";
 
   useEffect(() => {
-    if (bookingActivityIds.length === 0) return;
-    Promise.all(bookingActivityIds.map((id) => getBookingSlots(id))).then((lists) => {
-      setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
-    });
+    let active = true;
+    if (bookingActivityIds.length === 0) {
+      setSlotsById(new Map());
+      setBookingSlotsLoad({ key: bookingActivityKey, status: "loaded" });
+      return () => { active = false; };
+    }
+
+    setBookingSlotsLoad({ key: bookingActivityKey, status: "loading" });
+    Promise.all(bookingActivityIds.map((id) => getBookingSlots(id)))
+      .then((lists) => {
+        if (!active) return;
+        setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
+        setBookingSlotsLoad({ key: bookingActivityKey, status: "loaded" });
+      })
+      .catch(() => {
+        if (!active) return;
+        setSlotsById(new Map());
+        setBookingSlotsLoad({ key: bookingActivityKey, status: "error" });
+      });
+    return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingActivityKey]);
 
@@ -125,13 +144,16 @@ export default function CartPage() {
       if (!activity) return [];
       const stockLimit = !activity.requiresBooking ? activity.availableStock : undefined;
       const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
-      const seatsLeft = slot ? slot.capacity - slot.booked : undefined;
-      const available = (stockLimit === undefined || (stockLimit > 0 && item.qty <= stockLimit))
-        && (!slot || !slot.status || slot.status === "available")
-        && (seatsLeft === undefined || (seatsLeft > 0 && item.qty <= seatsLeft));
-      return available ? [cartItemKey(item)] : [];
+      const availability = getCartLineAvailability({
+        slotId: item.slotId,
+        slot,
+        slotLookupStatus: bookingSlotsStatus,
+        quantity: item.qty,
+        stockLimit,
+      });
+      return availability.available ? [cartItemKey(item)] : [];
     }),
-    [activities, items, slotsById],
+    [activities, bookingSlotsStatus, items, slotsById],
   );
   const selectedSelectableCount = selectableKeys.filter((key) => selectedKeys.has(key)).length;
   const allSelected = selectableKeys.length > 0 && selectedSelectableCount === selectableKeys.length;
@@ -319,12 +341,12 @@ export default function CartPage() {
   }, [currentUser, appliedVoucher, applyVoucherCode, deepLinkedVoucher, voucherValidationItems.length]);
 
   useEffect(() => {
-    if (!activitiesReady) return;
+    if (!activitiesReady || bookingSlotsStatus === "loading") return;
     const selectableSet = new Set(selectableKeys);
     selectedKeys.forEach((key) => {
       if (!selectableSet.has(key)) toggleSelected(key);
     });
-  }, [activitiesReady, selectableKeys, selectedKeys, toggleSelected]);
+  }, [activitiesReady, bookingSlotsStatus, selectableKeys, selectedKeys, toggleSelected]);
 
   if (items.length === 0) {
     return (
@@ -400,15 +422,23 @@ export default function CartPage() {
           const outlet = outlets.get(item.outletId ?? activity.outletId);
           const variant = activity.variants.find((v) => v.id === item.variantId);
           const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
+          const confirmedSlot = bookingSlotsStatus === "loaded" ? slot : undefined;
           const price = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId));
           const lineTotal = price * item.qty;
           const stockLimit = !activity.requiresBooking ? activity.availableStock : undefined;
-          const seatsLeft = slot ? slot.capacity - slot.booked : undefined;
-          const slotLoaded = !item.slotId || Boolean(slot);
-          const available = slotLoaded
-            && (!slot || !slot.status || slot.status === "available")
-            && (stockLimit === undefined || (stockLimit > 0 && item.qty <= stockLimit))
-            && (seatsLeft === undefined || (seatsLeft > 0 && item.qty <= seatsLeft));
+          const availability = getCartLineAvailability({
+            slotId: item.slotId,
+            slot,
+            slotLookupStatus: bookingSlotsStatus,
+            quantity: item.qty,
+            stockLimit,
+          });
+          const available = availability.available;
+          const availabilityLabel = availability.status === "checking"
+            ? tCustomer("ui.cart.checkingAvailability")
+            : availability.status === "error"
+              ? tCustomer("ui.cart.availabilityCheckFailed")
+              : tCustomer("ui.cart.unavailableItem", { item: activity.name });
           return (
             <div
               key={key}
@@ -420,7 +450,7 @@ export default function CartPage() {
                 checked={checked}
                 disabled={!available}
                 onChange={() => toggleSelected(key)}
-                aria-label={available ? `Select ${activity.name}` : `${activity.name} is unavailable`}
+                aria-label={available ? tCustomer("ui.cart.selectItem", { item: activity.name }) : availabilityLabel}
                 className="mt-1 h-4 w-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
               />
               {activity.image ? (
@@ -434,14 +464,17 @@ export default function CartPage() {
               <div className="flex-1 min-w-0">
                 <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{activity.name}</p>
                 <p className="break-words whitespace-normal text-xs text-muted-foreground">{outlet?.name} · {variant?.label}</p>
-                {slot && (
+                {confirmedSlot && (
                   <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                     <CalendarClock size={11} />
-                    {new Date(slot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                    {slot.status && slot.status !== "available"
-                      ? ` · ${slot.status === "expired" ? "Slot expired" : "Unavailable"}`
-                      : seatsLeft !== undefined && ` · ${seatsLeft} seats left`}
+                    {new Date(confirmedSlot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {availability.status === "unavailable"
+                      ? ` · ${confirmedSlot.status === "expired" ? tCustomer("ui.cart.slotExpired") : tCustomer("ui.cart.slotUnavailable")}`
+                      : availability.seatsLeft !== undefined && ` · ${tCustomer("ui.cart.seatsLeft", { count: availability.seatsLeft })}`}
                   </p>
+                )}
+                {item.slotId && !confirmedSlot && availability.status !== "available" && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{availabilityLabel}</p>
                 )}
                 <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1"><ReferencePrice amountMYR={price} /> × {item.qty}</p>
                 {stockLimit !== undefined && (
@@ -457,7 +490,7 @@ export default function CartPage() {
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
                   <button
                     onClick={() => updateQty(index, item.qty + 1)}
-                    disabled={(stockLimit !== undefined && item.qty >= stockLimit) || (seatsLeft !== undefined && item.qty >= seatsLeft)}
+                    disabled={(stockLimit !== undefined && item.qty >= stockLimit) || (item.slotId && availability.status !== "available") || (availability.seatsLeft !== undefined && item.qty >= availability.seatsLeft)}
                     className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     +

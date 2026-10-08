@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/maplibre-worker";
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Fragment, type ReactNode } from "react";

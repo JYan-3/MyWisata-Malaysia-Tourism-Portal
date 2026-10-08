@@ -74,6 +74,22 @@ describe("aggregateReviewMetrics", () => {
   });
 });
 
+describe("customer purchase variant mapping", () => {
+  it("does not expose inactive variants as customer purchase choices", async () => {
+    const db = makeDb({ products: [{
+      ...PRODUCT_ROW,
+      product_variants: [
+        { id: "inactive", name: "Retired", price_offset: 0, is_default: true, is_active: false },
+        { id: "active", name: "Standard", price_offset: 0, is_default: false, is_active: true },
+      ],
+    }] }, []);
+
+    const [activity] = await getActivities(db);
+
+    expect(activity.variants).toEqual([{ id: "active", label: "Standard", priceDelta: 0 }]);
+  });
+});
+
 describe("getActivities review metrics", () => {
   it("reads aggregates from product_review_metrics, not the raw reviews table", async () => {
     const seen: string[] = [];
@@ -188,6 +204,55 @@ describe("getComputedActivity", () => {
     // fetching every product and calling .find().
     expect(filters).toContainEqual({ table: "products", column: "id", value: "p1" });
     expect(filters).toContainEqual({ table: "outlets", column: "id", value: ["o1"] });
+  });
+
+  it("projects the requested active offer outlet instead of the default outlet", async () => {
+    const gurneyOutlet = {
+      ...OUTLET_ROW,
+      id: "o2",
+      name: "Gurney Plaza",
+      address: "4th Floor, Gurney Plaza",
+    };
+    const db = makeFilterRecordingDb(
+      {
+        products: [{
+          ...PRODUCT_ROW,
+          outlet_id: null,
+          outlet_offers: [
+            { outlet_id: "o1", price: 4.5, status: "active" },
+            { outlet_id: "o2", price: 4.5, status: "active" },
+          ],
+        }],
+        product_review_metrics: [],
+        outlets: [OUTLET_ROW, gurneyOutlet],
+      },
+      [],
+    );
+
+    const activity = await getComputedActivity("p1", undefined, db, "o2");
+
+    expect(activity?.outlet).toMatchObject({
+      id: "o2",
+      name: "Gurney Plaza",
+      address: "4th Floor, Gurney Plaza",
+    });
+  });
+
+  it("falls back to the default outlet when the requested outlet does not sell the product", async () => {
+    const db = makeFilterRecordingDb(
+      {
+        products: [{ ...PRODUCT_ROW, outlet_offers: [
+          { outlet_id: "o1", price: 4.5, status: "active" },
+        ] }],
+        product_review_metrics: [],
+        outlets: [OUTLET_ROW],
+      },
+      [],
+    );
+
+    const activity = await getComputedActivity("p1", undefined, db, "unrelated-outlet");
+
+    expect(activity?.outlet.id).toBe("o1");
   });
 
   it("returns null for a product that is not active or approved", async () => {

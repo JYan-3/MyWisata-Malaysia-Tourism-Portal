@@ -361,11 +361,11 @@ type ProductRow = {
   place_lat: number | string | null;
   place_lng: number | string | null;
   categories: { name: string; slug: string } | null;
-  product_variants?: { id: string; name: string; price_offset: number; is_active?: boolean; inventory?: { outlet_id: string; quantity: number; reserved: number; low_stock_threshold: number }[] }[];
+  product_variants?: { id: string; name: string; price_offset: number; is_default?: boolean; is_active?: boolean; inventory?: { outlet_id: string; quantity: number; reserved: number; low_stock_threshold: number }[] }[];
   price_rules?: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
 };
 
-const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
+const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 const DISCOVERY_ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status)";
 
 async function getReviewMetricsForProducts(productIds: string[], db: SupabaseClient): Promise<Map<string, ReviewMetric>> {
@@ -399,6 +399,9 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
   const cheapest = offers.length
     ? offers.reduce((min, offer) => (offer.price < min.price ? offer : min))
     : undefined;
+  const activeVariants = (row.product_variants ?? [])
+    .filter((variant) => variant.is_active !== false)
+    .sort((left, right) => Number(Boolean(right.is_default)) - Number(Boolean(left.is_default)));
 
   // Only ever set when all three of state/lat/lng are present — the same
   // all-or-nothing rule the DB CHECK constraint enforces, checked again here
@@ -438,7 +441,7 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     isFamilyFriendly: row.is_family_friendly,
     isCoupleFriendly: row.is_couple_friendly,
     place,
-    variants: (row.product_variants ?? []).map((v) => ({ id: v.id, label: v.name, priceDelta: Number(v.price_offset) })),
+    variants: activeVariants.map((v) => ({ id: v.id, label: v.name, priceDelta: Number(v.price_offset) })),
     priceRules: (row.price_rules ?? []).filter((rule) => rule.is_active).map((rule) => ({ id: rule.id, productId: row.id, ruleType: rule.rule_type, label: rule.label ?? undefined, multiplier: rule.multiplier === null ? undefined : Number(rule.multiplier), fixedAmount: rule.fixed_amount === null ? undefined : Number(rule.fixed_amount), validFrom: rule.valid_from ?? undefined, validUntil: rule.valid_until ?? undefined, minQuantity: rule.min_quantity ?? undefined, bundleProductIds: rule.bundle_product_ids ?? undefined, priority: Number(rule.priority ?? 0), isActive: rule.is_active })),
     ...(row.requires_booking ? {} : getOutletStock(row.product_variants ?? [], [row.outlet_id ?? cheapest?.outletId ?? ''])),
     stockByOutlet: row.requires_booking ? undefined : Object.fromEntries(
@@ -662,6 +665,7 @@ function toComputed(
   activity: Activity,
   outletMap: Map<string, Outlet>,
   from?: { lat: number; lng: number },
+  preferredOutletId?: string,
 ): ComputedActivity | null {
   const candidates = (activity.offers ?? [])
     .map((offer) => ({ offer, outlet: outletMap.get(offer.outletId) }))
@@ -677,9 +681,9 @@ function toComputed(
     ...candidate,
     distanceKm: from ? haversineKm(from, { lat: candidate.outlet.lat, lng: candidate.outlet.lng }) : undefined,
   }));
-  const best = from
+  const best = scored.find((candidate) => candidate.outlet.id === preferredOutletId) ?? (from
     ? scored.reduce((a, b) => ((b.distanceKm ?? Infinity) < (a.distanceKm ?? Infinity) ? b : a))
-    : scored.reduce((a, b) => (b.offer.price < a.offer.price ? b : a));
+    : scored.reduce((a, b) => (b.offer.price < a.offer.price ? b : a)));
 
   return {
     ...activity,
@@ -704,7 +708,12 @@ async function getComputedActivities(from?: { lat: number; lng: number }, db: Su
  * outlet just to .find() a single row, so opening one product page — or one
  * wishlist entry — scanned the whole table (H4).
  */
-export async function getComputedActivity(id: string, from?: { lat: number; lng: number }, db: SupabaseClient = supabase): Promise<ComputedActivity | null> {
+export async function getComputedActivity(
+  id: string,
+  from?: { lat: number; lng: number },
+  db: SupabaseClient = supabase,
+  preferredOutletId?: string,
+): Promise<ComputedActivity | null> {
   const { data: row, error } = await db
     .from("products")
     .select(ACTIVITY_SELECT)
@@ -754,7 +763,7 @@ export async function getComputedActivity(id: string, from?: { lat: number; lng:
     }),
   );
 
-  return toComputed(activity, outletMap, from);
+  return toComputed(activity, outletMap, from, preferredOutletId);
 }
 
 /** Products sold by one outlet, with the outlet's own offer price applied. */

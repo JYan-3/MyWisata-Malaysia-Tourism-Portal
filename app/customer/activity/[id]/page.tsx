@@ -27,8 +27,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ActivityDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const requestedOutletId = sp?.outletId;
   const db = await createClient();
-  const activity = await getComputedActivity(id, undefined, db);
+  const activity = await getComputedActivity(id, undefined, db, requestedOutletId);
   const [slots, reviews, outletChoices] = activity
     ? await Promise.all([
         activity.requiresBooking ? getBookingSlots(activity.id, db) : Promise.resolve([]),
@@ -40,8 +42,6 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
         getOutletChoices(activity, db),
       ])
     : [[], [], []];
-  const sp = await searchParams;
-  const requestedOutletId = sp?.outletId;
   const selectedOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
     ? requestedOutletId
     : activity?.outletId;
@@ -58,6 +58,7 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
 
   return (
     <ActivityDetailClient
+      key={`${activity?.id ?? id}:${selectedOutletId ?? ""}`}
       initialActivity={activity}
       initialSlots={slots}
       initialReviews={reviews}

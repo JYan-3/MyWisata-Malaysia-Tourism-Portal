@@ -1,9 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 // Signed QR payload for collecting event reservations — same scheme as the
-// food order token (lib/food/food-fulfilment-token.ts). One code per order,
-// vendor, location and pickup date; it expires at the end of the pickup day
-// in Malaysia time, and fulfil_event_pickup re-checks the date on scan.
+// food order token (lib/food/food-fulfilment-token.ts). New codes also bind to
+// a saved pickup slot; older date-only codes remain readable for compatibility.
 
 export interface EventPickupClaims {
   kind: "event_pickup";
@@ -12,6 +11,8 @@ export interface EventPickupClaims {
   locationId: string;
   /** YYYY-MM-DD, Malaysia calendar date. */
   pickupDate: string;
+  /** Absent for legacy date-only codes. */
+  pickupSlotId?: string;
   issuedAt: number;
   exp: number;
 }
@@ -49,6 +50,7 @@ export function verifyEventPickupToken(token: string, secret = getSecret(), nowS
     const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as EventPickupClaims;
     if (claims.kind !== "event_pickup" || !claims.orderId || !claims.vendorId || !claims.locationId
       || !/^\d{4}-\d{2}-\d{2}$/.test(claims.pickupDate ?? "") || !Number.isFinite(claims.exp)) return { valid: false as const };
+    if (claims.pickupSlotId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(claims.pickupSlotId)) return { valid: false as const };
     if (claims.exp < nowSeconds) return { valid: false as const, expired: true as const, claims };
     return { valid: true as const, claims };
   } catch {

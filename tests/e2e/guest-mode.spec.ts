@@ -7,7 +7,6 @@ test("Guest Mode enters Home and Trip navigation requires sign-in", async ({ pag
   await expect(page.getByRole("link", { name: "Home", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Explore", exact: true }).first()).toBeVisible();
 
-  // Test Trip navigation in header gates sign-in
   await page.getByRole("link", { name: "Trip", exact: true }).first().click();
   const tripDialog = page.getByRole("dialog");
   await expect(tripDialog).toBeVisible();
@@ -17,11 +16,11 @@ test("Guest Mode enters Home and Trip navigation requires sign-in", async ({ pag
 });
 
 test("Guest cart navigation opens the existing cart without a sign-in gate", async ({ page }) => {
-  await page.route("**/api/guest/cart", route => route.fulfill({json:{data:{items:[]},error:null}}));
+  await page.route("**/api/guest/cart", (route) => route.fulfill({ json: { data: { items: [] }, error: null } }));
   await page.goto("/customer/explore");
   await page.getByRole("link", { name: "Shopping cart", exact: true }).click();
   await expect(page).toHaveURL(/\/customer\/cart$/);
-  await expect(page.getByRole("button", {name:"Sign in / Register",exact:true})).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sign in / Register", exact: true })).toHaveCount(0);
 });
 
 test("Guest Mode can open an approved vendor", async ({ page }) => {
@@ -35,14 +34,17 @@ test("Guest Mode can open an approved vendor", async ({ page }) => {
   await expect(page).toHaveURL(/\/customer\/vendor\//);
 });
 
-test("Guest map save and notifications ask without making protected requests", async ({ page }) => {
-  await page.goto("/customer/explore");
-  await page.getByRole("button", { name: /^Open / }).first().click();
+test("Guest home save and notifications ask without private requests", async ({ page }) => {
   const mutations: string[] = [];
+  const privateReads: string[] = [];
   page.on("request", (request) => {
-    if (["POST", "PATCH", "DELETE"].includes(request.method()) && /\/api\/(wishlist|notifications)/.test(request.url())) mutations.push(request.url());
+    if (["POST", "PATCH", "DELETE"].includes(request.method()) && /\/api\/(wishlist|notifications|saved-destinations)/.test(request.url())) mutations.push(request.url());
+    if (request.method() === "GET" && /\/api\/(wishlist|saved-destinations)(\?|$)/.test(request.url())) privateReads.push(request.url());
   });
-  const save = page.getByRole("button", { name: "Save place", exact: true });
+
+  await page.goto("/customer");
+  const save = page.getByRole("button", { name: "Save destination", exact: true });
+  await expect(save).toBeVisible();
   await save.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -50,6 +52,7 @@ test("Guest map save and notifications ask without making protected requests", a
   await expect(save).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Notifications", exact: true }).click();
   await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(/\/customer\/explore$/);
+  await expect(page).toHaveURL(/\/customer$/);
   expect(mutations).toEqual([]);
+  expect(privateReads).toEqual([]);
 });

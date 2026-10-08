@@ -6,7 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
-import { buildPublicOutletProfile, getOutletNavigationModel, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
+import { buildPublicOutletProfile, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
@@ -137,9 +137,9 @@ export default async function VendorOutletPage({ params }: Props) {
   const featuredIds = publicDocument.featuredIds.filter((id) => sellableSet.has(id));
   const [{ data: products }, { data: offers }, { data: slots }, { data: reviewMetrics }] = sellableIds.length
     ? await Promise.all([
-        db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,categories(name),product_variants(id,name,inventory(quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
+        db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,categories(name),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
         db.from("outlet_offers").select("product_id,price").eq("outlet_id", outletId).eq("status", "active").in("product_id", sellableIds),
-        db.from("booking_slots").select("id,product_id,starts_at,status").in("product_id", sellableIds).eq("status", "available").gt("starts_at", new Date().toISOString()).order("starts_at"),
+        db.from("booking_slots").select("id,product_id,starts_at,status").in("product_id", sellableIds).eq("outlet_id", outletId).eq("status", "available").gt("starts_at", new Date().toISOString()).order("starts_at"),
         db.from("product_review_metrics").select("product_id,rating,reviews").in("product_id", sellableIds),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
@@ -150,24 +150,23 @@ export default async function VendorOutletPage({ params }: Props) {
   const menuProducts = selectFullOutletMenu(
     (products || []).map((product) => {
       const variants = product.product_variants || [];
-      const inventoryRows = variants.flatMap((variant) => variant.inventory || []);
-      const availableStock =
-        inventoryRows.length > 0
-          ? inventoryRows.reduce((total, inventory) => total + Math.max(0, Number(inventory.quantity) - Number(inventory.reserved)), 0)
-          : undefined;
+      const outletScopedVariant = product.requires_booking || product.product_type === "digital" ? undefined : outletId;
+      const purchaseVariant = getActiveDefaultOutletVariant(variants, outletScopedVariant);
+      const availableStock = outletScopedVariant ? getOutletAvailableStock(variants, outletId) : undefined;
+      const outletPrice = offerPriceByProduct.get(product.id) ?? Number(product.base_price);
       const metric = metricByProduct.get(product.id) || { rating: 0, reviews: 0 };
       return {
         id: product.id,
         name: product.name,
         description: product.description,
-        base_price: offerPriceByProduct.get(product.id) ?? Number(product.base_price),
+        base_price: getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset),
         category: product.categories?.[0]?.name ?? null,
         product_type: product.product_type,
         requires_booking: product.requires_booking,
         cover_url: productImageUrl(product.cover_url),
         outlet_id: outletId,
-        variant_id: variants[0]?.id ?? null,
-        variant_label: variants[0]?.name ?? null,
+        variant_id: purchaseVariant?.id ?? null,
+        variant_label: purchaseVariant?.name ?? null,
         first_available_slot_id: firstSlotByProduct.get(product.id) ?? null,
         available_stock: availableStock,
         rating: metric.rating,

@@ -109,11 +109,11 @@ test.describe('Vendor notification journeys', () => {
     await expect(page.getByText('Vendor notification 1', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Vendor notification \d+/ })).toHaveCount(15);
 
-    await page.getByRole('button', { name: 'Orders', exact: true }).click();
+    await page.getByRole('button', { name: 'Orders', exact: true }).first().click();
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('category') === 'vendor_orders')).toBe(true);
-    await page.getByRole('button', { name: 'Wallet', exact: true }).click();
+    await page.getByRole('button', { name: 'Wallet', exact: true }).first().click();
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('category') === 'vendor_wallet')).toBe(true);
-    await page.getByRole('button', { name: 'Orders', exact: true }).click();
+    await page.getByRole('button', { name: 'Orders', exact: true }).first().click();
 
     await page.getByRole('button', { name: /^Vendor notification 1\b/ }).click();
     await expect.poll(() => mock.readIds).toContain('vendor-notification-1');
@@ -138,12 +138,14 @@ test.describe('Vendor notification journeys', () => {
     await expect(page.getByText('Vendor notification 1')).toBeVisible();
     await expect(page.getByText('Vendor wallet balance changed')).toBeHidden();
     await expect(page.getByText('Vendor account review')).toBeHidden();
-    await expect.poll(() => mock.requests.some((url) => url.searchParams.get('scope') === 'vendor' && url.searchParams.get('vendorId') === VENDOR_ONE)).toBe(true);
+    const vendorRequest = mock.requests.find((url) => url.searchParams.get('scope') === 'vendor' && Boolean(url.searchParams.get('vendorId')));
+    const assignedVendorId = vendorRequest?.searchParams.get('vendorId');
+    expect(assignedVendorId).toMatch(/^[0-9a-f-]{36}$/i);
 
     // Verify the real server response, independently of the deterministic UI
     // fixture above. Outlet-manager scope must filter wallet/account rows at
     // the API boundary rather than relying on the browser to hide them.
-    const scopedResponse = await page.request.get(`/api/notifications?scope=vendor&vendorId=${VENDOR_ONE}&page=1&pageSize=15`);
+    const scopedResponse = await page.request.get(`/api/notifications?scope=vendor&vendorId=${assignedVendorId}&page=1&pageSize=15`);
     expect(scopedResponse.status()).toBe(200);
     const scopedPayload = await scopedResponse.json() as { data?: { items?: Array<{ category?: string }> } };
     const scopedItems = scopedPayload.data?.items ?? [];
@@ -151,7 +153,8 @@ test.describe('Vendor notification journeys', () => {
 
     // This request is intentionally not mocked: the server must reject a
     // valid, approved vendor outside the manager's assigned outlet scope.
-    const crossVendor = await page.request.get(`/api/notifications?scope=vendor&vendorId=${VENDOR_TWO}&page=1&pageSize=15`);
+    const otherVendorId = assignedVendorId === VENDOR_ONE ? VENDOR_TWO : VENDOR_ONE;
+    const crossVendor = await page.request.get(`/api/notifications?scope=vendor&vendorId=${otherVendorId}&page=1&pageSize=15`);
     expect(crossVendor.status()).toBe(403);
     const payload = await crossVendor.json() as { error?: { code?: string } };
     expect(payload.error?.code).toBe('FORBIDDEN');

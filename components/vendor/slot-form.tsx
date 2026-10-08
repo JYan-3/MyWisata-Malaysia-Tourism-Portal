@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { slotCreateSchema, type SlotCreate } from '@/lib/validation/vendor-schemas';
+import { slotFormSchema, type SlotCreate, type SlotFormInput } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -24,8 +24,8 @@ export default function SlotForm({ vendorId, outlets, products, onSuccess, onClo
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<SlotCreate>({
-    resolver: zodResolver(slotCreateSchema),
+  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<SlotFormInput, unknown, SlotCreate>({
+    resolver: zodResolver(slotFormSchema),
     defaultValues: { capacity: 10 },
   });
 
@@ -113,7 +113,14 @@ export default function SlotForm({ vendorId, outlets, products, onSuccess, onClo
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('slotForm.priceOverride')}</label>
-            <Input {...register('priceOverride', { valueAsNumber: true })} type="number" step="0.01" placeholder={t('slotForm.optional')} />
+            <Input
+              {...register('priceOverride', {
+                setValueAs: (value: string | number | undefined) => (value === '' || value === undefined ? undefined : Number(value)),
+              })}
+              type="number"
+              step="0.01"
+              placeholder={t('slotForm.optional')}
+            />
           </div>
         </div>
       </div>

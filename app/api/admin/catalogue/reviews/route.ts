@@ -5,6 +5,7 @@ import { auditAndNotify } from '@/lib/audit';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 import { getSuperAdminReviewUpdate } from '@/lib/vendor/voucher-review';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { revalidateTag } from 'next/cache';
 
 async function requireCatalogueReview() {
   const auth = await requireStaffPermission("admin.catalogue.review");
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     : { review_status: reviewStatus, review_note: note ?? null, reviewed_by: user.id, reviewed_at: new Date().toISOString(), status: action === 'approve' ? 'active' : 'inactive' };
   const { data: updated, error: updateError } = await db.from(table).update(update).eq('id', entityId).select().single();
   if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
+  if (entityType === 'product') revalidateTag('activities', { expire: 0 });
 
   const { error: reviewHistoryError } = await db.from('content_reviews').insert({ entity_type: entityType, entity_id: entityId, vendor_id: entity.vendor_id, reviewer_id: user.id, action: reviewStatus, note: note ?? null });
   if (reviewHistoryError) {

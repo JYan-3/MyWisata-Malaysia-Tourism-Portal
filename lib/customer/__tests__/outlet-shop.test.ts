@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   buildOutletProductCardModel,
   buildPublicOutletProfile,
+  getActiveDefaultOutletVariant,
+  getOutletAvailableStock,
+  getOutletVariantPrice,
   getOutletDetailActionLabel,
   getOutletProductAction,
+  getSelectedOutletStock,
   getOutletNavigationModel,
   getPublicOutletEmptyState,
   selectPublicOutletProductIds,
@@ -83,6 +87,78 @@ describe('outlet detail CTA labels', () => {
     expect(getOutletDetailActionLabel('selection_required')).toBe('Choose options');
     expect(getOutletDetailActionLabel('slot_required')).toBe('Choose a time');
     expect(getOutletDetailActionLabel('out_of_stock')).toBe('View details');
+  });
+});
+
+describe('outlet-scoped purchase data', () => {
+  it('counts only active variant inventory owned by the selected outlet', () => {
+    const variants = [
+      { id: 'default', is_default: true, is_active: true, inventory: [
+        { outlet_id: 'outlet-a', quantity: 0, reserved: 0 },
+        { outlet_id: 'outlet-b', quantity: 20, reserved: 2 },
+      ] },
+      { id: 'inactive', is_default: false, is_active: false, inventory: [
+        { outlet_id: 'outlet-a', quantity: 100, reserved: 0 },
+      ] },
+      { id: 'active-extra', is_default: false, is_active: true, inventory: [
+        { outlet_id: 'outlet-a', quantity: 5, reserved: 2 },
+      ] },
+    ];
+
+    expect(getOutletAvailableStock(variants, 'outlet-a')).toBe(3);
+    expect(getOutletAvailableStock(variants, 'outlet-b')).toBe(18);
+    expect(getOutletAvailableStock(variants, 'outlet-c')).toBe(0);
+  });
+
+  it('selects an active default variant, then falls back to the first active option', () => {
+    const variants = [
+      { id: 'inactive-default', name: 'Old', is_default: true, is_active: false },
+      { id: 'active-default', name: 'Standard', is_default: true, is_active: true },
+      { id: 'active-other', name: 'Large', is_default: false, is_active: true },
+    ];
+
+    expect(getActiveDefaultOutletVariant(variants)?.id).toBe('active-default');
+    expect(getActiveDefaultOutletVariant(variants.slice(0, 1))).toBeNull();
+    expect(getActiveDefaultOutletVariant(variants.slice(1).reverse())?.id).toBe('active-default');
+  });
+
+  it('chooses a variant with stock at this outlet before preferring the default', () => {
+    const variants = [
+      { id: 'sold-out-default', name: 'Standard', is_default: true, is_active: true, inventory: [
+        { outlet_id: 'outlet-a', quantity: 4, reserved: 4 },
+        { outlet_id: 'outlet-b', quantity: 20, reserved: 0 },
+      ] },
+      { id: 'stocked-extra', name: 'Large', is_default: false, is_active: true, inventory: [
+        { outlet_id: 'outlet-a', quantity: 3, reserved: 1 },
+      ] },
+      { id: 'inactive-stocked', name: 'Old size', is_default: false, is_active: false, inventory: [
+        { outlet_id: 'outlet-a', quantity: 10, reserved: 0 },
+      ] },
+    ];
+
+    expect(getActiveDefaultOutletVariant(variants, 'outlet-a')?.id).toBe('stocked-extra');
+    expect(getActiveDefaultOutletVariant(variants, 'outlet-b')?.id).toBe('sold-out-default');
+    expect(getActiveDefaultOutletVariant(variants, 'outlet-c')).toBeNull();
+    expect(getActiveDefaultOutletVariant(variants)?.id).toBe('sold-out-default');
+  });
+
+  it('adds the selected variant price offset to the outlet price using shared rounding', () => {
+    expect(getOutletVariantPrice(4.5, 1.255)).toBe(5.76);
+    expect(getOutletVariantPrice(4.5, null)).toBe(4.5);
+  });
+
+  it('does not borrow a shared product stock value when the selected outlet has no scoped entry', () => {
+    const sharedProduct = {
+      outletId: 'outlet-a',
+      offers: [{ outletId: 'outlet-a' }, { outletId: 'outlet-b' }],
+      availableStock: 12,
+      stockByOutlet: { 'outlet-a': 0 },
+      requiresBooking: false,
+    };
+
+    expect(getSelectedOutletStock(sharedProduct, 'outlet-a')).toBe(0);
+    expect(getSelectedOutletStock(sharedProduct, 'outlet-b')).toBe(0);
+    expect(getSelectedOutletStock(sharedProduct, 'outlet-a')).not.toBe(12);
   });
 });
 
