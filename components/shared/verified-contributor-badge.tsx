@@ -20,7 +20,7 @@ export function VerifiedContributorBadge({ verified }: { verified: boolean }) {
       role="img"
       aria-label={label}
       title={label}
-      className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700"
+      className="gap-1 border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
     >
       <CheckCircle2 aria-hidden="true" />
       <span>{label}</span>

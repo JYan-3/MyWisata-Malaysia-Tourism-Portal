@@ -2163,6 +2163,69 @@
     },
     "loading": {
       "adminContent": "Memuatkan kandungan admin"
+    },
+    "platformFees": {
+      "eyebrow": "Vendor",
+      "title": "Yuran platform",
+      "back": "Kembali ke vendor",
+      "description": "Tetapkan caj platform kepada vendor bagi setiap item yang dijual, mengikut peringkat vendor, dan yuran tetap untuk item yang dijual di acara.",
+      "loading": "Memuatkan yuran platform…",
+      "retry": "Cuba lagi",
+      "saved": "Yuran platform disimpan. Ia terpakai pada pesanan yang dibayar mulai sekarang.",
+      "perItem": "unit",
+      "readOnly": "Anda boleh melihat yuran ini. Hanya Super Admin boleh mengubahnya.",
+      "howItWorks": "Vendor berpindah peringkat setiap malam berdasarkan jualan 90 hari terakhir. Perubahan terpakai pada pesanan yang dibayar mulai sekarang; pesanan lama mengekalkan yuran yang dikenakan. Yuran sentiasa dinaikkan untuk menampung sebarang bayaran affiliate atau cadangan bagi pesanan itu.",
+      "tiers": {
+        "title": "Peringkat vendor",
+        "description": "Setiap peringkat mengenakan sama ada peratusan daripada harga setiap item atau amaun tetap bagi setiap item.",
+        "tier": "Peringkat {{rank}}",
+        "name": "Nama peringkat",
+        "feeType": "Jenis yuran",
+        "percent": "Peratusan harga item",
+        "fixed": "Amaun tetap setiap item",
+        "percentValue": "Yuran (%)",
+        "fixedValue": "Yuran setiap item (RM)",
+        "minSales": "Jualan diperlukan (90 hari terakhir)",
+        "minSalesHint": "Vendor mencapai peringkat ini apabila jualan 90 hari mereka mencapai amaun ini.",
+        "entryTier": "Setiap vendor bermula di sini.",
+        "vendors": "{{count}} vendor dalam peringkat ini",
+        "vendors_one": "{{count}} vendor dalam peringkat ini",
+        "vendors_other": "{{count}} vendor dalam peringkat ini",
+        "preview": "{{qty}} item pada {{price}} → yuran {{fee}} ({{label}})"
+      },
+      "events": {
+        "title": "Yuran acara",
+        "description": "Item yang dipesan dari halaman acara dikenakan yuran tetap setiap item dan bukannya yuran peringkat vendor.",
+        "default": "Yuran acara lalai setiap item",
+        "defaultHint": "Biarkan kosong untuk mengenakan yuran peringkat vendor pada item acara.",
+        "useTier": "Guna yuran peringkat",
+        "useDefault": "Guna lalai",
+        "none": "Tiada acara semasa.",
+        "campaignFee": "Yuran setiap item untuk {{title}}"
+      },
+      "reasonLabel": "Sebab perubahan ini",
+      "reasonPlaceholder": "Terangkan sebab yuran berubah (sekurang-kurangnya 10 aksara).",
+      "confirm": {
+        "title": "Simpan yuran platform?",
+        "description": "Yuran baharu terpakai pada pesanan yang dibayar mulai sekarang. Pesanan lama tidak dikira semula."
+      },
+      "errors": {
+        "load": "Tidak dapat memuatkan yuran platform.",
+        "save": "Tidak dapat menyimpan yuran platform.",
+        "invalid": "Isi nama dan yuran setiap peringkat dengan nombor 0 atau lebih.",
+        "percentTooHigh": "Yuran peratusan mesti di bawah 100%.",
+        "thresholdOrder": "Peringkat 1 bermula pada RM0, dan setiap peringkat lebih tinggi memerlukan jualan lebih banyak daripada sebelumnya.",
+        "reason": "Masukkan sebab sekurang-kurangnya 10 aksara sebelum menyimpan."
+      },
+      "drawer": {
+        "title": "Yuran platform",
+        "current": "Peringkat semasa",
+        "sales": "Jualan (90 hari terakhir)",
+        "pin": "Penetapan peringkat",
+        "bySales": "Automatik (mengikut jualan)",
+        "pinTo": "Sentiasa {{name}}",
+        "error": "Tidak dapat memuatkan yuran platform vendor ini."
+      }
     }
   },
   "actions": {

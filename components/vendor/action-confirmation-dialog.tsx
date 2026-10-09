@@ -35,10 +35,10 @@ export default function ActionConfirmationDialog({
   const { t } = useTranslation('vendor');
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !busy) onCancel(); }}>
-      <DialogContent className="rounded-2xl border-amber-100 p-6 sm:max-w-md">
+      <DialogContent className="rounded-2xl border-amber-100 dark:border-amber-500/30 p-6 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl text-gray-950">{title}</DialogTitle>
-          <DialogDescription className="leading-6 text-gray-600">{description}</DialogDescription>
+          <DialogTitle className="text-xl text-gray-950 dark:text-foreground">{title}</DialogTitle>
+          <DialogDescription className="leading-6 text-gray-600 dark:text-muted-foreground">{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>{t('actions.cancel')}</Button>

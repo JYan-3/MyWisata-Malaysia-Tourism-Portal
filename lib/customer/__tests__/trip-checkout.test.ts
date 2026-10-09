@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
 import type { TripItem } from "@/backend/domains/trips";
-import { resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
+import { countTripPurchasableItems, resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
 
 function item(id: string, overrides: Partial<TripItem> = {}): TripItem {
   return {
@@ -145,10 +145,11 @@ describe("resolveTripCheckoutLines", () => {
   it("skips a non-booking product with zero variants — genuinely nothing to back the line", () => {
     const noVariant = activity("no-variant", { variants: [] });
 
-    const { lines, needsSlot } = resolveTripCheckoutLines([item("no-variant")], new Map([["no-variant", noVariant]]), new Map());
+    const { lines, needsSlot, unavailable } = resolveTripCheckoutLines([item("no-variant")], new Map([["no-variant", noVariant]]), new Map());
 
     expect(lines).toEqual([]);
     expect(needsSlot).toEqual([]);
+    expect(unavailable).toEqual([{ itemId: "no-variant", label: "no-variant" }]);
   });
 
   it("skips a custom location stop with no experience_id", () => {
@@ -160,5 +161,27 @@ describe("resolveTripCheckoutLines", () => {
 
     expect(lines).toEqual([]);
     expect(needsSlot).toEqual([]);
+  });
+});
+
+describe("countTripPurchasableItems", () => {
+  it("counts only scheduled stops checkout can put in the cart", () => {
+    const base = activity("trail");
+    const activities = new Map([
+      ["laksa", activity("laksa")],
+      ["petronas", activity("petronas", { requiresBooking: true, variants: [] })],
+      ["no-variant", activity("no-variant", { variants: [] })],
+      ["trail", activity("trail", { price: 0, typeSlugs: ["nature"], outlet: { ...base.outlet, vendorId: "", vendorName: "" } })],
+    ]);
+    const items = [
+      item("laksa"),
+      item("petronas"),
+      item("no-variant"),
+      item("trail"),
+      item("unscheduled-laksa", { experience_id: "laksa", scheduled_date: null }),
+      item("hotel", { experience_id: null, source: "location" }),
+    ];
+
+    expect(countTripPurchasableItems(items, activities)).toBe(2);
   });
 });

@@ -62,7 +62,7 @@ export function PromotionCampaignCard({
           <CampaignPoster campaign={campaign} className="aspect-[4/3] lg:aspect-auto lg:min-h-72" sizes="(max-width: 1023px) 100vw, (max-width: 1440px) 16vw, 15vw" />
           <div className="flex min-w-0 flex-col p-4 sm:p-5 lg:min-h-72 lg:p-6">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
                 {t(getEventOperationalLabelKey(campaign))}
               </span>
               <span className="text-sm text-muted-foreground">
@@ -101,7 +101,7 @@ export function PromotionCampaignCard({
           <CampaignPoster campaign={campaign} className="aspect-[16/9] lg:aspect-[4/3]" sizes="(max-width: 1023px) 100vw, 40vw" />
           <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6 lg:p-7">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
                 {t(getEventOperationalLabelKey(campaign))}
               </span>
               <span className="text-sm text-muted-foreground">

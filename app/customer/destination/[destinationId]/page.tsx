@@ -124,7 +124,7 @@ export default async function DestinationPage({ params }: Props) {
             <ArrowLeft size={15} />
             {t("ui.destination.backToExplore")}
           </Link>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/60 dark:text-white/60">
             {destination.zone}
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-black text-white sm:text-6xl">
@@ -135,7 +135,7 @@ export default async function DestinationPage({ params }: Props) {
             {destination.highlights.map((highlight) => (
               <span
                 key={highlight}
-                className="rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm"
+                className="rounded-full border border-white/30 bg-white/10 dark:bg-card/10 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm"
               >
                 {highlight}
               </span>
@@ -144,14 +144,14 @@ export default async function DestinationPage({ params }: Props) {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href={`/customer/explore`}
-              className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-white/90"
+              className="inline-flex items-center gap-2 rounded-2xl bg-white dark:bg-card px-5 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-white/90 dark:hover:bg-card/90"
             >
               <MapPin size={15} />
               {t("ui.destination.viewOnMap")}
             </Link>
             <Link
               href={`/customer/partners?state=${encodeURIComponent(destination.state)}`}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-white/10 dark:bg-card/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20 dark:hover:bg-card/20"
             >
               <Search size={15} />
               {t("ui.destination.findPartners")}
@@ -208,7 +208,7 @@ export default async function DestinationPage({ params }: Props) {
                         </div>
                       )}
                       {category?.name && (
-                        <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-primary">
+                        <span className="absolute left-2 top-2 rounded-full bg-white/90 dark:bg-card/90 px-2 py-0.5 text-[10px] font-bold text-primary">
                           {category.name}
                         </span>
                       )}

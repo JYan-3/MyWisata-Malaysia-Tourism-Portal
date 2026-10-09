@@ -56,7 +56,7 @@ export function OverviewTab({ onOpenTab }: { onOpenTab: (tab: AccessControlTabId
     <div className="space-y-5">
       <AdminMetricGrid items={[
         { label: t("accessControl.overview.activeVersions"), value: data.counts.activeVersions, detail: t("accessControl.overview.policiesDetail", { count: data.counts.policies }) },
-        { label: t("accessControl.overview.pendingApprovals"), value: data.counts.pendingApprovals, tone: data.counts.pendingApprovals ? "text-amber-600" : undefined },
+        { label: t("accessControl.overview.pendingApprovals"), value: data.counts.pendingApprovals, tone: data.counts.pendingApprovals ? "text-amber-600 dark:text-amber-300" : undefined },
         { label: t("accessControl.overview.activeAssignments"), value: data.counts.activeAssignments, detail: t("accessControl.overview.expiringDetail", { count: data.counts.expiringAssignments }) },
         { label: t("accessControl.overview.generation"), value: data.generation, detail: t("accessControl.overview.capabilitiesDetail", { count: data.counts.capabilities }) },
       ]} />

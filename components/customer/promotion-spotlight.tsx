@@ -8,9 +8,9 @@ import type { ComputedActivity } from "@/backend/core/types";
 import { buildPromotionSpotlight } from "@/lib/customer/promotion-spotlight";
 
 const ACCENT_STYLES = {
-  yellow: { badge: "bg-[#FFCC00] text-[#010066]", button: "bg-white text-[#010066] hover:bg-[#FFCC00]" },
-  teal: { badge: "bg-[#EEF2FF] text-[#010066]", button: "bg-white text-[#010066] hover:bg-[#FFCC00]" },
-  coral: { badge: "bg-[#FFB7A5] text-[#5B1D18]", button: "bg-white text-[#5B1D18] hover:bg-[#FFB7A5]" },
+  yellow: { badge: "bg-[#FFCC00] text-[#010066]", button: "bg-white dark:bg-card text-[#010066] hover:bg-[#FFCC00]" },
+  teal: { badge: "bg-[#EEF2FF] text-[#010066]", button: "bg-white dark:bg-card text-[#010066] hover:bg-[#FFCC00]" },
+  coral: { badge: "bg-[#FFB7A5] text-[#5B1D18]", button: "bg-white dark:bg-card text-[#5B1D18] hover:bg-[#FFB7A5]" },
 } as const;
 
 export function PromotionSpotlight({ activities }: { activities: ComputedActivity[] }) {
@@ -63,14 +63,14 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
                   aria-label={`${t("ui.actions.viewDetails")} ${index + 1}`}
                   aria-current={index === selectedIndex ? "true" : undefined}
                   onClick={() => setActiveIndex(index)}
-                  className={`h-2 rounded-full transition-all ${index === activeIndex ? "w-8 bg-[#FFCC00]" : "w-2 bg-white/50 hover:bg-white"}`}
+                  className={`h-2 rounded-full transition-all ${index === activeIndex ? "w-8 bg-[#FFCC00]" : "w-2 bg-white/50 dark:bg-card/50 hover:bg-white dark:hover:bg-card"}`}
                 />
               ))}
             </div>
             {promotions.length > 1 && (
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => move(-1)} aria-label={t("ui.promotion.previous")} className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10"><ChevronLeft size={17} /></button>
-                <button type="button" onClick={() => move(1)} aria-label={t("ui.promotion.next")} className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10"><ChevronRight size={17} /></button>
+                <button type="button" onClick={() => move(-1)} aria-label={t("ui.promotion.previous")} className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10 dark:hover:bg-card/10"><ChevronLeft size={17} /></button>
+                <button type="button" onClick={() => move(1)} aria-label={t("ui.promotion.next")} className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10 dark:hover:bg-card/10"><ChevronRight size={17} /></button>
               </div>
             )}
           </div>

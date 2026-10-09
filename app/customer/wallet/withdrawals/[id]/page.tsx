@@ -125,7 +125,7 @@ export default function WithdrawalReceiptPage() {
         <p className="mt-3 text-xs text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.immutableNotice")}</p>
       </section>}
 
-      {receipt.customerReason && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm"><p className="font-semibold">{tCustomer("strictMigration.walletReceipt.reviewNote")}</p><p className="mt-1">{receipt.customerReason}</p></div>}
+      {receipt.customerReason && <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm"><p className="font-semibold">{tCustomer("strictMigration.walletReceipt.reviewNote")}</p><p className="mt-1">{receipt.customerReason}</p></div>}
       <p className="mt-6 text-xs text-muted-foreground">{tCustomer("strictMigration.walletReceipt.settlementNotice", { provider: receipt.payoutProvider === "tng_direct_credit" ? "Touch 'n Go eWallet" : "Stripe Connect" })}</p>
     </section>}
   </CustomerPageShell></>;

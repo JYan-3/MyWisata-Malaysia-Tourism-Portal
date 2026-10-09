@@ -238,6 +238,9 @@ const approvedForwardMigrations = [
   "20261007034901_event_vendor_change_notices.sql",
   "20261007161233_event_booth_allocation_and_intake.sql",
   "20261007175430_guest_refund_transaction_compatibility.sql",
+  "20261007230000_vendor_platform_fee_tiers.sql",
+  "20261008100000_campaign_platform_fee_rpc.sql",
+  "20261008230000_paid_order_effects_marker.sql",
 ];
 
 function migrationFiles() {

@@ -57,14 +57,14 @@ export function SavedHubClient({ activities, destinations }: { activities: Compu
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
-      <header className="rounded-3xl bg-primary px-5 py-7 text-white shadow-[0_18px_45px_rgba(1,0,102,0.18)] sm:px-8">
+      <header className="rounded-3xl bg-primary dark:bg-[#010066] px-5 py-7 text-white shadow-[0_18px_45px_rgba(1,0,102,0.18)] sm:px-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-[#ffcc00]"><Heart size={17} fill="currentColor" /><span className="text-xs font-bold uppercase tracking-[0.18em]">{tCustomer("ui.wishlist.shortlist")}</span></div>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold sm:text-4xl">{tCustomer("ui.wishlist.title")}</h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">{tCustomer("ui.wishlist.description")}</p>
           </div>
-          <Link href="/customer" className="inline-flex items-center gap-2 self-start rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-[#ffd633] md:self-auto"><MapPin size={14} /> {tCustomer("ui.wishlist.explore")}</Link>
+          <Link href="/customer" className="inline-flex items-center gap-2 self-start rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-primary dark:text-[#010066] transition hover:bg-[#ffd633] md:self-auto"><MapPin size={14} /> {tCustomer("ui.wishlist.explore")}</Link>
         </div>
       </header>
 

@@ -24,7 +24,7 @@ export function SavedDestinationCard({ destination, savedAt }: { destination: Ma
             <h3 className="mt-1 text-xl font-bold">{destination.state}</h3>
             <p className="mt-1 flex items-center gap-1 text-xs text-white/80"><MapPin size={12} aria-hidden="true" /> {destination.attraction}</p>
           </div>
-          <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary"><Bookmark size={11} fill="currentColor" aria-hidden="true" /> {t("ui.wishlist.savedPlaces")}</span>
+          <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary"><Bookmark size={11} fill="currentColor" aria-hidden="true" /> {t("ui.wishlist.savedPlaces")}</span>
         </div>
       </Link>
       <div className="space-y-3 p-4">

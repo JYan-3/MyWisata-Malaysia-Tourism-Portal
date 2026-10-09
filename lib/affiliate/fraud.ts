@@ -11,24 +11,16 @@
 //     for shapes a single conversion can't see. These ARE deduped: no second
 //     open flag of the same type on the same link within 24h, per spec.
 //
-// ⚠️ DEVIATION FROM THE ORIGINAL SPEC — auto-disable is a pattern, not a
-// single event.
+// ⚠️ DEVIATION FROM THE ORIGINAL SPEC — no flag auto-disables a link.
 //
 // CLAUDE-PHASE2.md's Section 4 says "if a link accumulates a high-severity
-// flag, set is_active = false" — read literally, that auto-disables on the
-// FIRST self-referral, since that guard is severity='high'. Caught before
-// this went further: someone clicking their own shared link once (e.g.
-// out of habit, testing their own share) is a plausible accident. The guard
-// already does its real job on every occurrence — no commission is ever
-// created — so nothing financial is at risk from waiting. Killing their
-// whole earning channel over one click, silently, with no way back in
-// except emailing an admin, is a false-positive machine.
-//
-// So: self_referral only auto-disables once the SAME link accumulates
-// `fraud.self_referral_auto_disable_count` (default 3) such flags within
-// `fraud.self_referral_auto_disable_window_days` (default 30) — see
-// maybeAutoDisableForSelfReferral() below. One-off self-clicks are logged
-// and visible to admin, but the link stays live.
+// flag, set is_active = false". self_referral (an affiliate buying through
+// their own link) used to be high severity and auto-disabled after 3 in 30
+// days. Product decision 2026-10-08: buying something you shared yourself
+// is ordinary behaviour, and the guard already does the real job — no
+// commission is ever created — so nothing financial is at risk. It is now a
+// low-severity record for admin visibility only: it never disables the link
+// and is excluded from the tier fraud rate (FRAUD_RATE_EXCLUDED_FLAG_TYPES).
 //
 // Sweep-detected flags (click_velocity, visitor_clustering, zero_conversion)
 // NEVER auto-disable, regardless of severity — same reasoning applies even
@@ -41,7 +33,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getFraudThresholds } from './settings';
 import { getVendorIneligibleRole } from './vendor-role-guard';
 
-const SELF_REFERRAL_STATUSES_COUNTED = ['open', 'reviewed'] as const; // exclude 'dismissed' — an admin already ruled it a false positive
+/** Informational flags that are not evidence of abuse, so they never count toward a link's tier fraud rate. */
+export const FRAUD_RATE_EXCLUDED_FLAG_TYPES: readonly FraudFlagType[] = [
+  'self_referral',
+  // A buyer coming back after the 7-day window is ordinary, not abuse.
+  'expired_attribution',
+];
 
 export type FraudFlagType =
   | 'self_referral'
@@ -83,12 +80,9 @@ export interface LogFraudFlagInput {
 }
 
 /**
- * Inserts a flag row. Auto-disable is NOT triggered by severity alone — see
- * the file-header note above. Only self_referral can auto-disable, and only
- * once it's a pattern (maybeAutoDisableForSelfReferral). Every other flag
- * type, including sweep-detected ones, is admin-review-only. Does not
- * dedupe — callers that need the 24h sweep dedupe window call
- * hasRecentOpenFlag() first.
+ * Inserts a flag row. Never auto-disables — see the file-header note above;
+ * every flag type is admin-review-only. Does not dedupe — callers that need
+ * the 24h sweep dedupe window call hasRecentOpenFlag() first.
  */
 export async function logFraudFlag(service: SupabaseClient, input: LogFraudFlagInput): Promise<string | null> {
   const { data, error } = await service
@@ -109,42 +103,7 @@ export async function logFraudFlag(service: SupabaseClient, input: LogFraudFlagI
     return null;
   }
 
-  if (input.flagType === 'self_referral' && input.linkId) {
-    await maybeAutoDisableForSelfReferral(service, input.linkId);
-  }
-
   return data.id as string;
-}
-
-/**
- * Auto-disables a link once it has accumulated
- * `fraud.self_referral_auto_disable_count` self_referral flags (default 3)
- * within `fraud.self_referral_auto_disable_window_days` (default 30) —
- * counting only 'open'/'reviewed' flags, since a 'dismissed' one means an
- * admin already decided it wasn't real. One-off self-clicks never trigger
- * this — the commission block is the only consequence until the pattern
- * repeats.
- */
-async function maybeAutoDisableForSelfReferral(service: SupabaseClient, linkId: string): Promise<void> {
-  const thresholds = await getFraudThresholds(service);
-  const cutoff = new Date(Date.now() - thresholds.selfReferralAutoDisableWindowDays * 86_400_000).toISOString();
-
-  const { count } = await service
-    .from('affiliate_fraud_flags')
-    .select('id', { count: 'exact', head: true })
-    .eq('link_id', linkId)
-    .eq('flag_type', 'self_referral')
-    .in('status', SELF_REFERRAL_STATUSES_COUNTED)
-    .gte('created_at', cutoff);
-
-  if ((count ?? 0) >= thresholds.selfReferralAutoDisableCount) {
-    await autoDisableLink(
-      service,
-      linkId,
-      `auto-disabled after ${count} self-referral flags within ${thresholds.selfReferralAutoDisableWindowDays} days`,
-      null,
-    );
-  }
 }
 
 /**

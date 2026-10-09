@@ -15,7 +15,7 @@ export default function OrderQuickAction({ vendorId, itemId, status, orderStatus
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const nextStatus = getItemFulfilmentAction(orderStatus, status);
-  if (!nextStatus) return <span className="text-xs text-gray-400">{t('order.noAction')}</span>;
+  if (!nextStatus) return <span className="text-xs text-gray-400 dark:text-muted-foreground">{t('order.noAction')}</span>;
 
   async function updateStatus() {
     setLoading(true);

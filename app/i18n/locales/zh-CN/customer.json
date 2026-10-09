@@ -1229,7 +1229,11 @@
       "button_other": "结账（{{count}} 项）",
       "nothingToCheckout": "您的行程中还没有可购买的项目。",
       "allNeedSlot": "您已安排的行程在计划当天都没有可预订的时段 — 请先在各活动页面选择时段。",
-      "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。"
+      "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。",
+      "unavailable": "{{names}} 无法在行程规划中购买，请打开其页面查看可选项。",
+      "addFailed": "无法将 {{name}} 加入购物车。之前已加入的项目仍在购物车中。",
+      "buy_one": "购买 {{count}} 项",
+      "buy_other": "购买 {{count}} 项"
     },
     "preferencesPage": {
       "eyebrow": "偏好",
@@ -3069,7 +3073,12 @@
           "windGust": "阵风最高 {{speed}}",
           "uvIndex": "紫外线指数 {{value}}"
         }
-      }
+      },
+      "longDayWarning": "当天行程需 {{duration}}，建议将部分站点移到其他日期。",
+      "longLeg": "这两个站点之间路程较长",
+      "addTime": "时间",
+      "overview": "总览",
+      "overviewEmpty": "暂无站点"
     },
     "paymentSimulator": {
       "eyebrow": "沙盒／模拟付款",

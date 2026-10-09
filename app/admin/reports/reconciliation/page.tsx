@@ -101,7 +101,7 @@ export default function ReconciliationPage() {
           </div>
 
           {data.totals.negativeOrders > 0 && (
-            <p className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p className="flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
               <AlertTriangle size={16} className="shrink-0" />
               {t("reconciliation.negativeWarning", { count: data.totals.negativeOrders })}
             </p>
@@ -127,7 +127,7 @@ export default function ReconciliationPage() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {data.rows.map((r) => (
-                      <tr key={r.orderId} className={r.platformNetNegative ? "bg-amber-50/60" : ""}>
+                      <tr key={r.orderId} className={r.platformNetNegative ? "bg-amber-50/60 dark:bg-amber-500/10" : ""}>
                         <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">{r.orderDisplayId ?? r.orderId.slice(0, 8)}</td>
                         <td className="py-3 pr-3 text-xs text-muted-foreground">
                           {r.paidAt ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(r.paidAt)) : "—"} · {r.status}

@@ -67,9 +67,9 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
         {value ? (
           kind === 'image'
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={value} alt={t('media.uploadedPreview')} className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
-            : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">{t('media.fileReady')}</div>
-        ) : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400"><FileUp size={20} /></div>}
+            ? <img src={value} alt={t('media.uploadedPreview')} className="h-16 w-24 rounded-lg border border-gray-200 dark:border-border object-cover" />
+            : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 text-xs font-semibold text-gray-500 dark:text-muted-foreground">{t('media.fileReady')}</div>
+        ) : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-border bg-gray-50 dark:bg-muted/50 text-gray-400 dark:text-muted-foreground"><FileUp size={20} /></div>}
         <div className="min-w-0 flex-1">
           <input
             ref={inputRef}
@@ -78,11 +78,11 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
             onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }}
             className="sr-only"
           />
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:border-primary/30 hover:text-primary disabled:opacity-50">
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 py-2 text-xs font-semibold text-gray-700 dark:text-foreground hover:border-primary/30 hover:text-primary disabled:opacity-50">
             {uploading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             {value ? t('media.replaceFile') : t('media.uploadFile')}
           </button>
-          <p className="mt-1 text-[11px] text-gray-500">{kind === 'digital' ? t('media.digitalFormats') : t('media.imageFormats')}</p>
+          <p className="mt-1 text-[11px] text-gray-500 dark:text-muted-foreground">{kind === 'digital' ? t('media.digitalFormats') : t('media.imageFormats')}</p>
           <p className="mt-1 text-[10px] font-semibold text-primary/60">{t('media.dragFileHint')}</p>
         </div>
       </div>

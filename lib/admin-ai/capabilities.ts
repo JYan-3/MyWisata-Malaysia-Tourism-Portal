@@ -226,6 +226,27 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     source: 'app/api/admin/wallet-settings/route.ts, wallet-approvers/route.ts, lib/validation/schemas.ts',
   },
   {
+    name: 'platform_fees',
+    description:
+      'Setting what the platform charges vendors — three shared vendor tiers (each a % of the item price or a fixed RM per item), the sales needed for each tier, and the fixed per-item fee for items sold at events.',
+    path: '/admin/vendors/platform-fees',
+    role: 'super_admin',
+    actions: [
+      'Rename each of the three tiers and set its fee as a percentage of the item price or a fixed RM amount per item',
+      'Set the 90-day sales amount a vendor needs to reach tier 2 and tier 3 (tier 1 always starts at RM0)',
+      'Set a default fixed fee per item for event orders, and override it per event',
+      'Pin a single vendor to a tier from the vendor review drawer on /admin/vendors',
+    ],
+    notes: [
+      'Admins with vendor management can view the page and pin vendors; only a Super Admin can change fees, and every change needs a reason of at least 10 characters.',
+      'Vendors are re-placed into tiers every night from their last 90 days of settled sales, unless pinned.',
+      'Changes apply to orders paid from then on; past settlements keep the fee they were charged.',
+      'A fixed fee per item is never more than the item\'s share of the sale, and the fee is raised to cover any affiliate or recommendation payout on the order.',
+    ],
+    keywords: ['vendor tier', 'fee tier', 'platform fee tier', 'change the platform fee', 'event fee', 'fee per item', 'commission rate'],
+    source: 'app/admin/vendors/platform-fees/page.tsx, app/api/admin/vendor-fee-tiers/route.ts, app/api/admin/vendors/[id]/fee-tier/route.ts, lib/vendor/fee-tiers.ts, supabase/migrations/20261007230000_vendor_platform_fee_tiers.sql',
+  },
+  {
     name: 'payout_reports',
     description: 'The payout report — platform-wide payout figures, and exporting them as CSV.',
     path: '/admin/reports/payouts',
@@ -251,9 +272,9 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Super Admin only.',
-      'Affiliate and recommendation payouts come out of the platform\'s commission cut, not on top of it — vendor net is unaffected by them.',
+      'Affiliate and recommendation payouts come out of the platform\'s commission cut, not on top of it. Since the vendor tier change, the platform fee on a held order is raised to at least the payout owed, so platform net no longer goes negative on new orders.',
       'A row where the platform net is negative (the commission on it was smaller than what got paid out to affiliates/recommenders) is flagged with a warning banner.',
-      'The platform commission rate is a database setting (platform_settings key "commission.platform_rate", default 15%, can be overridden per vendor) — there is no admin UI to change it yet.',
+      'Platform fees are set per vendor tier on /admin/vendors/platform-fees (see the platform_fees section).',
     ],
     keywords: ['reconciliation', 'platform commission', 'platform fee', 'vendor net', 'platform net'],
     source: 'app/admin/reports/reconciliation/page.tsx, app/api/admin/reconciliation/route.ts, lib/admin/reconciliation.ts, lib/vendor/settlement.ts',

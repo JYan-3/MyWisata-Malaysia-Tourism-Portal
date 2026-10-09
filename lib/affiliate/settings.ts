@@ -12,8 +12,6 @@ const DEFAULT_FRAUD_THRESHOLDS: FraudThresholds = {
   visitorClusteringMinClicks: 10,
   visitorClusteringRatio: 0.5,
   zeroConversionMinClicks: 50,
-  selfReferralAutoDisableCount: 3,
-  selfReferralAutoDisableWindowDays: 30,
 };
 
 /** Reads platform_settings['affiliate.cookie_days'], defaulting to 30 if missing/invalid. */
@@ -65,9 +63,6 @@ export interface FraudThresholds {
   visitorClusteringMinClicks: number;
   visitorClusteringRatio: number;
   zeroConversionMinClicks: number;
-  /** How many self_referral flags on one link within the window below before it's auto-disabled. */
-  selfReferralAutoDisableCount: number;
-  selfReferralAutoDisableWindowDays: number;
 }
 
 /**
@@ -86,8 +81,6 @@ export async function getFraudThresholds(service: SupabaseClient): Promise<Fraud
       'fraud.visitor_clustering_min_clicks',
       'fraud.visitor_clustering_ratio',
       'fraud.zero_conversion_min_clicks',
-      'fraud.self_referral_auto_disable_count',
-      'fraud.self_referral_auto_disable_window_days',
     ]);
 
   const values = new Map((data ?? []).map((r) => [r.key, r.value]));
@@ -102,10 +95,5 @@ export async function getFraudThresholds(service: SupabaseClient): Promise<Fraud
     visitorClusteringMinClicks: num('fraud.visitor_clustering_min_clicks', DEFAULT_FRAUD_THRESHOLDS.visitorClusteringMinClicks),
     visitorClusteringRatio: num('fraud.visitor_clustering_ratio', DEFAULT_FRAUD_THRESHOLDS.visitorClusteringRatio),
     zeroConversionMinClicks: num('fraud.zero_conversion_min_clicks', DEFAULT_FRAUD_THRESHOLDS.zeroConversionMinClicks),
-    selfReferralAutoDisableCount: num('fraud.self_referral_auto_disable_count', DEFAULT_FRAUD_THRESHOLDS.selfReferralAutoDisableCount),
-    selfReferralAutoDisableWindowDays: num(
-      'fraud.self_referral_auto_disable_window_days',
-      DEFAULT_FRAUD_THRESHOLDS.selfReferralAutoDisableWindowDays,
-    ),
   };
 }

@@ -284,7 +284,7 @@ export default function AdminRefundsPage() {
               detail: t("refunds.metrics.needsAttention"),
             },
           ]} />
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-200">
           <strong>{t("refunds.sandbox.label")}</strong>{" "}
           {t("refunds.sandbox.description")}
         </section>
@@ -452,7 +452,7 @@ export default function AdminRefundsPage() {
                             {providerLabel(refund.provider, t)}
                           </p>
                           {simulated && (
-                            <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                            <span className="mt-1 inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">
                               {t("refunds.status.simulated")}
                             </span>
                           )}
@@ -526,11 +526,11 @@ export default function AdminRefundsPage() {
                           {refund.status === "processed" && (
                             <CheckCircle2
                               size={15}
-                              className="text-emerald-600"
+                              className="text-emerald-600 dark:text-emerald-300"
                             />
                           )}
                           {refund.status === "approved" && !simulated && (
-                            <Clock3 size={15} className="text-amber-600" />
+                            <Clock3 size={15} className="text-amber-600 dark:text-amber-300" />
                           )}
                         </div>
                       </div>

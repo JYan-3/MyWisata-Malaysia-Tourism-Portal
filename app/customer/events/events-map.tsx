@@ -107,7 +107,7 @@ export function EventsMap({ campaigns }: { campaigns: PromotionCampaignPublic[] 
                       width={32}
                       height={16}
                       unoptimized
-                      className="h-4 w-8 shrink-0 rounded-[2px] border border-border/70 bg-white object-cover"
+                      className="h-4 w-8 shrink-0 rounded-[2px] border border-border/70 bg-white dark:bg-card object-cover"
                     />
                     <span className="min-w-0 break-words text-[11px] font-semibold leading-tight">{state.name}</span>
                   </span>

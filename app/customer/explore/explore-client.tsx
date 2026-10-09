@@ -309,7 +309,7 @@ export function ExploreClient({
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                               <div className="absolute inset-x-3 bottom-3">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground/70">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground/70 dark:text-white/70">
                                   {dest.zone}
                                 </p>
                                 <p className="mt-0.5 text-sm font-bold text-white">{dest.state}</p>

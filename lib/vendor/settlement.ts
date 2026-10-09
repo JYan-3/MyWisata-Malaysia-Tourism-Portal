@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { add } from '@/lib/money';
+import type { VendorFeeSummary } from '@/lib/vendor/fee-tiers';
 
 export interface VendorSettlementRow {
   id: string;
@@ -18,6 +19,14 @@ export interface VendorSettlementRow {
   platformFeeSen: number;
   vendorNetSen: number;
   platformRate: number;
+  /** How the fee was charged (snapshot): 'percent' of the sale, 'fixed' per item, or both. */
+  feeType?: 'percent' | 'fixed' | 'mixed';
+  /** 'event' when items came from an event page (event fee per item). */
+  feeSource?: 'tier' | 'event' | 'mixed';
+  feePerItemSen?: number | null;
+  itemCount?: number | null;
+  /** Set when the fee was raised to cover referral payouts on the order. */
+  payoutFloorApplied?: boolean;
   status: 'pending' | 'confirmed' | 'reversed';
   isSimulated?: boolean;
   /** Days until a pending settlement's hold matures, floored at 0. null unless pending. */
@@ -35,6 +44,8 @@ export interface VendorSettlements {
     lifetimePlatformFeesSen: number;
   };
   settlements: VendorSettlementRow[];
+  /** The vendor's current tier and fee (added by GET /api/vendor/settlements). */
+  fee?: VendorFeeSummary | null;
 }
 
 const EMPTY: VendorSettlements = {
@@ -49,6 +60,11 @@ type Row = {
   platform_fee_sen: number | string;
   vendor_net_sen: number | string;
   platform_rate: number | string;
+  fee_type?: string;
+  fee_source?: string;
+  fee_per_item_sen?: number | string | null;
+  item_count?: number | null;
+  base_fee_sen?: number | string;
   status: string;
   is_simulated?: boolean;
   hold_until: string | null;
@@ -69,7 +85,7 @@ export async function getVendorSettlements(
 ): Promise<VendorSettlements> {
   const { data, error } = await service
     .from('order_settlements')
-    .select('id, order_id, gross_sen, platform_fee_sen, vendor_net_sen, platform_rate, status, is_simulated, hold_until, reversed_amount_sen, created_at, orders(display_id)')
+    .select('id, order_id, gross_sen, platform_fee_sen, vendor_net_sen, platform_rate, fee_type, fee_source, fee_per_item_sen, item_count, base_fee_sen, status, is_simulated, hold_until, reversed_amount_sen, created_at, orders(display_id)')
     .eq('vendor_id', vendorId)
     .order('created_at', { ascending: false });
 
@@ -86,6 +102,11 @@ export async function getVendorSettlements(
       platformFeeSen: Number(row.platform_fee_sen),
       vendorNetSen: Number(row.vendor_net_sen),
       platformRate: Number(row.platform_rate),
+      feeType: row.fee_type === 'fixed' || row.fee_type === 'mixed' ? row.fee_type : 'percent',
+      feeSource: row.fee_source === 'event' || row.fee_source === 'mixed' ? row.fee_source : 'tier',
+      feePerItemSen: row.fee_per_item_sen == null ? null : Number(row.fee_per_item_sen),
+      itemCount: row.item_count ?? null,
+      payoutFloorApplied: row.base_fee_sen != null && Number(row.platform_fee_sen) > Number(row.base_fee_sen),
       status,
       isSimulated: Boolean(row.is_simulated),
       clearsInDays: status === 'pending' ? clearsInDays(row.hold_until) : null,
@@ -120,6 +141,20 @@ export async function settleOrderVendorEarnings(service: SupabaseClient, orderId
   }
 }
 
+/**
+ * Raises (or releases) a pending settlement's platform fee so it always covers
+ * the affiliate + recommendation payouts the order owes. Idempotent; run after
+ * those payouts are created or rejected. Never throws.
+ */
+export async function applyOrderPlatformFeeFloor(service: SupabaseClient, orderId: string): Promise<void> {
+  try {
+    const { error } = await service.rpc('apply_order_platform_fee_floor', { p_order_id: orderId });
+    if (error) console.error('[vendor-settlement] fee floor failed', orderId, error.message);
+  } catch (err) {
+    console.error('[vendor-settlement] fee floor threw', orderId, err instanceof Error ? err.message : err);
+  }
+}
+
 /** Claws back the refunded fraction of a vendor's settlement (confirmed rows / partial refunds). */
 export async function reverseOrderVendorSettlement(
   service: SupabaseClient,
@@ -145,6 +180,8 @@ export interface VendorSettlementMaintenanceResult {
   backfilled: number;
   clawedBack: number;
   failed: number;
+  /** Vendors whose fee tier changed in tonight's 90-day sales placement. */
+  feeTiersMoved?: number;
 }
 
 /**
@@ -156,6 +193,18 @@ export async function runVendorSettlementMaintenance(
   service: SupabaseClient,
 ): Promise<VendorSettlementMaintenanceResult> {
   const result: VendorSettlementMaintenanceResult = { cleared: 0, reversed: 0, backfilled: 0, clawedBack: 0, failed: 0 };
+
+  const { data: moved, error: tierError } = await service.rpc('recompute_vendor_fee_tiers');
+  if (tierError) result.failed += 1;
+  else result.feeTiersMoved = Number(moved ?? 0);
+
+  // Re-check the payout floor before held money clears: a referral payout may
+  // have been attributed late, or rejected by an admin, since settlement.
+  const { data: held, error: heldError } = await service.from('order_settlements').select('order_id').eq('status', 'pending');
+  if (heldError) result.failed += 1;
+  for (const orderId of new Set(((held ?? []) as { order_id: string }[]).map((row) => row.order_id))) {
+    await applyOrderPlatformFeeFloor(service, orderId);
+  }
 
   const { data: matured, error: maturityError } = await service.rpc('clear_matured_vendor_settlements');
   if (maturityError) result.failed += 1;

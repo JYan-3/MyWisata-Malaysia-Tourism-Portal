@@ -7,6 +7,7 @@ import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import { planCheckoutPayment, startCheckoutPayment } from '@/lib/checkout/start-payment';
+import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -264,5 +265,8 @@ export async function POST(request: Request) {
     );
   }
 
+  // Before payment starts: free/wallet orders are paid inside startCheckoutPayment,
+  // and redirect payments leave the site, so the referral must be saved now.
+  await stampReferralFromCookie((prepared as { order_id?: string } | null)?.order_id);
   return startCheckoutPayment({ db, user, request, prepared, total: totals.total, plan: planned.plan });
 }

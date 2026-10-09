@@ -478,7 +478,7 @@ export default function CartPage() {
                 )}
                 <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1"><ReferencePrice amountMYR={price} /> × {item.qty}</p>
                 {stockLimit !== undefined && (
-                  <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700" : "text-emerald-700"}`}>
+                  <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600 dark:text-red-300" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700 dark:text-amber-200" : "text-emerald-700 dark:text-emerald-200"}`}>
                     {stockLimit === 0 ? "Out of stock" : `${stockLimit} in stock${stockLimit <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}`}
                   </p>
                 )}

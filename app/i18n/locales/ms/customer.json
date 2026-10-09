@@ -1229,7 +1229,11 @@
       "button_other": "Checkout ({{count}} item)",
       "nothingToCheckout": "Tiada apa-apa dalam itinerari anda yang boleh dibeli lagi.",
       "allNeedSlot": "Tiada satu pun perhentian berjadual anda mempunyai slot tempahan terbuka pada hari yang dirancang — pilih masa pada halaman setiap aktiviti dahulu.",
-      "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka."
+      "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka.",
+      "unavailable": "{{names}} tidak boleh dibeli dari perancang. Buka halamannya untuk menyemak pilihan yang ada.",
+      "addFailed": "Tidak dapat menambah {{name}} ke troli anda. Item yang ditambah sebelumnya masih dalam troli.",
+      "buy_one": "Beli {{count}}",
+      "buy_other": "Beli {{count}}"
     },
     "preferencesPage": {
       "eyebrow": "Keutamaan",
@@ -3069,7 +3073,12 @@
           "windGust": "Tiupan angin sehingga {{speed}}",
           "uvIndex": "Indeks UV {{value}}"
         }
-      }
+      },
+      "longDayWarning": "{{duration}} perjalanan pada hari ini. Pertimbangkan untuk memindahkan beberapa hentian ke hari lain.",
+      "longLeg": "Perjalanan jauh antara hentian ini",
+      "addTime": "Masa",
+      "overview": "Gambaran keseluruhan",
+      "overviewEmpty": "Belum ada hentian"
     },
     "paymentSimulator": {
       "eyebrow": "Kotak pasir / Simulasi",

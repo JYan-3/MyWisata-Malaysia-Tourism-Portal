@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/process-paid-orders",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/wallet-maintenance",
       "schedule": "0 1 * * *"
     },

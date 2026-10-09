@@ -264,7 +264,7 @@ export default function CatalogueReviewPage() {
             </div>
             <div className="mt-8 grid gap-2 sm:grid-cols-3">
               <button type="button" disabled={!!busy} onClick={() => void review(active, 'approve')} className="rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{t('batchActions.approve')}</button>
-              <button type="button" disabled={!!busy} onClick={() => void review(active, 'change_requested')} className="rounded-xl border border-amber-300/60 px-4 py-3 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-500/40 dark:text-amber-400">{t('batchActions.request_changes')}</button>
+              <button type="button" disabled={!!busy} onClick={() => void review(active, 'change_requested')} className="rounded-xl border border-amber-300/60 dark:border-amber-500/30 px-4 py-3 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-500/40 dark:text-amber-400">{t('batchActions.request_changes')}</button>
               <button type="button" disabled={!!busy} onClick={() => void review(active, 'reject')} className="rounded-xl border border-destructive/30 px-4 py-3 text-sm font-semibold text-destructive disabled:opacity-50">{t('batchActions.reject')}</button>
             </div>
           </aside>
