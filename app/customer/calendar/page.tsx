@@ -25,7 +25,7 @@ type BookingScope = "upcoming" | "past" | "all";
 
 function startOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
 function addMonths(date: Date, amount: number) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
-function statusClass(status: BookingItineraryGroup["status"]) { return status === "mixed" || status === "cancelled" || status === "no_show" ? "bg-red-50 text-malaysia-red" : status === "checked_in" ? "bg-[#FFF4CC] text-[#7A5A00]" : "bg-secondary text-primary"; }
+function statusClass(status: BookingItineraryGroup["status"]) { return status === "mixed" || status === "cancelled" || status === "no_show" ? "bg-red-50 dark:bg-red-500/10 text-malaysia-red" : status === "checked_in" ? "bg-[#FFF4CC] text-[#7A5A00]" : "bg-secondary text-primary"; }
 
 export default function CustomerCalendarPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
@@ -154,16 +154,16 @@ export default function CustomerCalendarPage() {
         <section aria-label={tCustomer("ui.booking.calendar")} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <div className="border-b border-border">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-              <button type="button" onClick={() => { setSelectedDayKey(null); setMonthStart(addMonths(monthStart, -1)); }} aria-label={tCustomer("ui.map.previous")} className="rounded-xl p-2 text-slate-500 hover:bg-secondary hover:text-primary"><ChevronLeft size={20} /></button>
+              <button type="button" onClick={() => { setSelectedDayKey(null); setMonthStart(addMonths(monthStart, -1)); }} aria-label={tCustomer("ui.map.previous")} className="rounded-xl p-2 text-slate-500 dark:text-muted-foreground hover:bg-secondary hover:text-primary"><ChevronLeft size={20} /></button>
               <div className="relative text-center">
                 <button type="button" onClick={() => setMonthPickerOpen((open) => !open)} aria-expanded={monthPickerOpen} aria-haspopup="dialog" aria-controls="calendar-month-picker" className="inline-flex items-center gap-1 rounded-xl px-2 py-1 font-[family-name:var(--font-display)] text-xl font-bold text-foreground transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
                   {formatDate(monthStart, locale, { month: "long", year: "numeric" })} <ChevronDown size={17} aria-hidden="true" />
                 </button>
-                <p className="mt-1 text-xs text-slate-400">{monthItineraryGroupCount === itineraryGroups.length ? tCustomer("ui.calendar.itineraryItems", { count: itineraryGroups.length }) : tCustomer("ui.calendar.inMonth", { monthCount: monthItineraryGroupCount, totalCount: itineraryGroups.length })}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-muted-foreground">{monthItineraryGroupCount === itineraryGroups.length ? tCustomer("ui.calendar.itineraryItems", { count: itineraryGroups.length }) : tCustomer("ui.calendar.inMonth", { monthCount: monthItineraryGroupCount, totalCount: itineraryGroups.length })}</p>
                 {monthPickerOpen && <div id="calendar-month-picker" role="dialog" aria-label={tCustomer("ui.booking.chooseDateTime")} className="absolute left-1/2 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-border bg-card p-4 text-left shadow-xl">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">{tCustomer("ui.booking.calendar")}</p>
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-muted-foreground">
                       <span>{tCustomer("ui.calendar.chooseYear")}</span>
                       <select value={monthStart.getFullYear()} onChange={(event) => selectCalendarYear(Number(event.target.value))} aria-label={tCustomer("ui.calendar.chooseYear")} className="h-9 rounded-lg border border-border bg-card px-2 text-sm font-bold text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
                         {calendarYearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
@@ -171,12 +171,12 @@ export default function CustomerCalendarPage() {
                     </label>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2">
-                    {monthOptions.map((month, index) => <button key={month} type="button" onClick={() => selectCalendarMonth(index)} aria-label={tCustomer("ui.calendar.selectMonth", { month })} aria-pressed={monthStart.getMonth() === index} className={`rounded-lg px-2 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${monthStart.getMonth() === index ? "bg-primary text-white" : "text-slate-600 hover:bg-secondary hover:text-primary"}`}>{month}</button>)}
+                    {monthOptions.map((month, index) => <button key={month} type="button" onClick={() => selectCalendarMonth(index)} aria-label={tCustomer("ui.calendar.selectMonth", { month })} aria-pressed={monthStart.getMonth() === index} className={`rounded-lg px-2 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${monthStart.getMonth() === index ? "bg-primary text-white" : "text-slate-600 dark:text-muted-foreground hover:bg-secondary hover:text-primary"}`}>{month}</button>)}
                   </div>
                   <button type="button" onClick={() => setMonthPickerOpen(false)} className="mt-3 w-full rounded-lg border border-primary/20 px-3 py-2 text-sm font-bold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">{tCustomer("actions.confirm", { ns: "common" })}</button>
                 </div>}
               </div>
-              <button type="button" onClick={() => { setSelectedDayKey(null); setMonthStart(addMonths(monthStart, 1)); }} aria-label={tCustomer("ui.map.next")} className="rounded-xl p-2 text-slate-500 hover:bg-secondary hover:text-primary"><ChevronRight size={20} /></button>
+              <button type="button" onClick={() => { setSelectedDayKey(null); setMonthStart(addMonths(monthStart, 1)); }} aria-label={tCustomer("ui.map.next")} className="rounded-xl p-2 text-slate-500 dark:text-muted-foreground hover:bg-secondary hover:text-primary"><ChevronRight size={20} /></button>
             </div>
             <div aria-label={tCustomer("ui.calendar.actions")} className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 sm:px-6">
               <Link href={activityHref("orders")} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-primary/20 bg-card px-3 text-xs font-bold text-primary hover:bg-secondary"><ReceiptText size={14} /> {tCustomer("ui.labels.orders")}</Link>
@@ -187,7 +187,7 @@ export default function CustomerCalendarPage() {
             </div>
             {filtersOpen && <div id="calendar-filters" className="border-t border-border px-4 py-3 sm:px-6"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6"><label className="relative min-w-0 lg:col-span-2"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setSelectedDayKey(null); setQuery(event.target.value); }} placeholder={tCustomer("ui.calendar.searchBookings")} aria-label={tCustomer("ui.calendar.searchActivity")} className="h-10 w-full rounded-xl border border-border bg-secondary/50 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><select value={scope} onChange={(event) => { setSelectedDayKey(null); setScope(event.target.value as BookingScope); }} aria-label={tCustomer("ui.calendar.bookingScope")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="upcoming">{tCustomer("ui.calendar.upcoming")}</option><option value="past">{tCustomer("ui.calendar.past")}</option><option value="all">{tCustomer("ui.calendar.allBookings")}</option></select><select value={outletId} onChange={(event) => { setSelectedDayKey(null); setOutletId(event.target.value); }} aria-label={tCustomer("ui.calendar.bookingOutlet")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.calendar.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><select value={activityId} onChange={(event) => { setSelectedDayKey(null); setActivityId(event.target.value); }} aria-label={tCustomer("ui.calendar.bookingActivity")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.calendar.allActivities")}</option>{activityOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setSelectedDayKey(null); setFrom(event.target.value); }} aria-label={tCustomer("ui.calendar.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setSelectedDayKey(null); setTo(event.target.value); }} aria-label={tCustomer("ui.calendar.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>{hasFilters && <button type="button" onClick={clearFilters} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}</div>}
           </div>
-          {error && <div role="alert" className="m-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:m-5">{error}</div>}
+          {error && <div role="alert" className="m-4 rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200 sm:m-5">{error}</div>}
           <div className="hidden md:block">
             <div className="grid grid-cols-7 border-b border-border bg-secondary/50">
               {weekdayOptions.map((day) => <div key={day} className="px-3 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{day}</div>)}
@@ -207,7 +207,7 @@ export default function CustomerCalendarPage() {
           </div>
         </section>
 
-        <div className="mt-6 md:hidden">{itineraryGroups.length === 0 && <p className="text-center text-xs text-slate-400">{tCustomer("ui.calendar.noBookingsMatch")}</p>}</div>
+        <div className="mt-6 md:hidden">{itineraryGroups.length === 0 && <p className="text-center text-xs text-slate-400 dark:text-muted-foreground">{tCustomer("ui.calendar.noBookingsMatch")}</p>}</div>
       </CustomerPageShell>
       {selectedDayDate && selectedDayGroups.length > 0 && <BookingDayDrawer date={selectedDayDate} groups={selectedDayGroups} outletMap={outletMap} onClose={closeBookingDay} />}
     </div>

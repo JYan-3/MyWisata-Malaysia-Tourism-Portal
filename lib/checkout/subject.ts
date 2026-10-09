@@ -35,6 +35,6 @@ export async function resolveCheckoutContact(context: Awaited<ReturnType<typeof 
     return parsed.success ? { email: parsed.data.email, name: parsed.data.name ?? null, phone: parsed.data.phone ?? null } : null;
   }
   const user = context.user;
-  const parsed = checkoutContactSchema.safeParse({ email: user?.email, name: typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null, phone: (input as { phone?: string } | undefined)?.phone ?? user?.phone ?? null });
+  const parsed = checkoutContactSchema.safeParse({ email: user?.email, name: typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null, phone: (input as { phone?: string } | undefined)?.phone ?? (user?.phone || null) });
   return parsed.success ? { email: parsed.data.email, name: parsed.data.name ?? null, phone: parsed.data.phone ?? null } : null;
 }

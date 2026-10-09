@@ -10,6 +10,7 @@ import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { resolveVendorForUser } from '@/lib/affiliate/vendor-share-stats';
 import { getVendorSettlements } from '@/lib/vendor/settlement';
+import { getVendorFee } from '@/lib/vendor/fee-tiers';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -31,5 +32,7 @@ export async function GET(request: Request) {
     vendorId = context.vendorId;
   }
 
-  return apiOk(await getVendorSettlements(createServiceClient(), vendorId));
+  const service = createServiceClient();
+  const [settlements, fee] = await Promise.all([getVendorSettlements(service, vendorId), getVendorFee(service, vendorId)]);
+  return apiOk({ ...settlements, fee });
 }

@@ -51,7 +51,7 @@ export default async function EventVendorStallPage({ params }: Props) {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{vendor.vendorName}</h1>
           {vendor.vendorKind === "event" && (
-            <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">{t("ui.eventPartners.badge")}</span>
+            <span className="inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200">{t("ui.eventPartners.badge")}</span>
           )}
           {vendor.stalls.length > 1 && (
             <p className="text-sm text-muted-foreground">{t("ui.promotionCampaigns.locationCount", { count: vendor.stalls.length })}</p>

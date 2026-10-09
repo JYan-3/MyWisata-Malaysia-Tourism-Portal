@@ -594,10 +594,10 @@ export default function VendorOrdersPage() {
             <ShoppingBag size={15} aria-hidden="true" />{" "}
             {t("ui.orders.fulfilmentDesk")}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">
             {t("ui.orders.title")}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
             {t("ui.orders.description")}
           </p>
         </div>
@@ -605,27 +605,27 @@ export default function VendorOrdersPage() {
           type="button"
           onClick={handleExportOrders}
           disabled={loading || items.length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
         >
           <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
         </button>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">{t("ui.orders.needsAttention")}</p>
-          <p className="mt-1 text-2xl font-bold text-amber-600">{stats.attention}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("ui.products.currentPage")}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.needsAttention")}</p>
+          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.attention}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">{t("ui.orders.markReady")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">{stats.ready}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("ui.products.currentPage")}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.markReady")}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.ready}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">{t("ui.orders.completed")}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.completed")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.fulfilled}</p>
-          <p className="mt-1 text-xs text-gray-400">{t("ui.products.currentPage")}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
         </div>
         <div className="rounded-2xl border border-primary/10 bg-secondary p-4 shadow-sm">
           <p className="text-xs text-primary">{t("ui.dashboard.totalRevenue")}</p>
@@ -634,8 +634,8 @@ export default function VendorOrdersPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
-        <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1">
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
+        <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 dark:bg-muted p-1">
           {[
             { value: "", label: t("ui.orders.allOrders") },
             { value: "attention", label: t("ui.orders.needsAttention") },
@@ -646,7 +646,7 @@ export default function VendorOrdersPage() {
               key={filter.value || "all"}
               type="button"
               onClick={() => applyQuickFilter(filter.value)}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
             >
               {filter.label}
             </button>
@@ -656,7 +656,7 @@ export default function VendorOrdersPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="relative min-w-0 flex-1">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground"
               size={15}
               aria-hidden="true"
             />
@@ -669,7 +669,7 @@ export default function VendorOrdersPage() {
               }}
               placeholder={t("ui.orders.searchPlaceholder")}
               aria-label={t("ui.orders.searchPlaceholder")}
-              className="h-10 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-primary"
+              className="h-10 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </label>
           <button
@@ -680,7 +680,7 @@ export default function VendorOrdersPage() {
             }}
             aria-expanded={filtersOpen}
             aria-controls="order-filters"
-            className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${filtersOpen || activeFilterCount ? "border-primary bg-secondary text-primary" : "border-gray-200 text-gray-600 hover:border-primary/40 hover:text-primary"}`}
+            className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${filtersOpen || activeFilterCount ? "border-primary bg-secondary text-primary" : "border-gray-200 dark:border-border text-gray-600 dark:text-muted-foreground hover:border-primary/40 hover:text-primary"}`}
           >
             <SlidersHorizontal size={15} aria-hidden="true" />
             {t("ui.orders.filters")}
@@ -695,14 +695,14 @@ export default function VendorOrdersPage() {
         {filtersOpen && (
           <div
             id="order-filters"
-            className="rounded-xl border border-gray-100 bg-gray-50/70 p-4"
+            className="rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-4"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                   {t("ui.orders.advancedFilters")}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">
                   {t("ui.orders.advancedFiltersDescription")}
                 </p>
               </div>
@@ -710,14 +710,14 @@ export default function VendorOrdersPage() {
                 type="button"
                 onClick={() => setFiltersOpen(false)}
                 aria-label={t("ui.orders.closeFilters")}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-white hover:text-gray-700"
+                className="rounded-lg p-1.5 text-gray-400 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-gray-700 dark:hover:text-foreground"
               >
                 <X size={15} aria-hidden="true" />
               </button>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-600">
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
                 {t("ui.orders.fulfilmentStatus")}
                 <select
                   value={draftFilters.fulfilStatus}
@@ -727,7 +727,7 @@ export default function VendorOrdersPage() {
                       fulfilStatus: event.target.value,
                     }))
                   }
-                  className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary"
+                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
                 >
                   <option value="">{t("ui.orders.allItems")}</option>
                   <option value="attention">
@@ -740,7 +740,7 @@ export default function VendorOrdersPage() {
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-600">
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
                 {t("ui.orders.orderStatusFilter")}
                 <select
                   value={draftFilters.orderStatus}
@@ -750,7 +750,7 @@ export default function VendorOrdersPage() {
                       orderStatus: event.target.value,
                     }))
                   }
-                  className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary"
+                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
                 >
                   <option value="">{t("ui.orders.allOrderStates")}</option>
                   {ORDER_STATUS_OPTIONS.map((status) => (
@@ -761,12 +761,12 @@ export default function VendorOrdersPage() {
                 </select>
               </label>
               <div className="sm:col-span-2">
-                <p className="mb-1.5 text-xs font-semibold text-gray-600">
+                <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
                   {t("ui.orders.dateRange")}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3">
-                    <span className="shrink-0 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3">
+                    <span className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
                       {t("ui.orders.fromDate")}
                     </span>
                     <input
@@ -780,11 +780,11 @@ export default function VendorOrdersPage() {
                         }))
                       }
                       aria-label={t("ui.orders.fromDate")}
-                      className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 outline-none"
+                      className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 dark:text-foreground outline-none"
                     />
                   </label>
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3">
-                    <span className="shrink-0 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3">
+                    <span className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
                       {t("ui.orders.toDate")}
                     </span>
                     <input
@@ -798,18 +798,18 @@ export default function VendorOrdersPage() {
                         }))
                       }
                       aria-label={t("ui.orders.toDate")}
-                      className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 outline-none"
+                      className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 dark:text-foreground outline-none"
                     />
                   </label>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-3">
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 dark:border-border pt-3">
               <button
                 type="button"
                 onClick={clearFilters}
-                className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-white hover:text-gray-900"
+                className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-gray-900 dark:hover:text-foreground"
               >
                 {t("ui.common.clearFilters")}
               </button>
@@ -826,11 +826,11 @@ export default function VendorOrdersPage() {
 
         {hasFilters && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500">
+            <span className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">
               {t("ui.orders.activeFilters")}
             </span>
             {filters.q && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-muted px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-foreground">
                 {t("ui.orders.searchFilter")}: {filters.q}
               </span>
             )}
@@ -909,24 +909,24 @@ export default function VendorOrdersPage() {
 
       {error && (
         <div
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200"
           role="alert"
         >
           {error}
         </div>
       )}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
         {loading ? (
           <div className="space-y-3 p-5">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className="h-16 animate-pulse rounded-xl bg-gray-100"
+                className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-muted"
               />
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="px-6 py-16 text-center text-sm text-gray-400">
+          <div className="px-6 py-16 text-center text-sm text-gray-400 dark:text-muted-foreground">
             <PackageCheck
               className="mx-auto mb-3 opacity-30"
               size={34}
@@ -936,7 +936,7 @@ export default function VendorOrdersPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 text-xs text-gray-500">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
               <label className="inline-flex items-center gap-2 font-semibold">
                 <input
                   type="checkbox"
@@ -963,7 +963,7 @@ export default function VendorOrdersPage() {
             </div>
             <div className="overflow-x-auto">
               <div className="xl:min-w-[1000px]">
-                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 xl:grid">
+                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid">
                   <span></span>
                   <span>{t('ui.orders.customerColumn')}</span>
                   <span>{t("ui.orders.itemsColumn")}</span>
@@ -974,7 +974,7 @@ export default function VendorOrdersPage() {
                     {t("ui.orders.actionColumn")}
                   </span>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-border">
                   {items.map((order) => {
                     const customer = customerFor(order);
                     const orderAction = getOrderFulfilmentAction(
@@ -1005,10 +1005,10 @@ export default function VendorOrdersPage() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-gray-800">
+                          <p className="truncate font-medium text-gray-800 dark:text-foreground">
                             {customer.full_name || t("ui.orders.guest")}
                           </p>
-                          <p className="mt-1 truncate text-xs text-gray-500">
+                          <p className="mt-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
                             {order.display_id || `#${order.id.slice(0, 8)}`}
                           </p>
                         </div>
@@ -1023,7 +1023,7 @@ export default function VendorOrdersPage() {
                               />
                             ))}
                             {order.vendor_items.length > 2 && (
-                              <span className="ml-1 text-xs font-medium text-gray-400">
+                              <span className="ml-1 text-xs font-medium text-gray-400 dark:text-muted-foreground">
                                 +{order.vendor_items.length - 2}
                               </span>
                             )}
@@ -1032,32 +1032,32 @@ export default function VendorOrdersPage() {
                             <button
                               type="button"
                               onClick={() => setSelectedItem(order)}
-                              className="block max-w-full truncate text-left font-semibold text-gray-900 hover:text-primary"
+                              className="block max-w-full truncate text-left font-semibold text-gray-900 dark:text-foreground hover:text-primary"
                             >
                               {t("ui.orders.itemCount", {
                                 count: order.vendor_items.length,
                               })}
                             </button>
-                            <p className="mt-1 truncate text-xs text-gray-500">
+                            <p className="mt-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
                               {order.product_summary}
                             </p>
                           </div>
                         </div>
-                        <p className="pl-[4.25rem] text-xs text-gray-600 xl:pl-0">
+                        <p className="pl-[4.25rem] text-xs text-gray-600 dark:text-muted-foreground xl:pl-0">
                           {order.outlets_summary}
                         </p>
-                        <p className="pl-[4.25rem] text-sm font-semibold text-gray-900 xl:pl-0">
+                        <p className="pl-[4.25rem] text-sm font-semibold text-gray-900 dark:text-foreground xl:pl-0">
                           {formatMYR(Number(order.vendor_total))}
                         </p>
                         <div className="pl-[4.25rem] xl:pl-0">
                           <StatusBadge status={order.vendor_fulfil_status} />
-                          <span className="mt-1 block text-[11px] text-gray-400">
+                          <span className="mt-1 block text-[11px] text-gray-400 dark:text-muted-foreground">
                             {t("ui.orders.orderStatus", {
                               status: order.status || t("ui.orders.unknown"),
                             })}
                           </span>
                         </div>
-                        <div className="flex w-full max-w-[14rem] flex-col items-stretch justify-self-center gap-2 border-t border-gray-100 pt-3 xl:border-0 xl:pt-0">
+                        <div className="flex w-full max-w-[14rem] flex-col items-stretch justify-self-center gap-2 border-t border-gray-100 dark:border-border pt-3 xl:border-0 xl:pt-0">
                           <button
                             type="button"
                             onClick={() => setSelectedItem(order)}
@@ -1066,7 +1066,7 @@ export default function VendorOrdersPage() {
                                 ? t("ui.orders.reviewItems")
                                 : t("ui.orders.viewDetails")
                             }
-                            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-semibold text-gray-600 hover:border-primary/30 hover:bg-gray-50 hover:text-primary"
+                            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-gray-200 dark:border-border px-2.5 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground hover:border-primary/30 hover:bg-gray-50 dark:hover:bg-muted/50 hover:text-primary"
                           >
                             <Eye size={15} aria-hidden="true" />
                             <span>{t("ui.orders.viewDetails")}</span>
@@ -1121,36 +1121,36 @@ export default function VendorOrdersPage() {
         >
             <div className="mt-6 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-xs text-gray-500">
+                <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground">
                     {t('ui.orders.customerColumn')}
                   </p>
-                  <p className="mt-1 font-semibold text-gray-900">
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-foreground">
                     {customerFor(selectedItem).full_name ||
                       t("ui.orders.guest")}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground">
                     {customerFor(selectedItem).email || t("ui.orders.noEmail")}
                   </p>
                 </div>
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-xs text-gray-500">
+                <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground">
                     {t("ui.orders.totalYourItems")}
                   </p>
-                  <p className="mt-1 font-semibold text-gray-900">
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-foreground">
                     {formatMYR(Number(selectedItem.vendor_total))}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-gray-100 p-4">
-                <span className="text-gray-500 text-sm">
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-border p-4">
+                <span className="text-gray-500 dark:text-muted-foreground text-sm">
                   {t("ui.orders.overallFulfilment")}
                 </span>
                 <StatusBadge status={selectedItem.vendor_fulfil_status} />
               </div>
             </div>
             <div className="mt-6">
-              <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-foreground">
                 {t("ui.orders.orderItems")}
               </h3>
               <div className="space-y-3">
@@ -1162,7 +1162,7 @@ export default function VendorOrdersPage() {
                   return (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-3 rounded-xl border border-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-3 rounded-xl border border-gray-100 dark:border-border p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex items-center gap-3">
                         <CompactThumbnail
@@ -1171,10 +1171,10 @@ export default function VendorOrdersPage() {
                           kind="product"
                         />
                         <div>
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-gray-900 dark:text-foreground">
                             {item.quantity}× {item.product_name}
                           </p>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">
                             {item.variant_name || t("ui.orders.standard")} ·{" "}
                             {item.outlets?.name}
                           </p>
@@ -1189,7 +1189,7 @@ export default function VendorOrdersPage() {
                             </p>
                           )}
                           {item.food_fulfilment_mode === "dine_in" && item.food_qr_scanned_at && (
-                            <p className="mt-1 text-xs font-semibold text-emerald-700">{t("ui.orders.dineInArrivalConfirmed")}</p>
+                            <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">{t("ui.orders.dineInArrivalConfirmed")}</p>
                           )}
                         </div>
                       </div>
@@ -1227,7 +1227,7 @@ export default function VendorOrdersPage() {
               </div>
             </div>
             {selectedOrderAction === "review" && (
-              <p className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-xs font-semibold leading-5 text-amber-800">
+              <p className="mt-5 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-xs font-semibold leading-5 text-amber-800 dark:text-amber-200">
                 {t("ui.orders.mixedOrderHint")}
               </p>
             )}
@@ -1253,7 +1253,7 @@ export default function VendorOrdersPage() {
               <button
                 type="button"
                 onClick={() => setSelectedItem(null)}
-                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600"
+                className="rounded-xl border border-gray-200 dark:border-border px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-muted-foreground"
               >
                 {t("ui.orders.close")}
               </button>

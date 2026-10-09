@@ -32,7 +32,7 @@ export function PlaceAccessSection({ accesses, title, freeLabel, freeToExplore }
             badge={<><Compass size={14} aria-hidden="true" />{freeLabel}</>}
             title={access.title}
             supportingText={access.sourceTitle}
-            price={<span className="text-xs font-bold text-emerald-700">{freeLabel}</span>}
+            price={<span className="text-xs font-bold text-emerald-700 dark:text-emerald-200">{freeLabel}</span>}
             description={access.description}
             footer={freeToExplore}
           />

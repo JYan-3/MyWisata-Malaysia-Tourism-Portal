@@ -109,11 +109,12 @@
   --sidebar-foreground: #e8ecf5;
 }
 
-/* .vendor-portal's blue-tinted overrides need their own dark variants —
-   without this, .vendor-portal.dark would fall back to the plain .dark
-   values above (same specificity, .dark wins on source order), losing the
-   vendor portal's distinct identity in dark mode. */
-.vendor-portal.dark {
+/* .vendor-portal's blue-tinted overrides need their own dark variants.
+   `.dark` is on <html> and `.vendor-portal` is a wrapper <div> inside it, so
+   this must be a descendant selector. It used to be `.vendor-portal.dark`
+   (both classes on one element), which never matched: the wrapper's light
+   values then overrode the dark palette for the whole vendor portal. */
+.dark .vendor-portal {
   --primary: #8f9dff;
   --primary-foreground: #0b1120;
   --secondary: #232c4a;

@@ -2163,6 +2163,69 @@
     },
     "loading": {
       "adminContent": "Loading admin content"
+    },
+    "platformFees": {
+      "eyebrow": "Vendors",
+      "title": "Platform fees",
+      "back": "Back to vendors",
+      "description": "Set what the platform charges vendors per item sold, by vendor tier, and the fixed fee for items sold at events.",
+      "loading": "Loading platform fees…",
+      "retry": "Try again",
+      "saved": "Platform fees saved. They apply to orders paid from now on.",
+      "perItem": "item",
+      "readOnly": "You can view these fees. Only a Super Admin can change them.",
+      "howItWorks": "Vendors move between tiers every night based on their last 90 days of sales. Changes apply to orders paid from now on; past orders keep the fee they were charged. The fee is always raised to cover any affiliate or recommendation payout on the order.",
+      "tiers": {
+        "title": "Vendor tiers",
+        "description": "Each tier charges either a percentage of each item's price or a fixed amount per item.",
+        "tier": "Tier {{rank}}",
+        "name": "Tier name",
+        "feeType": "Fee type",
+        "percent": "Percentage of item price",
+        "fixed": "Fixed amount per item",
+        "percentValue": "Fee (%)",
+        "fixedValue": "Fee per item (RM)",
+        "minSales": "Sales needed (last 90 days)",
+        "minSalesHint": "Vendors reach this tier once their 90-day sales reach this amount.",
+        "entryTier": "Every vendor starts here.",
+        "vendors": "{{count}} vendors in this tier",
+        "vendors_one": "{{count}} vendor in this tier",
+        "vendors_other": "{{count}} vendors in this tier",
+        "preview": "{{qty}} items at {{price}} → fee {{fee}} ({{label}})"
+      },
+      "events": {
+        "title": "Event fees",
+        "description": "Items ordered from an event page pay a fixed fee per item instead of the vendor's tier fee.",
+        "default": "Default event fee per item",
+        "defaultHint": "Leave blank to charge event items the vendor's tier fee.",
+        "useTier": "Use tier fee",
+        "useDefault": "Use default",
+        "none": "No current events.",
+        "campaignFee": "Fee per item for {{title}}"
+      },
+      "reasonLabel": "Reason for this change",
+      "reasonPlaceholder": "Explain why the fees are changing (at least 10 characters).",
+      "confirm": {
+        "title": "Save platform fees?",
+        "description": "New fees apply to orders paid from now on. Past orders are not re-priced."
+      },
+      "errors": {
+        "load": "Unable to load platform fees.",
+        "save": "Unable to save platform fees.",
+        "invalid": "Fill in every tier's name and fee with a number of 0 or more.",
+        "percentTooHigh": "A percentage fee must be below 100%.",
+        "thresholdOrder": "Tier 1 starts at RM0, and each higher tier needs more sales than the one before.",
+        "reason": "Enter a reason of at least 10 characters before saving."
+      },
+      "drawer": {
+        "title": "Platform fee",
+        "current": "Current tier",
+        "sales": "Sales (last 90 days)",
+        "pin": "Tier assignment",
+        "bySales": "Automatic (by sales)",
+        "pinTo": "Always {{name}}",
+        "error": "Unable to load this vendor's platform fee."
+      }
     }
   },
   "actions": {

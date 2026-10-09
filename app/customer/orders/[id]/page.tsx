@@ -567,7 +567,7 @@ export default function OrderDetailPage() {
                   <section
                     data-payment-resume-panel="true"
                     aria-labelledby="pending-payment-heading"
-                    className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100"
+                    className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 dark:bg-amber-500/10 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100"
                   >
                     <h3 id="pending-payment-heading" className="font-semibold">
                       {tCustomer("ui.orders.pendingPayment")}
@@ -651,7 +651,7 @@ export default function OrderDetailPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full gap-2 rounded-xl text-amber-700 hover:bg-amber-50 hover:border-amber-300 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                      className="w-full gap-2 rounded-xl text-amber-700 hover:bg-amber-50 hover:border-amber-300 dark:hover:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-950/40"
                       onClick={() => setRefundModalOpen(true)}
                     >
                       <RotateCcw size={15} />
@@ -689,57 +689,57 @@ export default function OrderDetailPage() {
       {/* ========================================================================= */}
       {/* 3. DEDICATED OFFICIAL PRINTABLE RECEIPT (Figure 4 Optimization)            */}
       {/* ========================================================================= */}
-      <div className="hidden print:block p-8 bg-white text-gray-900 font-sans max-w-4xl mx-auto leading-normal">
+      <div className="hidden print:block p-8 bg-white dark:bg-card text-gray-900 dark:text-foreground font-sans max-w-4xl mx-auto leading-normal">
         {/* Official Header */}
         <div className="flex items-start justify-between border-b-2 border-gray-900 pb-6">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-black tracking-tight text-primary">{tCustomer("ui.orders.brandName")}</span>
-              <span className="text-xs uppercase tracking-widest text-gray-500">{tCustomer("ui.orders.portalName")}</span>
+              <span className="text-xs uppercase tracking-widest text-gray-500 dark:text-muted-foreground">{tCustomer("ui.orders.portalName")}</span>
             </div>
-            <h1 className="mt-3 text-xl font-bold uppercase tracking-wider text-gray-900">
+            <h1 className="mt-3 text-xl font-bold uppercase tracking-wider text-gray-900 dark:text-foreground">
               {tCustomer("ui.orders.taxInvoice")}
             </h1>
-            <p className="mt-1 text-xs text-gray-500 font-mono">
+            <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground font-mono">
               {tCustomer("ui.orders.receiptNo")}: {receiptNumber}
             </p>
           </div>
           <div className="text-right">
-            <div className="inline-block border-2 border-emerald-600 px-3 py-1 text-emerald-700 font-black text-sm uppercase tracking-widest rounded">
+            <div className="inline-block border-2 border-emerald-600 px-3 py-1 text-emerald-700 dark:text-emerald-200 font-black text-sm uppercase tracking-widest rounded">
               {tCustomer("ui.orders.paidStamp")}
             </div>
-            <p className="mt-2 text-xs text-gray-600">
+            <p className="mt-2 text-xs text-gray-600 dark:text-muted-foreground">
               {tCustomer("ui.orders.orderDate")}: {dateLabel(order.createdAt, locale)}
             </p>
-            <p className="text-xs font-mono text-gray-500">
+            <p className="text-xs font-mono text-gray-500 dark:text-muted-foreground">
               {tCustomer("ui.orders.orderId", { id: order.id })}
             </p>
           </div>
         </div>
 
         {/* Parties Grid (Merchant & Customer) */}
-        <div className="grid grid-cols-2 gap-8 py-6 border-b border-gray-200 text-xs">
+        <div className="grid grid-cols-2 gap-8 py-6 border-b border-gray-200 dark:border-border text-xs">
           <div>
-            <p className="font-bold uppercase tracking-wider text-gray-400">
+            <p className="font-bold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
               {tCustomer("ui.orders.merchant")}
             </p>
-            <p className="mt-1 font-bold text-sm text-gray-900">
+            <p className="mt-1 font-bold text-sm text-gray-900 dark:text-foreground">
               {primaryOutlet?.name || "MyLawatan Marketplace Merchant"}
             </p>
             {primaryOutlet?.city && (
-              <p className="text-gray-600 mt-0.5">
+              <p className="text-gray-600 dark:text-muted-foreground mt-0.5">
                 {primaryOutlet.city}, {primaryOutlet.state || "Malaysia"}
               </p>
             )}
           </div>
           <div>
-            <p className="font-bold uppercase tracking-wider text-gray-400">
+            <p className="font-bold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
               {tCustomer("ui.orders.issuedTo")}
             </p>
-            <p className="mt-1 font-bold text-sm text-gray-900">
+            <p className="mt-1 font-bold text-sm text-gray-900 dark:text-foreground">
               {order.contact?.name || currentUser?.name || "Guest"}
             </p>
-            <p className="text-gray-600 mt-0.5">{order.contact?.email || currentUser?.email || ""}</p>
+            <p className="text-gray-600 dark:text-muted-foreground mt-0.5">{order.contact?.email || currentUser?.email || ""}</p>
           </div>
         </div>
 
@@ -747,7 +747,7 @@ export default function OrderDetailPage() {
         <div className="py-6">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-gray-900 font-bold uppercase tracking-wider text-gray-700">
+              <tr className="border-b border-gray-900 font-bold uppercase tracking-wider text-gray-700 dark:text-foreground">
                 <th className="py-2.5 w-10">#</th>
                 <th className="py-2.5">{tCustomer("ui.orders.itemColumn")}</th>
                 <th className="py-2.5 w-20 text-center">{tCustomer("ui.orders.qtyColumn")}</th>
@@ -755,15 +755,15 @@ export default function OrderDetailPage() {
                 <th className="py-2.5 w-28 text-right">{tCustomer("ui.orders.amountColumn")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-border">
               {order.items.map((item, idx) => (
                 <tr key={idx} className="break-inside-avoid">
-                  <td className="py-3 text-gray-400 font-mono">{idx + 1}</td>
+                  <td className="py-3 text-gray-400 dark:text-muted-foreground font-mono">{idx + 1}</td>
                   <td className="py-3 pr-4">
-                    <p className="font-bold text-gray-900">{item.activityName}</p>
-                    {item.variantLabel && <p className="text-gray-500 text-[11px]">{item.variantLabel}</p>}
+                    <p className="font-bold text-gray-900 dark:text-foreground">{item.activityName}</p>
+                    {item.variantLabel && <p className="text-gray-500 dark:text-muted-foreground text-[11px]">{item.variantLabel}</p>}
                     {item.slotStartsAt && (
-                      <p className="text-gray-500 text-[11px] font-medium">
+                      <p className="text-gray-500 dark:text-muted-foreground text-[11px] font-medium">
                         {tCustomer("ui.orders.slot", { time: dateTimeLabel(item.slotStartsAt, locale) })}
                       </p>
                     )}
@@ -780,17 +780,17 @@ export default function OrderDetailPage() {
         {/* Totals Breakdown */}
         <div className="border-t border-gray-900 pt-4 flex justify-end">
           <div className="w-64 space-y-2 text-xs">
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-gray-600 dark:text-muted-foreground">
               <span>{tCustomer("ui.checkout.subtotal")}</span>
               <span className="font-mono">{formatMYR(order.subtotal)}</span>
             </div>
             {order.discount > 0 && (
-              <div className="flex justify-between text-emerald-700 font-semibold">
+              <div className="flex justify-between text-emerald-700 dark:text-emerald-200 font-semibold">
                 <span>{tCustomer("ui.checkout.discount")} {order.voucherCode ? `(${order.voucherCode})` : ""}</span>
                 <span className="font-mono">-{formatMYR(order.discount)}</span>
               </div>
             )}
-            <div className="flex justify-between border-t-2 border-gray-900 pt-2 text-sm font-black text-gray-900">
+            <div className="flex justify-between border-t-2 border-gray-900 pt-2 text-sm font-black text-gray-900 dark:text-foreground">
               <span>{tCustomer("ui.checkout.total")}</span>
               <span className="font-mono">{formatMYR(order.total)}</span>
             </div>
@@ -799,25 +799,25 @@ export default function OrderDetailPage() {
 
         {/* Verification QR Pass (if applicable) */}
         {bookings.length > 0 && isPaid && (
-          <div className="mt-8 border border-gray-300 rounded-xl p-4 break-inside-avoid">
+          <div className="mt-8 border border-gray-300 dark:border-border rounded-xl p-4 break-inside-avoid">
             <div className="mb-4">
-              <p className="font-bold text-sm text-gray-900 uppercase tracking-wide">
+              <p className="font-bold text-sm text-gray-900 dark:text-foreground uppercase tracking-wide">
                 {tCustomer("ui.booking.entryPass")}
               </p>
-              <p className="text-xs text-gray-600 mt-1 max-w-sm">
+              <p className="text-xs text-gray-600 dark:text-muted-foreground mt-1 max-w-sm">
                 {tCustomer("ui.booking.scanAtOutlet")}
               </p>
             </div>
             <div className="space-y-4">
               {bookings.map((booking) => (
-                <div key={booking.id} className="flex items-center justify-between gap-4 break-inside-avoid border-t border-gray-200 pt-4 first:border-t-0 first:pt-0">
+                <div key={booking.id} className="flex items-center justify-between gap-4 break-inside-avoid border-t border-gray-200 dark:border-border pt-4 first:border-t-0 first:pt-0">
                   <div>
-                    <p className="font-bold text-sm text-gray-900">{booking.activityName}</p>
-                    <p className="text-[11px] font-mono text-gray-500 mt-2">
+                    <p className="font-bold text-sm text-gray-900 dark:text-foreground">{booking.activityName}</p>
+                    <p className="text-[11px] font-mono text-gray-500 dark:text-muted-foreground mt-2">
                       {tCustomer("ui.orders.bookingId", { id: booking.id })}
                     </p>
                   </div>
-                  <div className="p-1 border border-gray-200 rounded-lg">
+                  <div className="p-1 border border-gray-200 dark:border-border rounded-lg">
                     <BookingQrCode
                       bookingId={booking.id}
                       orderId={order.id}
@@ -836,7 +836,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Legal & Support Footer */}
-        <div className="mt-12 border-t border-gray-200 pt-4 text-center text-[10px] text-gray-400">
+        <div className="mt-12 border-t border-gray-200 dark:border-border pt-4 text-center text-[10px] text-gray-400 dark:text-muted-foreground">
           <p>{tCustomer("ui.orders.printNotice")}</p>
         </div>
       </div>

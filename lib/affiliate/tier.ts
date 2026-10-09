@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
+import { FRAUD_RATE_EXCLUDED_FLAG_TYPES } from '@/lib/affiliate/fraud';
 
 export interface CommissionTier {
   id: string;
@@ -100,7 +101,8 @@ async function getReferralSignals(service: SupabaseClient, userId: string): Prom
       .from('affiliate_fraud_flags')
       .select('id', { count: 'exact', head: true })
       .eq('link_id', link.id)
-      .neq('status', 'dismissed'),
+      .neq('status', 'dismissed')
+      .not('flag_type', 'in', `(${FRAUD_RATE_EXCLUDED_FLAG_TYPES.join(',')})`),
   ]);
   const confirmedRows = confirmed ?? [];
 

@@ -164,7 +164,7 @@ export default function ModerationWordsPage() {
                     <td className="py-3 pr-3">
                       <button
                         onClick={() => void toggleActive(word)}
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${word.isActive ? "bg-emerald-100 text-emerald-800" : "bg-secondary text-muted-foreground"}`}
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${word.isActive ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-secondary text-muted-foreground"}`}
                       >
                         {word.isActive ? t("moderationWords.status.active") : t("moderationWords.status.inactive")}
                       </button>

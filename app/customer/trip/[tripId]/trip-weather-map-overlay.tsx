@@ -196,7 +196,7 @@ export function TripWeatherMapOverlay({
       )}
 
       <div className="pointer-events-none absolute inset-0 z-10" data-weather-overlay-ready={activeStatus === "ready" ? "true" : "false"}>
-        <div className="pointer-events-auto absolute left-4 top-4 flex items-center gap-1 rounded-full border border-white/70 bg-white/90 p-1.5 pr-2 shadow-[0_10px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+        <div className="pointer-events-auto absolute left-4 top-4 flex items-center gap-1 rounded-full border border-white/70 bg-white/90 dark:bg-card/90 p-1.5 pr-2 shadow-[0_10px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl">
           <button type="button" aria-label={t("strictMigration.tripPlanner.weather.mapLayer")} aria-pressed={enabled} onClick={() => onEnabledChange(!enabled)} className={"grid h-9 w-9 place-items-center rounded-full transition " + (enabled ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
             {activeStatus === "loading" && enabled ? <Loader2 size={17} className="animate-spin" /> : <CloudRain size={17} />}
           </button>
@@ -206,15 +206,15 @@ export function TripWeatherMapOverlay({
         </div>
 
         {controlsExpanded && hasForecast && (
-          <div className="pointer-events-auto absolute right-4 top-4 rounded-2xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_35px_rgba(15,23,42,0.14)] backdrop-blur-xl">
-            <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-600">
+          <div className="pointer-events-auto absolute right-4 top-4 rounded-2xl border border-white/70 bg-white/90 dark:bg-card/90 px-3 py-2 shadow-[0_10px_35px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+            <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-600 dark:text-muted-foreground">
               {(["light", "moderate", "heavy"] as const).map((level) => <span key={level} data-weather-band={level} className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: BAND_COLORS[level] }} />{t(`strictMigration.tripPlanner.weather.bands.${level}`)}</span>)}
             </div>
           </div>
         )}
 
         {controlsExpanded && enabled && (
-          <div className="pointer-events-auto absolute left-4 top-20 w-[min(360px,calc(100%-32px))] max-h-[calc(100%-5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/70 bg-white/92 px-4 py-3 shadow-[0_14px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="pointer-events-auto absolute left-4 top-20 w-[min(360px,calc(100%-32px))] max-h-[calc(100%-5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/70 bg-white/92 dark:bg-card/92 px-4 py-3 shadow-[0_14px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl">
             <div className="mb-3 flex gap-1 rounded-xl bg-muted p-1 text-[11px] font-bold">
               <button type="button" disabled={!liveRadarAvailable || simulationEnabled} aria-pressed={mode === "now"} onClick={() => onModeChange("now")} className={"flex-1 rounded-lg px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-40 " + (mode === "now" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.now")}</button>
               <button type="button" aria-pressed={mode === "forecast"} onClick={() => onModeChange("forecast")} className={"flex-1 rounded-lg px-3 py-1.5 transition " + (mode === "forecast" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.forecast")}</button>
@@ -228,7 +228,7 @@ export function TripWeatherMapOverlay({
                     <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-primary">{t("strictMigration.tripPlanner.weather.simulation.testData")}</p>
                   </div>
                   <button type="button" aria-pressed={simulationEnabled} onClick={toggleSimulation} className={"relative h-6 w-11 shrink-0 rounded-full transition " + (simulationEnabled ? "bg-primary" : "bg-muted-foreground/30")}>
-                    <span className={"absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all " + (simulationEnabled ? "left-6" : "left-1")} />
+                    <span className={"absolute top-1 h-4 w-4 rounded-full bg-white dark:bg-card shadow-sm transition-all " + (simulationEnabled ? "left-6" : "left-1")} />
                     <span className="sr-only">{t("strictMigration.tripPlanner.weather.simulation.label")}</span>
                   </button>
                 </div>
@@ -250,7 +250,7 @@ export function TripWeatherMapOverlay({
                 {status === "ready" && result?.availability === "unavailable_yet" && <p className="mt-2 text-[10px] font-semibold text-muted-foreground">{t("strictMigration.tripPlanner.weather.forecastAvailableNearerDeparture")}</p>}
                 {status === "ready" && result?.availability === "unavailable" && <p className="mt-2 text-[10px] font-semibold text-muted-foreground">{t("strictMigration.tripPlanner.weather.forecastUnavailable")}</p>}
                 {status === "ready" && result?.availability === "forecast" && result.contours.features.length === 0 && <p className="mt-2 text-[10px] font-semibold text-muted-foreground">{t("strictMigration.tripPlanner.weather.noRainAtHour", { time: `${String(hour).padStart(2, "0")}:00` })}</p>}
-                {result?.stale && <p className="mt-2 text-[10px] font-semibold text-amber-700">{t("strictMigration.tripPlanner.weather.stale")}</p>}
+                {result?.stale && <p className="mt-2 text-[10px] font-semibold text-amber-700 dark:text-amber-200">{t("strictMigration.tripPlanner.weather.stale")}</p>}
                 {!simulationEnabled && <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="mt-1 block text-[9px] text-muted-foreground underline-offset-2 hover:underline">{t("strictMigration.tripPlanner.weather.providerAttribution")}</a>}
               </>
             )}
@@ -259,7 +259,7 @@ export function TripWeatherMapOverlay({
               <>
                 <div className="flex items-center justify-between gap-3 text-[11px]"><span className="font-bold text-foreground">{t("strictMigration.tripPlanner.weather.liveRadar")}</span>{radarResult?.observedAt && <span className="text-muted-foreground">{t("strictMigration.tripPlanner.weather.radarUpdated", { time: new Date(radarResult.observedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</span>}</div>
                 {(radarStatus === "error" || radarResult?.availability === "unavailable") && <p className="mt-2 text-[10px] font-semibold text-destructive">{t("strictMigration.tripPlanner.weather.radarUnavailable")}</p>}
-                {radarResult?.stale && <p className="mt-2 text-[10px] font-semibold text-amber-700">{t("strictMigration.tripPlanner.weather.radarStale")}</p>}
+                {radarResult?.stale && <p className="mt-2 text-[10px] font-semibold text-amber-700 dark:text-amber-200">{t("strictMigration.tripPlanner.weather.radarStale")}</p>}
                 <a href={radarResult?.attributionUrl ?? "https://www.rainviewer.com/"} target="_blank" rel="noreferrer" className="mt-1 block text-[9px] text-muted-foreground underline-offset-2 hover:underline">{t("strictMigration.tripPlanner.weather.rainViewerAttribution")}</a>
               </>
             )}

@@ -76,78 +76,78 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">{initialData?.id ? t('outletForm.editTitle') : t('outletForm.addTitle')}</h2>
-        {onClose && <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>}
+        {onClose && <button type="button" onClick={onClose} className="text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-muted-foreground">✕</button>}
       </div>
 
       {serverError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-200 text-sm rounded-lg px-4 py-3">
           {serverError}
         </div>
       )}
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.nameRequired')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.nameRequired')}</label>
           <Input {...register('name')} placeholder={t('outletForm.namePlaceholder')} />
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.address')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.address')}</label>
           <AddressAutocomplete value={address || ''} onChange={(value) => setValue('address', value, { shouldDirty: true })} onSelect={applyAddress} placeholder={t('outletForm.addressPlaceholder')} />
-          <p className="mt-1 text-xs text-gray-400">{t('outletForm.addressHint')}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('outletForm.addressHint')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.city')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.city')}</label>
             <Input {...register('city')} placeholder={t('outletForm.cityPlaceholder')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.state')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.state')}</label>
             <Input {...register('state')} placeholder={t('outletForm.statePlaceholder')} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.postcode')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.postcode')}</label>
             <Input {...register('postcode')} placeholder="50450" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.country')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.country')}</label>
             <Input {...register('country')} placeholder={t('outletForm.countryPlaceholder')} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.phone')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.phone')}</label>
             <Input {...register('phone')} placeholder={SAMPLE_MY_PHONE} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.email')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.email')}</label>
             <Input {...register('email')} type="email" placeholder={t('outletForm.emailPlaceholder')} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.latitude')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.latitude')}</label>
             <Input {...register('lat', { valueAsNumber: true })} type="number" step="any" placeholder="3.1577" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.longitude')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.longitude')}</label>
             <Input {...register('lng', { valueAsNumber: true })} type="number" step="any" placeholder="101.7118" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.wheelchair')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.wheelchair')}</label>
             <select
               {...register('wheelchairAccessible', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{t('outletForm.notSpecified')}</option>
               <option value="true">{t('outletForm.yes')}</option>
@@ -155,10 +155,10 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.petFriendly')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.petFriendly')}</label>
             <select
               {...register('petFriendly', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{t('outletForm.notSpecified')}</option>
               <option value="true">{t('outletForm.yes')}</option>
@@ -166,14 +166,14 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
             </select>
           </div>
         </div>
-        <p className="-mt-2 text-xs text-gray-400">{t('outletForm.accessibilityHint')}</p>
+        <p className="-mt-2 text-xs text-gray-400 dark:text-muted-foreground">{t('outletForm.accessibilityHint')}</p>
 
-        <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4">
-          <legend className="px-1 text-sm font-medium text-gray-700">{t('outletForm.foodServiceModes')}</legend>
-          <p className="text-xs text-gray-500">{t('outletForm.foodServiceModesHint')}</p>
+        <fieldset className="space-y-2 rounded-xl border border-gray-200 dark:border-border p-4">
+          <legend className="px-1 text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.foodServiceModes')}</legend>
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t('outletForm.foodServiceModesHint')}</p>
           <div className="flex flex-wrap gap-4">
             {(['dine_in', 'takeaway'] as const).map((mode) => (
-              <label key={mode} className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <label key={mode} className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-foreground">
                 <input
                   type="checkbox"
                   checked={foodServiceModes.includes(mode)}
@@ -183,19 +183,19 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
                       : foodServiceModes.filter((value) => value !== mode);
                     setValue('foodServiceModes', next, { shouldDirty: true, shouldValidate: true });
                   }}
-                  className="h-4 w-4 rounded border-gray-300 text-primary"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-border text-primary"
                 />
                 {mode === "dine_in" ? t("outletForm.dine_in") : t("outletForm.takeaway")}
               </label>
             ))}
           </div>
-          {errors.foodServiceModes && <p className="text-xs text-red-600">{t('outletForm.foodServiceModeRequired')}</p>}
+          {errors.foodServiceModes && <p className="text-xs text-red-600 dark:text-red-300">{t('outletForm.foodServiceModeRequired')}</p>}
         </fieldset>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm font-medium text-gray-700">{t('outletForm.welcomeMessage')}</label>
-            <label className="flex items-center gap-2 text-xs text-gray-500">
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.welcomeMessage')}</label>
+            <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-muted-foreground">
               <input type="checkbox" {...register('welcomeEnabled')} className="h-4 w-4" />
               {t('outletForm.autoWelcome')}
             </label>
@@ -204,13 +204,13 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
             {...register('welcomeMessage')}
             rows={3}
             placeholder={t('outletForm.welcomePlaceholder')}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {errors.welcomeMessage && <p className="text-red-500 text-xs mt-1">{errors.welcomeMessage.message}</p>}
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-border">
         {onClose && (
           <Button type="button" variant="outline" onClick={onClose}>{tCommon('actions.cancel')}</Button>
         )}

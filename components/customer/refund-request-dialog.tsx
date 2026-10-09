@@ -79,7 +79,7 @@ export function RefundRequestDialog({
         </button>
 
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-300">
             <RotateCcw size={22} />
           </div>
           <div className="pr-6">
@@ -149,7 +149,7 @@ export function RefundRequestDialog({
             />
           </div>
 
-          <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+          <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 dark:bg-amber-500/10 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
             <p>{t("ui.orders.refundPolicyNotice")}</p>
           </div>

@@ -1229,7 +1229,11 @@
       "button_other": "Checkout ({{count}} items)",
       "nothingToCheckout": "Nothing in your itinerary is available to purchase yet.",
       "allNeedSlot": "None of your scheduled stops have an open booking slot on their planned day — pick a time on each activity's page first.",
-      "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot."
+      "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot.",
+      "unavailable": "{{names}} can't be bought from the planner. Open their page to check what's available.",
+      "addFailed": "Couldn't add {{name}} to your cart. Anything added before it is still in your cart.",
+      "buy_one": "Buy {{count}}",
+      "buy_other": "Buy {{count}}"
     },
     "preferencesPage": {
       "eyebrow": "Preferences",
@@ -3069,7 +3073,12 @@
           "windGust": "Wind gusts up to {{speed}}",
           "uvIndex": "UV index {{value}}"
         }
-      }
+      },
+      "longDayWarning": "{{duration}} of travel this day. Consider moving some stops to another day.",
+      "longLeg": "Long trip between these stops",
+      "addTime": "Time",
+      "overview": "Overview",
+      "overviewEmpty": "No stops yet"
     },
     "paymentSimulator": {
       "eyebrow": "Sandbox / Simulated",

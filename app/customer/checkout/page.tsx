@@ -387,7 +387,7 @@ export default function CheckoutPage() {
                           {tCustomer('ui.booking.qtyLabel')} {item.qty}
                         </span>
                         {lineTotal === 0 && (
-                          <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600">
+                          <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-300">
                             {tCustomer('ui.booking.freeAdmission')}
                           </span>
                         )}
@@ -523,7 +523,7 @@ export default function CheckoutPage() {
 
             <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground space-y-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-300 shrink-0" />
                 <span>{isFreeReservation ? tCustomer("ui.checkout.instantAllocation", "Instant slot reservation · No payment required") : "Secure encryption and fraud protection"}</span>
               </div>
             </div>

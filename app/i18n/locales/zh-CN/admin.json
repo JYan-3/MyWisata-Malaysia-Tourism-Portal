@@ -2163,6 +2163,69 @@
     },
     "loading": {
       "adminContent": "正在加载管理内容"
+    },
+    "platformFees": {
+      "eyebrow": "商家",
+      "title": "平台费用",
+      "back": "返回商家",
+      "description": "按商家等级设置平台对每件售出商品收取的费用，以及活动中售出商品的固定费用。",
+      "loading": "正在加载平台费用…",
+      "retry": "重试",
+      "saved": "平台费用已保存，将适用于此后付款的订单。",
+      "perItem": "件",
+      "readOnly": "您可以查看这些费用，只有超级管理员可以修改。",
+      "howItWorks": "商家每晚根据最近 90 天的销售额调整等级。修改仅适用于此后付款的订单，过往订单保留原收费。若订单有联盟或推荐奖励，费用会自动提高以覆盖该奖励。",
+      "tiers": {
+        "title": "商家等级",
+        "description": "每个等级按商品价格的百分比收费，或按每件商品收取固定金额。",
+        "tier": "等级 {{rank}}",
+        "name": "等级名称",
+        "feeType": "费用类型",
+        "percent": "商品价格百分比",
+        "fixed": "每件固定金额",
+        "percentValue": "费用 (%)",
+        "fixedValue": "每件费用 (RM)",
+        "minSales": "所需销售额（最近 90 天）",
+        "minSalesHint": "商家 90 天销售额达到此金额即升至此等级。",
+        "entryTier": "所有商家从此等级开始。",
+        "vendors": "此等级有 {{count}} 个商家",
+        "vendors_one": "此等级有 {{count}} 个商家",
+        "vendors_other": "此等级有 {{count}} 个商家",
+        "preview": "{{qty}} 件 × {{price}} → 费用 {{fee}}（{{label}}）"
+      },
+      "events": {
+        "title": "活动费用",
+        "description": "从活动页面下单的商品按每件固定费用收费，不使用商家等级费用。",
+        "default": "默认活动每件费用",
+        "defaultHint": "留空则活动商品按商家等级收费。",
+        "useTier": "使用等级费用",
+        "useDefault": "使用默认",
+        "none": "暂无进行中的活动。",
+        "campaignFee": "{{title}} 的每件费用"
+      },
+      "reasonLabel": "修改原因",
+      "reasonPlaceholder": "说明修改费用的原因（至少 10 个字符）。",
+      "confirm": {
+        "title": "保存平台费用？",
+        "description": "新费用适用于此后付款的订单，过往订单不会重新计价。"
+      },
+      "errors": {
+        "load": "无法加载平台费用。",
+        "save": "无法保存平台费用。",
+        "invalid": "请为每个等级填写名称和不小于 0 的费用。",
+        "percentTooHigh": "百分比费用必须低于 100%。",
+        "thresholdOrder": "等级 1 从 RM0 开始，每个更高等级所需销售额必须高于前一级。",
+        "reason": "保存前请输入至少 10 个字符的原因。"
+      },
+      "drawer": {
+        "title": "平台费用",
+        "current": "当前等级",
+        "sales": "销售额（最近 90 天）",
+        "pin": "等级分配",
+        "bySales": "自动（按销售额）",
+        "pinTo": "固定为 {{name}}",
+        "error": "无法加载该商家的平台费用。"
+      }
     }
   },
   "actions": {

@@ -33,7 +33,7 @@ export function SponsoredImpactDialog({
         className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:p-6"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200">
             <AlertTriangle size={19} />
           </div>
           <div>
@@ -47,7 +47,7 @@ export function SponsoredImpactDialog({
         </div>
 
         {!hasImpact && (
-          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <div className="mt-5 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-sm text-emerald-800 dark:text-emerald-200">
             {t("sponsoredPlacements.preview.noImpact")}
           </div>
         )}
@@ -100,7 +100,7 @@ function ImpactSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`mt-4 rounded-xl border p-4 ${tone === "warning" ? "border-amber-200 bg-amber-50" : "border-border bg-background"}`}>
+    <section className={`mt-4 rounded-xl border p-4 ${tone === "warning" ? "border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10" : "border-border bg-background"}`}>
       <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">{icon}{title}</h3>
       <ul className="mt-2 space-y-2 text-sm text-muted-foreground">{children}</ul>
     </section>

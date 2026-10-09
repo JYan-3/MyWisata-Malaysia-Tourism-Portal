@@ -1395,7 +1395,18 @@
       "clearsToday": "Held · clears today",
       "clearsInDays": "Held · clears in {{count}} day",
       "clearsInDays_one": "Held · clears in {{count}} day",
-      "clearsInDays_other": "Held · clears in {{count}} days"
+      "clearsInDays_other": "Held · clears in {{count}} days",
+      "perItem": "item",
+      "feeMixed": "Mixed fee",
+      "feeFixed": "Fixed fee per item",
+      "eventFee": "Event",
+      "floorApplied": "Covers referral payout",
+      "yourFee": "Your platform fee",
+      "tierSales": "Your sales in the last 90 days: {{amount}}.",
+      "tierNext": "Sell {{amount}} more to reach {{tier}}.",
+      "tierTop": "You're in the top tier.",
+      "tierPinned": "Your tier is set by the platform team.",
+      "feeRules": "Items sold from an event page use that event's fee per item. If an order came through an affiliate or recommendation, the fee covers that payout."
     },
     "wallet": {
       "vendorFinance": "Vendor finance",

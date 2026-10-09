@@ -30,6 +30,29 @@ export interface TripCheckoutResolution {
    * customer to pick manually on the activity page.
    */
   needsSlot: TripCheckoutSkip[];
+  /**
+   * A vendor listing with nothing that can back a cart line (no variant and no
+   * booking) — reported so the customer isn't left wondering where it went.
+   */
+  unavailable: TripCheckoutSkip[];
+}
+
+/** The vendor listing behind a scheduled stop, when that stop is something to buy at all. */
+function vendorActivityFor(item: TripItem, activitiesById: Map<string, ComputedActivity>): ComputedActivity | null {
+  if (!item.scheduled_date || !item.experience_id) return null;
+  const activity = activitiesById.get(item.experience_id);
+  return activity && getActivityCommerceMode(activity) === "vendor" ? activity : null;
+}
+
+/**
+ * How many scheduled stops checkout can put in the cart: the button's count.
+ * Booking items count here even though their slot is only checked at checkout.
+ */
+export function countTripPurchasableItems(items: TripItem[], activitiesById: Map<string, ComputedActivity>): number {
+  return items.filter((item) => {
+    const activity = vendorActivityFor(item, activitiesById);
+    return Boolean(activity && (activity.requiresBooking || activity.variants[0]?.id));
+  }).length;
 }
 
 function scheduledTimeMinutes(time: string): number {
@@ -78,12 +101,11 @@ export function resolveTripCheckoutLines(
 ): TripCheckoutResolution {
   const lines: TripCheckoutLine[] = [];
   const needsSlot: TripCheckoutSkip[] = [];
+  const unavailable: TripCheckoutSkip[] = [];
 
   for (const item of scheduledItems) {
-    if (!item.experience_id) continue;
-    const activity = activitiesById.get(item.experience_id);
+    const activity = vendorActivityFor(item, activitiesById);
     if (!activity) continue;
-    if (getActivityCommerceMode(activity) !== "vendor") continue;
     const variantId = activity.variants[0]?.id ?? "";
 
     if (activity.requiresBooking) {
@@ -101,9 +123,12 @@ export function resolveTripCheckoutLines(
     // No booking slot to fall back on here — a variant is the only possible
     // backing record, so a variant-less non-booking product really is
     // uncartable (matches activity-detail-client.tsx's "cartUnavailable" state).
-    if (!variantId) continue;
+    if (!variantId) {
+      unavailable.push({ itemId: item.id, label: item.label });
+      continue;
+    }
     lines.push({ activityId: activity.id, variantId, outletId: activity.outlet.id, qty: 1 });
   }
 
-  return { lines, needsSlot };
+  return { lines, needsSlot, unavailable };
 }

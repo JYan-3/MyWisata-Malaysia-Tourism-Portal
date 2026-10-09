@@ -3,6 +3,7 @@ import { resolveCheckoutSubject, resolveCheckoutContact } from '@/lib/checkout/s
 import { createHash } from 'node:crypto';
 import { parseBody, eventCheckoutSchema } from '@/lib/validation/schemas';
 import { planCheckoutPayment, startCheckoutPayment, type PreparedCheckout } from '@/lib/checkout/start-payment';
+import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,5 +62,7 @@ export async function POST(request: Request) {
   }
 
   const checkout = prepared as PreparedCheckout;
+  // Event orders earn referral commissions too; save the referral before payment starts.
+  await stampReferralFromCookie(checkout.order_id);
   return startCheckoutPayment({ db, user, request, prepared: checkout, total: Number(checkout.total), plan: planned.plan });
 }

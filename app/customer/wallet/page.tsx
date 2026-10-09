@@ -504,30 +504,30 @@ function WalletContent() {
 
       {/* ── Banners ── */}
       {withdrawalSubmitted ? (
-        <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
+        <div className="mb-6 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-4 py-3 flex items-center gap-3 text-emerald-800 dark:text-emerald-200 text-sm">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.withdrawalSubmitted")}</span>
         </div>
       ) : topupSuccess && (
-        <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
+        <div className="mb-6 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-4 py-3 flex items-center gap-3 text-emerald-800 dark:text-emerald-200 text-sm">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.topupSuccess")}</span>
         </div>
       )}
       {onboardComplete && (
-        <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
+        <div className="mb-6 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-4 py-3 flex items-center gap-3 text-emerald-800 dark:text-emerald-200 text-sm">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.bankSetupSubmitted")}</span>
         </div>
       )}
       {onboardRefresh && (
-        <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-3 text-amber-800 text-sm">
+        <div className="mb-6 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-4 py-3 flex items-center gap-3 text-amber-800 dark:text-amber-200 text-sm">
           <AlertCircle size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.setupExpired")}</span>
         </div>
       )}
       {walletLoadError && (
-        <div role="alert" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div role="alert" className="mb-6 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           <p>{walletLoadError}</p>
           <Button type="button" size="sm" variant="outline" className="mt-3" onClick={() => void loadWallet()}>
             {tCustomer("ui.wallet.retryWallet")}
@@ -589,7 +589,7 @@ function WalletContent() {
               <span className="font-mono">{formatMYR(buckets?.earnings ?? 0)}</span>
             </div>
             {pendingTotal > 0 && (
-              <div className="flex justify-between text-amber-600">
+              <div className="flex justify-between text-amber-600 dark:text-amber-300">
                 <span>{tCustomer("ui.wallet.reservedRequests")}</span>
                 <span className="font-mono">{formatMYR(pendingTotal)}</span>
               </div>
@@ -697,11 +697,11 @@ function WalletContent() {
           </div>
 
           {parseFloat(withdrawAmount) >= 500 && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg px-3 py-2">
               {tCustomer("ui.wallet.dualApprovalWarning")}
             </p>
           )}
-          {confirmingWithdrawal && <p role="status" className="text-xs text-amber-700">{tCustomer("ui.wallet.confirmingWithdrawal")}</p>}
+          {confirmingWithdrawal && <p role="status" className="text-xs text-amber-700 dark:text-amber-200">{tCustomer("ui.wallet.confirmingWithdrawal")}</p>}
           {withdrawError && <p role="alert" className="text-xs text-red-500">{withdrawError}</p>}
           <div className="flex gap-2">
             <Button type="submit" disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw} className="flex-1">

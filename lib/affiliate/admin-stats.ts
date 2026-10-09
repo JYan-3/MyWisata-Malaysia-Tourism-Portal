@@ -1,6 +1,7 @@
 // P4 — Member 4: admin affiliate oversight. See CLAUDE.md Step 9.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { FRAUD_RATE_EXCLUDED_FLAG_TYPES, type FraudFlagType } from '@/lib/affiliate/fraud';
 import { add } from '@/lib/money';
 import { getActiveTiers, resolveTier, type CommissionTier, type TierSignals } from './tier';
 import { computeFunnel, type Funnel } from './funnel';
@@ -56,7 +57,7 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
     service.from('affiliate_clicks').select('id, link_id, target_type, target_id, ip_hash, source, created_at'),
     service.from('affiliate_attributions').select('id, click_id, order_id, commission_amount, status, created_at'),
     service.from('share_events').select('platform'),
-    service.from('affiliate_fraud_flags').select('link_id, status').neq('status', 'dismissed'),
+    service.from('affiliate_fraud_flags').select('link_id, status, flag_type').neq('status', 'dismissed'),
     getActiveTiers(service),
   ]);
 
@@ -110,7 +111,7 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
 
   const fraudFlagCountByLink = new Map<string, number>();
   for (const flag of fraudFlagsData ?? []) {
-    if (!flag.link_id) continue;
+    if (!flag.link_id || FRAUD_RATE_EXCLUDED_FLAG_TYPES.includes(flag.flag_type as FraudFlagType)) continue;
     fraudFlagCountByLink.set(flag.link_id, (fraudFlagCountByLink.get(flag.link_id) ?? 0) + 1);
   }
 

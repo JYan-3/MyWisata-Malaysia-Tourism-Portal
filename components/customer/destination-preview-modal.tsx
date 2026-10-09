@@ -51,7 +51,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
         aria-modal="true"
         aria-labelledby="destination-preview-title"
         aria-describedby="destination-preview-description"
-        className="relative w-full max-w-2xl overflow-hidden rounded-[28px] bg-white text-slate-950 shadow-2xl shadow-[#06102a]/25"
+        className="relative w-full max-w-2xl overflow-hidden rounded-[28px] bg-white dark:bg-card text-slate-950 dark:text-foreground shadow-2xl shadow-[#06102a]/25"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="relative h-56 overflow-hidden sm:h-64">
@@ -67,7 +67,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
             onClick={onClose}
             aria-label={t("actions.close", { ns: "common" })}
             autoFocus
-            className="absolute right-4 top-4 rounded-full bg-white/90 p-2 text-slate-800 shadow-lg transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+            className="absolute right-4 top-4 rounded-full bg-white/90 dark:bg-card/90 p-2 text-slate-800 dark:text-foreground shadow-lg transition hover:bg-white dark:hover:bg-card focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
             <X size={18} />
           </button>
@@ -75,7 +75,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
 
         <div className="p-6 sm:p-8">
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-primary">{destination.attraction}</p>
-          <p id="destination-preview-description" className="mt-3 max-w-xl text-base leading-7 text-slate-600">{destination.intro}</p>
+          <p id="destination-preview-description" className="mt-3 max-w-xl text-base leading-7 text-slate-600 dark:text-muted-foreground">{destination.intro}</p>
 
           <div className="mt-6 flex flex-wrap gap-2" aria-label={`${destination.state} highlights`}>
             {destination.highlights.map((highlight) => (
@@ -83,7 +83,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
             ))}
           </div>
 
-          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 dark:border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
             <SaveToggleButton
               onClick={() => {
                 if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;

@@ -26,8 +26,8 @@ export function OperatingHoursSummary({ hours, currentlyOpen, compact = false, i
 
   const mutedText = inverse ? "text-white/75" : "text-muted-foreground";
   const strongText = inverse ? "text-white" : "text-foreground";
-  const openText = inverse ? "font-semibold text-emerald-300" : "font-semibold text-emerald-700";
-  const iconText = currentlyOpen ? (inverse ? "text-emerald-300" : "text-emerald-600") : mutedText;
+  const openText = inverse ? "font-semibold text-emerald-300" : "font-semibold text-emerald-700 dark:text-emerald-200";
+  const iconText = currentlyOpen ? (inverse ? "text-emerald-300" : "text-emerald-600 dark:text-emerald-300") : mutedText;
 
   return (
     <details className={compact ? `group text-xs ${inverse ? "text-white/85" : "text-muted-foreground"}` : "rounded-xl border border-border/70 bg-background/60 p-3 text-sm"}>

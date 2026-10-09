@@ -29,27 +29,27 @@ export default function DashboardFilter() {
   ];
 
   return (
-    <div className="flex bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
+    <div className="flex bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-border p-1 shadow-sm">
       {options.map(opt => (
         <Link 
           key={opt.value}
           href={`?filter=${opt.value}`}
           className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
             filter === opt.value 
-              ? 'bg-gray-100 font-semibold text-gray-900' 
-              : 'font-medium text-gray-500 hover:text-gray-700'
+              ? 'bg-gray-100 dark:bg-muted font-semibold text-gray-900 dark:text-foreground' 
+              : 'font-medium text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground'
           }`}
         >
           {opt.label}
         </Link>
       ))}
-      <div className="w-[1px] bg-gray-200 my-1 mx-1"></div>
+      <div className="w-[1px] bg-gray-200 dark:bg-secondary my-1 mx-1"></div>
       <details className="relative">
-        <summary className={`flex cursor-pointer list-none items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${filter === 'custom' ? 'bg-gray-100 font-semibold text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}><Calendar size={16} /> {t('filters.custom')}</summary>
-        <form className="absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-3 shadow-xl" onSubmit={(event) => { event.preventDefault(); if (!from) return; const params = new URLSearchParams({ filter: 'custom', from, ...(to ? { to } : {}) }); router.push(`?${params.toString()}`); }}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('filters.dateRange')}</p>
-          <label className="mb-2 block text-xs text-gray-600">{t('filters.from')}<input type="date" value={from} onFocus={primeDateRange} onChange={(event) => setFrom(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 px-2 text-sm" required /></label>
-          <label className="block text-xs text-gray-600">{t('filters.to')}<input type="date" value={to} min={from || undefined} onFocus={primeDateRange} onChange={(event) => setTo(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 px-2 text-sm" /></label>
+        <summary className={`flex cursor-pointer list-none items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${filter === 'custom' ? 'bg-gray-100 dark:bg-muted font-semibold text-gray-900 dark:text-foreground' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground'}`}><Calendar size={16} /> {t('filters.custom')}</summary>
+        <form className="absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-3 shadow-xl" onSubmit={(event) => { event.preventDefault(); if (!from) return; const params = new URLSearchParams({ filter: 'custom', from, ...(to ? { to } : {}) }); router.push(`?${params.toString()}`); }}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{t('filters.dateRange')}</p>
+          <label className="mb-2 block text-xs text-gray-600 dark:text-muted-foreground">{t('filters.from')}<input type="date" value={from} onFocus={primeDateRange} onChange={(event) => setFrom(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 dark:border-border px-2 text-sm" required /></label>
+          <label className="block text-xs text-gray-600 dark:text-muted-foreground">{t('filters.to')}<input type="date" value={to} min={from || undefined} onFocus={primeDateRange} onChange={(event) => setTo(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 dark:border-border px-2 text-sm" /></label>
           <button type="submit" className="mt-3 w-full rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">{t('filters.applyRange')}</button>
         </form>
       </details>

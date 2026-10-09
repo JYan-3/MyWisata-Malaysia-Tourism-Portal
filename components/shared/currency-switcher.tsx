@@ -156,7 +156,7 @@ export function CurrencySwitcher({ compact = false, className }: { compact?: boo
           id={rateStatusId}
           role="status"
           title={rateUnavailableMessage}
-          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber-700"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-200"
         >
           <AlertCircle size={15} aria-hidden="true" />
           <span className={compact ? "sr-only" : undefined}>{rateUnavailableMessage}</span>
