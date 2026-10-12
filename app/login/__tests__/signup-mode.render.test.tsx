@@ -2,10 +2,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ params: new URLSearchParams() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), useSearchParams: () => mocks.params }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), useSearchParams: () => mocks.params, usePathname: () => "/login" }));
 vi.mock("@/components/providers/auth", () => ({ useAuth: () => ({ switchUser: vi.fn() }) }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }) }));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }),
+  Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
+}));
 vi.mock("@/components/shared/language-switcher", () => ({ LanguageSwitcher: () => null }));
 
 import LoginPage from "../page";
@@ -18,6 +21,10 @@ describe("login page initial form selection", () => {
     const markup = renderToStaticMarkup(<LoginPage />);
     expect(markup).toContain('placeholder="fields.confirmPassword"');
     expect(markup).toContain("titles.createAccount");
+    expect(markup).toContain("data-legal-agreement");
+    expect(markup).toContain("legal.agreement");
+    expect(markup).toContain('href="/legal/privacy"');
+    expect(markup).toContain('href="/legal/terms"');
   });
 
   it.each(["", "mode=signin", "mode=unknown"])("otherwise opens sign in: %s", (query) => {

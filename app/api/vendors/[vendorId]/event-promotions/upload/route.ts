@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { validateMagicBytes } from '@/lib/kyc/magic-bytes';
 
 // Mirrors app/api/vendors/[vendorId]/media/upload/route.ts's validation shape,
 // against the dedicated event-posters bucket (20260928030000 migration).
@@ -24,9 +25,12 @@ export async function POST(request: Request, { params }: Props) {
   if (!(file instanceof File)) return apiFail('INVALID_FILE', 'Choose a poster image to upload.', 422);
   if (!IMAGE_TYPES.has(file.type)) return apiFail('INVALID_FILE_TYPE', 'Upload a JPG, PNG, or WebP image.', 422);
   if (file.size > MAX_BYTES) return apiFail('FILE_TOO_LARGE', 'Files must be 10 MB or smaller.', 422);
+  // The declared type comes from the browser; check the bytes really are that kind of image.
+  const bytes = await file.arrayBuffer();
+  if (!(await validateMagicBytes(bytes, file.type))) return apiFail('INVALID_FILE_CONTENT', 'This file is not a valid JPG, PNG, or WebP image.', 422);
 
   const path = [vendorId, crypto.randomUUID() + '-' + safeName(file.name)].join('/');
-  const { error } = await access.access.serviceDb.storage.from(BUCKET).upload(path, file, {
+  const { error } = await access.access.serviceDb.storage.from(BUCKET).upload(path, bytes, {
     contentType: file.type,
     cacheControl: '3600',
     upsert: false,

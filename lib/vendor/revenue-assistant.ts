@@ -528,10 +528,12 @@ export function ruleBasedVendorRevenueActions(signals: VendorRevenueSignals): Ve
   return actions.slice(0, MAX_VENDOR_ACTIONS);
 }
 
-export async function generateVendorRevenueActions(signals: VendorRevenueSignals, lang: ChatLanguage): Promise<VendorRevenueActionsResult> {
+/** `useAi: false` (caller over its AI quota) skips the model and returns the rule-based actions. */
+export async function generateVendorRevenueActions(signals: VendorRevenueSignals, lang: ChatLanguage, useAi = true): Promise<VendorRevenueActionsResult> {
   if (!hasAnyVendorSignal(signals)) {
     return { actions: [], mode: 'no-data' };
   }
+  if (!useAi) return { actions: ruleBasedVendorRevenueActions(signals), mode: 'rule-based' };
 
   try {
     const raw = await callGemini(buildVendorRevenueSystemPrompt(lang), JSON.stringify(signals), { temperature: 0.5, maxOutputTokens: 500 });

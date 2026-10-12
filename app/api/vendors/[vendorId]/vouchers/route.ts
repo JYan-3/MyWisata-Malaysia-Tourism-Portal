@@ -5,6 +5,7 @@ import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { isProductEligibleForVoucherOutlet } from '@/lib/vendor/voucher-scope';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -16,7 +17,7 @@ export async function GET(request: Request, { params }: Props) {
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
-  const q = (url.searchParams.get('q') || '').trim().replace(/[%(),]/g, ' ');
+  const q = postgrestSearchTerm(url.searchParams.get('q'));
   const statusFilter = url.searchParams.get('status') || 'all';
 
   let query = supabase.from('vouchers').select('*, outlets(id,name,city,state)', { count: 'exact' }).eq('vendor_id', vendorId).order('created_at', { ascending: false });

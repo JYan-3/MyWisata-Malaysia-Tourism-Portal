@@ -25,6 +25,7 @@ import { EventItemsTable } from '@/components/customer/event-items-table';
 import { getMalaysiaDateInputValue } from '@/lib/datetime/date-input';
 import { getPublicPromotionCampaigns } from '@/lib/promotion-campaigns/public';
 import { vendorEventItems } from '@/lib/promotion-campaigns/vendor-events';
+import { serializeJsonLd } from '@/lib/seo/json-ld';
 
 export const dynamic = 'force-dynamic';
 
@@ -303,7 +304,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
 
   return <main className="min-h-screen bg-background text-foreground">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
     {/* Top Context Bar (matching Image 2) */}
     <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">

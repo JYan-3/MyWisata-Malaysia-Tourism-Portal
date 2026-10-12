@@ -29,6 +29,8 @@ export type PortalSidebarProps = {
   contextLabel: ReactNode;
   contextDetail?: ReactNode;
   sections: PortalSidebarSection[];
+  /** Small links under the menu (e.g. privacy and terms); open in a new tab so the portal stays put. Hidden on the mobile bottom bar. */
+  footerLinks?: { href: string; label: ReactNode }[];
   fixed?: boolean;
   className?: string;
 };
@@ -49,6 +51,7 @@ export function PortalSidebar({
   contextLabel,
   contextDetail,
   sections,
+  footerLinks,
   fixed = false,
   className,
 }: PortalSidebarProps) {
@@ -131,6 +134,16 @@ export function PortalSidebar({
           </div>
         </div>
       </nav>
+
+      {footerLinks && footerLinks.length > 0 && (
+        <div data-portal-sidebar-footer className="flex flex-wrap gap-x-3 gap-y-1 border-t border-white/10 px-4 py-3 text-[0.6875rem] max-lg:hidden">
+          {footerLinks.map((link) => (
+            <Link key={link.href} href={link.href} target="_blank" rel="noopener" className="text-slate-400 transition-colors hover:text-white">
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      )}
     </aside>
   );
 }

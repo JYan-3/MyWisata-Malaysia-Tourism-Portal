@@ -2,12 +2,13 @@ import { createClient } from '@/lib/supabase/server';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { searchActivities } from '@/backend/domains/catalogue';
 import { cityCentre, parseRecommendationCoordinates } from '@/lib/personalization/location';
-import { describeFit } from '@/lib/personalization/explanation';
+import { buildFallbackFitCopy, describeFit } from '@/lib/personalization/explanation';
 import { rankPersonalizedActivities, type TravelPreferences } from '@/lib/personalization/scorer';
 import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 import { computeProfileVerification } from '@/lib/verification/eligibility';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function POST(request: Request) {
   const db = await createClient();
@@ -68,11 +69,12 @@ export async function POST(request: Request) {
     preferredRadiusKm: survey?.preferred_radius_km ?? 20,
   };
   const ranked = rankPersonalizedActivities(activities, preferences).slice(0, 6);
+  const aiAllowed = await reserveAiQuota(request, 'personalized-fit', user.id);
   const cards = await Promise.all(ranked.map(async ({ activity, score, whyItFits, reasons }) => ({
     activity,
     score,
     reasons,
-    whyItFits: await describeFit({ preferences, activity }),
+    whyItFits: aiAllowed ? await describeFit({ preferences, activity }) : buildFallbackFitCopy({ preferences, activity }),
     fallbackWhyItFits: whyItFits,
   })));
   return apiOk({

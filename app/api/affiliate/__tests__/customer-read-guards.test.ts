@@ -75,7 +75,7 @@ describe("customer affiliate read capability guards", () => {
   });
 
   it("denies performance insight unless commission earning is allowed", async () => {
-    const response = await getInsight();
+    const response = await getInsight(new Request("http://localhost/api/affiliate/insight"));
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({

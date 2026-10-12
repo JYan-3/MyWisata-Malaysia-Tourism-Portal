@@ -34,7 +34,8 @@ describe("progressive capability surfaces", () => {
     expect(affiliate).toContain("capabilities.affiliate_full.allowed || capabilities.affiliate_limited.allowed");
     expect(affiliate).toContain("CUSTOMER_CAPABILITY.AFFILIATE_FULL");
     expect(affiliate).toContain("gate.handleResponse(response");
-    expect(affiliate).toContain('gate("affiliate.earn_commission", "/customer/affiliate")');
+    expect(affiliate).toContain('returnPath="/customer/affiliate"');
+    expect(source("components/customer/affiliate-earnings-history.tsx")).toContain('gate("affiliate.earn_commission", returnPath)');
     expect(affiliate).toContain('requiredCapability="affiliate.earn_commission"');
     expect(insight).toContain("useCustomerCapabilityGate");
     expect(insight).toContain("gate.handleResponse(res");

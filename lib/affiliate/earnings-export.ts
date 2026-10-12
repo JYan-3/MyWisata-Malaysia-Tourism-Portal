@@ -13,8 +13,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
 import { resolveProductNames } from './product-names';
+import { rangeCutoffIso, type EarningsExportRange } from './earnings-range';
 
-export type EarningsExportRange = 'month' | 'year' | 'all';
+export type { EarningsExportRange };
 
 export interface EarningsExportRow {
   date: string; // affiliate_attributions.created_at (ISO)
@@ -31,16 +32,6 @@ export interface EarningsExportRow {
   clearedAt: string | null; // ISO, null while still pending/reversed
 }
 
-function rangeCutoffIso(range: EarningsExportRange): string | null {
-  const now = new Date();
-  if (range === 'month') {
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
-  }
-  if (range === 'year') {
-    return new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
-  }
-  return null;
-}
 
 /**
  * `service` should be the caller's cookie-aware client — affiliate_links /

@@ -8,6 +8,7 @@ import { slugify } from '@/lib/utils';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
 import { selectEntityGallery, type EntityMediaRow } from '@/lib/customer/entity-media';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -35,7 +36,7 @@ export async function GET(request: Request, { params }: Props) {
     .range((page - 1) * pageSize, page * pageSize - 1);
 
   if (q) {
-    const safeQ = q.replace(/[%(),]/g, ' ');
+    const safeQ = postgrestSearchTerm(q);
     query = query.or(`display_id.ilike.%${safeQ}%,name.ilike.%${safeQ}%,city.ilike.%${safeQ}%`);
   }
   if (state) query = query.eq('state', state);

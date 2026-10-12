@@ -15,6 +15,7 @@ import {
   isMissingProductTicketAdmissionSchemaError,
   resolveProductTicketAdmission,
 } from '@/lib/tickets/product-ticket-policy';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -100,7 +101,7 @@ export async function GET(request: Request, { params }: Props) {
     if (productType) query = query.eq('product_type', productType);
     if (featured === 'true') query = query.contains('tags', ['featured']);
     if (q) {
-      const safeQ = q.replace(/[%(),]/g, ' ');
+      const safeQ = postgrestSearchTerm(q);
       // We now have a true database display_id, so we can natively search it!
       query = query.or(`display_id.ilike.%${safeQ}%,name.ilike.%${safeQ}%,slug.ilike.%${safeQ}%`);
     }

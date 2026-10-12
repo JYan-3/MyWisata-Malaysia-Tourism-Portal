@@ -18,8 +18,72 @@ function supabaseStorageRemotePattern() {
   ];
 }
 
+const isDev = process.env.NODE_ENV === 'development';
+
+/**
+ * Content-Security-Policy without nonces (node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md,
+ * "Without Nonces"): keeps pages static/cacheable. Inline scripts stay allowed because Next.js bootstraps with them;
+ * the policy still blocks scripts and data connections to any origin not listed, plugins, <base> hijacking, and
+ * framing by other sites. Every external origin below is one the browser really loads:
+ * - Supabase: REST/auth/storage over https, realtime over wss
+ * - MapLibre: tiles.openfreemap.org (style, tiles, glyphs), workers from blob:
+ * - RainViewer radar: api.rainviewer.com (metadata), tilecache.rainviewer.com (tiles)
+ * - Nominatim: place search from the customer search page
+ * - Google Maps JS + Places: recommendation place picker
+ * Images may come from any https host (vendor/place images are stored as arbitrary URLs); images cannot run script.
+ * ponytail: 'unsafe-inline' scripts; move to nonces (proxy.ts, dynamic rendering) if a stricter policy is required.
+ */
+function contentSecurityPolicy() {
+  const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL) : null;
+  const supabaseOrigins = supabase ? [supabase.origin, `wss://${supabase.host}`] : ['https://*.supabase.co', 'wss://*.supabase.co'];
+  const directives: Record<string, string[]> = {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), 'https://maps.googleapis.com', 'https://maps.gstatic.com'],
+    'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+    'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+    'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
+    'connect-src': [
+      "'self'",
+      ...supabaseOrigins,
+      'https://tiles.openfreemap.org',
+      'https://api.rainviewer.com',
+      'https://tilecache.rainviewer.com',
+      'https://nominatim.openstreetmap.org',
+      'https://maps.googleapis.com',
+      'https://places.googleapis.com',
+      ...(isDev ? ['ws:'] : []),
+    ],
+    'worker-src': ["'self'", 'blob:'],
+    'frame-src': ["'self'"],
+    'object-src': ["'none'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'self'"],
+  };
+  const policy = Object.entries(directives).map(([name, values]) => `${name} ${values.join(' ')}`);
+  // Upgrading would break plain-http localhost in development.
+  if (!isDev) policy.push('upgrade-insecure-requests');
+  return policy.join('; ');
+}
+
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: contentSecurityPolicy() },
+  // Legacy clickjacking guard for browsers that ignore frame-ancestors.
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Camera: QR scanner and profile photo; geolocation: "use my location" in trips and search.
+  { key: 'Permissions-Policy', value: 'camera=(self), geolocation=(self), microphone=(), payment=(), usb=(), browsing-topics=()' },
+  // Ignored by browsers over plain http, so harmless on localhost.
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+];
+
 const nextConfig: NextConfig = {
   compress: true,
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: '/(.*)', headers: securityHeaders }];
+  },
   serverExternalPackages: ['pdfkit'],
   experimental: {
     optimizePackageImports: [

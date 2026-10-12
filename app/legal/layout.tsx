@@ -1,20 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { MyWisataLogo } from "@/components/shared/mywisata-logo";
-import { legalNavItems } from "@/components/legal/legal-nav";
+import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 
 // Public, auth-free layout for the legal/trust pages — mirrors app/help/layout.tsx
 // so anonymous visitors and search engines can read them without the /customer/*
-// role gate. The footer cross-links the four legal pages.
+// role gate. The site footer cross-links the legal pages and marks the current one.
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation("customer");
-  const pathname = usePathname();
-  const navItems = legalNavItems(t);
-
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="border-b border-border bg-card">
@@ -31,26 +25,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
 
       <div className="flex-1">{children}</div>
 
-      <footer className="border-t border-border bg-card">
-        <nav className="mx-auto flex max-w-2xl flex-wrap gap-x-6 gap-y-2 px-4 py-6 text-sm sm:px-6">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={active ? "font-semibold text-foreground" : "text-muted-foreground transition-colors hover:text-foreground"}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-          <Link href="/help" className="text-muted-foreground transition-colors hover:text-foreground">
-            {t("legal.nav.help")}
-          </Link>
-        </nav>
-      </footer>
+      <CustomerSiteFooter />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { createServiceClient } from '@/lib/supabase/service';
+import { validateMagicBytes } from '@/lib/kyc/magic-bytes';
 
 // Admin event-poster upload, reusing the event-posters bucket (20260928030000
 // migration) under a campaigns/ prefix. Unlike the vendor-scoped upload route
@@ -25,10 +26,13 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) return apiFail('INVALID_FILE', 'Choose a poster image to upload.', 422);
   if (!IMAGE_TYPES.has(file.type)) return apiFail('INVALID_FILE_TYPE', 'Upload a JPG, PNG, or WebP image.', 422);
   if (file.size > MAX_BYTES) return apiFail('FILE_TOO_LARGE', 'Files must be 10 MB or smaller.', 422);
+  // The declared type comes from the browser; check the bytes really are that kind of image.
+  const bytes = await file.arrayBuffer();
+  if (!(await validateMagicBytes(bytes, file.type))) return apiFail('INVALID_FILE_CONTENT', 'This file is not a valid JPG, PNG, or WebP image.', 422);
 
   const service = createServiceClient();
   const path = ['campaigns', crypto.randomUUID() + '-' + safeName(file.name)].join('/');
-  const { error } = await service.storage.from(BUCKET).upload(path, file, {
+  const { error } = await service.storage.from(BUCKET).upload(path, bytes, {
     contentType: file.type,
     cacheControl: '3600',
     upsert: false,

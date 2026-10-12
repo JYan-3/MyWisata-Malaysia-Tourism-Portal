@@ -17,6 +17,7 @@ import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 import { z } from 'zod';
 import { translateMessage } from '@/lib/chat/translate';
 import { accessibleChatThreadIds } from '@/lib/chat/authorization';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 const chatTranslateSchema = z.object({
   messageId: z.string().uuid(),
@@ -66,6 +67,10 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (cacheError) return apiFail('DB_ERROR', cacheError.message, 500);
   if (cached) return apiOk({ translatedText: cached.translated_text, cached: true });
+
+  if (!(await reserveAiQuota(request, 'chat-translate', user.id, 60))) {
+    return apiFail('RATE_LIMITED', 'Too many translations right now. Please try again in a few minutes.', 429);
+  }
 
   let translatedText: string;
   try {

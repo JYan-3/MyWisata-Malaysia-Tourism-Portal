@@ -5,6 +5,7 @@ import { parseBody, apiFail, apiOk } from '@/lib/validation/schemas';
 import { createRecommendationInviteToken } from '@/lib/recommendations/invite-token';
 import { sendCustomVendorEmail } from '@/lib/email/sender';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
+import { normalizeEmail } from '@/lib/validation/postgrest-filter';
 
 // Admin-created event vendor (Phase 4 of the event plan). Same invite link and
 // email path as recommendation invites; the vendor row is created only when the
@@ -23,10 +24,10 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;
   const { businessName, message } = parsed.data;
-  const email = parsed.data.email.toLowerCase();
+  const email = normalizeEmail(parsed.data.email);
   const service = createServiceClient();
 
-  const { data: owner, error: ownerError } = await service.from('users').select('id').ilike('email', email).maybeSingle();
+  const { data: owner, error: ownerError } = await service.from('users').select('id').eq('email', email).maybeSingle();
   if (ownerError) return apiFail('DB_ERROR', ownerError.message, 500);
   if (owner) {
     const { data: ownedVendor, error: vendorError } = await service.from('vendors').select('id').eq('owner_id', owner.id).in('status', ['pending', 'approved']).limit(1).maybeSingle();
