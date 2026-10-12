@@ -1485,7 +1485,9 @@
         "failed": "失败",
         "none": "尚无运行记录"
       },
-      "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。"
+      "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。",
+      "pending_one": "{{count}} 条安全告警正在等待符合权限的接收者。",
+      "pending_other": "{{count}} 条安全告警正在等待符合权限的接收者。"
     }
   },
   "reconciliation": {
