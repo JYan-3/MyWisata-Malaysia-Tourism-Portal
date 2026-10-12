@@ -243,6 +243,8 @@ const approvedForwardMigrations = [
   "20261008230000_paid_order_effects_marker.sql",
   "20261012151058_revoke_anonymous_kyc_storage_access.sql",
   "20261012151337_enforce_server_only_kyc_storage.sql",
+  "20261012154500_kyc_security_monitoring.sql",
+  "20261012154530_kyc_reviewer_mfa_boundaries.sql",
 ];
 
 function migrationFiles() {

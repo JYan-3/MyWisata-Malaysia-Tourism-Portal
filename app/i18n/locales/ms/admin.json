@@ -1451,6 +1451,41 @@
       "title": "Pengguna disahkan",
       "count_one": "{{count}} akaun",
       "count_other": "{{count}} akaun"
+    },
+    "mfa": {
+      "title": "Sahkan aplikasi pengesah anda",
+      "description": "Semakan KYC memerlukan kod aplikasi pengesah selain log masuk anda.",
+      "start": "Sediakan atau sahkan aplikasi pengesah",
+      "working": "Sila tunggu…",
+      "scan": "Imbas kod QR ini dengan aplikasi pengesah anda sendiri, kemudian masukkan kod enam digit. Rahsiakan kod QR.",
+      "qrAlt": "Kod QR persediaan aplikasi pengesah peribadi",
+      "code": "Kod pengesah enam digit",
+      "verify": "Sahkan dan teruskan",
+      "cancel": "Batal persediaan",
+      "setupError": "Tidak dapat memulakan pengesahan. Cuba lagi atau muat semula halaman.",
+      "verifyError": "Pengesahan gagal. Masukkan kod baharu dan cuba lagi.",
+      "cancelError": "Tidak dapat membatalkan persediaan. Sila cuba lagi.",
+      "recovery": "Jika anda kehilangan aplikasi pengesah, hubungi pentadbir projek untuk pemulihan selepas pengesahan identiti. Jangan hantar kod QR, rahsia atau kod pengesahan kepada sokongan."
+    },
+    "security": {
+      "title": "Status keselamatan KYC",
+      "description": "Rekod pembersihan dan amaran akses dokumen. Notifikasi dalam baris gilir tidak mengesahkan penghantaran e-mel.",
+      "unavailable": "Tidak dapat memuatkan status keselamatan. Muat semula untuk mencuba lagi.",
+      "run": "Pembersihan terkini: {{status}}",
+      "counts": "Dituntut {{claimed}} · Dipadam {{purged}} · Gagal {{failed}}",
+      "checked": "Semakan pemantau terakhir: {{time}}",
+      "notChecked": "Belum disemak",
+      "pending": "{{count}} amaran keselamatan menunggu penerima yang layak.",
+      "queued": "Notifikasi dalam baris gilir",
+      "notQueued": "Menunggu penerima",
+      "resolved": "Diselesaikan",
+      "status": {
+        "running": "Sedang berjalan",
+        "succeeded": "Berjaya",
+        "failed": "Gagal",
+        "none": "Tiada rekod pelaksanaan"
+      },
+      "noEmailRecipients": "Tiada penyemak yang layak mempunyai alamat e-mel sebenar. Tetapkan penerima sebelum bergantung pada amaran e-mel."
     }
   },
   "reconciliation": {

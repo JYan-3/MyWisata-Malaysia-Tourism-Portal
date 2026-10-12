@@ -1,4 +1,4 @@
-import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
 
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export async function GET(_request: Request, { params }: Props) {
-  const { user, response } = await requireStaffPermission('admin.kyc.review');
+  const { user, response } = await requireKycReviewer();
   if (response) return response;
 
   const { submissionId, side } = await params;

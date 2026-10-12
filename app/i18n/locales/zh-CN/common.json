@@ -202,6 +202,15 @@
       "recommendationApprovedWithName": {
         "title": "您的推荐“{{vendorName}}”已获批准",
         "body": "感谢您的推荐！我们很快会联系该商家。"
+      },
+      "kycSecurity": {
+        "title": "KYC 安全告警",
+        "purge_failed": "KYC 证件删除任务失败或部分失败（{{count}} 项删除失败）。",
+        "purge_stalled": "KYC 证件删除任务超过 15 分钟仍未完成。",
+        "purge_missed": "超过 26 小时没有成功的 KYC 证件删除运行记录。",
+        "access_volume": "同一审核人员在 10 分钟内请求查看了 {{count}} 份不同提交的证件。",
+        "monitor_test": "KYC 安全告警发送测试，不包含任何身份证件。",
+        "generic": "请在受保护的后台查看 KYC 安全状态。"
       }
     }
   },

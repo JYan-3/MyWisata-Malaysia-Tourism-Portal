@@ -37,4 +37,15 @@ describe('event notices through the existing durable sender', () => {
     expect(await processEmailOutbox(20)).toEqual({ sent: 0, failed: 1 });
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', next_attempt_at: expect.any(String) }));
   });
+  it('does not count delivery as persisted when the sent-state write fails', async () => {
+    const eq = vi.fn().mockResolvedValueOnce({ error: new Error('private database details') }).mockResolvedValueOnce({ error: null });
+    mocks.update.mockReturnValue({ eq });
+    expect(await processEmailOutbox(20)).toEqual({ sent: 0, failed: 1 });
+    expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'failed', last_error: 'email_state_unavailable' }));
+  });
+  it('reports unavailable instead of pretending failure recovery was persisted', async () => {
+    mocks.send.mockRejectedValueOnce(new Error('SMTP unavailable'));
+    mocks.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: new Error('private details') }) });
+    await expect(processEmailOutbox(20)).rejects.toThrow('email_state_unavailable');
+  });
 });

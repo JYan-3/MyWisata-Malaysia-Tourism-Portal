@@ -1451,6 +1451,41 @@
       "title": "已验证用户",
       "count_one": "{{count}} 个账户",
       "count_other": "{{count}} 个账户"
+    },
+    "mfa": {
+      "title": "验证你的验证器",
+      "description": "KYC 审核除了登录，还需要验证器验证码。",
+      "start": "绑定或验证验证器",
+      "working": "请稍候…",
+      "scan": "用你自己的验证器 App 扫描二维码，再输入六位验证码。请妥善保密二维码。",
+      "qrAlt": "私人验证器绑定二维码",
+      "code": "六位验证器验证码",
+      "verify": "验证并继续",
+      "cancel": "取消绑定",
+      "setupError": "无法开始验证器验证。请重试或刷新页面。",
+      "verifyError": "验证失败。请输入新的验证码再试。",
+      "cancelError": "无法取消绑定，请重试。",
+      "recovery": "如果遗失验证器，请联系项目管理员，在核实身份后恢复访问。不要向客服发送二维码、密钥或验证码。"
+    },
+    "security": {
+      "title": "KYC 安全状态",
+      "description": "删除运行记录和证件访问告警。通知已入队不代表邮件已送达。",
+      "unavailable": "无法读取安全状态，请刷新重试。",
+      "run": "最近删除任务：{{status}}",
+      "counts": "领取 {{claimed}} · 删除 {{purged}} · 失败 {{failed}}",
+      "checked": "监控最近检查：{{time}}",
+      "notChecked": "尚未检查",
+      "pending": "{{count}} 条安全告警正在等待符合权限的接收者。",
+      "queued": "通知已入队",
+      "notQueued": "等待接收者",
+      "resolved": "已恢复",
+      "status": {
+        "running": "运行中",
+        "succeeded": "成功",
+        "failed": "失败",
+        "none": "尚无运行记录"
+      },
+      "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。"
     }
   },
   "reconciliation": {

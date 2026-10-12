@@ -2,12 +2,13 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const getClaims = vi.fn(async () => ({ data: { claims: { sub: '33333333-3333-4333-8333-333333333333', aal: 'aal2' } }, error: null }));
 const getUser = vi.fn();
 const rpc = vi.fn();
 const createServiceClient = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser }, rpc }),
+  createClient: async () => ({ auth: { getUser, getClaims }, rpc }),
 }));
 
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));

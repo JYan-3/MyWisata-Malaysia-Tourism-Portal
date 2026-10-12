@@ -5,6 +5,12 @@ const translate = (key: string, options?: Record<string, unknown>) =>
   JSON.stringify({ key, options: options ?? {} });
 
 describe('notification localization', () => {
+  it('localizes fixed KYC incident kinds and discards arbitrary metadata', () => {
+    const result = localizeNotification({ type: 'kyc_security_alert', title: 'KYC security alert', body: 'Review status', metadata: { kind: 'access_volume', count: 10, occurredAt: '2026-10-12T16:00:00Z', privatePath: 'identity/front.jpg' } }, translate);
+    expect(result.title).toContain('notifications.events.kycSecurity.title');
+    expect(result.body).toContain('notifications.events.kycSecurity.access_volume');
+    expect(result.body).not.toContain('identity/front.jpg');
+  });
   it('renders known system events from a stable type and metadata', () => {
     const result = localizeNotification({
       type: 'withdrawal_approved',

@@ -1451,6 +1451,41 @@
       "title": "Verified users",
       "count_one": "{{count}} accounts",
       "count_other": "{{count}} accounts"
+    },
+    "mfa": {
+      "title": "Verify your authenticator",
+      "description": "KYC review requires an authenticator code in addition to your sign-in.",
+      "start": "Set up or verify authenticator",
+      "working": "Please wait…",
+      "scan": "Scan this QR code with your own authenticator app, then enter its six-digit code. Keep the QR code private.",
+      "qrAlt": "Private authenticator setup QR code",
+      "code": "Six-digit authenticator code",
+      "verify": "Verify and continue",
+      "cancel": "Cancel setup",
+      "setupError": "Unable to start authenticator verification. Please retry or reload the page.",
+      "verifyError": "Verification failed. Enter a fresh code and try again.",
+      "cancelError": "Unable to cancel setup. Please try again.",
+      "recovery": "If you lose your authenticator, contact the project administrator for identity-checked recovery. Never send your QR code, secret or verification code to support."
+    },
+    "security": {
+      "title": "KYC security status",
+      "description": "Cleanup run records and document-access alerts. A queued notification does not confirm email delivery.",
+      "unavailable": "Unable to load security status. Reload to retry.",
+      "run": "Latest cleanup: {{status}}",
+      "counts": "Claimed {{claimed}} · Deleted {{purged}} · Failed {{failed}}",
+      "checked": "Monitor last checked: {{time}}",
+      "notChecked": "Not yet checked",
+      "pending": "{{count}} security alerts are waiting for an eligible recipient.",
+      "queued": "Notifications queued",
+      "notQueued": "Awaiting recipient",
+      "resolved": "Resolved",
+      "status": {
+        "running": "Running",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "none": "No run recorded"
+      },
+      "noEmailRecipients": "No eligible reviewer has a real email address. Configure a recipient before relying on email alerts."
     }
   },
   "reconciliation": {

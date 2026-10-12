@@ -1,3 +1,5 @@
+import { KYC_SECURITY_KINDS, type KycSecurityKind } from '@/lib/kyc/types';
+
 export type NotificationMetadata = Record<string, unknown>;
 
 export type NotificationForLocalization = {
@@ -42,6 +44,16 @@ export function localizeNotification(
   notification: NotificationForLocalization,
   translate: NotificationTranslator,
 ) {
+  if (notification.type === 'kyc_security_alert') {
+    const kind = notification.metadata?.kind;
+    const count = notification.metadata?.count;
+    return {
+      title: translate('notifications.events.kycSecurity.title'),
+      body: typeof kind === 'string' && KYC_SECURITY_KINDS.includes(kind as KycSecurityKind)
+        ? translate(`notifications.events.kycSecurity.${kind}`, { count: typeof count === 'number' && Number.isSafeInteger(count) && count >= 0 ? count : 0 })
+        : translate('notifications.events.kycSecurity.generic'),
+    };
+  }
   const template = notification.type ? TEMPLATES[notification.type] : undefined;
   if (!template) return { title: notification.title, body: notification.body };
 

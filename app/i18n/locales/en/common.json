@@ -202,6 +202,15 @@
       "recommendationApprovedWithName": {
         "title": "Your recommendation \"{{vendorName}}\" was approved",
         "body": "Great find! We will reach out to the vendor soon."
+      },
+      "kycSecurity": {
+        "title": "KYC security alert",
+        "purge_failed": "KYC evidence cleanup failed or completed with failures ({{count}} failed items).",
+        "purge_stalled": "KYC evidence cleanup has not completed within 15 minutes.",
+        "purge_missed": "No successful KYC evidence cleanup was recorded for more than 26 hours.",
+        "access_volume": "A reviewer requested documents for {{count}} distinct submissions within 10 minutes.",
+        "monitor_test": "Controlled KYC security alert delivery test. No identity documents are included.",
+        "generic": "Review KYC security status in the protected admin area."
       }
     }
   },

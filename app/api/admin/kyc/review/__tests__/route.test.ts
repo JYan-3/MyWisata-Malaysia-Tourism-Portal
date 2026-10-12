@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const getClaims = vi.fn(async () => ({ data: { claims: { sub: '22222222-2222-4222-8222-222222222222', aal: 'aal2' } }, error: null }));
 const getUser = vi.fn();
 const rpc = vi.fn();
 const requireStaffPermission = vi.fn();
 
-const db = { auth: { getUser }, rpc };
+const db = { auth: { getUser, getClaims }, rpc };
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => db,
@@ -22,6 +23,13 @@ describe('POST /api/admin/kyc/review', () => {
     requireStaffPermission.mockReset();
     rpc.mockResolvedValue({ data: null, error: null });
     requireStaffPermission.mockResolvedValue({ db, user: { id: '22222222-2222-4222-8222-222222222222' }, response: null });
+  });
+
+  it('denies AAL1 before validating or deciding submissions', async () => {
+    getClaims.mockResolvedValueOnce({ data: { claims: { sub: '22222222-2222-4222-8222-222222222222', aal: 'aal1' } }, error: null });
+    const response = await POST(new Request('http://localhost', { method: 'POST' }));
+    expect(response.status).toBe(403);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('sends structured catalog reasons to the hardened RPC', async () => {

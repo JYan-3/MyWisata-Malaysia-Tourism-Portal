@@ -6,6 +6,7 @@ import {
   sendRecommendationEmail,
   sendTransactionEmail,
   sendVendorEmail,
+  sendKycSecurityEmail,
 } from '@/lib/email/sender';
 import type {
   AccountEmailInput,
@@ -17,12 +18,14 @@ import type {
   VendorEmailInput,
   VendorEmailType,
   EventVendorChange,
+  KycSecurityEmailInput,
 } from '@/lib/email/templates';
 
 export type EmailEventType =
   | TransactionEmailType
   | AccountEmailType
   | VendorEmailType
+  | 'kyc_security_alert'
   | RecommendationEmailType;
 
 export type EmailOutboxInput = (
@@ -30,6 +33,7 @@ export type EmailOutboxInput = (
   | AccountEmailInput
   | VendorEmailInput
   | RecommendationEmailInput
+  | KycSecurityEmailInput
 ) & {
   eventKey: string;
   userId?: string | null;
@@ -49,6 +53,8 @@ type OutboxRow = {
     reason?: string;
     occurredAt?: string;
     eventChange?: EventVendorChange;
+    kind?: KycSecurityEmailInput['kind'];
+    count?: number;
   };
   status: 'pending' | 'sending' | 'sent' | 'failed';
   attempts: number;
@@ -69,6 +75,8 @@ export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted:
   if ('reference' in input) payload.reference = input.reference ?? undefined;
   if ('reason' in input) payload.reason = input.reason;
   if ('eventChange' in input) payload.eventChange = input.eventChange;
+  if ('kind' in input) payload.kind = input.kind;
+  if ('count' in input) payload.count = input.count;
 
   const { data, error } = await db
     .from('email_outbox')
@@ -105,6 +113,14 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? 'Standard',unitPrice:Number(item.unit_price),qty:item.quantity})),
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
           accessUrl:`${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}`,
+        });
+      } else if (row.event_type === 'kyc_security_alert') {
+        await sendKycSecurityEmail({
+          eventType: 'kyc_security_alert',
+          kind: row.payload?.kind as KycSecurityEmailInput['kind'],
+          count: Number(row.payload?.count),
+          occurredAt: String(row.payload?.occurredAt ?? ''),
+          to: row.to_email,
         });
       } else if (row.event_type === 'recommendation_approved') {
         await sendRecommendationEmail({
@@ -146,22 +162,24 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           to: row.to_email,
         });
       }
-      await db.from('email_outbox').update({
+      const { error: sentStateError } = await db.from('email_outbox').update({
         status: 'sent',
         ...(row.payload?.guestAccessToken ? { payload: { ...row.payload, guestAccessToken: undefined } } : {}),
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         last_error: null,
       }).eq('id', row.id);
+      if (sentStateError) throw new Error('email_state_unavailable');
       sent += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Email send failed';
-      await db.from('email_outbox').update({
+      const { error: failedStateError } = await db.from('email_outbox').update({
         status: 'failed',
         last_error: message.slice(0, 500),
         next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
         updated_at: new Date().toISOString(),
       }).eq('id', row.id);
+      if (failedStateError) throw new Error('email_state_unavailable');
       failed += 1;
     }
   }

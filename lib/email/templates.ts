@@ -1,4 +1,34 @@
 import { formatMYR } from '@/lib/i18n/format';
+import { KYC_SECURITY_KINDS, type KycSecurityKind } from '@/lib/kyc/types';
+import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
+
+export type KycSecurityEmailInput = {
+  eventType: 'kyc_security_alert';
+  kind: KycSecurityKind;
+  count: number;
+  occurredAt: string;
+  recipientName?: string | null;
+};
+
+/** Only fixed incident copy and numeric aggregates may enter security mail. */
+export function renderKycSecurityEmail(input: KycSecurityEmailInput): RenderedEmail {
+  if (!KYC_SECURITY_KINDS.includes(input.kind) || !Number.isSafeInteger(input.count) || input.count < 0 || !Number.isFinite(Date.parse(input.occurredAt))) {
+    throw new Error('Invalid KYC security alert');
+  }
+  const descriptions: Record<KycSecurityKind, string> = {
+    purge_failed: 'The KYC evidence cleanup failed or completed with failures.',
+    purge_stalled: 'The KYC evidence cleanup has not completed within 15 minutes.',
+    purge_missed: 'No successful KYC evidence cleanup was recorded for more than 26 hours.',
+    access_volume: 'A reviewer requested documents for at least 10 distinct submissions within 10 minutes.',
+    monitor_test: 'This is a controlled test of KYC security alert delivery. No identity documents are included.',
+  };
+  const subject = 'MyLawatan KYC security alert';
+  const time = new Date(input.occurredAt).toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' });
+  const description = descriptions[input.kind];
+  const actionUrl = `${resolvePaymentAppUrl()}/admin/kyc`;
+  const text = [subject, description, `Count: ${input.count}`, `Time: ${time} (Malaysia time)`, `Review security status: ${actionUrl}`, 'Sign in and verify your authenticator to review. Never reply with passwords or identity documents.'].join('\n');
+  return { subject, text, html: `<!doctype html><html lang="en"><body><h2>${subject}</h2><p>${description}</p><p>Count: ${input.count}</p><p>Time: ${escapeHtml(time)} (Malaysia time)</p><p><a href="${escapeHtml(actionUrl)}">Review KYC security status</a></p><p>Sign in and verify your authenticator to review. Never reply with passwords or identity documents.</p></body></html>` };
+}
 
 export type TransactionEmailType =
   | 'checkout_succeeded'

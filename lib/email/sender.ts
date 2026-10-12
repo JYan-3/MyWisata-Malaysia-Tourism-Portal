@@ -6,6 +6,8 @@ import {
   renderRecommendationEmail,
   renderTransactionEmail,
   renderVendorEmail,
+  renderKycSecurityEmail,
+  type KycSecurityEmailInput,
   type AccountEmailInput,
   type RecommendationEmailInput,
   type TransactionEmailInput,
@@ -19,6 +21,9 @@ export type SendAccountEmailInput = AccountEmailInput & { to: string };
 export type SendRecommendationEmailInput = RecommendationEmailInput & { to: string };
 export type SendVendorEmailInput = VendorEmailInput & { to: string };
 export type SendStaffInvitationEmailInput = StaffInvitationEmailInput & { to: string };
+export function sendKycSecurityEmail(input: KycSecurityEmailInput & { to: string }): Promise<{ id: string }> {
+  return sendRenderedEmail(input.to, renderKycSecurityEmail(input));
+}
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';
