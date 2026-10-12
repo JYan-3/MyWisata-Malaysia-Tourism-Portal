@@ -241,6 +241,8 @@ const approvedForwardMigrations = [
   "20261007230000_vendor_platform_fee_tiers.sql",
   "20261008100000_campaign_platform_fee_rpc.sql",
   "20261008230000_paid_order_effects_marker.sql",
+  "20261012151058_revoke_anonymous_kyc_storage_access.sql",
+  "20261012151337_enforce_server_only_kyc_storage.sql",
 ];
 
 function migrationFiles() {
