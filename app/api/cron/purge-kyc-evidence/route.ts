@@ -64,5 +64,8 @@ export async function POST(request: Request) {
     purged += 1;
   }
 
-  return NextResponse.json({ claimed: worklist.length, purged, failed, requestId });
+  return NextResponse.json({ claimed: worklist.length, purged, failed, requestId }, { status: failed > 0 ? 502 : 200 });
 }
+
+// Vercel Cron invokes GET; retain POST for existing external schedulers.
+export const GET = POST;

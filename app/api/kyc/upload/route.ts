@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
+import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { runKycOcr } from '@/lib/kyc/ocr';
 import { requiresManualKycReview } from '@/lib/kyc/ocr-policy';
 
@@ -69,6 +70,16 @@ export async function POST(request: Request) {
   if (!front.ok) return apiFail(front.code, 'Front document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
   if (!back.ok) return apiFail(back.code, 'Back document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
 
+  let images: Awaited<ReturnType<typeof prepareKycEvidenceImage>>[];
+  try {
+    images = await Promise.all([
+      prepareKycEvidenceImage(Buffer.from(front.buffer), frontFile.type),
+      prepareKycEvidenceImage(Buffer.from(back.buffer), backFile.type),
+    ]);
+  } catch {
+    return apiFail('INVALID_FILE_CONTENT', 'Documents must be decodable photos under the image limits', 422);
+  }
+
   let fingerprint: { algorithm: 'hmac_sha256_v1'; value: string };
   try { fingerprint = await hashICWithHmac(icNumber.trim()); }
   catch { return apiFail('SERVER_CONFIGURATION', 'KYC submission is temporarily unavailable', 503); }
@@ -96,7 +107,7 @@ export async function POST(request: Request) {
     return true;
   };
 
-  const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, front.buffer, {
+  const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, images[0].stored, {
     contentType: frontFile.type, upsert: false,
   });
   if (frontUpload.error) {
@@ -104,7 +115,7 @@ export async function POST(request: Request) {
     return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
   }
 
-  const backUpload = await service.storage.from('kyc-documents').upload(paths.back, back.buffer, {
+  const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1].stored, {
     contentType: backFile.type, upsert: false,
   });
   if (backUpload.error) {
@@ -115,8 +126,8 @@ export async function POST(request: Request) {
   const ocrResult = await runKycOcr({
     documentType: docType as 'national_id' | 'passport' | 'driving_license',
     enteredDocumentNumber: icNumber.trim(),
-    front: { mimeType: frontFile.type, bytes: new Uint8Array(front.buffer) },
-    back: { mimeType: backFile.type, bytes: new Uint8Array(back.buffer) },
+    front: { mimeType: frontFile.type, bytes: new Uint8Array(images[0].ocr) },
+    back: { mimeType: backFile.type, bytes: new Uint8Array(images[1].ocr) },
     hmacKey: process.env.KYC_IC_HMAC_KEY ?? '',
   });
   const { error: ocrError } = await service.rpc('record_kyc_ocr_result', {

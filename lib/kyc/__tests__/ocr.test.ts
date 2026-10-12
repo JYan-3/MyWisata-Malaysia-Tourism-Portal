@@ -5,6 +5,7 @@ vi.mock('server-only', () => ({}));
 import { runKycOcr } from '../ocr';
 
 const originalKey = process.env.GOOGLE_AI_KEY;
+const originalConsent = process.env.KYC_EXTERNAL_OCR_ENABLED;
 const originalModel = process.env.GEMINI_OCR_MODEL;
 
 const imageBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
@@ -29,6 +30,8 @@ function geminiResponse(text: string, ok = true, status = 200) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  if (originalConsent === undefined) delete process.env.KYC_EXTERNAL_OCR_ENABLED;
+  else process.env.KYC_EXTERNAL_OCR_ENABLED = originalConsent;
   if (originalKey === undefined) delete process.env.GOOGLE_AI_KEY;
   else process.env.GOOGLE_AI_KEY = originalKey;
   if (originalModel === undefined) delete process.env.GEMINI_OCR_MODEL;
@@ -36,7 +39,15 @@ afterEach(() => {
 });
 
 describe('runKycOcr', () => {
+  it('never sends evidence to a provider without explicit operator opt-in', async () => {
+    delete process.env.KYC_EXTERNAL_OCR_ENABLED;
+    process.env.GOOGLE_AI_KEY = 'test-key';
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    await expect(runKycOcr(input())).resolves.toMatchObject({ status: 'unavailable' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it('records only a masked mismatching document number and no raw model text', async () => {
+    process.env.KYC_EXTERNAL_OCR_ENABLED = 'true';
     process.env.GOOGLE_AI_KEY = 'test-key';
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(geminiResponse(JSON.stringify({
       holderName: 'Aminah Ali', documentNumber: '900101-14-1235', expiryDate: null, confidence: 0.91, unreadable: false,
@@ -53,6 +64,7 @@ describe('runKycOcr', () => {
   });
 
   it('returns unavailable rather than throwing when Gemini rejects the request', async () => {
+    process.env.KYC_EXTERNAL_OCR_ENABLED = 'true';
     process.env.GOOGLE_AI_KEY = 'test-key';
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(geminiResponse('', false, 429));
 

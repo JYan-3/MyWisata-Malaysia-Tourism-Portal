@@ -6,7 +6,7 @@ const createServiceClient = vi.fn();
 
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 
-const { POST } = await import('../route');
+const { POST, GET } = await import('../route');
 
 describe('POST /api/cron/purge-kyc-evidence', () => {
   beforeEach(() => {
@@ -16,6 +16,13 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
       rpc,
       storage: { from: () => ({ remove }) },
     });
+  });
+
+  it('supports authenticated scheduler GET requests', async () => {
+    rpc.mockResolvedValue({ data: [], error: null });
+    const response = await GET(new Request('http://localhost', { headers: { authorization: 'Bearer cron-test-secret' } }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ claimed: 0, purged: 0, failed: 0 });
   });
 
   it('requires the configured cron secret', async () => {
@@ -65,7 +72,7 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
       headers: { authorization: 'Bearer cron-test-secret' },
     }));
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({ claimed: 1, purged: 0, failed: 1 });
     expect(rpc).toHaveBeenCalledTimes(1);
   });

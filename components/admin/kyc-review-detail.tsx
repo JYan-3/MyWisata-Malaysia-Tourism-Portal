@@ -330,12 +330,23 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
 
   async function openDocument(side: "front" | "back") {
     if (!detail) return;
+    const documentWindow = window.open("about:blank", "_blank");
+    if (documentWindow) documentWindow.opener = null;
     try {
-      const response = await fetch(`/api/admin/kyc/documents/${detail.submission.id}/${side}`);
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
-      window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
+      const response = await fetch(`/api/admin/kyc/documents/${detail.submission.id}/${side}`, { cache: "no-store" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
+      }
+      const url = URL.createObjectURL(await response.blob());
+      if (documentWindow) documentWindow.location.replace(url);
+      else {
+        URL.revokeObjectURL(url);
+        throw new Error(t("kyc.errors.loadDocument"));
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
+      documentWindow?.close();
       const message = err instanceof Error ? err.message : t("kyc.errors.loadDocument");
       setError(message);
       showFeedback("error", message);

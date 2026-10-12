@@ -77,12 +77,14 @@ function imagePart(image: { mimeType: string; bytes: Uint8Array }) {
 export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
   const providerModel = process.env.GEMINI_OCR_MODEL ?? DEFAULT_MODEL;
   const key = process.env.GOOGLE_AI_KEY;
-  if (!key) return unavailable(providerModel);
+  // Operator opt-in is required after confirming paid-provider data processing.
+  if (process.env.KYC_EXTERNAL_OCR_ENABLED !== 'true' || !key) return unavailable(providerModel);
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${providerModel}:generateContent?key=${encodeURIComponent(key)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(20_000),
       body: JSON.stringify({
         generationConfig: { temperature: 0, responseMimeType: 'application/json' },
         contents: [{ role: 'user', parts: [

@@ -1,6 +1,6 @@
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { apiFail } from '@/lib/validation/schemas';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,12 +30,23 @@ export async function GET(_request: Request, { params }: Props) {
   }
   if (typeof storagePath !== 'string') return apiFail('NOT_FOUND', 'Document not found', 404);
 
-  const { data: signed, error: signedError } = await service.storage
+  const { data: document, error: downloadError } = await service.storage
     .from('kyc-documents')
-    .createSignedUrl(storagePath, 300);
-  if (signedError || !signed?.signedUrl) {
+    .download(storagePath);
+  if (downloadError || !document) {
     return apiFail('DOCUMENT_UNAVAILABLE', 'Document is temporarily unavailable', 500);
   }
-
-  return apiOk({ signedUrl: signed.signedUrl, expiresIn: 300 });
+  const contentType = document.type;
+  if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(contentType)) {
+    return apiFail('DOCUMENT_UNAVAILABLE', 'Document is temporarily unavailable', 500);
+  }
+  return new Response(document, {
+    headers: {
+      'Content-Type': contentType,
+      'Cache-Control': 'private, no-store, max-age=0',
+      'Content-Disposition': `inline; filename="kyc-${side}"`,
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
+    },
+  });
 }

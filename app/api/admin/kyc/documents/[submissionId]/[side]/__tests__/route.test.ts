@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
 const rpc = vi.fn();
@@ -15,6 +15,18 @@ vi.mock('@/lib/supabase/service', () => ({
 const { GET } = await import('../route');
 
 describe('GET /api/admin/kyc/documents/[submissionId]/[side]', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it.each(['image/jpeg', 'application/pdf'])('returns private %s bytes without signed URLs or internal paths and disables caching', async (contentType) => {
+    getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });
+    rpc.mockResolvedValue({ data: true, error: null });
+    const download = vi.fn().mockResolvedValue({ data: new Blob(['image-bytes'], { type: contentType }), error: null });
+    createServiceClient.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: 'private/user/front.jpg', error: null }), storage: { from: () => ({ download }) } });
+    const response = await GET(new Request('http://localhost'), { params: Promise.resolve({ submissionId: '22222222-2222-4222-8222-222222222222', side: 'front' }) });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.headers.get('content-type')).toBe(contentType);
+    expect(await response.text()).toBe('image-bytes');
+  });
   it('returns 401 before validating malformed route parameters', async () => {
     getUser.mockResolvedValue({ data: { user: null } });
 
