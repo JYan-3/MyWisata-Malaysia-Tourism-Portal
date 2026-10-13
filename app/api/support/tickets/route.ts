@@ -5,10 +5,9 @@
 //
 // support_tickets has real RLS policies (support_own_or_admin SELECT,
 // support_insert_own INSERT WITH CHECK user_id = auth.uid() OR NULL —
-// 007_public_read_policies.sql), and chatbot_sessions' SELECT policy
-// (user_id = auth.uid() OR user_id IS NULL) covers reading a session back
-// to link session_id — so unlike Step 7, this route needs no service-role
-// client. Guest ticket submission is intentionally allowed by the schema
+// 007_public_read_policies.sql). chatbot_sessions is no longer readable by
+// guests (20261014120000), so linking a session reads it with the service
+// client and checks ownership here. Guest ticket submission is intentionally allowed by the schema
 // (user_id nullable, RLS explicitly permits NULL), so this doesn't require
 // login the way affiliate link creation does. GET, unlike POST, DOES
 // require login — a guest has no stable identity across requests to list
@@ -77,7 +76,7 @@ export async function POST(request: Request) {
 
   let sessionId: string | null = null;
   if (sessionKey) {
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await createServiceClient()
       .from('chatbot_sessions')
       .select('id,user_id,session_key')
       .eq('session_key', sessionKey)

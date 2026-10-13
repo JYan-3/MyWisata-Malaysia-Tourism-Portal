@@ -8,6 +8,7 @@ import type { CartItem, Voucher } from '@/backend/core/types';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import { planCheckoutPayment, startCheckoutPayment } from '@/lib/checkout/start-payment';
 import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
+import { normalizeVoucherCode } from '@/lib/validation/postgrest-filter';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
   if (body.voucherCode) {
     const { data: voucherRow, error: voucherError } = await db.from('vouchers')
       .select('id,code,name,voucher_type,discount_value,min_spend,max_uses,uses_count,valid_until,vendor_id,outlet_id,product_id,buy_quantity,free_quantity')
-      .ilike('code', body.voucherCode)
+      // Exact match, like the checkout RPC's upper(trim(code)); .ilike would treat % _ * as wildcards.
+      .eq('code', normalizeVoucherCode(body.voucherCode))
       .eq('is_active', true)
       .eq('review_status', 'approved')
       .in('redemption_mode', ['online', 'both'])

@@ -109,6 +109,10 @@
     "recommendVendor": {
       "label": "Recommend a Vendor",
       "description": "Share local discoveries"
+    },
+    "privacyTerms": {
+      "label": "Privacy & Terms",
+      "description": "Privacy policy, terms and your data"
     }
   },
   "categories": {
@@ -2897,7 +2901,28 @@
       "linkHint": "Share this link — you earn commission when someone clicks it and books.",
       "generating": "Generating…",
       "generateLink": "Generate my link",
-      "totalEarnings": "Total Earnings"
+      "totalEarnings": "Total Earnings",
+      "earnings": {
+        "viewAll": "View all earnings",
+        "backToDashboard": "Back to Earn & Share",
+        "allTitle": "All earnings",
+        "allDescription": "Every commission from your affiliate link. The period you pick filters both the list and the download.",
+        "download": "Download earnings (CSV)",
+        "exporting": "Exporting…",
+        "exportFailed": "Could not export earnings. Please try again.",
+        "referral": "Referral",
+        "order": "order {{amount}}",
+        "cleared": "Cleared to wallet",
+        "pendingToday": "Pending · clears today",
+        "pendingIn_other": "Pending · clears in {{count}} days",
+        "pendingIn_one": "Pending · clears in {{count}} day",
+        "pendingIn": "Pending · clears in {{count}} days",
+        "reversed": "Reversed — order was cancelled or refunded",
+        "rejected": "Not approved after review",
+        "latest": "Showing the latest {{shown}} of {{total}}",
+        "noneInRange": "No earnings in this period.",
+        "period": "Period"
+      }
     },
     "tripPlanner": {
       "scheduledFor": "Scheduled for {{date}}",
@@ -3427,7 +3452,8 @@
       "terms": "Terms",
       "data": "Data & KYC",
       "about": "About",
-      "help": "Help Center"
+      "help": "Help Center",
+      "footerLabel": "Legal and help"
     },
     "privacy": {
       "title": "Privacy Policy",
@@ -3563,5 +3589,24 @@
     "requestFailed": "Unable to request a link. Please try again later.",
     "opening": "Opening your order…",
     "eventHint": "Check your email before confirming. We will send your receipt and a private order link."
+  },
+  "footer": {
+    "ariaLabel": "Site footer",
+    "groups": {
+      "support": "Support",
+      "discover": "Discover",
+      "partners": "Partners",
+      "legal": "Terms & privacy",
+      "about": "About"
+    },
+    "links": {
+      "contactSupport": "Contact support",
+      "tripPlanner": "Trip planner",
+      "vouchers": "Vouchers & deals",
+      "vendorLogin": "Vendor login",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "aboutUs": "About MyLawatan"
+    }
   }
 }

@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { validateMagicBytes } from '@/lib/kyc/magic-bytes';
+import { DIGITAL_ASSET_BUCKET, digitalAssetUrl } from '@/lib/vendor/digital-assets';
 
 const BUCKET = 'vendor-products';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -31,6 +33,11 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('INVALID_FILE_TYPE', kind === 'digital' ? 'Upload a PDF or ZIP file.' : 'Upload a JPG, PNG, or WebP image.', 422);
   }
   if (file.size > maxBytes) return apiFail('FILE_TOO_LARGE', 'Files must be 10 MB or smaller.', 422);
+  // The declared type comes from the browser; check the bytes really are that kind of file.
+  const bytes = await file.arrayBuffer();
+  if (!(await validateMagicBytes(bytes, file.type))) {
+    return apiFail('INVALID_FILE_CONTENT', kind === 'digital' ? 'This file is not a valid PDF or ZIP.' : 'This file is not a valid JPG, PNG, or WebP image.', 422);
+  }
 
   if (productId) {
     const { data: product } = await access.access.serviceDb
@@ -44,16 +51,20 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   const path = [vendorId, productId || ('draft-' + access.access.userId), crypto.randomUUID() + '-' + safeName(file.name)].join('/');
-  const { error } = await access.access.serviceDb.storage.from(BUCKET).upload(path, file, {
+  // Paid downloads go to the private bucket; only the paid-order download route can read them.
+  const bucket = kind === 'digital' ? DIGITAL_ASSET_BUCKET : BUCKET;
+  const { error } = await access.access.serviceDb.storage.from(bucket).upload(path, bytes, {
     contentType: file.type,
     cacheControl: '3600',
     upsert: false,
   });
   if (error) return apiFail('UPLOAD_FAILED', error.message, 500);
 
-  const { data: publicUrl } = access.access.serviceDb.storage.from(BUCKET).getPublicUrl(path);
+  const url = kind === 'digital'
+    ? digitalAssetUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, path)
+    : access.access.serviceDb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
   return apiOk({
-    url: publicUrl.publicUrl,
+    url,
     path,
     fileName: file.name,
     fileType: file.type,

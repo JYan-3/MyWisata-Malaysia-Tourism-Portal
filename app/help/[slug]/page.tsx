@@ -7,6 +7,7 @@ import { getHelpArticleBySlug } from '@/lib/help/kb.server';
 import { articleExcerpt } from '@/lib/help/kb';
 import { categoryLabel } from '@/components/help/category-label';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
+import { serializeJsonLd } from '@/lib/seo/json-ld';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,7 @@ export default async function HelpArticlePage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <Link
         href="/help"

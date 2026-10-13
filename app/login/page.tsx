@@ -2,7 +2,8 @@
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
+import Link from "next/link";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { MyWisataLogo } from "@/components/shared/mywisata-logo";
+import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import type { Role, User } from "@/backend/core/types";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
@@ -580,6 +582,18 @@ function LoginContent() {
                   {tAuth("actions.continueWithGoogle")}
                 </Button>
 
+                {/* Shown before any account is created or used, password or Google. */}
+                <p data-legal-agreement className="px-1 text-center text-[11px] leading-5 text-muted-foreground">
+                  <Trans
+                    t={tAuth}
+                    i18nKey="legal.agreement"
+                    components={{
+                      terms: <Link href="/legal/terms" target="_blank" rel="noopener" className="font-semibold text-foreground underline underline-offset-2 hover:text-primary" />,
+                      privacy: <Link href="/legal/privacy" target="_blank" rel="noopener" className="font-semibold text-foreground underline underline-offset-2 hover:text-primary" />,
+                    }}
+                  />
+                </p>
+
                 {/* Guest Entry Point */}
                 <button
                   type="button"
@@ -683,9 +697,7 @@ function LoginContent() {
       </aside>
 
       {/* Clean Minimal Footer */}
-      <footer className="w-full text-center py-4 text-xs text-muted-foreground">
-        <p>{tCommon("brand.copyright", { year: new Date().getFullYear() })}</p>
-      </footer>
+      <CustomerSiteFooter variant="slim" />
     </div>
   );
 }

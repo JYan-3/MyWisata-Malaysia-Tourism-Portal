@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +19,6 @@ const querySchema = z.object({
   kyc: z.enum(['all', 'unverified', 'pending', 'approved', 'rejected']).default('all'),
 });
 
-function safeSearch(value: string) {
-  return value.replace(/[%,()]/g, ' ').trim();
-}
-
 export async function GET(request: Request) {
   const { response } = await requireStaffPermission('admin.vendor.manage');
   if (response) return response;
@@ -32,7 +29,7 @@ export async function GET(request: Request) {
   try {
     const service = createServiceClient();
     const { page, filter, state, kyc } = parsed.data;
-    const term = safeSearch(parsed.data.search);
+    const term = postgrestSearchTerm(parsed.data.search);
     let ownerIdsForKyc: string[] | null = null;
     let ownerIdsForSearch: string[] = [];
 

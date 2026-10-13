@@ -109,6 +109,10 @@
     "recommendVendor": {
       "label": "推荐商家",
       "description": "分享本地发现"
+    },
+    "privacyTerms": {
+      "label": "隐私与条款",
+      "description": "隐私政策、服务条款与您的数据"
     }
   },
   "categories": {
@@ -2897,7 +2901,28 @@
       "linkHint": "分享此链接——当有人点击并完成预订时，您将获得佣金。",
       "generating": "正在生成…",
       "generateLink": "生成我的链接",
-      "totalEarnings": "总收益"
+      "totalEarnings": "总收益",
+      "earnings": {
+        "viewAll": "查看全部收益",
+        "backToDashboard": "返回赚取与分享",
+        "allTitle": "全部收益",
+        "allDescription": "来自您推广链接的每一笔佣金。所选时间段会同时筛选列表和下载内容。",
+        "download": "下载收益（CSV）",
+        "exporting": "正在导出…",
+        "exportFailed": "无法导出收益，请重试。",
+        "referral": "推荐",
+        "order": "订单 {{amount}}",
+        "cleared": "已转入钱包",
+        "pendingToday": "待结算 · 今天结算",
+        "pendingIn_other": "待结算 · {{count}} 天后结算",
+        "pendingIn_one": "待结算 · {{count}} 天后结算",
+        "pendingIn": "待结算 · {{count}} 天后结算",
+        "reversed": "已撤销 — 订单已取消或退款",
+        "rejected": "审核未通过",
+        "latest": "显示最新 {{shown}} 条，共 {{total}} 条",
+        "noneInRange": "此时间段内暂无收益。",
+        "period": "时间段"
+      }
     },
     "tripPlanner": {
       "scheduledFor": "安排于 {{date}}",
@@ -3427,7 +3452,8 @@
       "terms": "条款",
       "data": "数据与 KYC",
       "about": "关于",
-      "help": "帮助中心"
+      "help": "帮助中心",
+      "footerLabel": "法律与帮助"
     },
     "privacy": {
       "title": "隐私政策",
@@ -3563,5 +3589,24 @@
     "requestFailed": "暂时无法申请链接，请稍后再试。",
     "opening": "正在打开订单…",
     "eventHint": "确认前请检查邮箱。我们会发送收据和私人订单链接。"
+  },
+  "footer": {
+    "ariaLabel": "网站页脚",
+    "groups": {
+      "support": "支持",
+      "discover": "探索",
+      "partners": "合作伙伴",
+      "legal": "条款与隐私",
+      "about": "关于"
+    },
+    "links": {
+      "contactSupport": "联系客服",
+      "tripPlanner": "行程规划",
+      "vouchers": "优惠券与优惠",
+      "vendorLogin": "商家登录",
+      "privacyPolicy": "隐私政策",
+      "termsOfService": "服务条款",
+      "aboutUs": "关于 MyLawatan"
+    }
   }
 }

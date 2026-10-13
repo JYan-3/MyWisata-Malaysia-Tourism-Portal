@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, Sparkles, Store } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { getFeaturedEventPromotions } from '@/lib/customer/event-promotions';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
@@ -15,8 +15,7 @@ interface Props { params: Promise<{ id: string }> }
 // rail) rather than a separate query, so a direct link to an event never shows
 // something not-yet-approved or already elapsed.
 async function findPromotion(id: string) {
-  const db = await createClient();
-  const promotions = await getFeaturedEventPromotions(db, 200);
+  const promotions = await getFeaturedEventPromotions(createServiceClient(), 200);
   return promotions.find((promotion) => promotion.id === id) ?? null;
 }
 

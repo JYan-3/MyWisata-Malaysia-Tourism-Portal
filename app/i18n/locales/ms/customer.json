@@ -109,6 +109,10 @@
     "recommendVendor": {
       "label": "Cadangkan Vendor",
       "description": "Kongsi penemuan tempatan"
+    },
+    "privacyTerms": {
+      "label": "Privasi & Terma",
+      "description": "Dasar privasi, terma dan data anda"
     }
   },
   "categories": {
@@ -2897,7 +2901,28 @@
       "linkHint": "Kongsi pautan ini — anda memperoleh komisen apabila seseorang mengklik dan membuat tempahan.",
       "generating": "Sedang menjana…",
       "generateLink": "Jana pautan saya",
-      "totalEarnings": "Jumlah Pendapatan"
+      "totalEarnings": "Jumlah Pendapatan",
+      "earnings": {
+        "viewAll": "Lihat semua pendapatan",
+        "backToDashboard": "Kembali ke Jana & Kongsi",
+        "allTitle": "Semua pendapatan",
+        "allDescription": "Setiap komisen daripada pautan afiliasi anda. Tempoh yang dipilih menapis senarai dan muat turun.",
+        "download": "Muat turun pendapatan (CSV)",
+        "exporting": "Sedang dieksport…",
+        "exportFailed": "Tidak dapat mengeksport pendapatan. Sila cuba lagi.",
+        "referral": "Rujukan",
+        "order": "pesanan {{amount}}",
+        "cleared": "Dimasukkan ke dompet",
+        "pendingToday": "Belum selesai · selesai hari ini",
+        "pendingIn_other": "Belum selesai · selesai dalam {{count}} hari",
+        "pendingIn_one": "Belum selesai · selesai dalam {{count}} hari",
+        "pendingIn": "Belum selesai · selesai dalam {{count}} hari",
+        "reversed": "Dibatalkan — pesanan dibatalkan atau dibayar balik",
+        "rejected": "Tidak diluluskan selepas semakan",
+        "latest": "Memaparkan {{shown}} terkini daripada {{total}}",
+        "noneInRange": "Tiada pendapatan dalam tempoh ini.",
+        "period": "Tempoh"
+      }
     },
     "tripPlanner": {
       "scheduledFor": "Dijadualkan pada {{date}}",
@@ -3427,7 +3452,8 @@
       "terms": "Terma",
       "data": "Data & KYC",
       "about": "Perihal",
-      "help": "Pusat Bantuan"
+      "help": "Pusat Bantuan",
+      "footerLabel": "Undang-undang dan bantuan"
     },
     "privacy": {
       "title": "Dasar Privasi",
@@ -3563,5 +3589,24 @@
     "requestFailed": "Pautan tidak dapat diminta. Sila cuba lagi kemudian.",
     "opening": "Membuka pesanan anda…",
     "eventHint": "Semak e-mel sebelum mengesahkan. Kami akan menghantar resit dan pautan pesanan peribadi."
+  },
+  "footer": {
+    "ariaLabel": "Pengaki laman",
+    "groups": {
+      "support": "Sokongan",
+      "discover": "Teroka",
+      "partners": "Rakan kongsi",
+      "legal": "Terma & privasi",
+      "about": "Tentang"
+    },
+    "links": {
+      "contactSupport": "Hubungi sokongan",
+      "tripPlanner": "Perancang perjalanan",
+      "vouchers": "Baucar & tawaran",
+      "vendorLogin": "Log masuk vendor",
+      "privacyPolicy": "Dasar Privasi",
+      "termsOfService": "Terma Perkhidmatan",
+      "aboutUs": "Tentang MyLawatan"
+    }
   }
 }

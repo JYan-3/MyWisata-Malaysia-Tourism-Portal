@@ -16,6 +16,8 @@ const ChatbotWidget = dynamic(
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
+import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
+import { customerFooterVariant } from "@/lib/customer/footer-navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { CurrencySwitcher } from "@/components/shared/currency-switcher";
 import { useTranslation } from "react-i18next";
@@ -416,6 +418,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="flex-1 min-h-0">{children}</main>
+      {/* On phones the floating chatbot button would cover the centred copyright line, so leave room below it there only. */}
+      <CustomerSiteFooter variant={customerFooterVariant(pathname)} className="pb-16 sm:pb-0" />
       <ChatbotWidget />
     </div>
   );

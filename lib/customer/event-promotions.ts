@@ -31,10 +31,11 @@ function vendorName(vendors: FeaturedEventPromotionRow['vendors']): string {
 }
 
 /**
- * Paid, not-yet-ended event promotions only — matches the public RLS policy
- * on vendor_event_promotions (status = 'paid'), so the cookie-aware client is
- * enough. Promotions whose date range has already ended are excluded — the
- * "featured" surface shouldn't show what's already over.
+ * Paid, not-yet-ended event promotions only. The base table is not publicly
+ * readable (it holds amount and Stripe fields), so pass the service client; only
+ * the listing columns below are ever selected. Promotions whose date range has
+ * already ended are excluded — the "featured" surface shouldn't show what's
+ * already over.
  */
 export async function getFeaturedEventPromotions(db: SupabaseClient, limit = 8): Promise<FeaturedEventPromotion[]> {
   const today = new Date().toISOString().slice(0, 10);

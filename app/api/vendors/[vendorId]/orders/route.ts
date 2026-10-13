@@ -5,6 +5,7 @@
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -14,7 +15,7 @@ export async function GET(request: Request, { params }: Props) {
   const fulfilStatus = url.searchParams.get('fulfil_status');
   const orderStatus = url.searchParams.get('order_status');
   const rawQ = (url.searchParams.get('q') || '').trim();
-  const q = rawQ.replace(/[%(),]/g, ' ');
+  const q = postgrestSearchTerm(rawQ);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
   const from = url.searchParams.get('from');
