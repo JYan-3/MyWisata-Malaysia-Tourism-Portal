@@ -1485,7 +1485,9 @@
         "failed": "Failed",
         "none": "No run recorded"
       },
-      "noEmailRecipients": "No eligible reviewer has a real email address. Configure a recipient before relying on email alerts."
+      "noEmailRecipients": "No eligible reviewer has a real email address. Configure a recipient before relying on email alerts.",
+      "pending_one": "{{count}} security alerts are waiting for an eligible recipient.",
+      "pending_other": "{{count}} security alerts are waiting for an eligible recipient."
     }
   },
   "reconciliation": {

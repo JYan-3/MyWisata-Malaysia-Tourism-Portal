@@ -1485,7 +1485,9 @@
         "failed": "Gagal",
         "none": "Tiada rekod pelaksanaan"
       },
-      "noEmailRecipients": "Tiada penyemak yang layak mempunyai alamat e-mel sebenar. Tetapkan penerima sebelum bergantung pada amaran e-mel."
+      "noEmailRecipients": "Tiada penyemak yang layak mempunyai alamat e-mel sebenar. Tetapkan penerima sebelum bergantung pada amaran e-mel.",
+      "pending_one": "{{count}} amaran keselamatan menunggu penerima yang layak.",
+      "pending_other": "{{count}} amaran keselamatan menunggu penerima yang layak."
     }
   },
   "reconciliation": {

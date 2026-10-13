@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CheckCircle2, Globe, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Globe, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { AppearanceControl } from "@/components/shared/appearance-control";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { Button } from "@/components/ui/button";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -28,6 +30,7 @@ export default function StaffInvitationPage() {
   const [mode, setMode] = useState<"sign_in" | "register">("register");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -87,6 +90,7 @@ export default function StaffInvitationPage() {
     }
     setSessionEmail(result.data.user.email?.trim().toLowerCase() ?? invitation.email.toLowerCase());
     setMessage(t("staffInvitation.signedInReview"));
+    if (mode === "sign_in") router.refresh();
   }
 
   async function continueWithGoogle() {
@@ -147,6 +151,10 @@ export default function StaffInvitationPage() {
         </header>
 
         <div className="space-y-5 p-6 sm:p-9">
+          <div className="flex items-center justify-end gap-2">
+            <LanguageSwitcher compact />
+            <AppearanceControl />
+          </div>
           {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
           {message && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div>}
 
@@ -167,7 +175,7 @@ export default function StaffInvitationPage() {
               <form onSubmit={authenticate} className="space-y-3">
                 {mode === "register" && <input required value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder={t("fields.fullName")} aria-label={t("fields.fullName")} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />}
                 <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-3"><Mail size={15} className="text-muted-foreground" /><input readOnly value={invitation?.email ?? ""} aria-label={t("fields.email")} className="h-11 min-w-0 flex-1 bg-transparent text-sm" /></div>
-                <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-3"><LockKeyhole size={15} className="text-muted-foreground" /><input required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("fields.password")} aria-label={t("fields.password")} className="h-11 min-w-0 flex-1 bg-transparent text-sm" /></div>
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-3"><LockKeyhole size={15} className="text-muted-foreground" /><input required type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("fields.password")} aria-label={t("fields.password")} className="h-11 min-w-0 flex-1 bg-transparent text-sm" /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
                 <Button type="submit" disabled={busy} className="w-full">{busy ? t("staffInvitation.waiting") : mode === "register" ? t("staffInvitation.register") : t("staffInvitation.signIn")}</Button>
               </form>
               <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />{t("actions.or")}<span className="h-px flex-1 bg-border" /></div>
