@@ -28,6 +28,8 @@ export type TripItem = {
   lng: number;
   label: string;
   sublabel?: string;
+  /** Outlet the stop was planned at; null for location stops and stops added before outlets were saved. */
+  outlet_id?: string | null;
 };
 
 export type AddTripItemInput = {
@@ -41,6 +43,7 @@ export type AddTripItemInput = {
   sublabel?: string;
   scheduled_date?: string | null;
   scheduled_time?: string | null;
+  outlet_id?: string | null;
 };
 
 type DbTrip = Trip & { legacy_id?: string | null };
@@ -106,6 +109,7 @@ function toTripItem(row: DbTripItem): TripItem {
     lng: Number(row.lng),
     label: row.label,
     sublabel: row.sublabel ?? undefined,
+    outlet_id: row.outlet_id ?? null,
   };
 }
 
@@ -256,6 +260,9 @@ export async function addTripItem(input: AddTripItemInput, db: SupabaseClient): 
   if (input.source === "vendor" && (!input.experience_id || !UUID_PATTERN.test(input.experience_id))) {
     throw new Error("A valid activity is required");
   }
+  if (input.outlet_id && (input.source !== "vendor" || !UUID_PATTERN.test(input.outlet_id))) {
+    throw new Error("A valid outlet is required");
+  }
   const { data: existing, error: existingError } = await db.from("trip_items")
     .select("sequence").eq("trip_id", trip.id).order("sequence", { ascending: false }).limit(1);
   throwOnError(existingError, "Could not load trip stops");
@@ -266,6 +273,7 @@ export async function addTripItem(input: AddTripItemInput, db: SupabaseClient): 
     sequence, scheduled_date: input.scheduled_date ?? null, scheduled_time: input.scheduled_time ?? null,
     source: input.source, kind: input.kind ?? null, lat: input.lat, lng: input.lng,
     label: input.label.trim(), sublabel: input.sublabel?.trim() || null,
+    ...(input.outlet_id ? { outlet_id: input.outlet_id } : {}),
     created_at: new Date().toISOString(),
   };
   const { data, error } = await db.from("trip_items").insert(row).select("*").single();
