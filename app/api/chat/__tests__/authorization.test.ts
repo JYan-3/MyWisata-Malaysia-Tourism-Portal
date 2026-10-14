@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), service: vi.fn(), serviceFrom: vi.fn(), storage: vi.fn() }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from, rpc: mocks.rpc }) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser, getClaims: async () => ({ data: { claims: { sub: 'actor', aal: 'aal2' } }, error: null }) }, from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.service }));
 const routes = import.meta.glob('../**/route.ts');
 const id = '11111111-1111-4111-8111-111111111111';

@@ -9,6 +9,24 @@ const localeCookieOptions = {
   secure: process.env.NODE_ENV === 'production',
 };
 
+const ADMIN_PAGE = /^\/admin(\/|$)/;
+const ADMIN_API = /^\/api\/admin(-ai)?(\/|$)/;
+const MFA_SETUP_PAGES = ['/admin/security', '/admin/kyc/mfa'];
+
+/**
+ * Staff surfaces need an authenticator-verified (aal2) session: admin pages
+ * redirect to the setup/verify page, admin APIs refuse. Signed-out requests are
+ * left to each route's own sign-in handling. The database role functions enforce
+ * the same rule for direct Supabase calls.
+ * Plan: Docs/plans/2026-10-14-1543-staff-two-factor-login.md
+ */
+export function adminAssuranceGate(pathname: string, claims: { sub?: unknown; aal?: unknown } | null | undefined): 'page' | 'api' | null {
+  if (typeof claims?.sub !== 'string' || !claims.sub || claims.aal === 'aal2') return null;
+  if (ADMIN_API.test(pathname)) return 'api';
+  if (ADMIN_PAGE.test(pathname) && !MFA_SETUP_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`))) return 'page';
+  return null;
+}
+
 /**
  * Keep the Supabase session cookie fresh before Next renders a page or calls a
  * protected route. Server Components cannot reliably write refreshed cookies,
@@ -68,7 +86,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   });
 
   forwardedHeaders.set('x-app-locale', locale);
-  const supabaseResponse = NextResponse.next({ request: { headers: forwardedHeaders } });
+  const { pathname, search } = request.nextUrl;
+  const gate = adminAssuranceGate(pathname, claims);
+  const supabaseResponse = gate === 'api'
+    ? NextResponse.json({ data: null, error: { code: 'MFA_REQUIRED', message: 'Authenticator verification required' } }, { status: 403 })
+    : gate === 'page'
+      ? NextResponse.redirect(new URL(`/admin/security?next=${encodeURIComponent(pathname + search)}`, request.url))
+      : NextResponse.next({ request: { headers: forwardedHeaders } });
 
   responseHeaders.forEach((value, key) => supabaseResponse.headers.set(key, value));
   pendingCookies.forEach(({ name, value, options }) =>

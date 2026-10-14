@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ rpc: vi.fn(), getUser: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     rpc: mocks.rpc,
-    auth: { getUser: mocks.getUser },
+    auth: { getUser: mocks.getUser, getClaims: async () => ({ data: { claims: { sub: 'super-admin', aal: 'aal2' } }, error: null }) },
     from: () => ({ select: () => ({ eq: async () => ({ data: [{ roles: { name: 'super_admin' } }], error: null }) }) }),
   })),
 }));
