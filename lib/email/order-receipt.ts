@@ -1,17 +1,18 @@
 import { escapeHtml } from '@/lib/email/templates';
 import nodemailer from 'nodemailer';
 import { getEmailConfig } from '@/lib/email/config';
+import { classifyEmailDeliveryError, emailTransportTimeouts, type EmailDelivery } from '@/lib/email/delivery';
 import { generateReceiptPdf, type ReceiptData } from '@/lib/pdf/receipt';
 import { formatMYR } from '@/lib/i18n/format';
 
-export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; accessUrl?: string };
+export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; accessUrl?: string; delivery?: EmailDelivery };
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';
   return new Error(message.replace(/(?:password|pass|token|secret|auth)=[^\s]+/gi, '$1=[redacted]'));
 }
 
-export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promise<void> {
+export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promise<{ id: string }> {
   const pdfBuffer = await generateReceiptPdf(payload);
 
   const orderRef = payload.orderId.slice(-8).toUpperCase();
@@ -73,18 +74,26 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     port: config.port,
     secure: config.port === 465,
     auth: { user: config.user, pass: config.pass },
+    ...emailTransportTimeouts,
   });
 
+  let attempted = false;
   try {
-    await transport.sendMail({
+    await payload.delivery?.beforeSend();
+    attempted = true;
+    const result = await transport.sendMail({
       from: config.from,
       to: payload.recipientEmail,
       subject,
       text,
       html,
       attachments: [{ filename: `receipt-${orderRef}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }],
+      ...(payload.delivery ? { messageId: payload.delivery.messageId } : {}),
     });
+    if (payload.delivery && (!result.accepted?.length || result.rejected?.length)) throw new Error('email_delivery_not_confirmed');
+    return { id: result.messageId };
   } catch (error) {
+    if (payload.delivery) throw classifyEmailDeliveryError(error, attempted);
     throw redactError(error);
   } finally {
     transport.close();

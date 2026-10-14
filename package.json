@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "email:delivery": "node scripts/email-delivery-recovery.mjs",
     "predev": "node scripts/copy-maplibre-worker.mjs",
     "dev": "next dev --webpack",
     "dev:stripe": "node scripts/dev-stripe.mjs",

@@ -253,6 +253,7 @@ const approvedForwardMigrations = [
   "20261012154500_kyc_security_monitoring.sql",
   "20261012154530_kyc_reviewer_mfa_boundaries.sql",
   "20261012180000_private_digital_assets_bucket.sql",
+  "20261014114005_email_delivery_recovery.sql",
   "20261014120000_close_anonymous_chat_and_promotion_reads.sql",
 ];
 

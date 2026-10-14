@@ -36,7 +36,7 @@ vi.mock('@/lib/supabase/service', () => ({
       }
       throw new Error(`Unexpected table ${table}`);
     },
-    rpc: async () => ({ data: mocks.claimed, error: null }),
+    rpc: async (name: string) => ({ data: name === 'claim_email_outbox_delivery' ? { rows: mocks.claimed, reviewRequired: 0 } : true, error: null }),
   }),
 }));
 
@@ -174,7 +174,7 @@ describe('vendor email events', () => {
 
   it('dispatches vendor outbox rows through the vendor sender', async () => {
     mocks.claimed = [{
-      id: 'outbox-1',
+      id: 'outbox-1', lease_token: 'test-token',
       to_email: 'owner@example.com',
       event_type: 'vendor_order_update',
       payload: {
@@ -188,7 +188,7 @@ describe('vendor email events', () => {
       attempts: 1,
     }];
 
-    await expect(processEmailOutbox()).resolves.toEqual({ sent: 1, failed: 0 });
+    await expect(processEmailOutbox()).resolves.toEqual({ sent: 1, failed: 0, reviewRequired: 0 });
     expect(mocks.sendVendorEmail).toHaveBeenCalledWith(expect.objectContaining({
       eventType: 'vendor_order_update',
       vendorName: 'Kedai Amanah',
