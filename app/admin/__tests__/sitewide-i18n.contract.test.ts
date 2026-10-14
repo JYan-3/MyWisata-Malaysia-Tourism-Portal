@@ -93,7 +93,7 @@ export const ADMIN_ROUTE_I18N_FILES = [
 
 /** The exclusive Task 9 component scope for this worker. */
 export const ADMIN_I18N_FILES = [
-  "components/admin/kyc-mfa.tsx",
+  "components/admin/staff-mfa.tsx",
   "components/admin/access-control/access-control-tabs.tsx",
   "components/admin/access-control/overview-tab.tsx",
   "components/admin/access-control/capabilities-tab.tsx",
@@ -134,6 +134,7 @@ export const PRIOR_TASK_FILES = [
 
 /** Pure presentation helpers are part of the inventory but do not render text directly. */
 export const ADMIN_NON_RENDERING_FILES = [
+  "components/admin/kyc-mfa.tsx",
   "components/admin/access-control/audit-log-presentation.ts",
   "components/admin/access-control/capability-label.ts",
 ] as const;

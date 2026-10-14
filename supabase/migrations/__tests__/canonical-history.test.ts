@@ -255,6 +255,8 @@ const approvedForwardMigrations = [
   "20261012180000_private_digital_assets_bucket.sql",
   "20261014114005_email_delivery_recovery.sql",
   "20261014120000_close_anonymous_chat_and_promotion_reads.sql",
+  "20261014130000_trip_item_outlet.sql",
+  "20261015001000_staff_roles_require_aal2.sql",
 ];
 
 function migrationFiles() {

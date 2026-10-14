@@ -56,7 +56,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     () => dynamicNavigation.flatMap((section) => section.items.map((item) => item.href)),
     [dynamicNavigation],
   );
+  // /admin/security is where unverified staff sessions are sent to enter their
+  // authenticator code (lib/supabase/proxy.ts), so it is open to every staff role.
   const outsideAssignedWork = Boolean(currentUser)
+    && pathname !== "/admin/security"
     && !navigationHrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
   const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —

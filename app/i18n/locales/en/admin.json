@@ -3724,5 +3724,10 @@
       "matching_one": "{{count}} matching exceptions · Outstanding {{amount}}",
       "matching_other": "{{count}} matching exceptions · Outstanding {{amount}}"
     }
+  },
+  "security": {
+    "eyebrow": "Account security",
+    "title": "Verify your authenticator",
+    "description": "Admin access needs a code from your authenticator app as well as your password."
   }
 }

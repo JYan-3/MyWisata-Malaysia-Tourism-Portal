@@ -3724,5 +3724,10 @@
       "matching_one": "{{count}} pengecualian sepadan · Tertunggak {{amount}}",
       "matching_other": "{{count}} pengecualian sepadan · Tertunggak {{amount}}"
     }
+  },
+  "security": {
+    "eyebrow": "Keselamatan akaun",
+    "title": "Sahkan aplikasi pengesah anda",
+    "description": "Akses admin memerlukan kod daripada aplikasi pengesah anda selain kata laluan."
   }
 }
