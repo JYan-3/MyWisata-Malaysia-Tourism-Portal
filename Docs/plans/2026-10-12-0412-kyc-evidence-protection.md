@@ -40,3 +40,15 @@ Run focused Vitest tests, npm run lint, npx tsc --noEmit. One bounded luna_worke
 
 ## Main release validation (2026-10-12)
 User confirmed Hostinger consumes GitHub main automatically approximately five minutes after push; no Git-provider reconnection required. Release prepared from current origin/main 3864d29b in managed worktree, preserving main dependencies and unrelated cron entries. npm ci completed; 63 affected tests passed; full lint had 0 errors / 93 warnings; tsc --noEmit and production build passed. Main publication authorized by user. Hostinger scheduler configuration and deployed verification are separate acceptance steps.
+
+## Deployment record (2026-10-12 Asia/Kuala_Lumpur)
+- Published ea6c973f4b26d80323b54b136519c5c317da3e0b to source main via ordinary fast-forward push.
+- Existing teacher sync workflow run 38192145919 succeeded, advancing JYan-3/main to the same commit.
+- Source CI run 38191881392 completed successfully, including full tests and production build.
+- Hostinger deployment details show Completed / Current at 09:34, commit ea6c973f, source JYan-3/main, elapsed 4m 3s.
+- Live unauthenticated GET /api/cron/purge-kyc-evidence returned 401 (previous version returned 405); admin document GET returned 401 without storage details.
+- Hostinger daily cleanup command prepared for 0 4 * * *, loading CRON_SECRET from the existing server environment file. Save attempts did not create a visible task or show an error. User assistance requested; actual scheduled invocation remains unverified. No live purge triggered.
+- Historical photos unchanged; authenticated real-document viewing/upload not exercised against production.
+
+## Hostinger scheduler acceptance
+Daily KYC purge task was successfully created in Hostinger using the same authenticated curl format as the existing email-outbox task, with only the endpoint changed to /api/cron/purge-kyc-evidence. Actual Hostinger schedule: 0 0 * * * (daily); this supersedes the earlier proposed 0 4 * * * Hostinger time. Reload confirmed the new task remains in the list alongside the original email job. Command uses curl -fsS --max-time 60 and existing CRON_SECRET authorization. No new key or permission created, no secret copied into repository/documentation. No manual purge triggered. First scheduled execution and its View Output remain future runtime evidence; task creation/persistence are verified.
