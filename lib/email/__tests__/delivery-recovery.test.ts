@@ -28,6 +28,13 @@ describe('email delivery interruption boundaries', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('finish_email_outbox_delivery', expect.objectContaining({ p_id: row.id, p_token: row.lease_token, p_outcome: 'sent', p_message_id: 'smtp-accepted' }));
     expect(mocks.update).not.toHaveBeenCalled();
   });
+  it('dispatches the persisted recipient language and structured exception without a sender-language override', async () => {
+    mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery'
+      ? { rows: [{ ...row, payload: { ...row.payload, locale: 'zh-CN', reasonCode: 'pickup_review', reasonDetails: 'MW-TEST · 2 × Cake' } }], reviewRequired: 0 }
+      : true, error: null }));
+    await processEmailOutbox();
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ locale: 'zh-CN', reasonCode: 'pickup_review', reasonDetails: 'MW-TEST · 2 × Cake' }));
+  });
   it('retries only acknowledgement after SMTP acceptance; never converts it to failed', async () => {
     const original = mocks.rpc.getMockImplementation()!;
     mocks.rpc.mockImplementation((name, args) => name === 'finish_email_outbox_delivery'

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  recipientLocale: 'en',
   getUser: vi.fn(),
   rpc: vi.fn(),
   serviceFrom: vi.fn(),
@@ -49,6 +50,7 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.order.length = 0;
+    mocks.recipientLocale='en';
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null });
     mocks.rpc.mockResolvedValue({ data: true, error: null });
     mocks.recommendationUpdateEq.mockResolvedValue({ error: null });
@@ -70,6 +72,7 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
     mocks.inviteUpdate.mockImplementation(() => ({ eq: mocks.inviteUpdateEq }));
     mocks.inviteUpdateEq.mockResolvedValue({ error: null });
     mocks.serviceFrom.mockImplementation((table: string) => {
+      if (table === 'users') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({data:{preferred_locale:mocks.recipientLocale},error:null}) }) }) };
       if (table === 'vendor_recommendations') {
         return {
           select: () => ({
@@ -132,6 +135,12 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
       data: { emailSent: true, statusSynced: true },
     });
     expect(body.data).not.toHaveProperty('claimUrl');
+  });
+
+  it('uses the recipient preference for the fixed invitation and server-appended action', async () => {
+    mocks.recipientLocale='zh-CN';
+    expect((await POST(request())).status).toBe(201);
+    expect(mocks.sendCustomVendorEmail).toHaveBeenCalledWith(expect.objectContaining({locale:'zh-CN',subject:expect.stringContaining('商家入驻'),body:expect.stringContaining('在此完成商家注册')}));
   });
 
   it('sends a custom email before marking the recommendation invited', async () => {

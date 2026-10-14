@@ -98,6 +98,7 @@ describe('POST /api/admin/vendors/recommendation-invite/draft', () => {
       data: { subject: 'Join MyWisata', body: 'We would love to have you.' },
     });
     expect(draftVendorInviteEmail).toHaveBeenCalledWith({
+      locale: 'en',
       vendorName: 'Rasa Malaysia Kitchen',
       description: 'A cozy local eatery.',
       vendorAddress: '123 Jalan Example',

@@ -14,6 +14,18 @@ describe('AI draft email response handoff', () => {
     expect(modalSource).toContain('onSent(target.id, responseBody.data)');
   });
 
+  it('passes the actual recipient into drafts and resolves language without replacing edits', () => {
+    const modalSource = source('components/admin/ai-draft-email-modal.tsx');
+    expect(modalSource).toContain('runDraft(initialEmail)');
+    expect(modalSource).toContain('email: recipient.trim()');
+    expect(modalSource).toContain('localeOnly: true');
+    expect(modalSource).toContain('email.draft.recipientLanguage');
+    const lookup = modalSource.slice(modalSource.indexOf('async function resolveRecipientLanguage'), modalSource.indexOf('async function runDraft'));
+    expect(lookup).not.toContain('setSubject(');
+    expect(lookup).not.toContain('setBody(');
+    expect(lookup).toContain('recipientRef.current');
+  });
+
   it('warns when a delivered recommendation invite did not synchronize status', () => {
     const detailSource = source('components/admin/recommendation-detail-view.tsx');
 
