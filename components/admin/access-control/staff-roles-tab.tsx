@@ -64,7 +64,7 @@ const PERMISSION_LABEL_KEYS: Partial<Record<string, string>> = {
 };
 
 export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus) => void }) {
-  const { t, i18n } = useTranslation("admin");
+  const { t } = useTranslation("admin");
   const { prompt } = useAppDialog();
   const [roles, setRoles] = useState<StaffRoleRecord[]>([]);
   const [assignments, setAssignments] = useState<StaffRoleAssignmentRecord[]>([]);
@@ -151,9 +151,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   );
   const selectedAssignmentRole = roles.find((role) => role.id === assignmentRoleId) ?? null;
   const selectedInvitationRole = roles.find((role) => role.id === invitationRoleId && !role.isSystem) ?? null;
-  const invitationLocale = i18n.resolvedLanguage?.toLowerCase().startsWith("zh")
-    ? "zh-CN"
-    : i18n.resolvedLanguage?.toLowerCase().startsWith("ms") ? "ms" : "en";
   const selectedAssignmentPermissions = selectedAssignmentRole?.permissionKeys.map((key) => ({
     key,
     label: permissionLabel(key),
@@ -294,7 +291,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         body: JSON.stringify({
           email: invitationEmail.trim(),
           staffRoleId: selectedInvitationRole.id,
-          locale: invitationLocale,
           reason: invitationReason.trim(),
         }),
       });
@@ -313,7 +309,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     setSaving(true); setError("");
     try {
       const response = await fetch(`/api/admin/access-control/staff-invitations/${invitationId}/resend`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale: invitationLocale }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
       });
       const body = await response.json() as ApiEnvelope<{ id: string }>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
