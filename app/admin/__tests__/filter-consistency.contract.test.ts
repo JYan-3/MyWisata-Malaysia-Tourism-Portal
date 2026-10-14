@@ -18,6 +18,7 @@ const FILTER_SURFACES = [
   "app/admin/chat-reports/page.tsx",
   "app/admin/affiliate/page.tsx",
   "app/admin/reports/payouts/page.tsx",
+  "app/admin/reports/reconciliation/page.tsx",
   "components/admin/staff-conduct-panel.tsx",
 ] as const;
 

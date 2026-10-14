@@ -211,6 +211,36 @@
         "access_volume": "同一审核人员在 10 分钟内请求查看了 {{count}} 份不同提交的证件。",
         "monitor_test": "KYC 安全告警发送测试，不包含任何身份证件。",
         "generic": "请在受保护的后台查看 KYC 安全状态。"
+      },
+      "eventException": {
+        "payment_blocked": {
+          "title": "已收款，但预订无法履约",
+          "body": "已收到付款，但此预订无法履约。请勿备货或交货，Admin 正在核实款项。 {{orderReference}} · {{items}}"
+        },
+        "pickup_review": {
+          "title": "请核实顾客是否已取货",
+          "body": "取货日期已过，领取结果尚未确认。请核实自己的商品是否已交付，并向 Admin 提供实际情况。 {{orderReference}} · {{items}}"
+        },
+        "refund_pending": {
+          "title": "退款尚待确认",
+          "body": "退款正在审核或等待支付平台结果，尚未确认完成。继续履约前请联系 Admin。 {{orderReference}} · {{items}}"
+        },
+        "refund_attention": {
+          "title": "退款需要 Admin 跟进",
+          "body": "退款需要 Admin 跟进，尚未确认完成。继续履约前请联系 Admin。 {{orderReference}} · {{items}}"
+        },
+        "refunded": {
+          "title": "退款完成已核实",
+          "body": "订单退款已确认完成，请查看自己的订单和结算记录。 {{orderReference}} · {{items}}"
+        },
+        "collected": {
+          "title": "取货异常已关闭：已确认领取",
+          "body": "已核实商品领取，取货异常已关闭。 {{orderReference}} · {{items}}"
+        },
+        "no_show": {
+          "title": "取货异常已关闭：已确认未领取",
+          "body": "Admin 已核实顾客未领取，并以不退款的处理结果关闭此异常。这不代表商品已交付，也不代表款项立即可用。 {{orderReference}} · {{items}}"
+        }
       }
     }
   },

@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       }
       const idempotent = Boolean(finalizeData && typeof finalizeData === 'object' && 'idempotent' in finalizeData && finalizeData.idempotent);
       const orderId = finalizeData && typeof finalizeData === 'object' && 'order_id' in finalizeData && typeof finalizeData.order_id === 'string' ? finalizeData.order_id : null;
-      if (!idempotent) {
+      if (!idempotent && finalizeData?.status === 'paid') {
         const paymentEmail = getPaymentEmailType('order');
         try {
           if (userId) await enqueueUserTransactionEmail({
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
           log('error', '[stripe-webhook] payment email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
         }
       }
-      if (!idempotent && orderId) {
+      if (!idempotent && orderId && finalizeData?.status === 'paid') {
         void emitOrderVendorEvent({
           serviceDb: db,
           orderId,

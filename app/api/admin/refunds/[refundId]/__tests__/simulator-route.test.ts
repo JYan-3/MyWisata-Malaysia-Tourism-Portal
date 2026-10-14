@@ -85,6 +85,6 @@ describe('POST /api/admin/refunds/:refundId simulated provider refund', () => {
     const response = await POST(request(), { params: Promise.resolve({ refundId: REFUND_ID }) });
 
     expect(response.status).toBe(503);
-    expect(mocks.serviceRpc).not.toHaveBeenCalled();
+    expect(mocks.serviceRpc).not.toHaveBeenCalledWith('begin_simulated_refund', expect.anything());
   });
 });

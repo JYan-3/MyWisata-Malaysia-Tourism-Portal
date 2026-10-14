@@ -127,9 +127,10 @@ export default function CheckoutPage() {
     setPaying(true);
     fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))
-      .then((body: { data?: { order_id?: string } }) => {
+      .then((body: { data?: { order_id?: string; status?: string } }) => {
         const orderId = body.data?.order_id;
         if (!orderId) throw new Error("stripe_order_missing");
+        if (body.data?.status === 'payment_exception') { router.push(`/customer/orders/${orderId}`); return; }
         attributeCheckout(orderId);
         fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId }), keepalive: true });
         router.push(`/customer/orders/${orderId}`);

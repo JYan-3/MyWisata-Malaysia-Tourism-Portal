@@ -17,6 +17,13 @@ type NotificationTemplate = {
 };
 
 const TEMPLATES: Record<string, NotificationTemplate> = {
+  vendor_event_exception_payment_blocked: { title: 'notifications.events.eventException.payment_blocked.title', body: 'notifications.events.eventException.payment_blocked.body' },
+  vendor_event_exception_pickup_review: { title: 'notifications.events.eventException.pickup_review.title', body: 'notifications.events.eventException.pickup_review.body' },
+  vendor_event_exception_refund_pending: { title: 'notifications.events.eventException.refund_pending.title', body: 'notifications.events.eventException.refund_pending.body' },
+  vendor_event_exception_refund_attention: { title: 'notifications.events.eventException.refund_attention.title', body: 'notifications.events.eventException.refund_attention.body' },
+  vendor_event_exception_refunded: { title: 'notifications.events.eventException.refunded.title', body: 'notifications.events.eventException.refunded.body' },
+  vendor_event_exception_collected: { title: 'notifications.events.eventException.collected.title', body: 'notifications.events.eventException.collected.body' },
+  vendor_event_exception_no_show: { title: 'notifications.events.eventException.no_show.title', body: 'notifications.events.eventException.no_show.body' },
   withdrawal_approved: { title: 'notifications.events.withdrawalApproved.title', body: 'notifications.events.withdrawalApproved.body' },
   withdrawal_second_approval_pending: { title: 'notifications.events.withdrawalSecondApprovalPending.title', body: 'notifications.events.withdrawalSecondApprovalPending.body' },
   withdrawal_submitted: { title: 'notifications.events.withdrawalSubmitted.title', body: 'notifications.events.withdrawalSubmitted.body' },

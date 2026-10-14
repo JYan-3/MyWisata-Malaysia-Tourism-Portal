@@ -49,8 +49,8 @@ export async function enqueueRecommendationApprovalEmail(input: {
 
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] recommendation approval failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
 
@@ -81,8 +81,8 @@ export async function enqueueVendorEmail(input: VendorEmailEventInput): Promise<
 
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] vendor notification failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
 
@@ -116,8 +116,8 @@ export async function enqueueUserAccountEmail(input: {
 
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] account notification failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
 
@@ -164,7 +164,7 @@ export async function enqueueUserTransactionEmail(input: UserEmailEventInput): P
   // Payment/status routes should deliver promptly, while failures remain in the outbox.
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] enqueue/process failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }

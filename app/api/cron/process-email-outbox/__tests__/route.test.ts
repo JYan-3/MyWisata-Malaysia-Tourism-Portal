@@ -31,4 +31,10 @@ describe('scheduled durable mail processing', () => {
     expect(await response.text()).not.toContain('private details');
     expect(process).toHaveBeenCalledWith(20);
   });
+  it('keeps ambiguous or exhausted delivery visible as an operational failure', async () => {
+    process.mockResolvedValue({ sent: 0, failed: 0, reviewRequired: 2 });
+    const response = await GET(new Request('http://localhost/cron', { headers: { authorization: 'Bearer fixture-cron' } }));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ sent: 0, failed: 0, reviewRequired: 2, error: 'email_delivery_review_required' });
+  });
 });

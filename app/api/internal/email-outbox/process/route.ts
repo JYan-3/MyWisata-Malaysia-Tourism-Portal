@@ -19,9 +19,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    return NextResponse.json(await processEmailOutbox(limit));
-  } catch (error) {
-    console.error('[email-outbox] process failed:', error);
+    const result = await processEmailOutbox(limit);
+    return NextResponse.json(result, { status: result.reviewRequired > 0 ? 503 : 200 });
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
     return NextResponse.json({ error: 'Email processing failed' }, { status: 500 });
   }
 }

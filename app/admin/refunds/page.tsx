@@ -27,6 +27,8 @@ type RefundRow = {
   orderNumber: string | null;
   amountRm: number;
   reason: string | null;
+  reasonCode: string | null;
+  evidence: { version: string; items: { name: string; quantity: number; status: string; collectedAt: string | null; venue: string | null; pickupDate: string | null; pickupWindow: string | null; vendor: string | null; scannedBy: string | null }[] };
   status: string;
   provider: string | null;
   method: string | null;
@@ -179,6 +181,11 @@ export default function AdminRefundsPage() {
   }
 
   async function review(refund: RefundRow, action: "approve" | "reject") {
+    let note: string | undefined;
+    if (action === 'approve' && refund.evidence?.items.some((item) => item.status === 'fulfilled')) {
+      note = (await prompt(t('eventOperations.collectedRefundNote')))?.trim();
+      if (!note || note.length < 5) return;
+    }
     let manualReference: string | undefined;
     if (action === "approve"
       && refund.method !== "wallet"
@@ -195,7 +202,7 @@ export default function AdminRefundsPage() {
       const response = await fetch(`/api/admin/refunds/${refundId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, ...(manualReference ? { manualReference } : {}) }),
+        body: JSON.stringify({ action, evidenceVersion: refund.evidence?.version, ...(note ? { note } : {}), ...(manualReference ? { manualReference } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok)
@@ -415,6 +422,15 @@ export default function AdminRefundsPage() {
                             <p className="mt-1 truncate text-xs text-muted-foreground">
                               {refund.reason ?? t("refunds.detail.noReason")}
                             </p>
+                            {refund.evidence?.items.map((item, index) => (
+                              <div key={index} className="mt-2 text-xs text-muted-foreground">
+                                <p>{item.quantity} × {item.name} · {item.vendor}</p>
+                                <p>{item.venue} · {item.pickupDate} · {item.pickupWindow}</p>
+                                <p>{item.status === 'fulfilled' ? t('eventOperations.collected') : t('eventOperations.uncollected')}
+                                  {item.collectedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.collectedAt))}`}
+                                  {item.scannedBy && ` · ${item.scannedBy}`}</p>
+                              </div>
+                            ))}
                             {refund.failureCode && (
                               <p className="mt-1 truncate font-[family-name:var(--font-mono)] text-[11px] font-semibold text-destructive">
                                 {refund.failureCode}

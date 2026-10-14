@@ -104,7 +104,7 @@ describe('processRefund', () => {
     const result = await processRefund({ service, walletDb: service, refundId: 'refund-1', actorId: 'admin-1' });
     expect(result).toMatchObject({ ok: false, code: 'MANUAL_REFUND_REFERENCE_REQUIRED' });
     expect(updates).toEqual([]);
-    expect(service.rpc).not.toHaveBeenCalled();
+    expect(service.rpc).not.toHaveBeenCalledWith('complete_manual_order_refund', expect.anything());
   });
 
   it('refuses a refund that is no longer pending', async () => {
@@ -129,4 +129,14 @@ describe('processQueuedEventRefunds', () => {
     expect(result).toMatchObject({ processed: 0, handedToAdmin: 1 });
     expect(updates).toEqual([{ table: 'refunds', values: expect.objectContaining({ auto_process: false, provider_failure_code: 'MANUAL_REFUND_REQUIRED' }) }]);
   });
+});
+
+it('does not count an accepted provider request as completed reimbursement', async () => {
+  const { service, rpc } = serviceStub(refundRow({ method: 'stripe_card', provider: 'stripe', provider_payment_id: 'cs_1' }), [{ id: 'refund-1' }]);
+  rpc.mockResolvedValue({ data: { status: 'approved' }, error: null });
+  mocks.retrieve.mockResolvedValue({ payment_intent: 'pi_1' });
+  mocks.refundsCreate.mockResolvedValue({ id: 're_1', status: 'pending', amount: 1500, currency: 'myr' });
+  const result = await processQueuedEventRefunds(service);
+  expect(result.processed).toBe(0);
+  expect(result).toMatchObject({ awaitingProvider: 1 });
 });

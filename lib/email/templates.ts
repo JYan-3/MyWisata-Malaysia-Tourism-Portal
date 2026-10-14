@@ -32,6 +32,7 @@ export function renderKycSecurityEmail(input: KycSecurityEmailInput): RenderedEm
 
 export type TransactionEmailType =
   | 'checkout_succeeded'
+  | 'order_refunded'
   | 'topup_succeeded'
   | 'topup_failed'
   | 'topup_refunded'
@@ -124,6 +125,7 @@ export type RenderedEmail = {
 
 const SUBJECTS: Record<TransactionEmailType, string> = {
   checkout_succeeded: 'Checkout payment received',
+  order_refunded: 'Order refund completed',
   topup_succeeded: 'Wallet Top-up successful',
   topup_failed: 'Wallet Top-up failed',
   topup_refunded: 'Wallet Top-up refunded',
@@ -347,6 +349,15 @@ export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
   const referenceRow = reference
     ? `<tr><td><strong>Reference</strong></td><td>${safeReference}</td></tr>`
     : '';
+  // Only server-owned Vendor Portal paths may become actionable email links.
+  let actionUrl = '';
+  if (input.actionUrl) {
+    try {
+      const url = new URL(input.actionUrl);
+      if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password
+        && ['/vendor/orders', '/vendor/wallet'].includes(url.pathname) && !url.search && !url.hash) actionUrl = url.href;
+    } catch { /* Invalid links remain non-actionable. */ }
+  }
 
   const text = [
     `Hi ${name},`,
@@ -356,6 +367,7 @@ export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
     `Reason: ${reason}`,
     referenceLine,
     `Time: ${occurredAt}`,
+    ...(actionUrl ? [`View in Vendor Portal: ${actionUrl}`] : []),
     '',
     'This is an automated message from FYP App. Please do not reply with passwords or identity documents.',
   ].filter((line) => line !== '').join('\n');
@@ -370,6 +382,7 @@ export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
     ${referenceRow}
     <tr><td><strong>Time</strong></td><td>${safeOccurredAt} (Malaysia time)</td></tr>
   </table>
+  ${actionUrl ? `<p><a href="${escapeHtml(actionUrl)}">View in Vendor Portal</a></p>` : ''}
   <p>This is an automated message. Never reply with passwords or identity documents.</p>
 </body></html>`;
 

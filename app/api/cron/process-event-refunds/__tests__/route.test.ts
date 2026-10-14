@@ -11,6 +11,8 @@ vi.mock('@/lib/refunds/process-queued-event-refunds', () => ({
   processQueuedEventRefunds: mocks.processQueuedEventRefunds,
 }));
 
+vi.mock('@/lib/events/operational-job', () => ({ runEventOperationalJob: async (_service: unknown, _job: unknown, execute: () => Promise<unknown>) => execute() }));
+
 import { GET } from '../route';
 
 function request(authorization?: string) {
@@ -51,7 +53,7 @@ describe('GET /api/cron/process-event-refunds', () => {
     const response = await GET(request('Bearer cron_test_secret'));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ processed: 3, handedToAdmin: 1 });
+    expect(await response.json()).toEqual({ processed: 3, awaitingProvider: 0, handedToAdmin: 1 });
     expect(mocks.createServiceClient).toHaveBeenCalledOnce();
     expect(mocks.processQueuedEventRefunds).toHaveBeenCalledWith(serviceDb);
   });

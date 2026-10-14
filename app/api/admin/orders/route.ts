@@ -50,7 +50,7 @@ export async function GET(request: Request) {
         ? service.from('users').select('id,full_name,email').in('id', userIds)
         : Promise.resolve({ data: [], error: null }),
       service.from('order_items')
-        .select('id,order_id,vendor_id,outlet_id,product_name,quantity,line_total,fulfil_status,vendors(name),outlets(name)')
+        .select('id,order_id,vendor_id,outlet_id,product_name,quantity,line_total,fulfil_status,event_listing_id,pickup_date,vendors(name),outlets(name)')
         .in('order_id', orderIds)
         .order('created_at', { ascending: true })
         .limit(1000),
@@ -93,6 +93,8 @@ export async function GET(request: Request) {
           quantity: item.quantity,
           lineTotal: item.line_total,
           fulfilStatus: item.fulfil_status,
+          eventListingId: item.event_listing_id ?? null,
+          pickupDate: item.pickup_date ?? null,
           vendorId: item.vendor_id,
           vendorName: one(item.vendors)?.name ?? null,
           outletId: item.outlet_id,

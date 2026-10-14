@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { getEmailConfig } from '@/lib/email/config';
+import { classifyEmailDeliveryError, emailTransportTimeouts, type EmailDelivery } from '@/lib/email/delivery';
 import {
   escapeHtml,
   renderAccountEmail,
@@ -16,13 +17,13 @@ import {
 import { renderStaffInvitationEmail } from '@/lib/email/staff-invitation';
 import type { StaffInvitationEmailInput } from '@/lib/staff-invitations/types';
 
-export type SendTransactionEmailInput = TransactionEmailInput & { to: string };
-export type SendAccountEmailInput = AccountEmailInput & { to: string };
-export type SendRecommendationEmailInput = RecommendationEmailInput & { to: string };
-export type SendVendorEmailInput = VendorEmailInput & { to: string };
+export type SendTransactionEmailInput = TransactionEmailInput & { to: string; delivery?: EmailDelivery };
+export type SendAccountEmailInput = AccountEmailInput & { to: string; delivery?: EmailDelivery };
+export type SendRecommendationEmailInput = RecommendationEmailInput & { to: string; delivery?: EmailDelivery };
+export type SendVendorEmailInput = VendorEmailInput & { to: string; delivery?: EmailDelivery };
 export type SendStaffInvitationEmailInput = StaffInvitationEmailInput & { to: string };
-export function sendKycSecurityEmail(input: KycSecurityEmailInput & { to: string }): Promise<{ id: string }> {
-  return sendRenderedEmail(input.to, renderKycSecurityEmail(input));
+export function sendKycSecurityEmail(input: KycSecurityEmailInput & { to: string; delivery?: EmailDelivery }): Promise<{ id: string }> {
+  return sendRenderedEmail(input.to, renderKycSecurityEmail(input), input.delivery);
 }
 
 function redactError(error: unknown): Error {
@@ -30,7 +31,7 @@ function redactError(error: unknown): Error {
   return new Error(message.replace(/(?:password|pass|token|secret|auth)=[^\s]+/gi, '$1=[redacted]'));
 }
 
-async function sendRenderedEmail(to: string, rendered: { subject: string; html: string; text: string }): Promise<{ id: string }> {
+async function sendRenderedEmail(to: string, rendered: { subject: string; html: string; text: string }, delivery?: EmailDelivery): Promise<{ id: string }> {
   to = to.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     throw new Error('Email recipient is invalid');
@@ -42,18 +43,25 @@ async function sendRenderedEmail(to: string, rendered: { subject: string; html: 
     port: config.port,
     secure: config.port === 465,
     auth: { user: config.user, pass: config.pass },
+    ...emailTransportTimeouts,
   });
 
+  let attempted = false;
   try {
+    await delivery?.beforeSend();
+    attempted = true;
     const result = await transport.sendMail({
       from: config.from,
       to,
       subject: rendered.subject,
       text: rendered.text,
       html: rendered.html,
+      ...(delivery ? { messageId: delivery.messageId } : {}),
     });
+    if (delivery && (!result.accepted?.length || result.rejected?.length)) throw new Error('email_delivery_not_confirmed');
     return { id: result.messageId };
   } catch (error) {
+    if (delivery) throw classifyEmailDeliveryError(error, attempted);
     throw redactError(error);
   } finally {
     transport.close();
@@ -62,19 +70,19 @@ async function sendRenderedEmail(to: string, rendered: { subject: string; html: 
 
 /** Server-only SMTP sender. The caller should persist an outbox row before invoking this. */
 export function sendTransactionEmail(input: SendTransactionEmailInput): Promise<{ id: string }> {
-  return sendRenderedEmail(input.to, renderTransactionEmail(input));
+  return sendRenderedEmail(input.to, renderTransactionEmail(input), input.delivery);
 }
 
 export function sendAccountEmail(input: SendAccountEmailInput): Promise<{ id: string }> {
-  return sendRenderedEmail(input.to, renderAccountEmail(input));
+  return sendRenderedEmail(input.to, renderAccountEmail(input), input.delivery);
 }
 
 export function sendRecommendationEmail(input: SendRecommendationEmailInput): Promise<{ id: string }> {
-  return sendRenderedEmail(input.to, renderRecommendationEmail(input));
+  return sendRenderedEmail(input.to, renderRecommendationEmail(input), input.delivery);
 }
 
 export function sendVendorEmail(input: SendVendorEmailInput): Promise<{ id: string }> {
-  return sendRenderedEmail(input.to, renderVendorEmail(input));
+  return sendRenderedEmail(input.to, renderVendorEmail(input), input.delivery);
 }
 
 export function sendStaffInvitationEmail(input: SendStaffInvitationEmailInput): Promise<{ id: string }> {

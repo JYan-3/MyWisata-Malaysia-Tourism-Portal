@@ -201,7 +201,7 @@ export default function OrderDetailPage() {
     setTimeout(() => setCopiedId(false), 2000);
   }
 
-  async function handleRefundSubmit(reason: string) {
+  async function handleRefundSubmit(reason: string, reasonCode?: string) {
     if (!order || requestingRefund) return;
     const fullReason = reason.trim();
     if (fullReason.length < 5) return;
@@ -213,7 +213,7 @@ export default function OrderDetailPage() {
       const response = await fetch(`/api/orders/${order.id}/refund`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: fullReason }),
+        body: JSON.stringify({ reason: fullReason, ...(reasonCode ? { reasonCode } : {}) }),
       });
       const payload = await response.json().catch(() => ({}));
       if (response.ok) {
@@ -683,7 +683,7 @@ export default function OrderDetailPage() {
         }))}
         submitting={requestingRefund}
         onCancel={() => setRefundModalOpen(false)}
-        onConfirm={(reason) => void handleRefundSubmit(reason)}
+        onConfirm={(reason, code) => void handleRefundSubmit(reason, code)}
       />
 
       {/* ========================================================================= */}

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   if (error) return privateCheckoutJson({ error: error.message }, { status: 409 });
   const orderId = data && typeof data === 'object' && 'order_id' in data && typeof data.order_id === 'string' ? data.order_id : null;
   const idempotent = Boolean(data && typeof data === 'object' && 'idempotent' in data && data.idempotent);
-  if (!idempotent && orderId) {
+  if (!idempotent && orderId && data?.status === 'paid') {
     try {
       if (access.userId) await enqueueUserTransactionEmail({
         userId: access.userId!,

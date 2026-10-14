@@ -1,0 +1,93 @@
+DO $$ DECLARE a jsonb; b jsonb; result jsonb; sid uuid; BEGIN
+  PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+  PERFORM set_config('request.jwt.claim.role','authenticated',true);
+  UPDATE public.checkout_reservations SET status='released';
+  UPDATE public.promotion_campaign_pickup_slots SET capacity=1 WHERE id='88888888-8888-4888-8888-888888888888';
+  a:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'stripe_card','late-a','a');
+  sid:=(a->>'checkout_session_id')::uuid;
+  UPDATE public.checkout_sessions SET expires_at=now()-interval '1 minute' WHERE id=sid;
+  UPDATE public.payments SET provider_payment_id='cs_late_a' WHERE order_id=(a->>'order_id')::uuid;
+  b:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'stripe_card','current-b','b');
+  PERFORM set_config('request.jwt.claim.sub','',true);
+  PERFORM set_config('request.jwt.claim.role','service_role',true);
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  result:=public.settle_provider_checkout(sid,'stripe','succeeded','cs_late_a','evt_late_a',repeat('a',64),1200,'MYR');
+  IF result->>'status' IS DISTINCT FROM 'payment_exception' THEN RAISE EXCEPTION 'expired receipt created normal payment: %',result; END IF;
+  IF (SELECT status FROM public.orders WHERE id=(a->>'order_id')::uuid)<>'cancelled' THEN RAISE EXCEPTION 'late order became collectable'; END IF;
+  IF public.event_units_taken(NULL,'88888888-8888-4888-8888-888888888888','2026-10-10')<>1 THEN RAISE EXCEPTION 'capacity overcommitted'; END IF;
+  result:=public.settle_provider_checkout(sid,'stripe','succeeded','cs_late_a','evt_late_a',repeat('a',64),1200,'MYR');
+  IF result->>'status'<>'payment_exception' OR (SELECT count(*) FROM public.event_order_exceptions WHERE checkout_session_id=sid)<>1 THEN RAISE EXCEPTION 'exception replay was not idempotent'; END IF;
+  IF (SELECT count(*) FROM public.refunds WHERE order_id=(a->>'order_id')::uuid AND refund_scope='event_payment_compensation')<>1 THEN RAISE EXCEPTION 'compensation not unique'; END IF;
+END $$;
+-- The cancelled payment remains cancelled; only its exact receipt-bound
+-- compensation scope can enter the provider refund transaction.
+SET LOCAL request.jwt.claim.role='service_role';
+SET LOCAL request.jwt.claims='{"role":"service_role"}';
+DO $$ DECLARE a jsonb; sid uuid; refund uuid; result jsonb; BEGIN
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+ UPDATE public.checkout_reservations SET status='released';
+ a:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'stripe_card','split-late','split');
+ sid:=(a->>'checkout_session_id')::uuid;
+ UPDATE public.checkout_sessions SET payment_method='wallet_split',expires_at=now()-interval '1 minute' WHERE id=sid;
+ UPDATE public.payments SET method='wallet_split',amount=7,provider_payment_id='cs_split_late' WHERE order_id=(a->>'order_id')::uuid;
+ INSERT INTO public.checkout_wallet_reservations(checkout_session_id,user_id,topup_amount_sen,earnings_amount_sen,status)
+ VALUES(sid,'00000000-0000-0000-0000-000000000004',500,0,'released');
+ PERFORM set_config('request.jwt.claim.sub','',true);
+ result:=public.settle_provider_checkout(sid,'stripe','succeeded','cs_split_late','evt_split_late',repeat('b',64),700,'MYR');
+ SELECT id INTO refund FROM public.refunds WHERE order_id=(a->>'order_id')::uuid;
+ PERFORM public.snapshot_order_refund_funding(refund);
+ IF NOT EXISTS(SELECT 1 FROM public.refunds WHERE id=refund AND amount=7 AND external_amount_sen=700 AND wallet_topup_sen=0 AND wallet_earnings_sen=0) THEN RAISE EXCEPTION 'released wallet was included in compensation'; END IF;
+ result:=public.record_order_refund_provider_outcome(refund,'re_split_fixture','pending',700,'MYR');
+ IF result->>'status'<>'approved' OR (SELECT status FROM public.orders WHERE id=(a->>'order_id')::uuid)<>'cancelled' THEN RAISE EXCEPTION 'pending refund closed obligation'; END IF;
+ result:=public.record_order_refund_provider_outcome(refund,'re_split_fixture','succeeded',700,'MYR');
+ IF result->>'status'<>'processed' OR EXISTS(SELECT 1 FROM public.wallet_transactions WHERE order_id=(a->>'order_id')::uuid AND type='refund') THEN RAISE EXCEPTION 'external compensation restored released wallet'; END IF;
+ PERFORM public.record_order_refund_provider_outcome(refund,'re_split_fixture','succeeded',700,'MYR');
+END $$;
+DO $$ DECLARE a jsonb; sid uuid; oid uuid; refund uuid; BEGIN
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+ UPDATE public.checkout_reservations SET status='released';
+ a:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'stripe_card','guest-late','guest');
+ sid:=(a->>'checkout_session_id')::uuid;oid:=(a->>'order_id')::uuid;
+ UPDATE public.orders SET user_id=NULL,guest_subject_id=gen_random_uuid(),contact_email='guest-refund@example.test' WHERE id=oid;
+ UPDATE public.checkout_sessions SET user_id=NULL,guest_subject_id=(SELECT guest_subject_id FROM public.orders WHERE id=oid),expires_at=now()-interval '1 minute' WHERE id=sid;
+ UPDATE public.payments SET provider_payment_id='cs_guest_late' WHERE order_id=oid;
+ PERFORM set_config('request.jwt.claim.sub','',true);
+ PERFORM public.settle_provider_checkout(sid,'stripe','succeeded','cs_guest_late','evt_guest_late',repeat('c',64),1200,'MYR');
+ SELECT id INTO refund FROM public.refunds WHERE order_id=oid;
+ PERFORM public.record_order_refund_provider_outcome(refund,'re_guest_fixture','succeeded',1200,'MYR');
+ IF (SELECT status FROM public.refunds WHERE id=refund)<>'processed' THEN RAISE EXCEPTION 'Guest compensation was not completed'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.email_outbox WHERE event_key='guest-order-refund:'||refund AND event_type='order_refunded' AND to_email='guest-refund@example.test' AND (payload->>'amountRm')::numeric=12) THEN RAISE EXCEPTION 'Guest actual-refund notice missing'; END IF;
+END $$;
+DO $$ DECLARE a jsonb; sid uuid; oid uuid; result jsonb; BEGIN
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+ UPDATE public.checkout_reservations SET status='released';
+ a:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'stripe_card','cancel-first','cancel');
+ sid:=(a->>'checkout_session_id')::uuid;oid:=(a->>'order_id')::uuid;
+ UPDATE public.payments SET provider_payment_id='cs_cancel_first' WHERE order_id=oid;
+ PERFORM set_config('request.jwt.claim.sub','',true);
+ PERFORM public.cancel_event_reservations(NULL,NULL,'66666666-6666-4666-8666-666666666666','Cancellation before payment');
+ IF (SELECT status FROM public.checkout_sessions WHERE id=sid) NOT IN ('failed','expired','cancelled') THEN RAISE EXCEPTION 'pending payment survived cancellation'; END IF;
+ result:=public.settle_provider_checkout(sid,'stripe','succeeded','cs_cancel_first','evt_cancel_first',repeat('d',64),1200,'MYR');
+ IF result->>'status'<>'payment_exception' THEN RAISE EXCEPTION 'cancel-first callback restored fulfilment'; END IF;
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+ a:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'stripe_card','payment-first','paid');
+ sid:=(a->>'checkout_session_id')::uuid;oid:=(a->>'order_id')::uuid;
+ UPDATE public.payments SET provider_payment_id='cs_payment_first' WHERE order_id=oid;
+ PERFORM set_config('request.jwt.claim.sub','',true);
+ result:=public.settle_provider_checkout(sid,'stripe','succeeded','cs_payment_first','evt_payment_first',repeat('e',64),1200,'MYR');
+ IF result->>'status'<>'paid' THEN RAISE EXCEPTION 'valid event payment failed'; END IF;
+ PERFORM public.cancel_event_reservations(NULL,NULL,'66666666-6666-4666-8666-666666666666','Cancellation after payment');
+ IF NOT EXISTS(SELECT 1 FROM public.refunds WHERE order_id=oid AND refund_scope='full_order') THEN RAISE EXCEPTION 'payment-first cancellation lost normal refund'; END IF;
+ IF EXISTS(SELECT 1 FROM public.order_items WHERE order_id=oid AND fulfil_status IN ('pending','ready')) THEN RAISE EXCEPTION 'cancelled reservation still collectable'; END IF;
+END $$;
+DO $$ DECLARE a jsonb; sid uuid; err text; before_balance bigint; BEGIN
+ PERFORM set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
+ UPDATE public.checkout_reservations SET status='released';
+ INSERT INTO public.wallets(user_id,topup_sen,earnings_sen) VALUES('00000000-0000-0000-0000-000000000004',5000,5000) ON CONFLICT(user_id) DO UPDATE SET topup_sen=5000,earnings_sen=5000;
+ SELECT topup_sen+earnings_sen INTO before_balance FROM public.wallets WHERE user_id='00000000-0000-0000-0000-000000000004';
+ a:=public.prepare_event_checkout('77777777-7777-4777-8777-777777777777','2026-10-10','88888888-8888-4888-8888-888888888888',1,'wallet','expired-wallet','wallet');
+ sid:=(a->>'checkout_session_id')::uuid;
+ UPDATE public.checkout_sessions SET expires_at=now()-interval '1 minute' WHERE id=sid;
+ BEGIN PERFORM public.finalize_customer_wallet_checkout(sid,'succeeded'); EXCEPTION WHEN OTHERS THEN err:=SQLERRM; END;
+ IF err IS DISTINCT FROM 'event_commitment_unavailable' OR before_balance<>(SELECT topup_sen+earnings_sen FROM public.wallets WHERE user_id='00000000-0000-0000-0000-000000000004') THEN RAISE EXCEPTION 'expired wallet checkout moved funds: %',err; END IF;
+END $$;

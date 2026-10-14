@@ -1,3 +1,4 @@
+import { EmailDeliveryError, type EmailDelivery } from '@/lib/email/delivery';
 import { sendOrderReceiptEmail } from '@/lib/email/order-receipt';
 import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -55,9 +56,11 @@ type OutboxRow = {
     eventChange?: EventVendorChange;
     kind?: KycSecurityEmailInput['kind'];
     count?: number;
+    actionPath?: '/vendor/orders' | '/vendor/wallet';
   };
   status: 'pending' | 'sending' | 'sent' | 'failed';
   attempts: number;
+  lease_token: string;
 };
 
 export function makeEmailEventKey(eventType: EmailEventType, reference: string): string {
@@ -96,26 +99,51 @@ export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted:
   return { inserted: Boolean(data), id: data?.id as string | undefined };
 }
 
-export async function processEmailOutbox(limit = 20): Promise<{ sent: number; failed: number }> {
+export async function processEmailOutbox(limit = 20): Promise<{ sent: number; failed: number; reviewRequired: number }> {
   const db = createServiceClient();
-  const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox', { p_limit: limit });
-  if (claimError) throw claimError;
+  const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox_delivery', { p_limit: limit });
+  if (claimError || !claimed || !Array.isArray(claimed.rows)) throw new Error('email_claim_unavailable');
 
   let sent = 0;
   let failed = 0;
-  for (const row of (claimed ?? []) as OutboxRow[]) {
+  let reviewRequired = Number(claimed.reviewRequired ?? 0);
+  for (const row of claimed.rows as OutboxRow[]) {
+    let started = false;
+    let stateUnavailable = false;
+    const delivery: EmailDelivery = {
+      messageId: `<outbox-${row.id}@mylawatan.my>`,
+      beforeSend: async () => {
+        const { data, error } = await db.rpc('begin_email_outbox_delivery', { p_id: row.id, p_token: row.lease_token });
+        if (error || data !== true) { stateUnavailable = true; throw new Error('email_state_unavailable'); }
+        started = true;
+      },
+    };
+    const finish = async (outcome: 'sent' | 'retry' | 'unknown', messageId: string | null = null) => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const { data, error } = await db.rpc('finish_email_outbox_delivery', {
+            p_id: row.id, p_token: row.lease_token, p_outcome: outcome, p_message_id: messageId,
+          });
+          if (!error && data === true) return;
+        } catch { /* Retry acknowledgement only; never repeat SMTP here. */ }
+      }
+      throw new Error('email_state_unavailable');
+    };
+    let accepted: { id: string } | undefined;
     try {
       if (row.payload?.guestAccessToken && !row.payload.reason) {
         const {data:order,error}=await db.from('orders').select('id,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,order_items(product_name,variant_name,unit_price,quantity)').eq('id',row.payload.reference).is('user_id',null).single();
         if (error || !order || order.contact_email !== row.to_email) throw new Error('Guest receipt unavailable');
-        await sendOrderReceiptEmail({
+        accepted = await sendOrderReceiptEmail({
+          delivery,
           recipientEmail:row.to_email,recipientName:order.contact_name ?? 'Guest',orderId:order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
           items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? 'Standard',unitPrice:Number(item.unit_price),qty:item.quantity})),
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
           accessUrl:`${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}`,
         });
       } else if (row.event_type === 'kyc_security_alert') {
-        await sendKycSecurityEmail({
+        accepted = await sendKycSecurityEmail({
+          delivery,
           eventType: 'kyc_security_alert',
           kind: row.payload?.kind as KycSecurityEmailInput['kind'],
           count: Number(row.payload?.count),
@@ -123,7 +151,8 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           to: row.to_email,
         });
       } else if (row.event_type === 'recommendation_approved') {
-        await sendRecommendationEmail({
+        accepted = await sendRecommendationEmail({
+          delivery,
           eventType: row.event_type,
           recipientName: row.payload?.recipientName ?? null,
           vendorName: String(row.payload?.vendorName ?? 'Your recommendation'),
@@ -131,7 +160,8 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           to: row.to_email,
         });
       } else if (row.event_type.startsWith('vendor_')) {
-        await sendVendorEmail({
+        accepted = await sendVendorEmail({
+          delivery,
           eventType: row.event_type as VendorEmailType,
           recipientName: row.payload?.recipientName ?? null,
           vendorName: String(row.payload?.vendorName ?? 'Your vendor'),
@@ -139,11 +169,13 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           reference: row.payload?.reference ?? null,
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
           eventChange: row.payload?.eventChange,
-          actionUrl: row.event_type === 'vendor_event_update' ? `${resolvePaymentAppUrl()}/vendor/events` : undefined,
+          actionUrl: row.event_type === 'vendor_event_update' ? `${resolvePaymentAppUrl()}/vendor/events`
+            : ['/vendor/orders', '/vendor/wallet'].includes(row.payload?.actionPath ?? '') ? `${resolvePaymentAppUrl()}${row.payload.actionPath}` : undefined,
           to: row.to_email,
         });
       } else if (row.event_type.startsWith('account_')) {
-        await sendAccountEmail({
+        accepted = await sendAccountEmail({
+          delivery,
           eventType: row.event_type as AccountEmailType,
           recipientName: row.payload?.recipientName ?? null,
           reason: String(row.payload?.reason ?? 'Account status updated'),
@@ -151,7 +183,8 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           to: row.to_email,
         });
       } else {
-        await sendTransactionEmail({
+        accepted = await sendTransactionEmail({
+          delivery,
           eventType: row.event_type as TransactionEmailType,
           recipientName: row.payload?.recipientName ?? null,
           amountRm: Number(row.payload?.amountRm ?? 0),
@@ -162,27 +195,19 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           to: row.to_email,
         });
       }
-      const { error: sentStateError } = await db.from('email_outbox').update({
-        status: 'sent',
-        ...(row.payload?.guestAccessToken ? { payload: { ...row.payload, guestAccessToken: undefined } } : {}),
-        sent_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_error: null,
-      }).eq('id', row.id);
-      if (sentStateError) throw new Error('email_state_unavailable');
-      sent += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Email send failed';
-      const { error: failedStateError } = await db.from('email_outbox').update({
-        status: 'failed',
-        last_error: message.slice(0, 500),
-        next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq('id', row.id);
-      if (failedStateError) throw new Error('email_state_unavailable');
-      failed += 1;
+      if (stateUnavailable) throw new Error('email_state_unavailable');
+      const retrySafe = error instanceof EmailDeliveryError ? error.retrySafe : !started;
+      await finish(retrySafe ? 'retry' : 'unknown');
+      if (retrySafe) { failed += 1; if (row.attempts >= 5) reviewRequired += 1; }
+      else reviewRequired += 1;
+      continue;
     }
+    // SMTP acceptance and its acknowledgement have separate failure boundaries.
+    // Never reclassify accepted mail as retryable if this write/response is lost.
+    await finish('sent', accepted?.id ?? delivery.messageId);
+    sent += 1;
   }
 
-  return { sent, failed };
+  return { sent, failed, reviewRequired };
 }
