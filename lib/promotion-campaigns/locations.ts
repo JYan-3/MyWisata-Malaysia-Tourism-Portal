@@ -1,6 +1,23 @@
 import { formatDate } from "@/lib/i18n/format";
 import type { AppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "./types";
+import { getMalaysiaDateTimeLocalValue } from "@/lib/datetime/date-input";
+import { malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
+
+export type AdminEventScheduleStatus = 'unconfigured' | 'upcoming' | 'operating' | 'between_sessions' | 'ended';
+export function getAdminEventScheduleStatus(campaign: { starts_at: string; ends_at: string; locations?: { status?: string; starts_on: string; ends_on: string; opens_at: string; closes_at: string }[] }, now = new Date()): AdminEventScheduleStatus {
+  if (Date.parse(campaign.ends_at) <= now.getTime()) return 'ended';
+  const active = (campaign.locations ?? []).filter(location => location.status !== 'cancelled');
+  if (!active.length) return 'unconfigured';
+  const local = getMalaysiaDateTimeLocalValue(now), day = local.slice(0, 10), time = local.slice(11, 16);
+  const windows = active.map(location => ({ location,
+    start: Date.parse(malaysiaDateTimeLocalToIso(`${location.starts_on}T${location.opens_at.slice(0, 5)}`)),
+    end: Date.parse(malaysiaDateTimeLocalToIso(`${location.ends_on}T${location.closes_at.slice(0, 5)}`)),
+  }));
+  if (windows.every(window => window.end <= now.getTime())) return 'ended';
+  if (Date.parse(campaign.starts_at) > now.getTime() || windows.every(window => window.start > now.getTime())) return 'upcoming';
+  return active.some(location => day >= location.starts_on && day <= location.ends_on && time >= location.opens_at.slice(0, 5) && time < location.closes_at.slice(0, 5)) ? 'operating' : 'between_sessions';
+}
 
 export function getEventOperationalLabelKey(campaign: Pick<PromotionCampaignPublic, "visibility" | "operationalStatus">): string {
   if (campaign.operationalStatus === "between_sessions") return "ui.promotionCampaigns.betweenSessions";

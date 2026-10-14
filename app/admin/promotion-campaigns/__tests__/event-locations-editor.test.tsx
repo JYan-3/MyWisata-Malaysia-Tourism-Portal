@@ -1,0 +1,31 @@
+import React, { act } from 'react';
+import { beforeAll, beforeEach, afterEach, expect, it, vi } from 'vitest';
+import { findElements, findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from '@/components/shared/__tests__/render-test-dom';
+const mocks = vi.hoisted(() => ({ mapLocation: undefined as [number, number] | undefined }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: 'en' } }) }));
+vi.mock('@/components/providers/app-dialog', () => ({ useAppDialog: () => ({ confirm: vi.fn(), prompt: vi.fn() }) }));
+vi.mock('@/components/providers/action-feedback', () => ({ useActionFeedback: () => ({ showFeedback: vi.fn() }) }));
+vi.mock('@/components/map/map-view', () => ({ MapView: (props: { userLocation?: [number, number] }) => { mocks.mapLocation = props.userLocation; return <div />; } }));
+import { EventLocationsEditor } from '../event-locations-editor';
+let document: TestDocument, container: TestElement, root: ReturnType<typeof import('react-dom/client').createRoot>;
+let createRoot: typeof import('react-dom/client').createRoot;
+beforeAll(async () => { document = installTestDom(); ({ createRoot } = await import('react-dom/client')); });
+beforeEach(() => { container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container as unknown as Element); mocks.mapLocation = undefined; });
+afterEach(() => { act(() => root.unmount()); document.body.removeChild(container); });
+async function click(label: string) { await act(async () => { findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes(label)).dispatchEvent(new TestEvent('click', { bubbles: true })); }); }
+it('starts with no selected pin and invalid save, tracks the child draft, then persists explicit placement', async () => {
+  const editing = vi.fn(), save = vi.fn();
+  await act(async () => { root.render(<EventLocationsEditor campaignId={null} locations={[]} defaults={{ startsOn: '2030-10-12', endsOn: '2030-10-13', opensAt: '10:00', closesAt: '18:00' }} onLocalChange={save} onDraftChange={editing} />); });
+  await click('promotionCampaigns.locations.add');
+  expect(editing).toHaveBeenLastCalledWith(true);
+  expect(mocks.mapLocation).toBeUndefined();
+  expect(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'promotionCampaigns.locations.save').disabled).toBe(true);
+  await click('promotionCampaigns.locations.placePin');
+  expect(mocks.mapLocation).toEqual([3.139, 101.6869]);
+  const name = findElements(container, element => element.tagName === 'INPUT' && Boolean(element.parentNode?.textContent.includes('promotionCampaigns.locations.name')))[0];
+  await act(async () => { Object.getOwnPropertyDescriptor(Object.getPrototypeOf(name), 'value')?.set?.call(name, 'Main Hall'); name.dispatchEvent(new TestEvent('input', { bubbles: true })); });
+  expect(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'promotionCampaigns.locations.save').disabled).toBe(false);
+  await click('promotionCampaigns.locations.save');
+  expect(save).toHaveBeenCalledWith([expect.objectContaining({ name: 'Main Hall', lat: 3.139, lng: 101.6869 })]);
+  expect(editing).toHaveBeenLastCalledWith(false);
+});
