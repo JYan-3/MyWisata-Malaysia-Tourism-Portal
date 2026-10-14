@@ -1,3 +1,4 @@
+import { emailLocale } from '@/lib/email/copy';
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
 import { buildWithdrawalNotificationMetadata, buildWithdrawalNotificationReason, type WithdrawalNotificationSnapshot } from './withdrawal-review-projection';
@@ -41,7 +42,7 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
 
     const { data: users, error: usersError } = await service
       .from('users')
-      .select('id,email,full_name,status')
+      .select('id,email,full_name,status,preferred_locale')
       .in('id', recipientIds);
     if (usersError) throw usersError;
 
@@ -74,11 +75,12 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
         eventKey: eventKey(user.id),
         userId: user.id,
         toEmail: user.email.trim(),
+        locale: emailLocale(user.preferred_locale),
         eventType: 'withdrawal_submitted',
         recipientName: user.full_name ?? null,
         amountRm: input.amountRm,
         reference: input.withdrawalId,
-        reason: notificationReason,
+        reason: buildWithdrawalNotificationReason(snapshot, emailLocale(user.preferred_locale)),
         occurredAt: new Date().toISOString(),
       }));
     await Promise.allSettled(emailJobs);

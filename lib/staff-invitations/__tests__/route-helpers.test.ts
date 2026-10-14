@@ -48,12 +48,18 @@ describe("staff invitation email locale", () => {
   it.each([
     [null, null],
     ["unsupported", null],
-    ["zh-CN", { message: "lookup unavailable" }],
-  ] as const)("falls back to English for missing, invalid, or unreadable preference", async (preferredLocale, queryError) => {
+  ] as const)("falls back to English for missing or invalid preference", async (preferredLocale, queryError) => {
     const db = database(preferredLocale, queryError);
 
     await deliverPreparedInvitation(db as unknown as SupabaseClient, prepared, "secret-token", "a".repeat(64));
 
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: "en" }));
   });
+  it("does not send the wrong language when a saved preference cannot be read", async () => {
+    const db = database("zh-CN", {message: "lookup unavailable"});
+    const result = await deliverPreparedInvitation(db as unknown as SupabaseClient, prepared, "secret-token", "a".repeat(64));
+    expect(result.sent).toBe(false);
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+  });
+
 });

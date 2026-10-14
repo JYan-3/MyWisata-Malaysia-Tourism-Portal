@@ -85,6 +85,7 @@ const nextConfig: NextConfig = {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
   serverExternalPackages: ['pdfkit'],
+  outputFileTracingIncludes: { '/api/**': ['./lib/pdf/fonts/*'] },
   experimental: {
     optimizePackageImports: [
       'lucide-react',

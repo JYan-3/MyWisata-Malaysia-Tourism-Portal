@@ -1,8 +1,11 @@
+import type { AppLocale } from '@/lib/i18n/locale';
+import { emailCopy, emailLocale, emailReason, emailSubject, emailTime, eventFieldLabel, securityDescription, type EventEmailReasonCode } from './copy';
 import { formatMYR } from '@/lib/i18n/format';
 import { KYC_SECURITY_KINDS, type KycSecurityKind } from '@/lib/kyc/types';
 import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
 
 export type KycSecurityEmailInput = {
+  locale?: AppLocale;
   eventType: 'kyc_security_alert';
   kind: KycSecurityKind;
   count: number;
@@ -15,19 +18,11 @@ export function renderKycSecurityEmail(input: KycSecurityEmailInput): RenderedEm
   if (!KYC_SECURITY_KINDS.includes(input.kind) || !Number.isSafeInteger(input.count) || input.count < 0 || !Number.isFinite(Date.parse(input.occurredAt))) {
     throw new Error('Invalid KYC security alert');
   }
-  const descriptions: Record<KycSecurityKind, string> = {
-    purge_failed: 'The KYC evidence cleanup failed or completed with failures.',
-    purge_stalled: 'The KYC evidence cleanup has not completed within 15 minutes.',
-    purge_missed: 'No successful KYC evidence cleanup was recorded for more than 26 hours.',
-    access_volume: 'A reviewer requested documents for at least 10 distinct submissions within 10 minutes.',
-    monitor_test: 'This is a controlled test of KYC security alert delivery. No identity documents are included.',
-  };
-  const subject = 'MyLawatan KYC security alert';
-  const time = new Date(input.occurredAt).toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' });
-  const description = descriptions[input.kind];
-  const actionUrl = `${resolvePaymentAppUrl()}/admin/kyc`;
-  const text = [subject, description, `Count: ${input.count}`, `Time: ${time} (Malaysia time)`, `Review security status: ${actionUrl}`, 'Sign in and verify your authenticator to review. Never reply with passwords or identity documents.'].join('\n');
-  return { subject, text, html: `<!doctype html><html lang="en"><body><h2>${subject}</h2><p>${description}</p><p>Count: ${input.count}</p><p>Time: ${escapeHtml(time)} (Malaysia time)</p><p><a href="${escapeHtml(actionUrl)}">Review KYC security status</a></p><p>Sign in and verify your authenticator to review. Never reply with passwords or identity documents.</p></body></html>` };
+  const copy = emailCopy(input.locale);
+  return renderSystemEmail(input.locale, copy.security, [
+    securityDescription(input.kind, input.locale), `${copy.count}: ${input.count}`,
+    `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.securityGuidance,
+  ], { label: copy.reviewSecurity, url: `${resolvePaymentAppUrl()}/admin/kyc` });
 }
 
 export type TransactionEmailType =
@@ -83,6 +78,7 @@ export type EventVendorChange = {
 export type RecommendationEmailType = 'recommendation_approved';
 
 export type TransactionEmailInput = {
+  locale?: AppLocale;
   eventType: TransactionEmailType;
   recipientName?: string | null;
   amountRm: number;
@@ -93,6 +89,7 @@ export type TransactionEmailInput = {
 };
 
 export type AccountEmailInput = {
+  locale?: AppLocale;
   eventType: AccountEmailType;
   recipientName?: string | null;
   reason: string;
@@ -100,10 +97,13 @@ export type AccountEmailInput = {
 };
 
 export type VendorEmailInput = {
+  locale?: AppLocale;
   eventType: VendorEmailType;
   recipientName?: string | null;
   vendorName: string;
   reason: string;
+  reasonCode?: EventEmailReasonCode;
+  reasonDetails?: string;
   reference?: string | null;
   occurredAt: string;
   eventChange?: EventVendorChange;
@@ -111,6 +111,7 @@ export type VendorEmailInput = {
 };
 
 export type RecommendationEmailInput = {
+  locale?: AppLocale;
   eventType: RecommendationEmailType;
   recipientName?: string | null;
   vendorName: string;
@@ -121,27 +122,6 @@ export type RenderedEmail = {
   subject: string;
   html: string;
   text: string;
-};
-
-const SUBJECTS: Record<TransactionEmailType, string> = {
-  checkout_succeeded: 'Checkout payment received',
-  order_refunded: 'Order refund completed',
-  topup_succeeded: 'Wallet Top-up successful',
-  topup_failed: 'Wallet Top-up failed',
-  topup_refunded: 'Wallet Top-up refunded',
-  withdrawal_submitted: 'Withdrawal request received',
-  withdrawal_approved: 'Withdrawal approved',
-  withdrawal_hold: 'Withdrawal placed on hold',
-  withdrawal_resumed: 'Withdrawal review resumed',
-  withdrawal_paid: 'Withdrawal paid',
-  withdrawal_failed: 'Withdrawal failed',
-  withdrawal_rejected: 'Withdrawal rejected',
-  wallet_adjustment: 'Wallet balance adjusted',
-  payout_account_connected: 'Payout account connected',
-  payout_account_disconnected: 'Payout account disconnected',
-  recommendation_reward_pending: 'Your recommendation earned a pending reward',
-  recommendation_reward_available: 'Your recommendation reward is now available',
-  recommendation_reward_reversed: 'Your pending recommendation reward was reversed',
 };
 
 export function escapeHtml(value: string): string {
@@ -190,165 +170,52 @@ function sanitizeVendorText(value: string): string {
     });
 }
 
-export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {
-  const subject = SUBJECTS[input.eventType];
-  const name = input.recipientName?.trim() || 'there';
-  const amount = formatMYR(input.amountRm);
-  const reference = input.reference.trim();
-  const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
-    timeZone: 'Asia/Kuala_Lumpur',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-
-  const safeName = escapeHtml(name);
-  const safeSubject = escapeHtml(subject);
-  const safeAmount = escapeHtml(amount);
-  const safeReference = escapeHtml(reference);
-  const safeOccurredAt = escapeHtml(occurredAt);
-  const reason = input.reason?.trim() || '';
-  const safeReason = escapeHtml(reason);
-  const reasonLine = reason ? `Reason: ${reason}` : '';
-  const reasonRow = reason ? `<tr><td><strong>Review summary</strong></td><td>${safeReason}</td></tr>` : '';
-
-  const text = [
-    `Hi ${name},`,
-    '',
+/** Escape data only at the HTML boundary; the plain-text alternative stays readable. */
+function renderSystemEmail(locale: AppLocale | undefined, subject: string, lines: string[], action?: { label: string; url: string; note?: string }): RenderedEmail {
+  return {
     subject,
-    `Amount: ${amount}`,
-    `Reference: ${reference}`,
-    `Time: ${occurredAt}`,
-    reasonLine,
-    input.accessUrl ? `View your order: ${input.accessUrl}` : "",
-    '',
-    'This is an automated message from FYP App. Please do not reply with passwords or identity documents.',
-  ].join('\n');
-
-  const html = `<!doctype html>
-<html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
-  <h2>${safeSubject}</h2>
-  <p>Hi ${safeName},</p>
-  <p>Your transaction has been updated in FYP App.</p>
-  <table role="presentation" cellpadding="6">
-    <tr><td><strong>Amount</strong></td><td>${safeAmount}</td></tr>
-    <tr><td><strong>Reference</strong></td><td>${safeReference}</td></tr>
-    <tr><td><strong>Time</strong></td><td>${safeOccurredAt} (Malaysia time)</td></tr>
-    ${reasonRow}
-  </table>
-  ${input.accessUrl ? `<p><a href="${escapeHtml(input.accessUrl)}">View your order</a> — private link, valid for 7 days and usable once.</p>` : ""}
-  <p>This is an automated message. Never reply with passwords or identity documents.</p>
-</body></html>`;
-
-  return { subject, html, text };
+    text: [subject, ...lines, ...(action ? [`${action.label}: ${action.url}`, action.note ?? ''] : [])].filter(Boolean).join('\n'),
+    html: `<!doctype html><html lang="${emailLocale(locale)}"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5"><h2>${escapeHtml(subject)}</h2>${lines.filter(Boolean).map(line => `<p>${escapeHtml(line)}</p>`).join('')}${action ? `<p><a href="${escapeHtml(action.url)}">${escapeHtml(action.label)}</a>${action.note ? ` — ${escapeHtml(action.note)}` : ''}</p>` : ''}</body></html>`,
+  };
 }
 
-const ACCOUNT_SUBJECTS: Record<AccountEmailType, string> = {
-  account_suspended: 'Your account has been suspended',
-  account_unsuspended: 'Your account has been reinstated',
-  account_deleted: 'Your account has been closed',
-  account_restored: 'Your account has been restored',
-};
+function greeting(input: { locale?: AppLocale; recipientName?: string | null }): string {
+  const copy = emailCopy(input.locale);
+  return `${copy.greeting} ${input.recipientName?.trim() || copy.there},`;
+}
+
+export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {
+  const copy = emailCopy(input.locale);
+  const reason = emailReason(input.reason?.trim() || '', input.locale);
+  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+    greeting(input), copy.transaction, `${copy.amount}: ${formatMYR(input.amountRm)}`,
+    `${copy.reference}: ${input.reference.trim()}`, `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`,
+    reason ? `${copy.reason}: ${reason}` : '', copy.automated,
+  ], input.accessUrl ? { label: copy.viewOrder, url: input.accessUrl, note: copy.privateLink } : undefined);
+}
 
 export function renderAccountEmail(input: AccountEmailInput): RenderedEmail {
-  const subject = ACCOUNT_SUBJECTS[input.eventType];
-  const name = input.recipientName?.trim() || 'there';
-  const reason = input.reason.trim();
-  const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
-    timeZone: 'Asia/Kuala_Lumpur',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-  const safeName = escapeHtml(name);
-  const safeSubject = escapeHtml(subject);
-  const safeReason = escapeHtml(reason);
-  const safeOccurredAt = escapeHtml(occurredAt);
-  const text = [
-    `Hi ${name},`,
-    '',
-    subject,
-    `Reason: ${reason}`,
-    `Time: ${occurredAt}`,
-    '',
-    'For questions, please contact support. Never reply with passwords or identity documents.',
-  ].join('\n');
-  const html = `<!doctype html>
-<html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
-  <h2>${safeSubject}</h2>
-  <p>Hi ${safeName},</p>
-  <p>Your MyLawatan account status has been updated.</p>
-  <p><strong>Reason:</strong> ${safeReason}</p>
-  <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
-  <p>For questions, please contact support. Never reply with passwords or identity documents.</p>
-</body></html>`;
-  return { subject, html, text };
+  const copy = emailCopy(input.locale);
+  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+    greeting(input), copy.account, `${copy.reason}: ${emailReason(input.reason.trim(), input.locale)}`,
+    `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.support,
+  ]);
 }
 
 export function renderRecommendationEmail(input: RecommendationEmailInput): RenderedEmail {
-  const subject = 'Your recommendation was approved';
-  const name = input.recipientName?.trim() || 'there';
-  const vendorName = sanitizeVendorText(input.vendorName.trim());
-  const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
-    timeZone: 'Asia/Kuala_Lumpur',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-  const safeName = escapeHtml(name);
-  const safeVendorName = escapeHtml(vendorName);
-  const safeOccurredAt = escapeHtml(occurredAt);
-  const text = [
-    `Hi ${name},`,
-    '',
-    subject,
-    `Recommendation: ${vendorName}`,
-    'Great find! We will reach out to the vendor soon.',
-    `Time: ${occurredAt}`,
-    '',
-    'You can view your recommendations in MyLawatan.',
-  ].join('\n');
-  const html = `<!doctype html>
-<html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
-  <h2>${subject}</h2>
-  <p>Hi ${safeName},</p>
-  <p>Your recommendation for <strong>${safeVendorName}</strong> has been approved.</p>
-  <p>Great find! We will reach out to the vendor soon.</p>
-  <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
-  <p>You can view your recommendations in MyLawatan.</p>
-</body></html>`;
-  return { subject, html, text };
+  const copy = emailCopy(input.locale);
+  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+    greeting(input), `${copy.recommendation}: ${sanitizeVendorText(input.vendorName.trim())}`, copy.recommended,
+    copy.reachOut, `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.viewRecommendations,
+  ]);
 }
-
-const VENDOR_SUBJECTS: Record<VendorEmailType, string> = {
-  vendor_order_update: 'Vendor order update',
-  vendor_booking_update: 'Vendor booking update',
-  vendor_listing_review: 'Vendor listing review update',
-  vendor_wallet_update: 'Vendor wallet update',
-  vendor_account_update: 'Vendor account update',
-  vendor_permission_update: 'Vendor permission update',
-  vendor_event_update: 'Your event arrangements changed',
-};
 
 export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
   if (input.eventType === 'vendor_event_update') return renderEventVendorEmail(input);
-  const subject = VENDOR_SUBJECTS[input.eventType];
-  const name = input.recipientName?.trim() || 'there';
+  const copy = emailCopy(input.locale);
   const vendorName = sanitizeVendorText(input.vendorName.trim());
-  const reason = sanitizeVendorText(input.reason.trim());
+  const reason = sanitizeVendorText(emailReason(input.reason.trim(), input.locale, input.reasonCode, input.reasonDetails));
   const reference = input.reference ? sanitizeVendorText(input.reference.trim()) : '';
-  const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
-    timeZone: 'Asia/Kuala_Lumpur',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-  const safeName = escapeHtml(name);
-  const safeSubject = escapeHtml(subject);
-  const safeVendorName = escapeHtml(vendorName);
-  const safeReason = escapeHtml(reason);
-  const safeReference = escapeHtml(reference);
-  const safeOccurredAt = escapeHtml(occurredAt);
-  const referenceLine = reference ? `Reference: ${reference}` : '';
-  const referenceRow = reference
-    ? `<tr><td><strong>Reference</strong></td><td>${safeReference}</td></tr>`
-    : '';
   // Only server-owned Vendor Portal paths may become actionable email links.
   let actionUrl = '';
   if (input.actionUrl) {
@@ -358,64 +225,32 @@ export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
         && ['/vendor/orders', '/vendor/wallet'].includes(url.pathname) && !url.search && !url.hash) actionUrl = url.href;
     } catch { /* Invalid links remain non-actionable. */ }
   }
-
-  const text = [
-    `Hi ${name},`,
-    '',
-    subject,
-    `Vendor: ${vendorName}`,
-    `Reason: ${reason}`,
-    referenceLine,
-    `Time: ${occurredAt}`,
-    ...(actionUrl ? [`View in Vendor Portal: ${actionUrl}`] : []),
-    '',
-    'This is an automated message from FYP App. Please do not reply with passwords or identity documents.',
-  ].filter((line) => line !== '').join('\n');
-
-  const html = `<!doctype html>
-<html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
-  <h2>${safeSubject}</h2>
-  <p>Hi ${safeName},</p>
-  <p>There is an important update for <strong>${safeVendorName}</strong>.</p>
-  <p><strong>Reason:</strong> ${safeReason}</p>
-  <table role="presentation" cellpadding="6">
-    ${referenceRow}
-    <tr><td><strong>Time</strong></td><td>${safeOccurredAt} (Malaysia time)</td></tr>
-  </table>
-  ${actionUrl ? `<p><a href="${escapeHtml(actionUrl)}">View in Vendor Portal</a></p>` : ''}
-  <p>This is an automated message. Never reply with passwords or identity documents.</p>
-</body></html>`;
-
-  return { subject, html, text };
+  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+    greeting(input), `${copy.vendorUpdate} ${vendorName}.`, `${copy.vendor}: ${vendorName}`,
+    `${copy.reason}: ${reason}`, reference ? `${copy.reference}: ${reference}` : '',
+    `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.automated,
+  ], actionUrl ? { label: copy.viewVendor, url: actionUrl } : undefined);
 }
 
 function renderEventVendorEmail(input: VendorEmailInput): RenderedEmail {
   const change = input.eventChange;
   if (!change) throw new Error('Event change details are required');
-  // These are operational display values, including the real venue address.
-  // Do not use the provider-metadata sanitizer, which redacts addresses.
+  // Venue addresses are operational data, not provider metadata to redact.
   const clean = (value: string) => value
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[redacted]')
     .replace(/\b(?:sk|rk|pk|pi|ch|cs|cus|acct|tok|whsec)_[A-Za-z0-9_-]+\b/g, '[redacted]')
     .replace(/(?:https?:\/\/\S+\/storage\/\S+|(?:\/Users\/|\/var\/|\/tmp\/)\S+)/gi, '[redacted]')
     .replace(/\b(?:password|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '[redacted]');
-  const fields: Record<EventVendorChange['changes'][number]['field'], string> = {
-    stallNumber: 'Stall', name: 'Venue name', address: 'Address', mapPin: 'Map pin',
-    startsOn: 'First date', endsOn: 'Last date', opensAt: 'Opening time', closesAt: 'Closing time',
-    applicationsOpen: 'Applications open', applicationsCloseAt: 'Applications close', approvalsCloseAt: 'Approvals close', setupStartsAt: 'Setup starts',
+  const copy = emailCopy(input.locale);
+  const display = (value: string, field: string) => {
+    if (field === 'applicationsOpen' && ['true', 'false'].includes(value)) return value === 'true' ? copy.yes : copy.no;
+    return clean(value || (input.locale ? copy.notSet : ''));
   };
-  const subject = change.kind === 'approval' ? 'Your event participation is approved' : VENDOR_SUBJECTS.vendor_event_update;
   const actionUrl = input.actionUrl || '/vendor/events';
-  const lines = [
-    `Hi ${clean(input.recipientName?.trim() || 'there')},`, subject,
-    `Vendor: ${clean(input.vendorName)}`, `Event: ${clean(change.eventTitle)}`,
-    `Venue: ${clean(change.locationName)}`, `Dates: ${clean(change.startsOn)} – ${clean(change.endsOn)}`,
-    ...change.changes.map((item) => `${fields[item.field]}: ${clean(item.before)} → ${clean(item.after)}`),
-    `Reason: ${clean(change.reason)}`, `View your latest arrangements: ${actionUrl}`,
-  ];
-  return {
-    subject,
-    text: lines.join('\n'),
-    html: `<!doctype html><html lang="en"><body>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}<p><a href="${escapeHtml(actionUrl)}">View event arrangements</a></p></body></html>`,
-  };
+  return renderSystemEmail(input.locale, change.kind === 'approval' ? copy.approval : emailSubject('vendor_event_update', input.locale), [
+    clean(greeting(input)), `${copy.vendor}: ${clean(input.vendorName)}`, `${copy.event}: ${clean(change.eventTitle)}`,
+    `${copy.venue}: ${clean(change.locationName)}`, `${copy.dates}: ${clean(change.startsOn)} – ${clean(change.endsOn)}`,
+    ...change.changes.map(item => `${eventFieldLabel(item.field, input.locale)}: ${display(item.before, item.field)} → ${display(item.after, item.field)}`),
+    `${copy.reason}: ${clean(emailReason(change.reason, input.locale))}`, `${copy.arrangements}: ${actionUrl}`,
+  ], { label: copy.viewEvent, url: actionUrl });
 }

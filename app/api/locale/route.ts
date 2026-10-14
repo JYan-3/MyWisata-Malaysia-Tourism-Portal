@@ -38,13 +38,10 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { error } = await supabase
-        .from("users")
-        .update({ preferred_locale: locale })
-        .eq("id", user.id);
+      const { error } = await supabase.rpc("set_my_preferred_locale", { p_locale: locale });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Unable to save language preference" }, { status: 500 });
       }
 
       persistedToAccount = true;

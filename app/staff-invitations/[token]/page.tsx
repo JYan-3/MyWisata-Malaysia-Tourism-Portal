@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveAppLocale } from "@/lib/i18n/locale";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CheckCircle2, Eye, EyeOff, Globe, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
@@ -78,7 +79,7 @@ export default function StaffInvitationPage() {
         email: invitation.email,
         password,
         options: {
-          data: { full_name: fullName.trim() },
+          data: { full_name: fullName.trim(), preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) },
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(invitationPath)}`,
         },
       });

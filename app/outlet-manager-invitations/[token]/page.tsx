@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveAppLocale } from "@/lib/i18n/locale";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Building2, CheckCircle2, Globe, LockKeyhole, Mail } from "lucide-react";
@@ -22,7 +23,7 @@ export default function OutletManagerInvitationPage() {
   const params = useParams<{ token: string }>();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const { t } = useTranslation("auth");
+  const { t, i18n } = useTranslation("auth");
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [sessionEmail, setSessionEmail] = useState("");
   const [mode, setMode] = useState<"sign_in" | "register">("sign_in");
@@ -72,7 +73,7 @@ export default function OutletManagerInvitationPage() {
     setBusy(true); setError(""); setMessage("");
     const result = mode === "sign_in"
       ? await supabase.auth.signInWithPassword({ email: invitation.email, password })
-      : await supabase.auth.signUp({ email: invitation.email, password, options: { data: { full_name: fullName.trim() } } });
+      : await supabase.auth.signUp({ email: invitation.email, password, options: { data: { full_name: fullName.trim(), preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) } } });
     if (result.error) {
       setBusy(false);
       setError(result.error.message);
