@@ -3237,7 +3237,7 @@
       "description": "Full description",
       "startsAt": "First date",
       "endsAt": "Last date",
-      "operatingHours": "Daily operating hours",
+      "operatingHours": "Default hours for new locations",
       "operatingHoursFrom": "Opens each day",
       "operatingHoursTo": "Closes each day",
       "timezone": "Dates and daily hours use Malaysia time (UTC+08:00).",
@@ -3246,10 +3246,41 @@
       "poster": "Event poster",
       "choosePoster": "Choose image",
       "removePoster": "Remove poster",
-      "saveChanges": "Publish changes",
+      "saveChanges": "Save draft changes",
       "saveDraft": "Publish event",
       "cancelEdit": "Cancel editing",
-      "changesSaved": "Changes saved."
+      "changesSaved": "Changes saved.",
+      "saveOnly": "Save draft",
+      "draftSaved": "Draft saved. It is not published.",
+      "published": "Event published.",
+      "savedRecovery": "Your saved event is retained. Continue from this form or the event list.",
+      "pendingRecovery": "The event was submitted. Complete publication with Publish event; editing is locked until this step finishes.",
+      "unsaved": "Unsaved changes",
+      "discardConfirm": "Discard the unsaved form changes?",
+      "completeChecklist": "Complete the missing items before publishing. You can save complete basic information as a draft without a poster or location.",
+      "checklistTitle": "Ready to publish?",
+      "checkDone": "Ready: {{item}}",
+      "checkMissing": "Needed: {{item}}",
+      "rowNotReady": "Add a poster and an active location that has not ended before publishing.",
+      "slugHint": "Use 3–120 lowercase letters, numbers or hyphens, for example november-market. Page preview:",
+      "defaultsHint": "These hours only prefill newly added locations. Customers use each saved location’s hours; existing locations are not changed.",
+      "previewPoster": "Preview event poster",
+      "checks": {
+        "basics": "Complete basic information and valid dates",
+        "poster": "Event poster uploaded",
+        "location": "An active location within the event dates that has not ended",
+        "savedLocations": "All open location forms saved or cancelled"
+      },
+      "fieldErrors": {
+        "title": "Enter a title of 3–120 characters.",
+        "slug": "Use 3–120 lowercase letters, numbers and single hyphens.",
+        "summary": "Enter a short description of 10–240 characters.",
+        "description": "Enter a description of 10–5,000 characters.",
+        "startsAt": "Choose a valid first date.",
+        "endsAt": "Choose a last date on or after the first date.",
+        "posterUrl": "Choose a valid event poster.",
+        "operatingHours": "Set valid default opening and closing times."
+      }
     },
     "locations": {
       "changeReason": "Reason for the change",
@@ -3294,7 +3325,7 @@
       "opensAt": "Opens",
       "closesAt": "Closes",
       "pin": "Map pin",
-      "pinHint": "Drag the marker to the exact spot (optional).",
+      "pinHint": "No location selected on the map. Search for the venue or explicitly place a pin (optional).",
       "pinSet": "Pinned at {{latitude}}, {{longitude}}",
       "clearPin": "Clear pin",
       "addressTba": "Address to be announced",
@@ -3325,14 +3356,26 @@
       "applicationsCloseAt": "Applications close (Malaysia time)",
       "approvalsCloseAt": "Approvals close (Malaysia time)",
       "setupStartsAt": "Setup starts (Malaysia time)",
-      "intakeScheduleHint": "Applications close → approvals close → setup starts → first opening. Closing applications does not pause customer reservations."
+      "intakeScheduleHint": "Applications close → approvals close → setup starts → first opening. Closing applications does not pause customer reservations.",
+      "placePin": "Place a pin, then drag to the exact venue",
+      "placeHeading": "1. Venue and map",
+      "scheduleHeading": "2. Dates and daily hours",
+      "intakeHeading": "3. Vendor applications and preparation",
+      "missingFields": "Complete or correct: {{fields}}"
     },
     "list": {
       "title": "Event workflow",
       "description": "{{count}} events in the current list",
       "description_one": "{{count}} event in the current list",
       "description_other": "{{count}} events in the current list",
-      "rejection": "Review note"
+      "rejection": "Review note",
+      "search": "Search event title or page address",
+      "statusFilter": "Approval status",
+      "scheduleLabel": "Operating schedule",
+      "dateFrom": "Overlaps from",
+      "dateTo": "Overlaps through",
+      "noMatches": "No events match these filters",
+      "scheduleLine": "Operating schedule: {{status}}"
     },
     "states": {
       "loading": "Loading events…",
@@ -3372,6 +3415,13 @@
       "save": "Could not save this event draft.",
       "transition": "Could not update this event.",
       "upload": "Unable to upload the poster."
+    },
+    "schedule": {
+      "unconfigured": "No active location",
+      "upcoming": "Not started",
+      "operating": "Open now",
+      "between_sessions": "Between opening sessions",
+      "ended": "Ended"
     }
   },
   "eventRegistrations": {

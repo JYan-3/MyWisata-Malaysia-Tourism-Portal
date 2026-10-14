@@ -3237,7 +3237,7 @@
       "description": "详细介绍",
       "startsAt": "首日日期",
       "endsAt": "最后一天日期",
-      "operatingHours": "每天营业时间",
+      "operatingHours": "新增地点的默认营业时间",
       "operatingHoursFrom": "每天开始营业",
       "operatingHoursTo": "每天结束营业",
       "timezone": "日期与每天营业时间均为马来西亚时间（UTC+08:00）。",
@@ -3246,10 +3246,41 @@
       "poster": "活动海报",
       "choosePoster": "选择图片",
       "removePoster": "移除海报",
-      "saveChanges": "发布更改",
+      "saveChanges": "保存草稿修改",
       "saveDraft": "发布活动",
       "cancelEdit": "取消编辑",
-      "changesSaved": "更改已保存。"
+      "changesSaved": "更改已保存。",
+      "saveOnly": "保存草稿",
+      "draftSaved": "草稿已保存，尚未发布。",
+      "published": "活动已发布。",
+      "savedRecovery": "已保存的活动仍保留，请从此表单或活动列表继续处理。",
+      "pendingRecovery": "活动已提交，请点击「发布活动」完成发布；此阶段暂不可编辑基础资料。",
+      "unsaved": "有尚未保存的修改",
+      "discardConfirm": "放弃表单中尚未保存的修改吗？",
+      "completeChecklist": "发布前请完成缺少的项目。基础资料填写完整后，即使还没有海报或地点，也可以先保存草稿。",
+      "checklistTitle": "发布前检查",
+      "checkDone": "已完成：{{item}}",
+      "checkMissing": "待完成：{{item}}",
+      "rowNotReady": "发布前请添加海报及尚未结束的有效地点。",
+      "slugHint": "填写 3–120 个小写英文字母、数字或连字符，例如 november-market。页面地址预览：",
+      "defaultsHint": "这些时间仅用于预填新增地点。顾客以各地点已保存的营业时间为准，已有地点不会自动改变。",
+      "previewPoster": "预览活动海报",
+      "checks": {
+        "basics": "基础资料完整，日期及默认时间有效",
+        "poster": "已上传活动海报",
+        "location": "至少一个日期在活动范围内、尚未结束的有效地点",
+        "savedLocations": "正在编辑的地点已保存或取消"
+      },
+      "fieldErrors": {
+        "title": "活动标题需要 3–120 个字符。",
+        "slug": "页面地址需要 3–120 个小写英文字母、数字及单个连字符。",
+        "summary": "简短介绍需要 10–240 个字符。",
+        "description": "详细介绍需要 10–5,000 个字符。",
+        "startsAt": "请选择有效的首日日期。",
+        "endsAt": "最后一天不能早于首日。",
+        "posterUrl": "请选择有效的活动海报。",
+        "operatingHours": "请填写有效的默认开门及关门时间。"
+      }
     },
     "locations": {
       "changeReason": "修改原因",
@@ -3294,7 +3325,7 @@
       "opensAt": "开始营业",
       "closesAt": "结束营业",
       "pin": "地图标记",
-      "pinHint": "将标记拖到确切位置（可选）。",
+      "pinHint": "尚未选择地图位置。请搜索场地或主动放置标记（可选）。",
       "pinSet": "已标记于 {{latitude}}, {{longitude}}",
       "clearPin": "清除标记",
       "addressTba": "地址待公布",
@@ -3325,14 +3356,26 @@
       "applicationsCloseAt": "报名截止（马来西亚时间）",
       "approvalsCloseAt": "审批截止（马来西亚时间）",
       "setupStartsAt": "布展开始（马来西亚时间）",
-      "intakeScheduleHint": "报名截止 → 审批截止 → 布展开始 → 首日开门。关闭报名不会暂停顾客预订。"
+      "intakeScheduleHint": "报名截止 → 审批截止 → 布展开始 → 首日开门。关闭报名不会暂停顾客预订。",
+      "placePin": "放置标记后，请拖动到准确场地",
+      "placeHeading": "1. 场地与地图",
+      "scheduleHeading": "2. 日期与每日营业时间",
+      "intakeHeading": "3. 商家报名与准备安排",
+      "missingFields": "请补充或检查：{{fields}}"
     },
     "list": {
       "title": "活动工作流",
       "description": "当前列表有 {{count}} 个活动",
       "description_one": "当前列表有 {{count}} 个活动",
       "description_other": "当前列表有 {{count}} 个活动",
-      "rejection": "审核备注"
+      "rejection": "审核备注",
+      "search": "搜索活动标题或页面地址",
+      "statusFilter": "审批状态",
+      "scheduleLabel": "运营安排",
+      "dateFrom": "活动范围起日",
+      "dateTo": "活动范围止日",
+      "noMatches": "没有符合筛选条件的活动",
+      "scheduleLine": "营业排期：{{status}}"
     },
     "states": {
       "loading": "正在加载活动…",
@@ -3372,6 +3415,13 @@
       "save": "无法保存活动草稿。",
       "transition": "无法更新此活动。",
       "upload": "无法上传海报。"
+    },
+    "schedule": {
+      "unconfigured": "尚无有效地点",
+      "upcoming": "尚未开始",
+      "operating": "当前营业中",
+      "between_sessions": "营业时段之间",
+      "ended": "已结束"
     }
   },
   "eventRegistrations": {

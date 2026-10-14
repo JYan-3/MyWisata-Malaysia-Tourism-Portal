@@ -3237,7 +3237,7 @@
       "description": "Penerangan penuh",
       "startsAt": "Hari pertama",
       "endsAt": "Hari terakhir",
-      "operatingHours": "Waktu operasi setiap hari",
+      "operatingHours": "Waktu lalai untuk lokasi baharu",
       "operatingHoursFrom": "Buka setiap hari",
       "operatingHoursTo": "Tutup setiap hari",
       "timezone": "Tarikh dan waktu operasi menggunakan waktu Malaysia (UTC+08:00).",
@@ -3246,10 +3246,41 @@
       "poster": "Poster acara",
       "choosePoster": "Pilih imej",
       "removePoster": "Buang poster",
-      "saveChanges": "Terbitkan perubahan",
+      "saveChanges": "Simpan perubahan draf",
       "saveDraft": "Terbitkan acara",
       "cancelEdit": "Batal edit",
-      "changesSaved": "Perubahan disimpan."
+      "changesSaved": "Perubahan disimpan.",
+      "saveOnly": "Simpan draf",
+      "draftSaved": "Draf disimpan. Ia belum diterbitkan.",
+      "published": "Acara diterbitkan.",
+      "savedRecovery": "Acara yang disimpan dikekalkan. Teruskan melalui borang ini atau senarai acara.",
+      "pendingRecovery": "Acara telah dihantar. Lengkapkan penerbitan dengan Terbitkan acara; suntingan dikunci sehingga selesai.",
+      "unsaved": "Perubahan belum disimpan",
+      "discardConfirm": "Buang perubahan borang yang belum disimpan?",
+      "completeChecklist": "Lengkapkan perkara yang belum siap sebelum menerbitkan. Maklumat asas yang lengkap boleh disimpan sebagai draf tanpa poster atau lokasi.",
+      "checklistTitle": "Sedia untuk diterbitkan?",
+      "checkDone": "Sedia: {{item}}",
+      "checkMissing": "Diperlukan: {{item}}",
+      "rowNotReady": "Tambah poster dan lokasi aktif yang belum tamat sebelum menerbitkan.",
+      "slugHint": "Gunakan 3–120 huruf kecil, nombor atau sempang, contohnya november-market. Pratonton halaman:",
+      "defaultsHint": "Waktu ini hanya mengisi lokasi baharu. Pelanggan menggunakan waktu setiap lokasi yang disimpan; lokasi sedia ada tidak berubah.",
+      "previewPoster": "Pratonton poster acara",
+      "checks": {
+        "basics": "Maklumat asas lengkap dan tarikh sah",
+        "poster": "Poster acara dimuat naik",
+        "location": "Lokasi aktif dalam tarikh acara yang belum tamat",
+        "savedLocations": "Semua borang lokasi disimpan atau dibatalkan"
+      },
+      "fieldErrors": {
+        "title": "Masukkan tajuk 3–120 aksara.",
+        "slug": "Gunakan 3–120 huruf kecil, nombor dan sempang tunggal.",
+        "summary": "Masukkan ringkasan 10–240 aksara.",
+        "description": "Masukkan penerangan 10–5,000 aksara.",
+        "startsAt": "Pilih tarikh pertama yang sah.",
+        "endsAt": "Pilih tarikh akhir pada atau selepas tarikh pertama.",
+        "posterUrl": "Pilih poster acara yang sah.",
+        "operatingHours": "Tetapkan waktu buka dan tutup lalai yang sah."
+      }
     },
     "locations": {
       "changeReason": "Sebab perubahan",
@@ -3294,7 +3325,7 @@
       "opensAt": "Buka",
       "closesAt": "Tutup",
       "pin": "Pin peta",
-      "pinHint": "Seret penanda ke lokasi tepat (pilihan).",
+      "pinHint": "Tiada lokasi dipilih pada peta. Cari tempat atau letakkan pin secara jelas (pilihan).",
       "pinSet": "Dipin di {{latitude}}, {{longitude}}",
       "clearPin": "Buang pin",
       "addressTba": "Alamat akan diumumkan",
@@ -3325,14 +3356,26 @@
       "applicationsCloseAt": "Permohonan ditutup (waktu Malaysia)",
       "approvalsCloseAt": "Kelulusan ditutup (waktu Malaysia)",
       "setupStartsAt": "Persediaan bermula (waktu Malaysia)",
-      "intakeScheduleHint": "Permohonan ditutup → kelulusan ditutup → persediaan → pembukaan pertama. Penutupan permohonan tidak menghentikan tempahan pelanggan."
+      "intakeScheduleHint": "Permohonan ditutup → kelulusan ditutup → persediaan → pembukaan pertama. Penutupan permohonan tidak menghentikan tempahan pelanggan.",
+      "placePin": "Letak pin, kemudian seret ke tempat sebenar",
+      "placeHeading": "1. Tempat dan peta",
+      "scheduleHeading": "2. Tarikh dan waktu harian",
+      "intakeHeading": "3. Permohonan vendor dan persediaan",
+      "missingFields": "Lengkapkan atau betulkan: {{fields}}"
     },
     "list": {
       "title": "Aliran kerja acara",
       "description": "{{count}} acara dalam senarai semasa",
       "description_one": "{{count}} acara dalam senarai semasa",
       "description_other": "{{count}} acara dalam senarai semasa",
-      "rejection": "Nota semakan"
+      "rejection": "Nota semakan",
+      "search": "Cari tajuk acara atau alamat halaman",
+      "statusFilter": "Status kelulusan",
+      "scheduleLabel": "Jadual operasi",
+      "dateFrom": "Bertindih dari",
+      "dateTo": "Bertindih hingga",
+      "noMatches": "Tiada acara sepadan dengan penapis",
+      "scheduleLine": "Jadual operasi: {{status}}"
     },
     "states": {
       "loading": "Memuatkan acara…",
@@ -3372,6 +3415,13 @@
       "save": "Tidak dapat menyimpan draf acara.",
       "transition": "Tidak dapat mengemas kini acara ini.",
       "upload": "Tidak dapat memuat naik poster."
+    },
+    "schedule": {
+      "unconfigured": "Tiada lokasi aktif",
+      "upcoming": "Belum bermula",
+      "operating": "Sedang dibuka",
+      "between_sessions": "Antara sesi operasi",
+      "ended": "Tamat"
     }
   },
   "eventRegistrations": {
