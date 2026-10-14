@@ -41,7 +41,11 @@ const safeIdentifier = (value) => {
   if (!/^[a-z_][a-z0-9_]*$/i.test(value)) throw new Error('Unsafe generated database identifier.');
   return `"${value.replaceAll('"', '""')}"`;
 };
-const query = (client, text, values = []) => client.query(text, values);
+// Keep fixed event slots in the future, including after their local closing time.
+const fixtureToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const fixtureOffset = Date.parse(`${fixtureToday}T00:00:00Z`) + 86_400_000 - Date.parse('2026-10-10T00:00:00Z');
+const currentFixtureSql = (text) => env.EVENT_TEST_SETTLEMENT ? text.replace(/2026-10-\d{2}/g, date => new Date(Date.parse(`${date}T00:00:00Z`) + fixtureOffset).toISOString().slice(0, 10)) : text;
+const query = (client, text, values = []) => client.query(currentFixtureSql(text), values);
 
 const sqlFile = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
@@ -268,6 +272,90 @@ async function runBoothConcurrencyCheck(database) {
   }
 }
 
+async function runSettlementRefundConcurrency(database) {
+  const a = new Client({ ...baseConfig, database, application_name: 'event-settlement-refund-a' });
+  const b = new Client({ ...baseConfig, database, application_name: 'event-settlement-clear-b' });
+  const observer = new Client({ ...baseConfig, database });
+  await Promise.all([a.connect(), b.connect(), observer.connect()]);
+  const order = 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
+  try {
+    await query(a, `SELECT set_config('request.jwt.claim.role','service_role',false)`);
+    await query(a, `UPDATE public.order_items SET fulfil_status='fulfilled',fulfilled_at=now() WHERE order_id=$1`, [order]);
+    await query(a, `SELECT public.settle_order_vendor_earnings($1)`, [order]);
+    await query(a, `UPDATE public.order_settlements SET hold_until=now()-interval '1 day' WHERE order_id=$1`, [order]);
+    await query(a, 'BEGIN');
+    await query(a, `SELECT id FROM public.orders WHERE id=$1 FOR UPDATE`, [order]);
+    const refund = await query(a, `INSERT INTO public.refunds(order_id,payment_id,amount,status,reason) SELECT $1,id,12,'pending','Concurrent refund before clearing' FROM public.payments WHERE order_id=$1 LIMIT 1 RETURNING id`, [order]);
+    const clearing = query(b, `SELECT * FROM public.clear_matured_vendor_settlements(false)`);
+    let blocked = false;
+    for (let n = 0; n < 40; n += 1) {
+      const state = await query(observer, `SELECT 1 FROM pg_stat_activity WHERE application_name='event-settlement-clear-b' AND wait_event_type='Lock'`);
+      if (state.rowCount) { blocked = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    await query(a, 'COMMIT');
+    await clearing;
+    if (!blocked) throw new Error('Clearer did not serialize with refund order lock');
+    const settled = await query(observer, `SELECT status FROM public.order_settlements WHERE order_id=$1`, [order]);
+    if (settled.rows[0]?.status !== 'pending') throw new Error('Concurrent refund funds became spendable');
+    await query(a, `DELETE FROM public.refunds WHERE id=$1`, [refund.rows[0].id]);
+    console.log('passed two-session refund/settlement clearance ordering');
+  } finally {
+    await Promise.allSettled([query(a, 'ROLLBACK'), query(b, 'ROLLBACK')]);
+    await Promise.all([a.end(), b.end(), observer.end()]);
+  }
+}
+
+async function runRefundPickupConcurrency(database) {
+  const a = new Client({ ...baseConfig, database, application_name: 'event-refund-review-a' });
+  const b = new Client({ ...baseConfig, database, application_name: 'event-pickup-review-b' });
+  const observer = new Client({ ...baseConfig, database });
+  await Promise.all([a.connect(), b.connect(), observer.connect()]);
+  const waitForLock = async (name) => {
+    for (let n = 0; n < 40; n += 1) {
+      const state = await query(observer, `SELECT 1 FROM pg_stat_activity WHERE application_name=$1 AND wait_event_type='Lock'`, [name]);
+      if (state.rowCount) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error('Expected concurrent order-lock wait did not occur');
+  };
+  try {
+    await query(a, `SELECT set_config('request.jwt.claim.role','service_role',false);`);
+    await query(b, `SELECT set_config('request.jwt.claim.role','service_role',false);`);
+    const seed = await query(a, `SELECT oi.id,oi.order_id,oi.vendor_id,oi.event_location_id,oi.pickup_slot_id,p.id payment_id
+      FROM public.order_items oi JOIN public.orders o ON o.id=oi.order_id JOIN public.payments p ON p.order_id=o.id
+      WHERE oi.event_location_id IS NOT NULL AND lower(o.status)='paid' ORDER BY oi.id LIMIT 1`);
+    const row = seed.rows[0];
+    await query(a, `UPDATE public.order_items SET fulfil_status='pending',fulfilled_at=NULL,
+      pickup_date=(now() AT TIME ZONE 'Asia/Kuala_Lumpur')::date,slot_starts_at=now()-interval '1 minute' WHERE id=$1`, [row.id]);
+    const refund = (await query(a, `INSERT INTO public.refunds(order_id,payment_id,amount,status,reason)
+      VALUES($1,$2,12,'pending','Concurrency review fixture') RETURNING id`, [row.order_id,row.payment_id])).rows[0].id;
+    const version = async () => (await query(observer, `SELECT public.get_event_refund_evidence($1)->>'version' v`, [refund])).rows[0].v;
+    await query(observer, `SELECT set_config('request.jwt.claim.role','service_role',false)`);
+    let token = await version();
+    await query(a, 'BEGIN');
+    await query(a, `SELECT public.claim_event_refund_review($1,'00000000-0000-0000-0000-000000000001',$2,'Verified review fixture')`, [refund,token]);
+    const scan = query(b, `SELECT public.fulfil_event_pickup($1,$2,$3,(now() AT TIME ZONE 'Asia/Kuala_Lumpur')::date,$4,'00000000-0000-0000-0000-000000000002')`,
+      [row.order_id,row.vendor_id,row.event_location_id,row.pickup_slot_id]).then(() => null, (error) => error);
+    await waitForLock('event-pickup-review-b');
+    await query(a, 'COMMIT');
+    if ((await scan)?.message !== 'event_refund_under_review') throw new Error('Scan crossed the claimed refund boundary');
+    await query(a, `UPDATE public.refunds SET review_claimed_at=NULL,review_claimed_by=NULL,review_evidence_version=NULL WHERE id=$1`,[refund]);
+    token = await version();
+    await query(a, 'BEGIN');
+    await query(a, `SELECT public.fulfil_event_pickup($1,$2,$3,(now() AT TIME ZONE 'Asia/Kuala_Lumpur')::date,$4,'00000000-0000-0000-0000-000000000002')`,
+      [row.order_id,row.vendor_id,row.event_location_id,row.pickup_slot_id]);
+    const review = query(b, `SELECT public.claim_event_refund_review($1,'00000000-0000-0000-0000-000000000001',$2,'Collected review fixture')`, [refund,token]).then(() => null, (error) => error);
+    await waitForLock('event-pickup-review-b');
+    await query(a, 'COMMIT');
+    if ((await review)?.message !== 'refund_evidence_changed') throw new Error('Stale review survived concurrent pickup');
+    console.log('passed two-session refund-first and pickup-first evidence boundaries');
+  } finally {
+    await Promise.allSettled([query(a, 'ROLLBACK'),query(b, 'ROLLBACK')]);
+    await Promise.all([a.end(),b.end(),observer.end()]);
+  }
+}
+
 const database = `mywisata_event_test_${process.pid}_${Date.now()}`;
 const keepDatabase = env.EVENT_TEST_KEEP_DB === '1';
 const admin = new Client(baseConfig);
@@ -334,6 +422,41 @@ try {
     `);
   }
   console.log('event management DB verification passed');
+  if (env.EVENT_TEST_GUARANTEES) {
+    await apply(dbClient, 'supabase/migrations/20261006174844_event_pickup_slot_time_validation.sql');
+    await apply(dbClient, 'supabase/tests/event_checkout_finance_fixture.sql');
+    await apply(dbClient, 'supabase/tests/event_checkout_baseline.sql');
+    await apply(dbClient, 'supabase/migrations/20261002145904_preserve_refund_funding_and_provider_outcomes.sql');
+    if (env.EVENT_TEST_GUARANTEES !== 'baseline') await apply(dbClient, 'supabase/migrations/20261011171225_event_checkout_commitment_guards.sql');
+    await runTransaction(dbClient, 'late-payment commitments', sqlFile('supabase/tests/event_checkout_commitments.sql'));
+    if (env.EVENT_TEST_GUARANTEES !== 'baseline') {
+      await apply(dbClient, 'supabase/migrations/20261011171233_event_reservation_change_guards.sql');
+    }
+    await runTransaction(dbClient, 'reservation edit protections', sqlFile('supabase/tests/event_reservation_edit_guards.sql'));
+    await runTransaction(dbClient, 'shortage impact and confirmation', sqlFile('supabase/tests/event_shortage_resolution.sql'));
+    if (env.EVENT_TEST_GUARANTEES !== 'baseline') await apply(dbClient, 'supabase/migrations/20261011171242_event_refund_review_evidence.sql');
+    await runTransaction(dbClient, 'refund evidence review', sqlFile('supabase/tests/event_refund_review_evidence.sql'));
+    if (env.EVENT_TEST_GUARANTEES !== 'baseline') await apply(dbClient, 'supabase/migrations/20261011171247_event_reservation_operations.sql');
+    await runTransaction(dbClient, 'exception ownership and closure', sqlFile('supabase/tests/event_reservation_operations.sql'));
+    if (env.EVENT_TEST_FILTERS) {
+      await apply(dbClient, 'supabase/migrations/20261011171300_event_exception_query_filters.sql');
+      await runTransaction(dbClient, 'exception filtering and pagination', sqlFile('supabase/tests/event_exception_query_filters.sql'));
+    }
+    if (env.EVENT_TEST_SETTLEMENT) {
+      await query(dbClient, 'ALTER TABLE public.wallets ADD COLUMN IF NOT EXISTS pending_earnings_sen bigint NOT NULL DEFAULT 0;');
+      await apply(dbClient, 'supabase/migrations/20260911000000_vendor_order_settlement.sql');
+      await query(dbClient, 'ALTER TABLE public.order_settlements ADD COLUMN is_simulated boolean NOT NULL DEFAULT false;');
+      if (env.EVENT_TEST_SETTLEMENT !== 'baseline') await apply(dbClient, 'supabase/migrations/20261011194020_event_settlement_pickup_resolution.sql');
+      await runTransaction(dbClient, 'event settlement and overdue pickup resolution', sqlFile('supabase/tests/event_settlement_pickup_resolution.sql'));
+      if (env.EVENT_TEST_SETTLEMENT !== 'baseline') await runSettlementRefundConcurrency(database);
+      if (env.EVENT_TEST_VENDOR_NOTICES) {
+        await query(dbClient, 'ALTER TABLE public.email_outbox ADD COLUMN IF NOT EXISTS last_error text;');
+        if (env.EVENT_TEST_VENDOR_NOTICES !== 'baseline') await apply(dbClient, 'supabase/migrations/20261012013400_event_exception_vendor_notices.sql');
+        await runTransaction(dbClient, 'vendor exception notices', sqlFile('supabase/tests/event_exception_vendor_notices.sql'));
+      }
+    }
+    await runRefundPickupConcurrency(database);
+  }
   if (env.EVENT_TEST_INTAKE) {
     if (env.EVENT_TEST_INTAKE !== 'baseline') await apply(dbClient, 'supabase/migrations/20261007161233_event_booth_allocation_and_intake.sql');
     await runTransaction(dbClient, 'booth allocation and intake', sqlFile('supabase/tests/event_booth_allocation_and_intake.sql'));

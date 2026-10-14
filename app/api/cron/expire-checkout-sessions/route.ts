@@ -10,7 +10,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { data, error } = await createServiceClient().rpc('expire_checkout_sessions');
+  const service = createServiceClient();
+  const { data, error } = await service.rpc('expire_checkout_sessions');
   if (error) return NextResponse.json({ error: 'checkout_expiration_failed' }, { status: 500 });
-  return NextResponse.json({ expired: Number(data ?? 0) });
+  const { data: pickups, error: pickupError } = await service.rpc('refresh_overdue_event_pickups');
+  if (pickupError) return NextResponse.json({ error: 'pickup_discovery_failed' }, { status: 500 });
+  return NextResponse.json({ expired: Number(data ?? 0), pickupsOpened: Number(pickups?.opened ?? 0), pickupsClosed: Number(pickups?.closed ?? 0) });
 }

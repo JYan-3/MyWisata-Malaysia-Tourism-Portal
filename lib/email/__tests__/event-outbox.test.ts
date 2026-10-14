@@ -48,4 +48,21 @@ describe('event notices through the existing durable sender', () => {
     mocks.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: new Error('private details') }) });
     await expect(processEmailOutbox(20)).rejects.toThrow('email_state_unavailable');
   });
+  it('delivers an exception using the existing compatible email type and trusted order link', async () => {
+    mocks.rpc.mockResolvedValue({ data: [{ id: 'exception-queue', to_email: 'owner@example.test', event_type: 'vendor_order_update',
+      payload: { vendorName: 'Kitchen', reason: 'Pickup needs verification. ORD-123 · 2 × Cake', reference: 'ORD-123', occurredAt: '2026-10-12T00:00:00Z', actionPath: '/vendor/orders' } }], error: null });
+    mocks.send.mockImplementation(async (input) => {
+      const rendered = renderVendorEmail(input);
+      expect(rendered.text).toContain('ORD-123');
+      expect(rendered.html).toContain('href="https://mylawatan.example/vendor/orders"');
+    });
+    expect(await processEmailOutbox()).toEqual({ sent: 1, failed: 0 });
+  });
+  it('does not turn arbitrary stored action paths into email links', async () => {
+    mocks.rpc.mockResolvedValue({ data: [{ id: 'exception-queue', to_email: 'owner@example.test', event_type: 'vendor_order_update',
+      payload: { vendorName: 'Kitchen', reason: 'Needs verification', actionPath: '//evil.example/private' } }], error: null });
+    mocks.send.mockResolvedValue(undefined);
+    expect(await processEmailOutbox()).toEqual({ sent: 1, failed: 0 });
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ actionUrl: undefined }));
+  });
 });

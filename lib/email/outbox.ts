@@ -55,6 +55,7 @@ type OutboxRow = {
     eventChange?: EventVendorChange;
     kind?: KycSecurityEmailInput['kind'];
     count?: number;
+    actionPath?: '/vendor/orders' | '/vendor/wallet';
   };
   status: 'pending' | 'sending' | 'sent' | 'failed';
   attempts: number;
@@ -139,7 +140,8 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           reference: row.payload?.reference ?? null,
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
           eventChange: row.payload?.eventChange,
-          actionUrl: row.event_type === 'vendor_event_update' ? `${resolvePaymentAppUrl()}/vendor/events` : undefined,
+          actionUrl: row.event_type === 'vendor_event_update' ? `${resolvePaymentAppUrl()}/vendor/events`
+            : ['/vendor/orders', '/vendor/wallet'].includes(row.payload?.actionPath ?? '') ? `${resolvePaymentAppUrl()}${row.payload.actionPath}` : undefined,
           to: row.to_email,
         });
       } else if (row.event_type.startsWith('account_')) {

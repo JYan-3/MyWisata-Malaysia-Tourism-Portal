@@ -99,4 +99,11 @@ describe('POST /api/checkout/confirm-stripe', () => {
     expect(mocks.enqueueUserTransactionEmail).not.toHaveBeenCalled();
     expect(mocks.emitOrderVendorEvent).not.toHaveBeenCalled();
   });
+  it('retains an unfulfillable payment without emitting paid-order notifications', async () => {
+    mocks.service.rpc.mockResolvedValue({ data: { order_id: ORDER_ID, status: 'payment_exception', idempotent: false }, error: null });
+    expect((await POST(request())).status).toBe(200);
+    expect(mocks.enqueueUserTransactionEmail).not.toHaveBeenCalled();
+    expect(mocks.emitOrderVendorEvent).not.toHaveBeenCalled();
+  });
+
 });
