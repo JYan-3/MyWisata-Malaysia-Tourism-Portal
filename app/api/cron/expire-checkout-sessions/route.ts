@@ -1,3 +1,4 @@
+import { runEventOperationalJob } from '@/lib/events/operational-job';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 
@@ -11,9 +12,18 @@ export async function GET(request: Request) {
   }
 
   const service = createServiceClient();
-  const { data, error } = await service.rpc('expire_checkout_sessions');
-  if (error) return NextResponse.json({ error: 'checkout_expiration_failed' }, { status: 500 });
-  const { data: pickups, error: pickupError } = await service.rpc('refresh_overdue_event_pickups');
-  if (pickupError) return NextResponse.json({ error: 'pickup_discovery_failed' }, { status: 500 });
-  return NextResponse.json({ expired: Number(data ?? 0), pickupsOpened: Number(pickups?.opened ?? 0), pickupsClosed: Number(pickups?.closed ?? 0) });
+  try {
+    const result = await runEventOperationalJob(service, 'expire_checkout_sessions', async () => {
+      const { data, error } = await service.rpc('expire_checkout_sessions');
+      if (error) throw new Error('checkout_expiration_failed');
+      const { data: pickups, error: pickupError } = await service.rpc('refresh_overdue_event_pickups');
+      if (pickupError) throw new Error('pickup_discovery_failed');
+      return { expired: Number(data ?? 0), pickupsOpened: Number(pickups?.opened ?? 0), pickupsClosed: Number(pickups?.closed ?? 0) };
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    const code = error instanceof Error && error.message === 'pickup_discovery_failed'
+      ? 'pickup_discovery_failed' : 'checkout_expiration_failed';
+    return NextResponse.json({ error: code }, { status: 500 });
+  }
 }

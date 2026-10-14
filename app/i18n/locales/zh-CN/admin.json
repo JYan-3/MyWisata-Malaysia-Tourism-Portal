@@ -1522,6 +1522,21 @@
       "affiliate": "联盟",
       "recommendation": "推荐",
       "platformNet": "平台净额"
+    },
+    "filters": {
+      "search": "搜索订单号",
+      "clear": "清除筛选",
+      "unknownStatus": "其他状态",
+      "orderWithoutNumber": "订单号未提供",
+      "noMatches": "没有符合筛选条件的订单。",
+      "scope": "财务筛选同步作用于表格、金额汇总和 CSV；金额仅反映已载入的结算数据。",
+      "count": "显示 {{shown}} / {{total}} 笔已载入订单。",
+      "net": {
+        "all": "全部净额",
+        "positive": "正数",
+        "zero": "零",
+        "negative": "负数"
+      }
     }
   },
   "payouts": {
@@ -3618,6 +3633,96 @@
       "rejectSuccess": "活动推广已拒绝。",
       "pauseSuccess": "推广已暂停——已对顾客隐藏。",
       "resumeSuccess": "推广已发布——顾客可重新看到。"
+    }
+  },
+  "eventOperations": {
+    "pickupOverdue": "取货日期已过，领取结果待核实",
+    "pickupHelp": "未领取不等于顾客缺席。请核对商品和联系记录后结案；待核实金额不代表已批准退款金额。",
+    "refreshPickups": "刷新过期未领取订单",
+    "resolvePickup": "核实取货／退款后结案",
+    "confirmNoShow": "确认顾客未领取（不退款结案）",
+    "noShowNote": "说明已核实的顾客未领取原因及联系证据（20–500 字符）。",
+    "resolveNote": "说明已核实的取货或退款完成证据（5–500 字符）。",
+    "noShowConfirm": "确认顾客未领取且无需退款？这会记录不退款结案，不会把商品标为已领取。款项仍须满足等待期及其他解冻检查。",
+    "resolutions": {
+      "customer_no_show": "已核实顾客未领取，不退款结案",
+      "collected": "已核实取货记录",
+      "refunded": "已确认退款完成"
+    },
+    "title": "待处理活动异常",
+    "summary": "待处理：{{open}} · 未认领：{{unassigned}} · 未设期限：{{undated}} · 逾期：{{overdue}} · 待处理金额：{{amount}}",
+    "deadlineHelp": "期限用于跟进处理。到期不会自动退款或关闭订单。时间均为马来西亚时间。",
+    "dueRequired": "请选择未来的处理期限。",
+    "conflict": "记录已变化或你没有操作权限，请刷新后重新审核。",
+    "expiryJob": "过期预订清理",
+    "refundJob": "活动退款处理",
+    "neverRun": "尚无运行记录",
+    "running": "运行中",
+    "failed": "上次运行失败",
+    "stale": "近期无完成记录",
+    "healthy": "上次运行完成",
+    "empty": "没有待处理活动异常。",
+    "orderWithoutNumber": "订单编号待生成",
+    "paymentException": "已收款，但预订无法履约",
+    "refundAttention": "退款需要跟进",
+    "owner": "负责人",
+    "unassigned": "尚未认领",
+    "undated": "尚未设置期限",
+    "overdue": "已逾期",
+    "reviewRefund": "审核退款",
+    "dueMalaysia": "处理期限（马来西亚时间）",
+    "claim": "认领／更新我的期限",
+    "boundedList": "显示前 100 条待处理记录；汇总包含全部待处理记录。",
+    "collectedRefundNote": "请说明已取货商品获准退款的原因。",
+    "collected": "已取货",
+    "uncollected": "未取货",
+    "shortage": "处理该日期的缺货",
+    "shortageReason": "请说明已确认的缺货原因。",
+    "shortageConfirm": "停止此商品在该日期的新预订，并取消 {{orders}} 个受影响订单（{{units}} 件；已付款 {{amount}}）？已取货及其他订单会受到保护。",
+    "filters": {
+      "search": "搜索异常订单号",
+      "globalScope": "概览包含全部待处理异常；下方筛选作用于异常列表及匹配的待处理金额。",
+      "matching": "匹配 {{count}} 条异常 · 待处理 {{amount}}",
+      "noMatches": "没有符合筛选条件的异常。",
+      "refundConfirmed": "退款完成已确认",
+      "closureRecorded": "已记录异常关闭",
+      "page": "第 {{page}} / {{pages}} 页",
+      "previous": "上一页",
+      "next": "下一页",
+      "labels": {
+        "caseKind": "异常类型",
+        "caseHandling": "处理状态",
+        "caseOwner": "负责人",
+        "caseDeadline": "期限情况"
+      },
+      "caseKind": {
+        "pickup_overdue": "取货日期已过，领取结果待核实",
+        "all": "全部类型",
+        "payment_unfulfillable": "已收款但无法履约",
+        "refund_attention": "退款需处理"
+      },
+      "caseHandling": {
+        "open": "待处理",
+        "needs_review": "待审核",
+        "awaiting_provider": "等待支付平台结果",
+        "refund_failed": "退款失败",
+        "resolved": "已关闭",
+        "all": "全部处理状态"
+      },
+      "caseOwner": {
+        "all": "全部负责人",
+        "unassigned": "未认领",
+        "mine": "我负责的",
+        "others": "其他人负责的"
+      },
+      "caseDeadline": {
+        "all": "全部期限",
+        "overdue": "已逾期",
+        "upcoming": "未到期",
+        "undated": "未设置期限"
+      },
+      "matching_one": "匹配 {{count}} 条异常 · 待处理 {{amount}}",
+      "matching_other": "匹配 {{count}} 条异常 · 待处理 {{amount}}"
     }
   }
 }

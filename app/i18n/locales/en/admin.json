@@ -1522,6 +1522,21 @@
       "affiliate": "Affiliate",
       "recommendation": "Recommendation",
       "platformNet": "Platform net"
+    },
+    "filters": {
+      "search": "Search order number",
+      "clear": "Clear filters",
+      "unknownStatus": "Other status",
+      "orderWithoutNumber": "Order number unavailable",
+      "noMatches": "No orders match these filters.",
+      "scope": "Financial filters apply to the table, totals and CSV. Figures reflect loaded settlement data.",
+      "count": "Showing {{shown}} of {{total}} loaded orders.",
+      "net": {
+        "all": "All net amounts",
+        "positive": "Positive",
+        "zero": "Zero",
+        "negative": "Negative"
+      }
     }
   },
   "payouts": {
@@ -3618,6 +3633,96 @@
       "rejectSuccess": "Event promotion rejected.",
       "pauseSuccess": "Promotion paused — hidden from customers.",
       "resumeSuccess": "Promotion published — visible to customers again."
+    }
+  },
+  "eventOperations": {
+    "pickupOverdue": "Pickup date passed — outcome unconfirmed",
+    "pickupHelp": "An uncollected order is not automatically a customer no-show. Review the items and contact evidence before closing. Amounts under review are not approved refund amounts.",
+    "refreshPickups": "Refresh overdue pickups",
+    "resolvePickup": "Close after verified pickup / refund",
+    "confirmNoShow": "Confirm customer no-show — close without refund",
+    "noShowNote": "Explain the verified customer no-show and contact evidence (20–500 characters).",
+    "resolveNote": "Explain the verified pickup or completed refund (5–500 characters).",
+    "noShowConfirm": "Confirm that the customer did not collect and no refund is required? This records closure without marking goods collected. Funds still require the waiting period and all other release checks.",
+    "resolutions": {
+      "customer_no_show": "Customer no-show verified; closed without refund",
+      "collected": "Recorded pickup verified",
+      "refunded": "Refund completion verified"
+    },
+    "title": "Event obligations needing attention",
+    "summary": "Open: {{open}} · Unassigned: {{unassigned}} · No deadline: {{undated}} · Overdue: {{overdue}} · Outstanding: {{amount}}",
+    "deadlineHelp": "Deadlines are for operator follow-up. Passing a deadline does not refund or close an order. Times use Malaysia time.",
+    "dueRequired": "Choose a future handling deadline.",
+    "conflict": "The record changed or the action is not permitted. Refresh and review it.",
+    "expiryJob": "Expired checkout cleanup",
+    "refundJob": "Event refund processing",
+    "neverRun": "No recorded run",
+    "running": "Running",
+    "failed": "Last run failed",
+    "stale": "No recent completed run",
+    "healthy": "Last run completed",
+    "empty": "No unresolved event obligations.",
+    "orderWithoutNumber": "Order awaiting display number",
+    "paymentException": "Payment received but reservation unavailable",
+    "refundAttention": "Refund needs attention",
+    "owner": "Responsible person",
+    "unassigned": "Not claimed",
+    "undated": "Deadline not set",
+    "overdue": "Overdue",
+    "reviewRefund": "Review refund",
+    "dueMalaysia": "Handling deadline (Malaysia time)",
+    "claim": "Claim / update my deadline",
+    "boundedList": "Showing the first 100 open cases. Totals include all open cases.",
+    "collectedRefundNote": "Explain why collected goods should be refunded.",
+    "collected": "Collected",
+    "uncollected": "Not collected",
+    "shortage": "Resolve shortage for this date",
+    "shortageReason": "Explain the confirmed shortage.",
+    "shortageConfirm": "Close new reservations for this listing/date and cancel {{orders}} affected orders ({{units}} units; {{amount}} paid)? Collected and unrelated orders are protected.",
+    "filters": {
+      "search": "Search exception order number",
+      "globalScope": "Overview covers all open exceptions. Filters below apply to the exception list and matching outstanding amount.",
+      "matching": "{{count}} matching exceptions · Outstanding {{amount}}",
+      "noMatches": "No exceptions match these filters.",
+      "refundConfirmed": "Refund completion verified",
+      "closureRecorded": "Lifecycle closure recorded",
+      "page": "Page {{page}} of {{pages}}",
+      "previous": "Previous",
+      "next": "Next",
+      "labels": {
+        "caseKind": "Exception type",
+        "caseHandling": "Handling state",
+        "caseOwner": "Responsibility",
+        "caseDeadline": "Deadline"
+      },
+      "caseKind": {
+        "pickup_overdue": "Pickup date passed — outcome unconfirmed",
+        "all": "All types",
+        "payment_unfulfillable": "Paid but unable to fulfil",
+        "refund_attention": "Refund requires attention"
+      },
+      "caseHandling": {
+        "open": "Open",
+        "needs_review": "Needs review",
+        "awaiting_provider": "Awaiting payment provider",
+        "refund_failed": "Refund failed",
+        "resolved": "Closed",
+        "all": "All handling states"
+      },
+      "caseOwner": {
+        "all": "All reviewers",
+        "unassigned": "Unassigned",
+        "mine": "Assigned to me",
+        "others": "Assigned to another reviewer"
+      },
+      "caseDeadline": {
+        "all": "All deadlines",
+        "overdue": "Overdue",
+        "upcoming": "Not yet due",
+        "undated": "No deadline"
+      },
+      "matching_one": "{{count}} matching exceptions · Outstanding {{amount}}",
+      "matching_other": "{{count}} matching exceptions · Outstanding {{amount}}"
     }
   }
 }

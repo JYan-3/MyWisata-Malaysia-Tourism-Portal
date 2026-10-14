@@ -1522,6 +1522,21 @@
       "affiliate": "Ahli gabungan",
       "recommendation": "Cadangan",
       "platformNet": "Bersih platform"
+    },
+    "filters": {
+      "search": "Cari nombor pesanan",
+      "clear": "Kosongkan penapis",
+      "unknownStatus": "Status lain",
+      "orderWithoutNumber": "Nombor pesanan tidak tersedia",
+      "noMatches": "Tiada pesanan sepadan dengan penapis ini.",
+      "scope": "Penapis kewangan digunakan pada jadual, jumlah dan CSV. Angka berdasarkan data penyelesaian yang dimuatkan.",
+      "count": "Memaparkan {{shown}} daripada {{total}} pesanan yang dimuatkan.",
+      "net": {
+        "all": "Semua amaun bersih",
+        "positive": "Positif",
+        "zero": "Sifar",
+        "negative": "Negatif"
+      }
     }
   },
   "payouts": {
@@ -3618,6 +3633,96 @@
       "rejectSuccess": "Promosi acara ditolak.",
       "pauseSuccess": "Promosi dijeda — disembunyikan daripada pelanggan.",
       "resumeSuccess": "Promosi disiarkan — kelihatan kepada pelanggan semula."
+    }
+  },
+  "eventOperations": {
+    "pickupOverdue": "Tarikh pengambilan berlalu — hasil belum disahkan",
+    "pickupHelp": "Pesanan belum diambil tidak bermakna pelanggan tidak hadir. Semak barang dan bukti hubungan sebelum menutup kes. Amaun dalam semakan bukan bayaran balik yang diluluskan.",
+    "refreshPickups": "Semak pengambilan tertunggak",
+    "resolvePickup": "Tutup selepas pengambilan / bayaran balik disahkan",
+    "confirmNoShow": "Sahkan pelanggan tidak hadir — tutup tanpa bayaran balik",
+    "noShowNote": "Terangkan ketidakhadiran yang disahkan dan bukti hubungan (20–500 aksara).",
+    "resolveNote": "Terangkan pengambilan atau bayaran balik yang disahkan (5–500 aksara).",
+    "noShowConfirm": "Sahkan pelanggan tidak mengambil barang dan tiada bayaran balik diperlukan? Penutupan ini tidak menandakan barang telah diambil. Tempoh menunggu dan semakan pelepasan wang masih dikenakan.",
+    "resolutions": {
+      "customer_no_show": "Ketidakhadiran pelanggan disahkan; ditutup tanpa bayaran balik",
+      "collected": "Rekod pengambilan disahkan",
+      "refunded": "Bayaran balik selesai disahkan"
+    },
+    "title": "Isu acara yang memerlukan tindakan",
+    "summary": "Terbuka: {{open}} · Belum dituntut: {{unassigned}} · Tiada tarikh akhir: {{undated}} · Lewat: {{overdue}} · Baki: {{amount}}",
+    "deadlineHelp": "Tarikh akhir untuk susulan petugas. Ia tidak memulangkan wang atau menutup pesanan secara automatik. Masa Malaysia digunakan.",
+    "dueRequired": "Pilih tarikh akhir pada masa hadapan.",
+    "conflict": "Rekod berubah atau tindakan tidak dibenarkan. Muat semula untuk semakan.",
+    "expiryJob": "Pembersihan tempahan tamat",
+    "refundJob": "Pemprosesan bayaran balik acara",
+    "neverRun": "Belum ada rekod pelaksanaan",
+    "running": "Sedang berjalan",
+    "failed": "Pelaksanaan terakhir gagal",
+    "stale": "Tiada pelaksanaan lengkap terkini",
+    "healthy": "Pelaksanaan terakhir selesai",
+    "empty": "Tiada isu acara yang belum diselesaikan.",
+    "orderWithoutNumber": "Nombor pesanan belum tersedia",
+    "paymentException": "Bayaran diterima tetapi tempahan tidak tersedia",
+    "refundAttention": "Bayaran balik memerlukan perhatian",
+    "owner": "Petugas bertanggungjawab",
+    "unassigned": "Belum dituntut",
+    "undated": "Tarikh akhir belum ditetapkan",
+    "overdue": "Lewat",
+    "reviewRefund": "Semak bayaran balik",
+    "dueMalaysia": "Tarikh akhir tindakan (masa Malaysia)",
+    "claim": "Tuntut / kemas kini tarikh akhir saya",
+    "boundedList": "100 kes terbuka pertama ditunjukkan. Jumlah merangkumi semua kes terbuka.",
+    "collectedRefundNote": "Jelaskan sebab pemulangan wang untuk barang yang telah diambil.",
+    "collected": "Sudah diambil",
+    "uncollected": "Belum diambil",
+    "shortage": "Selesaikan kekurangan pada tarikh ini",
+    "shortageReason": "Jelaskan kekurangan yang telah disahkan.",
+    "shortageConfirm": "Tutup tempahan baharu untuk barang/tarikh ini dan batalkan {{orders}} pesanan terjejas ({{units}} unit; bayaran {{amount}})? Pesanan yang telah diambil dan pesanan lain dilindungi.",
+    "filters": {
+      "search": "Cari nombor pesanan pengecualian",
+      "globalScope": "Ringkasan meliputi semua pengecualian terbuka. Penapis di bawah digunakan pada senarai pengecualian dan amaun tertunggak yang sepadan.",
+      "matching": "{{count}} pengecualian sepadan · Tertunggak {{amount}}",
+      "noMatches": "Tiada pengecualian sepadan dengan penapis ini.",
+      "refundConfirmed": "Bayaran balik selesai disahkan",
+      "closureRecorded": "Penutupan kitaran direkodkan",
+      "page": "Halaman {{page}} daripada {{pages}}",
+      "previous": "Sebelumnya",
+      "next": "Seterusnya",
+      "labels": {
+        "caseKind": "Jenis pengecualian",
+        "caseHandling": "Keadaan pengendalian",
+        "caseOwner": "Tanggungjawab",
+        "caseDeadline": "Tarikh akhir"
+      },
+      "caseKind": {
+        "pickup_overdue": "Tarikh pengambilan berlalu — hasil belum disahkan",
+        "all": "Semua jenis",
+        "payment_unfulfillable": "Dibayar tetapi tidak dapat dipenuhi",
+        "refund_attention": "Bayaran balik perlu perhatian"
+      },
+      "caseHandling": {
+        "open": "Terbuka",
+        "needs_review": "Perlu semakan",
+        "awaiting_provider": "Menunggu penyedia pembayaran",
+        "refund_failed": "Bayaran balik gagal",
+        "resolved": "Ditutup",
+        "all": "Semua keadaan pengendalian"
+      },
+      "caseOwner": {
+        "all": "Semua penyemak",
+        "unassigned": "Belum ditugaskan",
+        "mine": "Ditugaskan kepada saya",
+        "others": "Ditugaskan kepada penyemak lain"
+      },
+      "caseDeadline": {
+        "all": "Semua tarikh akhir",
+        "overdue": "Terlewat",
+        "upcoming": "Belum sampai tarikh akhir",
+        "undated": "Tiada tarikh akhir"
+      },
+      "matching_one": "{{count}} pengecualian sepadan · Tertunggak {{amount}}",
+      "matching_other": "{{count}} pengecualian sepadan · Tertunggak {{amount}}"
     }
   }
 }

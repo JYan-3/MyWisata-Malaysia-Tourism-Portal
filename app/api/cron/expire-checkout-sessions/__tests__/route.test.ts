@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc }) }));
 
+vi.mock('@/lib/events/operational-job', () => ({ runEventOperationalJob: async (_service: unknown, _job: unknown, execute: () => Promise<unknown>) => execute() }));
+
 import { GET } from '../route';
 
 describe('GET /api/cron/expire-checkout-sessions', () => {
@@ -51,4 +53,9 @@ describe('GET /api/cron/expire-checkout-sessions', () => {
     await expect(response.json()).resolves.toEqual({ error: 'pickup_discovery_failed' });
   });
 
+});
+
+it('does not report a healthy sweep when overdue discovery fails', async () => {
+ rpc.mockResolvedValueOnce({data:3,error:null}).mockResolvedValueOnce({data:null,error:{message:'unavailable'}});
+ expect((await GET(new Request('http://localhost',{headers:{authorization:'Bearer cron-test-secret'}}))).status).toBe(500);
 });

@@ -234,13 +234,14 @@ export async function updateCampaignListing(
   authDb: SupabaseClient,
   listingId: string,
   input: CampaignListingUpdate,
-): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'forbidden' | 'not_editable' | 'invalid' | 'unknown' }> {
+): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'forbidden' | 'not_editable' | 'in_use' | 'invalid' | 'unknown' }> {
   const { error } = await authDb.rpc('update_campaign_listing', {
     p_listing_id: listingId,
     p_daily_quantity: input.dailyQuantity,
     p_active: input.active,
   });
   if (!error) return { ok: true };
+  if (error.message.includes('event_stock_below_commitments')) return { ok: false, code: 'in_use' };
   if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
   if (error.message.includes('forbidden')) return { ok: false, code: 'forbidden' };
   if (error.message.includes('not_editable')) return { ok: false, code: 'not_editable' };
@@ -257,7 +258,7 @@ function pickupSlotFailure(message: string): PickupSlotFailure {
   if (message.includes('pickup_slot_outside_hours')) return 'outside_hours';
   if (message.includes('pickup_slot_outside_dates')) return 'outside_dates';
   if (message.includes('pickup_slot_duplicate')) return 'duplicate';
-  if (message.includes('pickup_slot_in_use')) return 'in_use';
+  if (message.includes('event_slot_has_commitments') || message.includes('event_capacity_below_commitments') || message.includes('pickup_slot_in_use')) return 'in_use';
   if (message.includes('pickup_slot_invalid')) return 'invalid';
   return 'unknown';
 }

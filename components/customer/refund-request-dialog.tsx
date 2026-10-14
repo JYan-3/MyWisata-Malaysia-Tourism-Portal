@@ -16,7 +16,7 @@ type RefundRequestDialogProps = {
   items?: readonly RefundRequestItem[];
   submitting?: boolean;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string, reasonCode?: string) => void;
 };
 
 const REFUND_REASON_OPTIONS = [
@@ -57,7 +57,7 @@ export function RefundRequestDialog({
       ? `${selectedReasonLabel}: ${customReason.trim()}`
       : selectedReasonLabel;
     if (reason.length < 5 || submitting) return;
-    onConfirm(reason);
+    onConfirm(reason, reasonType);
   }
 
   return (

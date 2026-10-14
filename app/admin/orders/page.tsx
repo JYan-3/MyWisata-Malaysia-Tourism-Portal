@@ -5,10 +5,13 @@ import { RefreshCw, Search } from 'lucide-react';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { Button } from '@/components/ui/button';
+import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 
 type OrderItem = {
   id: string;
+  eventListingId: string | null;
+  pickupDate: string | null;
   productName: string;
   quantity: number;
   lineTotal: number;
@@ -44,6 +47,7 @@ function formatMoney(amount: number, currency: string, locale: string) {
 
 export default function AdminOrdersPage() {
   const { t, i18n } = useTranslation('admin');
+  const { prompt, confirm } = useAppDialog();
   const locale = i18n.resolvedLanguage === 'ms' ? 'ms-MY' : i18n.resolvedLanguage === 'zh-CN' ? 'zh-CN' : 'en-MY';
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>('all');
@@ -90,6 +94,21 @@ export default function AdminOrdersPage() {
     event.preventDefault();
     setPage(1);
     setSearch(searchInput.trim());
+  }
+
+  async function resolveShortage(item: OrderItem) {
+    const reason = (await prompt(t('eventOperations.shortageReason')))?.trim();
+    if (!reason || reason.length < 5) return;
+    const input = { listingId: item.eventListingId, pickupDate: item.pickupDate, reason };
+    try {
+      const preview = await fetch('/api/admin/orders/event-shortage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
+      const body = await preview.json();
+      if (!preview.ok) throw new Error(t('eventOperations.conflict'));
+      if (!await confirm(t('eventOperations.shortageConfirm', { orders: body.data.orders, units: body.data.units, amount: formatMoney(body.data.amountSen / 100, 'MYR', locale) }))) return;
+      const saved = await fetch('/api/admin/orders/event-shortage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...input, version: body.data.version }) });
+      if (!saved.ok) throw new Error(t('eventOperations.conflict'));
+      await loadOrders();
+    } catch { setError(t('eventOperations.conflict')); }
   }
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -163,6 +182,7 @@ export default function AdminOrdersPage() {
                         {order.items.map((item) => (
                           <li key={item.id}>
                             <p className="font-medium">{item.quantity} × {item.productName}</p>
+                            {item.eventListingId && item.pickupDate && ['pending','ready'].includes(item.fulfilStatus) && <Button variant="outline" onClick={() => void resolveShortage(item)}>{t('eventOperations.shortage')}</Button>}
                             <p className="text-xs text-muted-foreground">
                               <span>{item.vendorName ?? '—'}</span><span aria-hidden="true"> · </span>
                               <span>{item.outletName ?? '—'}</span><span aria-hidden="true"> · </span>
