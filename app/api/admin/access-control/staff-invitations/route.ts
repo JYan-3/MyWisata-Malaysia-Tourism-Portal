@@ -19,7 +19,6 @@ export const dynamic = "force-dynamic";
 const createSchema = z.object({
   email: z.string().trim().email().max(254),
   staffRoleId: z.string().uuid(),
-  locale: z.enum(["en", "ms", "zh-CN"]).optional().default("en"),
   reason: z.string().trim().min(10).max(500),
 }).strict();
 
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
 
   const prepared = preparedInvitation(data);
   if (!prepared) return apiFail("STAFF_INVITATION_FAILED", "Unable to prepare the staff invitation", 500);
-  const delivery = await deliverPreparedInvitation(db, prepared, token, tokenHash, parsed.data.locale);
+  const delivery = await deliverPreparedInvitation(db, prepared, token, tokenHash);
   if (!delivery.sent || !delivery.finalized) {
     return apiFail("STAFF_INVITATION_DELIVERY_FAILED", "The invitation was created but email delivery could not be confirmed", 503);
   }

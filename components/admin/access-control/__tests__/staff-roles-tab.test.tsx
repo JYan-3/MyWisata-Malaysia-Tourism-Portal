@@ -341,7 +341,6 @@ describe("StaffRolesTab", () => {
     expect(JSON.parse(String((post?.[1] as RequestInit).body))).toEqual({
       email: "new.staff@example.com",
       staffRoleId: "custom-role",
-      locale: "en",
       reason: "Invite a dedicated campaign operations employee",
     });
   });

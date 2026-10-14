@@ -1,9 +1,10 @@
 import { sendStaffInvitationEmail } from "@/lib/email/sender";
+import { resolveAppLocale } from "@/lib/i18n/locale";
 import {
   buildStaffInvitationUrl,
   staffInvitationOrigin,
 } from "@/lib/staff-invitations/server";
-import type { StaffInvitationLocale } from "@/lib/staff-invitations/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isStaffPermissionKey } from "@/lib/staff-permissions/types";
 import { apiFail } from "@/lib/validation/schemas";
 
@@ -50,17 +51,30 @@ export function preparedInvitation(value: unknown): PreparedStaffInvitation | nu
 }
 
 export async function deliverPreparedInvitation(
-  db: { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }> },
+  db: SupabaseClient,
   prepared: PreparedStaffInvitation,
   token: string,
   tokenHash: string,
-  locale: StaffInvitationLocale,
 ) {
   let sent = false;
   try {
+    // This runs only after the governed prepare RPC accepts the invitee, so
+    // rejected existing identities are never probed for account preferences.
+    let accountLocale: string | null = null;
+    try {
+      const { data, error } = await db
+        .from("users")
+        .select("preferred_locale")
+        .eq("email", prepared.invited_email)
+        .maybeSingle();
+      if (!error) accountLocale = data?.preferred_locale ?? null;
+    } catch {
+      // Email delivery remains available with the English default.
+    }
+
     await sendStaffInvitationEmail({
       to: prepared.invited_email,
-      locale,
+      locale: resolveAppLocale({ accountLocale }),
       roleName: prepared.role_name,
       permissionKeys: prepared.permission_keys.filter(isStaffPermissionKey),
       invitationUrl: buildStaffInvitationUrl(staffInvitationOrigin(), token),

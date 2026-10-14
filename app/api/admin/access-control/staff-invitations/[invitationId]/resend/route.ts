@@ -14,9 +14,7 @@ import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
-  locale: z.enum(["en", "ms", "zh-CN"]).optional().default("en"),
-}).strict();
+const bodySchema = z.object({}).strict();
 const idSchema = z.string().uuid();
 
 export async function POST(request: Request, context: { params: Promise<{ invitationId: string }> }) {
@@ -40,7 +38,7 @@ export async function POST(request: Request, context: { params: Promise<{ invita
 
   const prepared = preparedInvitation(data);
   if (!prepared) return apiFail("STAFF_INVITATION_FAILED", "Unable to prepare the staff invitation", 500);
-  const delivery = await deliverPreparedInvitation(db, prepared, token, tokenHash, parsed.data.locale);
+  const delivery = await deliverPreparedInvitation(db, prepared, token, tokenHash);
   if (!delivery.sent || !delivery.finalized) {
     return apiFail("STAFF_INVITATION_DELIVERY_FAILED", "Email delivery could not be confirmed", 503);
   }
