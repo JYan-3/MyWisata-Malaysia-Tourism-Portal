@@ -160,5 +160,16 @@ export async function GET(
     }),
   };
 
+  const { data: authorizationVersion, error: authorizationError } = await db.rpc('staff_withdrawal_authorization_version', {
+    p_withdrawal_id: withdrawalId,
+    p_expected_record: {
+      amountSen: detail.amountSen, userId: detail.userId, status: detail.status,
+      destinationLabel: r.destination_label ?? null, destinationProvider: r.destination_provider ?? null,
+      destinationMaskedRef: r.destination_masked_ref ?? null, payoutProvider: r.payout_provider ?? null,
+    },
+  });
+  if (authorizationError?.message?.includes('withdrawal_changed')) return apiFail('WITHDRAWAL_CHANGED', 'Withdrawal details changed; reload the page', 409);
+  if (authorizationError || typeof authorizationVersion !== 'string') return apiFail('AUTHORIZATION_UNAVAILABLE', 'Unable to confirm the current withdrawal details', 503);
+  detail.authorizationVersion = authorizationVersion;
   return apiOk(detail);
 }

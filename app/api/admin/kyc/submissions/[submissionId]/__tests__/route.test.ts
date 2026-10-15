@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getClaims = vi.fn(async () => ({ data: { claims: { sub: '33333333-3333-4333-8333-333333333333', aal: 'aal2' } }, error: null }));
 const getUser = vi.fn();
@@ -127,6 +127,14 @@ function serviceFor(options?: {
 }
 
 describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
+  // Exercise the existing KYC boundary against the explicit pre-rollout local mode.
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+  });
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     getUser.mockReset();
     rpc.mockReset();

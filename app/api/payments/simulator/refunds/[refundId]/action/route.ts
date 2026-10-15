@@ -1,3 +1,4 @@
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { createHmac } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -33,6 +34,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return assuranceResponse;
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
   if (!roleNames.includes('super_admin')) {

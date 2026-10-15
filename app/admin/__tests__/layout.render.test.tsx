@@ -4,13 +4,16 @@ import type { Role } from "@/backend/core/types";
 
 const mocks = vi.hoisted(() => ({
   role: "approver" as Role,
+  staffVerified: true,
+  staffPasskeyRequired: true,
+  staffMfaRequired: false,
   pathname: "/admin/withdrawals",
   replace: vi.fn(),
   staffModules: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@/components/providers/auth", () => ({
-  useRequireRole: () => ({ currentUser: { id: "staff-test", name: "Test staff", role: mocks.role }, staffModules: mocks.staffModules, loading: false }),
+  useRequireRole: () => ({ currentUser: { id: "staff-test", name: "Test staff", role: mocks.role }, staffModules: mocks.staffModules, staffVerified: mocks.staffVerified, staffPasskeyRequired: mocks.staffPasskeyRequired, staffMfaRequired: mocks.staffMfaRequired, loading: false }),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
@@ -29,7 +32,7 @@ function renderLayout() {
 }
 
 function navigationHrefs(markup: string) {
-  return [...markup.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+  return [...markup.matchAll(/href="([^"]+)"/g)].map((match) => match[1]).filter(href => !href.startsWith("/auth/staff-verification"));
 }
 
 function moduleFor(href: string, index: number) {
@@ -54,9 +57,30 @@ const ADMIN_HREFS = [
 
 describe("admin navigation role rendering", () => {
   beforeEach(() => {
+    mocks.staffVerified = true;
+    mocks.staffPasskeyRequired = true;
+    mocks.staffMfaRequired = false;
     mocks.role = "approver";
     mocks.pathname = "/admin/withdrawals";
     mocks.staffModules = [moduleFor("/admin/withdrawals", 0)];
+  });
+
+  it("withholds page content until staff verification completes", () => {
+    mocks.staffVerified = false;
+    expect(renderLayout()).not.toContain("Protected page content");
+  });
+
+  it('renders legacy local staff access without showing unavailable Passkey management', () => {
+    mocks.staffVerified = false;
+    mocks.staffPasskeyRequired = false;
+    expect(renderLayout()).toContain('Protected page content');
+    expect(renderLayout()).not.toContain('/auth/staff-verification');
+  });
+
+  it('does not mount business pages before native MFA even in local compatibility mode', () => {
+    mocks.staffPasskeyRequired = false;
+    mocks.staffMfaRequired = true;
+    expect(renderLayout()).not.toContain('Protected page content');
   });
 
   it("shows only Withdrawals to wallet approvers", () => {

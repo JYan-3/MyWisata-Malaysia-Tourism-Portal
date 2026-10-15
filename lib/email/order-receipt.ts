@@ -1,12 +1,22 @@
 import { escapeHtml } from '@/lib/email/templates';
 import nodemailer from 'nodemailer';
+import QRCode from 'qrcode';
 import { getEmailConfig } from '@/lib/email/config';
 import { classifyEmailDeliveryError, emailTransportTimeouts, type EmailDelivery } from '@/lib/email/delivery';
 import { generateReceiptPdf, type ReceiptData } from '@/lib/pdf/receipt';
 import { emailCopy, emailLocale } from './copy';
 import { formatMYR } from '@/lib/i18n/format';
+import { ensureCustomEmailDeliveryEnabled } from '@/lib/platform/operations-settings';
 
-export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; accessUrl?: string; delivery?: EmailDelivery };
+export type OrderReceiptPickupPass = {
+  kind: 'food' | 'event';
+  title: string;
+  subtitle: string;
+  details: string[];
+  qrUrl: string;
+};
+
+export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; accessUrl?: string; pickupPasses?: OrderReceiptPickupPass[]; delivery?: EmailDelivery };
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';
@@ -14,9 +24,23 @@ function redactError(error: unknown): Error {
 }
 
 export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promise<{ id: string }> {
+  if (!payload.delivery) await ensureCustomEmailDeliveryEnabled();
   const pdfBuffer = await generateReceiptPdf(payload);
 
   const copy = emailCopy(payload.locale);
+  const pickupPasses = await Promise.all((payload.pickupPasses ?? []).map(async (pass, index) => ({
+    ...pass,
+    cid: `pickup-qr-${index}@mylawatan.my`,
+    image: await QRCode.toBuffer(pass.qrUrl, { type: 'png', width: 256, margin: 2, errorCorrectionLevel: 'M' }),
+  })));
+  const pickupHtml = pickupPasses.map((pass) => `
+    <section style="margin:20px 0;padding:16px;border:1px solid #ddd;border-radius:10px;page-break-inside:avoid">
+      <h3 style="margin:0 0 8px;color:#1a7f5a">${copy.pickupQrTitle}: ${escapeHtml(pass.title)}</h3>
+      <p style="margin:0 0 8px;color:#555">${escapeHtml(pass.subtitle)}</p>
+      <p style="margin:0 0 12px;color:#555">${pass.kind === 'event' ? copy.eventPickupQrInstructions : copy.pickupQrInstructions}</p>
+      <ul style="margin:0 0 12px;padding-left:20px">${pass.details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join('')}</ul>
+      <img src="cid:${pass.cid}" alt="${escapeHtml(copy.qrImageAlt)}" width="256" height="256" style="display:block;width:256px;height:256px;max-width:100%;background:#fff" />
+    </section>`).join('');
   const orderRef = payload.orderId.slice(-8).toUpperCase();
   const subject = `${copy.receiptSubject} – ${orderRef}`;
 
@@ -49,6 +73,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
       <td style="text-align:right;padding:8px;border:1px solid #ddd">${formatMYR(payload.total)}</td>
     </tr>
   </table>
+  ${pickupHtml}
   ${payload.accessUrl ? `<p><a href="${escapeHtml(payload.accessUrl)}">${copy.viewOrder}</a> — ${copy.privateLink}</p>` : ""}
   <p style="color:#777;font-size:13px">${copy.orderId}: ${payload.orderId}</p>
   <p style="color:#777;font-size:13px">${copy.questions}</p>
@@ -66,6 +91,14 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     payload.discount > 0 ? `${copy.discount}: ${formatMYR(payload.discount)}` : '',
     `${copy.total}: ${formatMYR(payload.total)}`,
     '',
+    ...(pickupPasses.length ? pickupPasses.flatMap((pass) => [
+      `${copy.pickupQrTitle}: ${pass.title}`,
+      pass.subtitle,
+      pass.kind === 'event' ? copy.eventPickupQrInstructions : copy.pickupQrInstructions,
+      ...pass.details.map((detail) => `- ${detail}`),
+      `${copy.qrImageAlt}: [inline image ${pass.cid}]`,
+      '',
+    ]) : []),
     `${copy.orderId}: ${payload.orderId}`,
     payload.accessUrl ? `${copy.viewOrder}: ${payload.accessUrl}` : "",
   ].filter(line => line !== undefined).join('\n');
@@ -89,7 +122,10 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
       subject,
       text,
       html,
-      attachments: [{ filename: `receipt-${orderRef}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }],
+      attachments: [
+        { filename: `receipt-${orderRef}.pdf`, content: pdfBuffer, contentType: 'application/pdf' },
+        ...pickupPasses.map((pass) => ({ filename: `${pass.cid}.png`, content: pass.image, contentType: 'image/png', contentDisposition: 'inline' as const, cid: pass.cid })),
+      ],
       ...(payload.delivery ? { messageId: payload.delivery.messageId } : {}),
     });
     if (payload.delivery && (!result.accepted?.length || result.rejected?.length)) throw new Error('email_delivery_not_confirmed');

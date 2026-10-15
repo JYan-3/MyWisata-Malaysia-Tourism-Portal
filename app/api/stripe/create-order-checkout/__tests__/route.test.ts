@@ -20,6 +20,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 vi.mock('@/lib/stripe', () => ({ stripe: { checkout: { sessions: { create: mocks.sessionsCreate } } } }));
+vi.mock('@/lib/platform/operations-settings', () => ({ isPlatformOperationEnabled: vi.fn(async () => false), PLATFORM_OPERATION_KEYS: { pauseNewOrders: 'operations.pause_new_orders' } }));
 
 import { POST } from '../route';
 

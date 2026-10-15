@@ -16,6 +16,7 @@ export type WithdrawalReviewDecision =
   | 'fraud_override';
 
 export type WithdrawalReviewDetail = {
+  authorizationVersion?: string;
   id: string;
   userId: string;
   amountSen: number;

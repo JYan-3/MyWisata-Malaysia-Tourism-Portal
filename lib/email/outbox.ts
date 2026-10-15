@@ -1,6 +1,8 @@
-import { emailCopy, emailLocale, type EventEmailReasonCode } from './copy';
+import { emailCopy, emailLocale, emailTime, type EventEmailReasonCode } from './copy';
 import { EmailDeliveryError, type EmailDelivery } from '@/lib/email/delivery';
 import { sendOrderReceiptEmail } from '@/lib/email/order-receipt';
+import { isPlatformOperationEnabled, PLATFORM_OPERATION_KEYS } from '@/lib/platform/operations-settings';
+import { loadOrderPickupPasses } from '@/lib/checkout/order-pickup-passes';
 import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
 import { createServiceClient } from '@/lib/supabase/service';
 import {
@@ -107,6 +109,9 @@ export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted:
 }
 
 export async function processEmailOutbox(limit = 20): Promise<{ sent: number; failed: number; reviewRequired: number }> {
+  if (await isPlatformOperationEnabled(PLATFORM_OPERATION_KEYS.pauseCustomDelivery)) {
+    return { sent: 0, failed: 0, reviewRequired: 0 };
+  }
   const db = createServiceClient();
   const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox_delivery', { p_limit: limit });
   if (claimError || !claimed || !Array.isArray(claimed.rows)) throw new Error('email_claim_unavailable');
@@ -141,14 +146,40 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
     let accepted: { id: string } | undefined;
     try {
       if (row.payload?.guestAccessToken && !row.payload.reason) {
-        const {data:order,error}=await db.from('orders').select('id,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,order_items(product_name,variant_name,unit_price,quantity)').eq('id',row.payload.reference).is('user_id',null).single();
+        const {data:order,error}=await db.from('orders').select('id,status,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,order_items(product_name,variant_name,unit_price,quantity)').eq('id',row.payload.reference).is('user_id',null).single();
         if (error || !order || order.contact_email !== row.to_email) throw new Error('Guest receipt unavailable');
+        const isPaid = ['paid', 'completed'].includes(String(order.status).toLowerCase());
+        const pickupPasses = isPaid ? await loadOrderPickupPasses(db, order.id) : { foodOrders: [], eventPickups: [] };
+        const orderUrl = new URL(`/customer/orders/${encodeURIComponent(order.id)}`, resolvePaymentAppUrl());
+        const foodPickupPasses = pickupPasses.foodOrders.map((pass) => {
+          const url = new URL(orderUrl);
+          url.searchParams.set('food_t', pass.foodToken);
+          return {
+            kind: 'food' as const,
+            title: pass.outletName,
+            subtitle: pass.vendorName,
+            details: [pass.mode === 'dine_in' ? copy.foodDineIn : copy.foodTakeaway, ...pass.items.map((item) => `${item.quantity} × ${item.name}${item.variant ? ` · ${item.variant}` : ''}`)],
+            qrUrl: url.toString(),
+          };
+        });
+        const eventPickupPasses = pickupPasses.eventPickups.map((pass) => {
+          const url = new URL(orderUrl);
+          url.searchParams.set('event_t', pass.eventToken);
+          return {
+            kind: 'event' as const,
+            title: pass.pickupLabels.join(', '),
+            subtitle: `${pass.vendorName} · ${emailTime(`${pass.pickupDate}T00:00:00+08:00`, locale)}`,
+            details: pass.items.map((item) => `${item.quantity} × ${item.name}`),
+            qrUrl: url.toString(),
+          };
+        });
         accepted = await sendOrderReceiptEmail({
           delivery, locale,
           recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
           items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? copy.standard,unitPrice:Number(item.unit_price),qty:item.quantity})),
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
           accessUrl:`${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}`,
+          pickupPasses: [...foodPickupPasses, ...eventPickupPasses],
         });
       } else if (row.event_type === 'kyc_security_alert') {
         accepted = await sendKycSecurityEmail({

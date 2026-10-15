@@ -91,7 +91,7 @@ function LoginContent() {
     resetFeedback();
     try {
       const signedInUser = await switchUser(user.id, user);
-      router.push(postLoginDestination(signedInUser?.role ?? user.role, requestedNext()));
+      router.push(postLoginDestination(signedInUser?.role ?? user.role, requestedNext(), signedInUser?.staffVerified, signedInUser?.staffPasskeyRequired, signedInUser?.staffMfaRequired));
       router.refresh();
     } catch {
       setError(GENERIC_ERROR);

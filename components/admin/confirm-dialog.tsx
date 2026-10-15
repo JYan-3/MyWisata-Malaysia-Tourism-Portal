@@ -14,9 +14,10 @@ type Props = {
   busy?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  confirmControl?: ReactNode;
 };
 
-export function AdminConfirmDialog({ open, title, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm }: Props) {
+export function AdminConfirmDialog({ open, title, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm, confirmControl }: Props) {
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   useEffect(() => {
@@ -51,7 +52,7 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel")}</Button>
-          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>
+          {confirmControl ?? <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>}
         </div>
       </div>
     </div>

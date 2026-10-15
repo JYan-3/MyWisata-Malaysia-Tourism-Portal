@@ -12,6 +12,7 @@ vi.mock('@/lib/email/sender', () => ({
   sendTransactionEmail: mocks.sendTransactionEmail,
   sendVendorEmail: vi.fn(),
 }));
+vi.mock('@/lib/platform/operations-settings', () => ({ isPlatformOperationEnabled: async () => false, PLATFORM_OPERATION_KEYS: { pauseCustomDelivery: 'email.pause_custom_delivery' } }));
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({

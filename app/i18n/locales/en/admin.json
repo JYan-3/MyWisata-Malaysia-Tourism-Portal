@@ -43,7 +43,8 @@
     "Orders": "Orders",
     "Event Promos": "Event Promos",
     "Event Registrations": "Registrations",
-    "Announcements": "Announcements"
+    "Announcements": "Announcements",
+    "System Settings": "System Settings"
   },
   "navigationSections": {
     "workspace": "Workspace",
@@ -2102,6 +2103,19 @@
       "title": "Wallet approvers",
       "userLabel": "Eligible user"
     },
+    "systemSettings": {
+      "eyebrow": "Platform controls", "title": "System Settings",
+      "description": "Pause selected customer-facing operations during incidents or planned maintenance.",
+      "loading": "Loading system settings…", "retry": "Try again", "unsaved": "Unsaved changes", "active": "Active", "paused": "Paused",
+      "neverUpdated": "No changes recorded yet", "unknownActor": "Unknown administrator", "updated": "Last changed {{date}} by {{by}}", "saved": "System settings saved and recorded.",
+      "controls": { "title": "Platform controls", "description": "Changes apply to new activity after they are saved." },
+      "orders": { "title": "Pause new customer orders", "description": "Stops new cart, event reservation, and order-payment checkout attempts.", "existing": "Existing orders remain available for payment confirmation, fulfilment, cancellation, refunds, and support." },
+      "email": { "title": "Pause custom email delivery", "description": "Holds queued custom SMTP messages and pauses direct platform emails. Pending messages resume after delivery is re-enabled.", "authExemption": "Supabase Auth verification and password recovery emails are unaffected. A message already being sent may finish." },
+      "reasonLabel": "Reason for this change", "reasonPlaceholder": "Describe the incident or maintenance reason (at least 10 characters).",
+      "impact": { "title": "Change impact", "description": "These controls are intended for temporary incidents and maintenance.", "orders": "Order pause: prevents creating new customer orders; it does not cancel existing orders.", "email": "Email pause: keeps queued messages pending and resumes them later.", "audit": "Every save records the Super Admin, timestamp, previous values, new values, and reason." },
+      "confirm": { "title": "Confirm system settings change?", "pauseDescription": "You are pausing at least one live operation. The change and your reason will be written to the audit log.", "resumeDescription": "You are resuming at least one operation. The change and your reason will be written to the audit log." },
+      "errors": { "load": "Unable to load system settings.", "save": "Unable to save system settings.", "reason": "Enter a reason with at least 10 characters before saving." }
+    },
     "walletSettings": {
       "audit": {
         "category": "Change category",
@@ -3728,5 +3742,33 @@
       "matching_one": "{{count}} matching exceptions · Outstanding {{amount}}",
       "matching_other": "{{count}} matching exceptions · Outstanding {{amount}}"
     }
+  },
+  "passkey": {
+    "title": "Staff security verification",
+    "description": "Use your registered device to verify with face recognition, fingerprint or device PIN. Your biometric data stays on your device.",
+    "verify": "Verify Passkey",
+    "verifyAndConfirm": "Verify and confirm",
+    "working": "Verifying…",
+    "grantLabel": "One-time enrollment code",
+    "deviceLabel": "Device name",
+    "defaultDevice": "My device",
+    "register": "Register a device",
+    "registered": "Device registered. Verify your Passkey to continue.",
+    "enrollmentRequired": "Ask an authorized administrator for a one-time enrollment code. If setup is cancelled, request a new code.",
+    "passwordRequired": "Sign in with your account password before verifying your device.",
+    "passwordLogin": "Return to password login",
+    "manage": "Security and devices",
+    "remove": "Remove device",
+    "recovery": "Register a backup device. If all devices are lost, contact an authorized administrator for identity-checked recovery.",
+    "rateLimited": "Too many attempts. Wait a few minutes before trying again.",
+    "unsupported": "This browser or connection does not support Passkeys. Use a compatible device and a secure connection.",
+    "retryRequired": "The device or withdrawal details changed. Reload the page and verify again.",
+    "unavailable": "Security verification is unavailable. Contact an administrator before continuing.",
+    "failed": "Verification was cancelled or failed. Please try again."
+  },
+  "staffMfa": {
+    "eyebrow": "Staff security",
+    "title": "Verify your authenticator",
+    "description": "Your staff account requires an authenticator code before opening the admin tools."
   }
 }

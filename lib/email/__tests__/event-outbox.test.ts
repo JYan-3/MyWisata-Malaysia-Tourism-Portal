@@ -6,6 +6,7 @@ vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({
 vi.mock('@/lib/email/sender', () => ({
   sendVendorEmail: mocks.send, sendAccountEmail: vi.fn(), sendRecommendationEmail: vi.fn(), sendTransactionEmail: vi.fn(),
 }));
+vi.mock('@/lib/platform/operations-settings', () => ({ isPlatformOperationEnabled: async () => false, PLATFORM_OPERATION_KEYS: { pauseCustomDelivery: 'email.pause_custom_delivery' } }));
 import { EmailDeliveryError } from '@/lib/email/delivery';
 import { processEmailOutbox } from '@/lib/email/outbox';
 import { renderVendorEmail } from '@/lib/email/templates';

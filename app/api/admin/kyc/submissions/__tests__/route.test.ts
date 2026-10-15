@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -21,6 +21,14 @@ vi.mock('@/lib/supabase/service', () => ({
 import { GET } from '../route';
 
 describe('GET /api/admin/kyc/submissions', () => {
+  // Exercise the existing KYC boundary against the explicit pre-rollout local mode.
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+  });
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({

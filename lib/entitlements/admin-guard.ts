@@ -1,4 +1,5 @@
 import "server-only";
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 
 import { createClient } from "@/lib/supabase/server";
 import { apiFail } from "@/lib/validation/schemas";
@@ -15,6 +16,8 @@ export async function requireAccessControlSuperAdmin() {
     };
   }
 
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return { db, user, response: assuranceResponse };
   const { data: isSuperAdmin, error: roleError } = await db.rpc("is_super_admin", { uid: user.id });
   if (roleError) {
     return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 import { safeKycReviewNext } from '@/lib/auth/safe-next';
+import { safeStaffVerificationNext } from '@/lib/auth/staff-route-boundaries';
+import { AuthPageShell } from '@/components/shared/auth-page-shell';
 
-export function KycMfa({ next, available = true }: { next: string; available?: boolean }) {
+export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string; available?: boolean; scope?: 'kyc' | 'staff' }) {
   const { t } = useTranslation('admin');
   const router = useRouter();
   const db = useMemo(() => createClient(), []);
@@ -20,6 +22,11 @@ export function KycMfa({ next, available = true }: { next: string; available?: b
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (scope === 'staff' && factorId && !busy) codeInput.current?.focus();
+  }, [scope, factorId, busy]);
 
   async function start() {
     if (busy || !available) return;
@@ -64,8 +71,13 @@ export function KycMfa({ next, available = true }: { next: string; available?: b
       setCode('');
       setFactorId('');
       setEnrolling(false);
-      router.replace(safeKycReviewNext(next));
-      router.refresh();
+      if (scope === 'staff') {
+        // A full navigation reloads the provider's previously AAL1 projection.
+        window.location.assign(safeStaffVerificationNext(next));
+      } else {
+        router.replace(safeKycReviewNext(next));
+        router.refresh();
+      }
     } catch {
       setCode('');
       setError(t('kyc.mfa.verifyError'));
@@ -89,29 +101,35 @@ export function KycMfa({ next, available = true }: { next: string; available?: b
     finally { setBusy(false); }
   }
 
-  return (
-    <AdminPageShell>
-      <AdminPageHeader eyebrow={<><ShieldCheck size={18} /> {t('kyc.eyebrow')}</>} title={t('kyc.mfa.title')} description={t('kyc.mfa.description')} />
-      <section className="max-w-xl space-y-4 rounded-2xl border border-border bg-card p-6">
-        {(!available || error) && <p role="alert" className="text-sm text-destructive">{error ?? t('kyc.mfa.setupError')}</p>}
-        {!factorId ? <Button disabled={busy || !available} onClick={() => void start()}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.start')}</Button> : (
+  const staff = scope === 'staff';
+  const primaryClass = staff ? 'h-12 w-full rounded-xl text-sm font-semibold shadow-sm sm:text-base' : undefined;
+  const content = (
+      <section className={staff ? 'space-y-5' : 'max-w-xl space-y-4 rounded-2xl border border-border bg-card p-6'}>
+        {(!available || error) && <p role="alert" className={staff ? 'rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive sm:text-sm' : 'text-sm text-destructive'}>{error ?? t('kyc.mfa.setupError')}</p>}
+        {!factorId ? <Button className={primaryClass} disabled={busy || !available} onClick={() => void start()}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.start')}</Button> : (
           <form onSubmit={verify} className="space-y-4">
             {qr && <>
               <p className="text-sm text-muted-foreground">{t('kyc.mfa.scan')}</p>
               {/* The QR is held in memory only and never sent to an external image service. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt={t('kyc.mfa.qrAlt')} className="h-56 w-56 rounded-xl bg-white p-3" referrerPolicy="no-referrer" />
+              <img src={qr} alt={t('kyc.mfa.qrAlt')} className={`h-56 w-56 max-w-full rounded-xl bg-white p-3${staff ? ' mx-auto' : ''}`} referrerPolicy="no-referrer" />
             </>}
-            <label htmlFor="kyc-mfa-code" className="block text-sm font-semibold">{t('kyc.mfa.code')}</label>
-            <Input id="kyc-mfa-code" value={code} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required disabled={busy} />
-            <div className="flex gap-3">
-              <Button type="submit" disabled={busy || code.length !== 6}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.verify')}</Button>
-              <Button type="button" variant="outline" disabled={busy} onClick={() => void cancel()}>{t('kyc.mfa.cancel')}</Button>
+            <label htmlFor="kyc-mfa-code" className={staff ? 'block text-xs font-semibold uppercase tracking-wider text-muted-foreground' : 'block text-sm font-semibold'}>{t('kyc.mfa.code')}</label>
+            <div className={staff ? 'relative rounded-xl focus-within:ring-4 focus-within:ring-primary/10' : undefined}>
+              {staff && <div aria-hidden="true" className="grid grid-cols-6 gap-2">
+                {Array.from({ length: 6 }, (_, index) => <span key={index} className={`flex h-12 min-w-0 items-center justify-center rounded-xl border bg-secondary/40 text-xl font-bold ${index === Math.min(code.length, 5) ? 'border-primary' : 'border-border'}${busy ? ' opacity-50' : ''}`}>{code[index] ?? ''}</span>)}
+              </div>}
+              <Input ref={codeInput} id="kyc-mfa-code" className={staff ? 'absolute inset-0 h-full w-full cursor-text opacity-0' : undefined} value={code} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required disabled={busy} />
+            </div>
+            <div className={staff ? 'flex flex-col gap-3' : 'flex gap-3'}>
+              <Button type="submit" className={primaryClass} disabled={busy || code.length !== 6}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.verify')}</Button>
+              <Button type="button" className={staff ? 'h-12 w-full rounded-xl' : undefined} variant="outline" disabled={busy} onClick={() => void cancel()}>{t('kyc.mfa.cancel')}</Button>
             </div>
           </form>
         )}
-        <p className="text-sm text-muted-foreground">{t('kyc.mfa.recovery')}</p>
+        <p className={staff ? 'border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground' : 'text-sm text-muted-foreground'}>{t('kyc.mfa.recovery')}</p>
       </section>
-    </AdminPageShell>
   );
+  if (staff) return <AuthPageShell title={t('staffMfa.title')} description={t('staffMfa.description')}>{content}</AuthPageShell>;
+  return <AdminPageShell><AdminPageHeader eyebrow={<><ShieldCheck size={18} /> {t('kyc.eyebrow')}</>} title={t('kyc.mfa.title')} description={t('kyc.mfa.description')} />{content}</AdminPageShell>;
 }

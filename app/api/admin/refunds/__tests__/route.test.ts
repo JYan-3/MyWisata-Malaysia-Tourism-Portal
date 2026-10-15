@@ -1,3 +1,5 @@
+// These business-rule fixtures represent a session that has completed staff verification.
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = '7df122f8-afae-4249-8504-bdd465a78f31';
