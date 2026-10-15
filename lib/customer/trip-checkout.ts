@@ -2,6 +2,8 @@ import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
 import type { TripItem } from "@/backend/domains/trips";
 import { getActivityCommerceMode } from "@/lib/customer/category-details";
 import { groupBookableBookingSlotsByDate } from "@/lib/customer/booking-slot-presenter";
+import { getSelectedOutletStock } from "@/lib/customer/outlet-shop";
+import { normalizeTripTime, slotClockTime } from "@/lib/customer/trip-time-options";
 
 export interface TripCheckoutLine {
   activityId: string;
@@ -55,35 +57,21 @@ export function countTripPurchasableItems(items: TripItem[], activitiesById: Map
   }).length;
 }
 
-function scheduledTimeMinutes(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-const SLOT_TIME_OF_DAY_FORMATTER = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Asia/Kuala_Lumpur",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-function slotMinutes(startsAt: string): number {
-  const parts = SLOT_TIME_OF_DAY_FORMATTER.formatToParts(new Date(startsAt));
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return Number(values.hour) * 60 + Number(values.minute);
+/** The outlet a stop was planned at, else the listing's representative outlet. */
+export function tripItemOutletId(item: TripItem, activity: ComputedActivity): string {
+  return item.outlet_id ?? activity.outlet.id;
 }
 
 /**
- * Earliest slot when the item has no time of its own, else the one nearest
- * that time. Never assumes the input is pre-sorted by `starts_at` — grouping
- * by calendar date does not guarantee that.
+ * Earliest open slot when the item has no time of its own, else the open slot
+ * starting exactly at that time (Malaysia time) — never a different one, so the
+ * customer buys the time they planned.
  */
 function pickSlot(slots: BookingSlot[], scheduledTime: string | null): BookingSlot | null {
-  if (slots.length === 0) return null;
-  const targetMinutes = scheduledTime ? scheduledTimeMinutes(scheduledTime) : 0;
-  return slots.reduce((closest, slot) => (
-    Math.abs(slotMinutes(slot.startsAt) - targetMinutes) < Math.abs(slotMinutes(closest.startsAt) - targetMinutes) ? slot : closest
-  ), slots[0]);
+  const sorted = slots.slice().sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const time = normalizeTripTime(scheduledTime);
+  if (!time) return sorted[0] ?? null;
+  return sorted.find((slot) => slotClockTime(slot.startsAt) === time) ?? null;
 }
 
 /**
@@ -107,27 +95,29 @@ export function resolveTripCheckoutLines(
     const activity = vendorActivityFor(item, activitiesById);
     if (!activity) continue;
     const variantId = activity.variants[0]?.id ?? "";
+    const outletId = tripItemOutletId(item, activity);
 
     if (activity.requiresBooking) {
-      const dateGroups = groupBookableBookingSlotsByDate(slotsByActivityId.get(activity.id) ?? []);
+      const outletSlots = (slotsByActivityId.get(activity.id) ?? []).filter((slot) => slot.outletId === outletId);
+      const dateGroups = groupBookableBookingSlotsByDate(outletSlots);
       const dayGroup = item.scheduled_date ? dateGroups.find((group) => group.key === item.scheduled_date) : undefined;
       const slot = dayGroup ? pickSlot(dayGroup.slots, item.scheduled_time) : null;
       if (!slot) {
         needsSlot.push({ itemId: item.id, label: item.label });
         continue;
       }
-      lines.push({ activityId: activity.id, variantId, outletId: activity.outlet.id, slotId: slot.id, qty: 1 });
+      lines.push({ activityId: activity.id, variantId, outletId, slotId: slot.id, qty: 1 });
       continue;
     }
 
     // No booking slot to fall back on here — a variant is the only possible
     // backing record, so a variant-less non-booking product really is
     // uncartable (matches activity-detail-client.tsx's "cartUnavailable" state).
-    if (!variantId) {
+    if (!variantId || getSelectedOutletStock(activity, outletId) === 0) {
       unavailable.push({ itemId: item.id, label: item.label });
       continue;
     }
-    lines.push({ activityId: activity.id, variantId, outletId: activity.outlet.id, qty: 1 });
+    lines.push({ activityId: activity.id, variantId, outletId, qty: 1 });
   }
 
   return { lines, needsSlot, unavailable };

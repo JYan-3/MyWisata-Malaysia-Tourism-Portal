@@ -81,7 +81,8 @@ describe("Supabase proxy locale resolution", () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
     setupSupabase({ claimsSub: '11111111-1111-4111-8111-111111111111' });
     const response = await updateSession(new NextRequest('http://localhost:3000/api/admin/kyc/submissions'));
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "MFA_REQUIRED" } });
   });
 
   it("uses the authenticated account locale before the cookie and browser", async () => {

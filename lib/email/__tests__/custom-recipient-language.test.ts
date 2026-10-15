@@ -1,3 +1,4 @@
+vi.mock('@/lib/platform/operations-settings', () => ({ ensureCustomEmailDeliveryEnabled: vi.fn().mockResolvedValue(undefined) }));
 import { describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ send: vi.fn<(input: Record<string, unknown>) => Promise<{messageId: string}>>(async () => ({messageId:'test'})) }));
 vi.mock('nodemailer', () => ({ default: { createTransport: () => ({ sendMail: mocks.send, close: vi.fn() }) } }));

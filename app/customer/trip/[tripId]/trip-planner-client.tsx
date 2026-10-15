@@ -6,10 +6,10 @@ import Image from "next/image";
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
-import { CATEGORIES, getBookingSlots, searchActivities } from "@/backend/domains/catalogue";
+import { CATEGORIES, getBookingSlots, getOutlet, searchActivities } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, buildRouteDepartureTime, type GeoHit, type RouteResult } from "@/lib/routing";
-import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
+import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
 import { getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, computeSwapTargetOrder } from "@/lib/customer/trip-planner";
 import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
@@ -30,7 +30,8 @@ import { buildSimulatedWeatherOverlay, buildSimulatedWeatherResult, simulatedWea
 import { TripBudgetGuard } from "./trip-budget-guard";
 import { useRouter } from "next/navigation";
 import { useCart, cartItemKey } from "@/components/providers/cart";
-import { countTripPurchasableItems, resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
+import { countTripPurchasableItems, resolveTripCheckoutLines, tripItemOutletId } from "@/lib/customer/trip-checkout";
+import { getTripTimeChoices, getTripTimeProblem, normalizeTripTime, type TripTimeChoices } from "@/lib/customer/trip-time-options";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 
 export interface TripStop {
@@ -41,6 +42,8 @@ export interface TripStop {
   sublabel?: string;
   source: "vendor" | "location";
   locationKind?: "custom" | "gps";
+  /** Outlet a vendor stop is planned at. */
+  outletId?: string;
 }
 
 interface TripPlanSuggestion {
@@ -93,7 +96,8 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
         lat: stop.lat,
         lng: stop.lng,
         label: stop.label,
-        sublabel: stop.sublabel
+        sublabel: stop.sublabel,
+        outlet_id: stop.outletId ?? null,
       };
       setItems(prev => [...prev, newItem]);
       try {
@@ -108,6 +112,7 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
           sublabel: stop.sublabel,
           scheduled_date: schedule?.date ?? null,
           scheduled_time: schedule?.time ?? null,
+          outlet_id: stop.source === "vendor" ? stop.outletId ?? null : null,
         });
         setItems((current) => current.map((item) => item.id === tempId ? stored : item));
         return stored;
@@ -563,34 +568,6 @@ export function MapClient({
     );
   }
 
-  function toggleStop(pin: MapPin) {
-    if (pin.replacesId) {
-      void swapSuggestedStop(pin, pin.replacesId);
-      return;
-    }
-    if (trip.has(pin.id)) trip.remove(pin.id);
-    else trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" });
-  }
-
-  // Budget Guard "Suggested" pin: replace the real over-budget item in its
-  // exact day/sequence slot, rather than removing nothing and appending the
-  // suggestion as a new unscheduled item.
-  async function swapSuggestedStop(pin: MapPin, replacesId: string) {
-    const existing = trip.items.find((item) => item.id === replacesId || item.experience_id === replacesId);
-    if (!existing) {
-      // The item it was meant to replace isn't in the trip anymore — nothing to swap into, just add it normally.
-      if (!trip.has(pin.id)) trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" });
-      return;
-    }
-    const schedule = { date: existing.scheduled_date, time: existing.scheduled_time };
-    // Captured BEFORE mutating — the day's real item order with the removed
-    // item's slot replaced by the new one, used to reorder into place after.
-    const targetOrder = computeSwapTargetOrder(trip.items, existing.id, pin.id);
-
-    await trip.remove(existing.id);
-    await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" }, schedule);
-    if (targetOrder && targetOrder.length > 1) await trip.reorderIds(targetOrder);
-  }
   function chooseStopSuggestion(hit: GeoHit) {
     trip.add({ lat: hit.lat, lng: hit.lng, label: hit.label, source: "location", locationKind: "custom" });
     setAddingStop(false);
@@ -695,6 +672,74 @@ export function MapClient({
     () => new Map([...initialActivities, ...(activities ?? [])].map((activity) => [activity.id, activity])),
     [activities, initialActivities],
   );
+  // Real slots and opening hours behind each stop's time choices
+  // (lib/customer/trip-time-options.ts). A failed load stays "loading" rather
+  // than claiming the stop is unavailable.
+  const [slotsByProduct, setSlotsByProduct] = useState<Map<string, BookingSlot[]>>(() => new Map());
+  const [hoursByOutlet, setHoursByOutlet] = useState<Map<string, OperatingHours | null>>(() => new Map());
+  const requestedTimeDataRef = useRef(new Set<string>());
+  const bookableProductKey = [...new Set(trip.items.flatMap((item) => {
+    const activity = item.experience_id ? activitiesById.get(item.experience_id) : undefined;
+    return activity?.requiresBooking ? [activity.id] : [];
+  }))].sort().join(",");
+  const plannedOutletKey = [...new Set(trip.items.flatMap((item) => {
+    const activity = item.experience_id ? activitiesById.get(item.experience_id) : undefined;
+    return activity && item.outlet_id && item.outlet_id !== activity.outlet.id ? [item.outlet_id] : [];
+  }))].sort().join(",");
+  useEffect(() => {
+    const requested = requestedTimeDataRef.current;
+    for (const productId of bookableProductKey.split(",")) {
+      if (!productId || requested.has(`slots:${productId}`)) continue;
+      requested.add(`slots:${productId}`);
+      getBookingSlots(productId)
+        .then((slots) => setSlotsByProduct((current) => new Map(current).set(productId, slots)))
+        .catch(() => requested.delete(`slots:${productId}`));
+    }
+    for (const outletId of plannedOutletKey.split(",")) {
+      if (!outletId || requested.has(`outlet:${outletId}`)) continue;
+      requested.add(`outlet:${outletId}`);
+      getOutlet(outletId)
+        .then((outlet) => setHoursByOutlet((current) => new Map(current).set(outletId, outlet?.operatingHours ?? null)))
+        .catch(() => requested.delete(`outlet:${outletId}`));
+    }
+  }, [bookableProductKey, plannedOutletKey]);
+  function outletHoursFor(activity: ComputedActivity, outletId: string): OperatingHours | null | undefined {
+    if (outletId === activity.outlet.id) return activity.outlet.operatingHours ?? null;
+    return hoursByOutlet.get(outletId);
+  }
+  function formatClock(value: string) {
+    return new Intl.DateTimeFormat(i18n.resolvedLanguage ?? i18n.language, { hour: "numeric", minute: "2-digit", timeZone: "UTC" })
+      .format(new Date(Date.UTC(2000, 0, 1, Number(value.slice(0, 2)), Number(value.slice(3, 5)))));
+  }
+
+  function toggleStop(pin: MapPin) {
+    if (pin.replacesId) {
+      void swapSuggestedStop(pin, pin.replacesId);
+      return;
+    }
+    if (trip.has(pin.id)) trip.remove(pin.id);
+    else trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id });
+  }
+
+  // Budget Guard "Suggested" pin: replace the real over-budget item in its
+  // exact day/sequence slot, rather than removing nothing and appending the
+  // suggestion as a new unscheduled item.
+  async function swapSuggestedStop(pin: MapPin, replacesId: string) {
+    const existing = trip.items.find((item) => item.id === replacesId || item.experience_id === replacesId);
+    if (!existing) {
+      // The item it was meant to replace isn't in the trip anymore — nothing to swap into, just add it normally.
+      if (!trip.has(pin.id)) trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id });
+      return;
+    }
+    const schedule = { date: existing.scheduled_date, time: existing.scheduled_time };
+    // Captured BEFORE mutating — the day's real item order with the removed
+    // item's slot replaced by the new one, used to reorder into place after.
+    const targetOrder = computeSwapTargetOrder(trip.items, existing.id, pin.id);
+
+    await trip.remove(existing.id);
+    await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id }, schedule);
+    if (targetOrder && targetOrder.length > 1) await trip.reorderIds(targetOrder);
+  }
   // Checks out every scheduled stop in one go: real vendor items go straight
   // into the cart, a stop that requires booking is only ever matched to a
   // real open `booking_slots` row on its exact scheduled day (never a
@@ -868,6 +913,7 @@ export function MapClient({
       label: suggestion.productName,
       sublabel: `${formatMYR(suggestion.price)} · ${suggestion.category}`,
       source: "vendor",
+      outletId: activitiesById.get(suggestion.productId)?.outlet.id,
     }, { date: selectedDate });
     setActivePanel("itinerary");
   }
@@ -888,7 +934,7 @@ export function MapClient({
     );
   }
   function activityStop(activity: ComputedActivity): Omit<TripStop, "id"> & { id: string } {
-    return { id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: `${formatMYR(Number(activity.price))} · ${activity.outlet.city}`, source: "vendor" };
+    return { id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: `${formatMYR(Number(activity.price))} · ${activity.outlet.city}`, source: "vendor", outletId: activity.outlet.id };
   }
 
   function chooseDayForActivity(activity: ComputedActivity, date: string) {
@@ -945,6 +991,12 @@ export function MapClient({
       ? (item.kind === "gps" ? tCustomer("ui.map.currentLocation") : tCustomer("ui.map.customStart"))
       : categoryKey ? `${tCustomer(categoryKey)} · ${activitySublabel}` : activitySublabel;
     const showTimeInput = Boolean(item.scheduled_time) || timeEditingId === item.id;
+    const outletId = activity && !isLocation ? tripItemOutletId(item, activity) : "";
+    const outletHours = activity && !isLocation ? outletHoursFor(activity, outletId) : undefined;
+    const timeChoices: TripTimeChoices = isLocation
+      ? { kind: "free" }
+      : getTripTimeChoices({ activity, date: item.scheduled_date, outletId, slots: activity ? slotsByProduct.get(activity.id) : undefined, hours: outletHours, bounds: timeBounds });
+    const timeProblem = getTripTimeProblem(timeChoices, item.scheduled_time, outletHours, item.scheduled_date);
 
     return (
       <li
@@ -998,30 +1050,32 @@ export function MapClient({
               <span className="block break-words whitespace-normal text-[11px] text-muted-foreground">{sublabel}</span>
               <TripWeatherItemMarker result={weatherResult} />
             </span>
-            {showTimeInput ? (
-              <input
-                type="time"
-                autoFocus={timeEditingId === item.id}
-                value={item.scheduled_time ?? ""}
-                min={timeBounds.min}
-                max={timeBounds.max}
-                disabled={timeBounds.disabled}
-                onChange={(event) => trip.schedule(item.id, item.scheduled_date, event.target.value || null)}
-                onBlur={() => setTimeEditingId(null)}
-                aria-label={tCustomer("strictMigration.tripPlanner.timeFor", { item: item.label })}
-                className="w-[86px] rounded-lg border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setTimeEditingId(item.id)}
-                disabled={timeBounds.disabled}
-                aria-label={tCustomer("strictMigration.tripPlanner.timeFor", { item: item.label })}
-                className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-40"
-              >
-                <Clock size={12} />{tCustomer("strictMigration.tripPlanner.addTime")}
-              </button>
-            )}
+            {timeChoices.kind === "free" ? (
+              showTimeInput ? (
+                <input
+                  type="time"
+                  autoFocus={timeEditingId === item.id}
+                  value={item.scheduled_time ?? ""}
+                  min={timeBounds.min}
+                  max={timeBounds.max}
+                  disabled={timeBounds.disabled}
+                  onChange={(event) => trip.schedule(item.id, item.scheduled_date, event.target.value || null)}
+                  onBlur={() => setTimeEditingId(null)}
+                  aria-label={tCustomer("strictMigration.tripPlanner.timeFor", { item: item.label })}
+                  className="w-[86px] rounded-lg border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTimeEditingId(item.id)}
+                  disabled={timeBounds.disabled}
+                  aria-label={tCustomer("strictMigration.tripPlanner.timeFor", { item: item.label })}
+                  className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-40"
+                >
+                  <Clock size={12} />{tCustomer("strictMigration.tripPlanner.addTime")}
+                </button>
+              )
+            ) : renderTimeChoice(item, timeChoices, showTimeInput)}
             {item.scheduled_date && <span className="sr-only">{tCustomer("strictMigration.tripPlanner.scheduledFor", { date: item.scheduled_date })}</span>}
             {(isLocation || isCustom) && (
               <button
@@ -1037,7 +1091,62 @@ export function MapClient({
             </button>
           </div>
         )}
+        {!editing && timeProblem && (
+          <p data-trip-time-problem className="mt-1 flex items-center gap-1 pl-6 text-[11px] font-semibold text-destructive">
+            <AlertTriangle size={12} className="shrink-0" />{tCustomer(`strictMigration.tripPlanner.timeProblem.${timeProblem}`)}
+          </p>
+        )}
       </li>
+    );
+  }
+
+  // Fixed choices for vendor stops: a bookable activity's real slots, or the
+  // outlet's opening hours in 30-minute steps. Accommodation has no time.
+  function renderTimeChoice(item: TripItem, choices: TripTimeChoices, showTimeInput: boolean) {
+    const ariaLabel = tCustomer("strictMigration.tripPlanner.timeFor", { item: item.label });
+    if (choices.kind === "none") return null;
+    if (choices.kind === "slots" || choices.kind === "hours") {
+      const current = normalizeTripTime(item.scheduled_time) ?? "";
+      if (choices.options.length === 0 && !current) {
+        return <span data-trip-time-unavailable className="shrink-0 text-[11px] font-semibold text-muted-foreground">{tCustomer(choices.kind === "slots" ? "strictMigration.tripPlanner.notAvailableThisDay" : "strictMigration.tripPlanner.closedThisDay")}</span>;
+      }
+      if (showTimeInput) {
+        const listed = choices.options.some((option) => option.value === current);
+        return (
+          <select
+            data-trip-time-select={choices.kind}
+            autoFocus={timeEditingId === item.id}
+            value={current}
+            onChange={(event) => trip.schedule(item.id, item.scheduled_date, event.target.value || null)}
+            onBlur={() => setTimeEditingId(null)}
+            aria-label={ariaLabel}
+            className="w-[124px] rounded-lg border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
+          >
+            <option value="">{tCustomer("strictMigration.tripPlanner.noTime")}</option>
+            {current && !listed && <option value={current} disabled>{formatClock(current)}</option>}
+            {choices.options.map((option) => (
+              <option key={option.value} value={option.value} disabled={option.disabled}>
+                {choices.kind === "slots"
+                  ? `${formatClock(option.value)} · ${option.full ? tCustomer("strictMigration.tripPlanner.slotFull") : tCustomer("strictMigration.tripPlanner.seatsLeft", { count: option.seatsLeft ?? 0 })}`
+                  : formatClock(option.value)}
+              </option>
+            ))}
+          </select>
+        );
+      }
+    }
+    const waiting = choices.kind === "needsDay" || choices.kind === "loading";
+    return (
+      <button
+        type="button"
+        onClick={() => setTimeEditingId(item.id)}
+        disabled={waiting}
+        title={choices.kind === "needsDay" ? tCustomer("strictMigration.tripPlanner.pickDayFirst") : choices.kind === "loading" ? tCustomer("strictMigration.tripPlanner.loadingTimes") : undefined}
+        aria-label={ariaLabel}
+        className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-40"
+      >
+        <Clock size={12} />{tCustomer("strictMigration.tripPlanner.addTime")}
+      </button>
     );
   }
 

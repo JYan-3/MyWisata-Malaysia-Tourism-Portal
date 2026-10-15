@@ -3103,7 +3103,21 @@
       "longLeg": "Perjalanan jauh antara hentian ini",
       "addTime": "Masa",
       "overview": "Gambaran keseluruhan",
-      "overviewEmpty": "Belum ada hentian"
+      "overviewEmpty": "Belum ada hentian",
+      "noTime": "Tiada masa",
+      "slotFull": "Penuh",
+      "seatsLeft_one": "{{count}} lagi",
+      "seatsLeft_other": "{{count}} lagi",
+      "notAvailableThisDay": "Tidak tersedia pada hari ini",
+      "closedThisDay": "Tutup pada hari ini",
+      "pickDayFirst": "Pilih hari dahulu",
+      "loadingTimes": "Memuatkan masa…",
+      "timeProblem": {
+        "full": "Masa ini sudah penuh. Pilih masa lain.",
+        "noSlot": "Masa ini tidak lagi ditawarkan. Pilih masa lain.",
+        "closed": "Tutup pada hari ini. Alihkan ke hari lain.",
+        "outsideHours": "Tutup pada masa ini. Pilih masa dalam waktu operasi."
+      }
     },
     "paymentSimulator": {
       "eyebrow": "Kotak pasir / Simulasi",

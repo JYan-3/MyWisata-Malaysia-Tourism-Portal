@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// These fixtures represent an already verified staff session; this suite focuses
+// on invitation behavior.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
+
 const mocks = vi.hoisted(() => ({
   recipientLocale: 'en',
   getUser: vi.fn(),

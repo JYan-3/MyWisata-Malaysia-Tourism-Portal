@@ -3103,7 +3103,21 @@
       "longLeg": "这两个站点之间路程较长",
       "addTime": "时间",
       "overview": "总览",
-      "overviewEmpty": "暂无站点"
+      "overviewEmpty": "暂无站点",
+      "noTime": "不设时间",
+      "slotFull": "已满",
+      "seatsLeft_one": "剩 {{count}} 位",
+      "seatsLeft_other": "剩 {{count}} 位",
+      "notAvailableThisDay": "当天不可预订",
+      "closedThisDay": "当天休息",
+      "pickDayFirst": "请先选择日期",
+      "loadingTimes": "正在加载时间…",
+      "timeProblem": {
+        "full": "该时段已满，请选择其他时间。",
+        "noSlot": "该时段已不再提供，请选择其他时间。",
+        "closed": "当天休息，请移到其他日期。",
+        "outsideHours": "该时间不在营业时间内，请选择营业时间内的时间。"
+      }
     },
     "paymentSimulator": {
       "eyebrow": "沙盒／模拟付款",

@@ -3103,7 +3103,21 @@
       "longLeg": "Long trip between these stops",
       "addTime": "Time",
       "overview": "Overview",
-      "overviewEmpty": "No stops yet"
+      "overviewEmpty": "No stops yet",
+      "noTime": "No time",
+      "slotFull": "Full",
+      "seatsLeft_one": "{{count}} left",
+      "seatsLeft_other": "{{count}} left",
+      "notAvailableThisDay": "Not available this day",
+      "closedThisDay": "Closed this day",
+      "pickDayFirst": "Pick a day first",
+      "loadingTimes": "Loading times…",
+      "timeProblem": {
+        "full": "This time is fully booked. Pick another time.",
+        "noSlot": "This time is no longer offered. Pick another time.",
+        "closed": "Closed on this day. Move it to another day.",
+        "outsideHours": "Closed at this time. Pick a time within opening hours."
+      }
     },
     "paymentSimulator": {
       "eyebrow": "Sandbox / Simulated",

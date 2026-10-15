@@ -2104,17 +2104,51 @@
       "userLabel": "符合条件的用户"
     },
     "systemSettings": {
-      "eyebrow": "平台控制", "title": "系统设置",
+      "eyebrow": "平台控制",
+      "title": "系统设置",
       "description": "在事故或计划维护期间，暂时暂停指定的顾客操作。",
-      "loading": "正在读取系统设置…", "retry": "重试", "unsaved": "有未保存的更改", "active": "运行中", "paused": "已暂停",
-      "neverUpdated": "尚无更改记录", "unknownActor": "未知管理员", "updated": "最近由 {{by}} 于 {{date}} 修改", "saved": "系统设置已保存并记录。",
-      "controls": { "title": "平台控制", "description": "保存后会影响新的操作。" },
-      "orders": { "title": "暂停顾客新订单", "description": "阻止新的购物车、活动预订及订单付款结账请求。", "existing": "已创建订单仍可继续确认付款、履约、取消、退款及客服处理。" },
-      "email": { "title": "暂停自定义邮件发送", "description": "暂存队列中的自定义 SMTP 邮件，并暂停平台直接发送的邮件。重新启用后会继续发送待处理邮件。", "authExemption": "Supabase Auth 验证邮件和密码重设邮件不受影响。暂停时已经开始发送的邮件可能完成。" },
-      "reasonLabel": "更改原因", "reasonPlaceholder": "说明事故或维护原因（至少 10 个字符）。",
-      "impact": { "title": "更改影响", "description": "这些控制用于临时事故处理和维护。", "orders": "暂停订单：阻止顾客创建新订单，不会取消已创建订单。", "email": "暂停邮件：邮件保留在待发送队列，恢复后继续发送。", "audit": "每次保存都会记录 Super Admin、时间、修改前后内容及原因。" },
-      "confirm": { "title": "确认更改系统设置？", "pauseDescription": "你将暂停至少一项正在运行的功能。这次更改和原因会写入审计记录。", "resumeDescription": "你将恢复至少一项功能。这次更改和原因会写入审计记录。" },
-      "errors": { "load": "无法读取系统设置。", "save": "无法保存系统设置。", "reason": "请填写至少 10 个字符的原因后再保存。" }
+      "loading": "正在读取系统设置…",
+      "retry": "重试",
+      "unsaved": "有未保存的更改",
+      "active": "运行中",
+      "paused": "已暂停",
+      "neverUpdated": "尚无更改记录",
+      "unknownActor": "未知管理员",
+      "updated": "最近由 {{by}} 于 {{date}} 修改",
+      "saved": "系统设置已保存并记录。",
+      "controls": {
+        "title": "平台控制",
+        "description": "保存后会影响新的操作。"
+      },
+      "orders": {
+        "title": "暂停顾客新订单",
+        "description": "阻止新的购物车、活动预订及订单付款结账请求。",
+        "existing": "已创建订单仍可继续确认付款、履约、取消、退款及客服处理。"
+      },
+      "email": {
+        "title": "暂停自定义邮件发送",
+        "description": "暂存队列中的自定义 SMTP 邮件，并暂停平台直接发送的邮件。重新启用后会继续发送待处理邮件。",
+        "authExemption": "Supabase Auth 验证邮件和密码重设邮件不受影响。暂停时已经开始发送的邮件可能完成。"
+      },
+      "reasonLabel": "更改原因",
+      "reasonPlaceholder": "说明事故或维护原因（至少 10 个字符）。",
+      "impact": {
+        "title": "更改影响",
+        "description": "这些控制用于临时事故处理和维护。",
+        "orders": "暂停订单：阻止顾客创建新订单，不会取消已创建订单。",
+        "email": "暂停邮件：邮件保留在待发送队列，恢复后继续发送。",
+        "audit": "每次保存都会记录 Super Admin、时间、修改前后内容及原因。"
+      },
+      "confirm": {
+        "title": "确认更改系统设置？",
+        "pauseDescription": "你将暂停至少一项正在运行的功能。这次更改和原因会写入审计记录。",
+        "resumeDescription": "你将恢复至少一项功能。这次更改和原因会写入审计记录。"
+      },
+      "errors": {
+        "load": "无法读取系统设置。",
+        "save": "无法保存系统设置。",
+        "reason": "请填写至少 10 个字符的原因后再保存。"
+      }
     },
     "walletSettings": {
       "audit": {
@@ -2306,7 +2340,11 @@
       "recipientLanguage": "收件人语言：{{language}}",
       "languageUnavailable": "请输入有效收件人邮箱，以检查其已保存的语言。",
       "languageReview": "请按收件人语言检查主题和正文。更换邮箱会保留你的编辑，需要时请重新生成草稿。没有语言偏好则使用英文。",
-      "languages": {"en": "英文", "zh-CN": "华语", "ms": "马来文"},
+      "languages": {
+        "en": "英文",
+        "zh-CN": "华语",
+        "ms": "马来文"
+      },
       "close": "关闭",
       "recipient": "收件人邮箱",
       "recipientPlaceholder": "vendor@example.com",
@@ -3770,5 +3808,10 @@
     "eyebrow": "后台账号安全",
     "title": "验证你的验证器",
     "description": "进入后台管理功能前，请先输入验证器 App 的动态验证码。"
+  },
+  "security": {
+    "eyebrow": "账户安全",
+    "title": "验证身份验证器",
+    "description": "进入管理后台除了密码，还需要输入身份验证器应用中的验证码。"
   }
 }
