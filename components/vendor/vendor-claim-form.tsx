@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { readMigratedClientStorageValue } from '@/lib/client-storage';
 
 export type VendorClaimValues = {
   businessName: string;
@@ -21,7 +22,8 @@ type VendorClaimFormProps = {
   phoneVerified?: boolean;
 };
 
-const STORAGE_KEY = 'mywisata.vendor-invite-draft';
+const STORAGE_KEY = 'mylawatan.vendor-invite-draft';
+const LEGACY_STORAGE_KEY = 'mywisata.vendor-invite-draft';
 const EMPTY_VALUES: VendorClaimValues = {
   businessName: '', legalBusinessName: '', businessType: '',
   contactEmail: '', contactPhone: '', businessAddress: '',
@@ -46,7 +48,7 @@ export default function VendorClaimForm({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const raw = window.sessionStorage.getItem(STORAGE_KEY);
+        const raw = readMigratedClientStorageValue(window.sessionStorage, STORAGE_KEY, LEGACY_STORAGE_KEY);
         const saved = raw ? JSON.parse(raw) as { token?: string; values?: VendorClaimValues; dirtyFields?: Array<keyof VendorClaimValues> } : null;
         if (saved?.token === token && saved.values) {
           setForm(saved.values);

@@ -16,7 +16,8 @@ describe("reference currency UI contract", () => {
     expect(provider).toContain("ReferenceCurrencyProvider");
     expect(provider).toContain("useReferenceCurrency");
     expect(layout).toContain("REFERENCE_CURRENCY_COOKIE");
-    expect(layout).toContain("resolveReferenceCurrency");
+    expect(layout).toContain("LEGACY_REFERENCE_CURRENCY_COOKIE");
+    expect(layout).toContain("resolveReferenceCurrencyPreference");
     expect(layout).toContain("getReferenceRate(currency)");
     expect(layout).toContain("<ReferenceCurrencyProvider");
   });

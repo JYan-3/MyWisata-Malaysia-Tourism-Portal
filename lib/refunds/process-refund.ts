@@ -91,7 +91,7 @@ export async function processRefund({ service, walletDb, refundId, actorId, note
       const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
       if (!paymentIntent) return { ok: false, code: 'INVALID_STATE', message: 'Stripe payment intent is not available yet', status: 409 };
       const providerRefund = await stripe.refunds.create(
-        { payment_intent: paymentIntent, amount: externalAmountSen, metadata: { mywisata_refund_id: refundId } },
+        { payment_intent: paymentIntent, amount: externalAmountSen, metadata: { mylawatan_refund_id: refundId } },
         { idempotencyKey: `refund:${refundId}` },
       );
       const providerStatus = providerRefund.status === 'succeeded'

@@ -792,6 +792,7 @@
       "click_velocity": "Lonjakan kadar klik",
       "duplicate_attribution": "Percubaan atribusi pendua",
       "expired_attribution": "Tempoh atribusi tamat",
+      "link_disabled_at_payout": "Bayaran dihalang kerana pautan dinyahaktifkan sebelum pesanan dibayar",
       "self_referral": "Rujukan kendiri",
       "vendor_ineligible": "Vendor/pengurus outlet tidak layak menerima komisen",
       "visitor_clustering": "Klik berkumpul pada seorang pelawat",
@@ -2994,7 +2995,7 @@
     "providers": {
       "bankTransferSimulator": "Pindahan bank — Simulasi",
       "grabpaySimulator": "GrabPay — Simulasi",
-      "mywisataWallet": "Dompet MyLawatan",
+      "mylawatanWallet": "Dompet MyLawatan",
       "stripeSandbox": "Stripe Sandbox",
       "tngSimulator": "eDompet Touch ’n Go — Simulasi",
       "unknown": "Penyedia tidak diketahui"

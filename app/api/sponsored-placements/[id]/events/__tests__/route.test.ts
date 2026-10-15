@@ -17,7 +17,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 import { POST } from "../route";
 
 function request(body: unknown) {
-  return new Request(`https://mywisata.test/api/sponsored-placements/${PLACEMENT_ID}/events`, {
+  return new Request(`https://mylawatan.test/api/sponsored-placements/${PLACEMENT_ID}/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

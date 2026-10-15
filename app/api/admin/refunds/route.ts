@@ -4,12 +4,39 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
+type UserRoleRecord = {
+  roles: { name: string | null } | Array<{ name: string | null }> | null;
+};
+
+type RefundQueryRow = {
+  id: string;
+  order_id: string;
+  amount: number | string;
+  reason: string | null;
+  status: string;
+  provider_refund_id: string | null;
+  manual_reference: string | null;
+  wallet_topup_sen: number | null;
+  wallet_earnings_sen: number | null;
+  external_amount_sen: number | null;
+  provider_failure_code: string | null;
+  provider_failure_message: string | null;
+  attempt_count: number | null;
+  created_at: string;
+  updated_at: string;
+  payments: { method: string | null; provider: string | null } | Array<{ method: string | null; provider: string | null }> | null;
+  orders: { display_id: string | null } | Array<{ display_id: string | null }> | null;
+};
+
 export async function GET() {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
-  const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
+  const roleNames = (roles ?? []).map((row: UserRoleRecord) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return role?.name;
+  });
   if (!roleNames.includes('super_admin')) {
     return apiFail('FORBIDDEN', 'Admin role required', 403);
   }
@@ -22,7 +49,7 @@ export async function GET() {
     .limit(200);
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
 
-  const refunds = (data ?? []).map((refund: any) => {
+  const refunds = ((data ?? []) as unknown as RefundQueryRow[]).map((refund) => {
     const payment = Array.isArray(refund.payments) ? refund.payments[0] : refund.payments;
     const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
     return {

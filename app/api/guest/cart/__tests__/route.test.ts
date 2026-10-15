@@ -6,7 +6,7 @@ vi.mock('@/backend/supabase',()=>({supabase:{}}));
 import {POST,GET} from '../route';
 const ID='1d4057cf-c821-4b05-a454-61dbdc42d32c';
 const variant='2d4057cf-c821-4b05-a454-61dbdc42d32c';
-function request(body:unknown,origin='https://mywisata.example'){return new Request('https://mywisata.example/api/guest/cart',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});}
+function request(body:unknown,origin='https://mylawatan.example'){return new Request('https://mylawatan.example/api/guest/cart',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});}
 beforeEach(()=>{
  vi.clearAllMocks();mocks.guest.mockResolvedValue({guestSubjectId:ID});mocks.limit.mockResolvedValue(true);
  mocks.from.mockImplementation((table:string)=>{
@@ -25,5 +25,5 @@ describe('guest cart server boundary',()=>{
   expect(mocks.upsert).toHaveBeenCalledWith({guest_subject_id:ID},expect.objectContaining({onConflict:'guest_subject_id'}));
   expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({cart_id:ID,unit_price:12}));
  });
- it('returns an empty private response without creating a subject for anonymous reads',async()=>{mocks.guest.mockResolvedValue(null);const response=await GET(new Request('https://mywisata.example/api/guest/cart'));expect(await response.json()).toEqual({data:{items:[]},error:null});expect(response.headers.get('cache-control')).toContain('no-store');expect(mocks.upsert).not.toHaveBeenCalled();});
+ it('returns an empty private response without creating a subject for anonymous reads',async()=>{mocks.guest.mockResolvedValue(null);const response=await GET(new Request('https://mylawatan.example/api/guest/cart'));expect(await response.json()).toEqual({data:{items:[]},error:null});expect(response.headers.get('cache-control')).toContain('no-store');expect(mocks.upsert).not.toHaveBeenCalled();});
 });

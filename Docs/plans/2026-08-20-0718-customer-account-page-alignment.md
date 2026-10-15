@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the title group on each requested customer account page align with MyWisata while its primary body aligns visually with Home, excluding My Vouchers.
+**Goal:** Make the title group on each requested customer account page align with MyLawatan while its primary body aligns visually with Home, excluding My Vouchers.
 
 **Architecture:** Add a shared `CustomerPageTitle` wrapper that places the existing `CustomerPageHeader` on the navigation's `max-w-7xl` grid. Keep body content in the existing `CustomerPageShell` (`max-w-5xl`) and remove only the duplicate top padding after the separate title.
 
@@ -288,7 +288,7 @@ Move the current Recommendations header, including the existing Recommend button
 <CustomerPageTitle
   eyebrow={tCustomer("ui.recommendations.community", { defaultValue: "Community" })}
   title={tCustomer("ui.recommendations.title", { defaultValue: "Recommend a Vendor" })}
-  description={tCustomer("ui.recommendations.description", { defaultValue: "Know a great local experience that deserves to be on MyWisata? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation." })}
+  description={tCustomer("ui.recommendations.description", { defaultValue: "Know a great local experience that deserves to be on MyLawatan? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation." })}
   icon={<Star size={14} className="text-accent" />}
   actions={<Button onClick={() => setShowForm((value) => !value)} className="flex items-center gap-2"><Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend", { defaultValue: "Recommend" })}</Button>}
 />
@@ -430,7 +430,7 @@ Expected: exit code 0.
 Use the already authenticated local browser session for Activity itinerary, Profile, Notifications, Preferences, Wallet, Verification, Support, Earn & Share, Become a Vendor, and Recommend a Vendor. Confirm:
 
 ```text
-title.x == MyWisata.x (within 2px)
+title.x == MyLawatan.x (within 2px)
 body inner content.x == Home.x (within 4px)
 ```
 

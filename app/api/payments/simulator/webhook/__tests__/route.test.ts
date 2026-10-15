@@ -5,10 +5,10 @@ vi.mock('@/lib/payments/settle-simulator-event', () => ({ settleSimulatorEvent: 
 
 import { POST } from '../route';
 
-function request(signature = 'a'.repeat(64)) {
+function request(signature = 'a'.repeat(64), header = 'x-mylawatan-simulator-signature') {
   return new Request('http://localhost/api/payments/simulator/webhook', {
     method: 'POST',
-    headers: { 'x-mywisata-simulator-signature': signature },
+    headers: { [header]: signature },
     body: JSON.stringify({ kind: 'payment' }),
   });
 }
@@ -36,6 +36,14 @@ describe('POST /api/payments/simulator/webhook', () => {
       status: 'paid',
       idempotent: false,
     });
+  });
+
+  it('accepts the legacy signature header during the rename transition', async () => {
+    const req = request('b'.repeat(64), 'x-mywisata-simulator-signature');
+    const response = await POST(req);
+
+    expect(response.status).toBe(200);
+    expect(mocks.settleSimulatorEvent).toHaveBeenCalledWith(JSON.stringify({ kind: 'payment' }), 'b'.repeat(64));
   });
 
   it('returns not found when the simulator is unavailable', async () => {

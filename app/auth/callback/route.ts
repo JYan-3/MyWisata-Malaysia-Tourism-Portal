@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     roles: { name: row.role_name },
   }));
   if (assignments.length === 0) {
-    const parsedNext = next ? new URL(next, "https://mywisata.invalid") : null;
+    const parsedNext = next ? new URL(next, "https://mylawatan.invalid") : null;
     const invitationDestination = parsedNext?.pathname.startsWith("/staff-invitations/")
       ? `${parsedNext.pathname}${parsedNext.search}${parsedNext.hash}`
       : "/";

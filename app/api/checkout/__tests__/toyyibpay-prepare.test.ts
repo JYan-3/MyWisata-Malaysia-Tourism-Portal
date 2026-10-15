@@ -63,7 +63,7 @@ vi.mock('@/lib/payments/toyyibpay', () => ({
 import { POST } from '../prepare/route';
 
 function request(provider = 'toyyibpay') {
-  return new Request('https://api.mywisata.example/api/checkout/prepare', {
+  return new Request('https://api.mylawatan.example/api/checkout/prepare', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -82,7 +82,7 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
     vi.clearAllMocks();
     mocks.calls.length = 0;
     vi.stubEnv('NODE_ENV', 'test');
-    vi.stubEnv('APP_URL', 'https://mywisata.example');
+    vi.stubEnv('APP_URL', 'https://mylawatan.example');
     vi.stubEnv('TOYYIBPAY_ENV', 'sandbox');
     mocks.getUser.mockResolvedValue({
       data: {
@@ -187,8 +187,8 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
       customer: {
         name: 'Nur Aisyah', email: 'aisyah@example.com', phone: '+60123456789',
       },
-      returnUrl: `https://mywisata.example/customer/orders/${ORDER_ID}`,
-      callbackUrl: 'https://mywisata.example/api/payments/toyyibpay/callback',
+      returnUrl: `https://mylawatan.example/customer/orders/${ORDER_ID}`,
+      callbackUrl: 'https://mylawatan.example/api/payments/toyyibpay/callback',
     });
     expect(JSON.stringify(body)).not.toContain('attacker.example');
     expect(mocks.serviceRpc).toHaveBeenCalledWith('complete_toyyibpay_checkout', {

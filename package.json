@@ -9,7 +9,7 @@
     "prebuild": "node scripts/copy-maplibre-worker.mjs",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0",
     "test": "vitest run",
     "test:dev-stripe": "node --test scripts/lib/stripe-dev-env.test.mjs",
     "test:geonames-import": "node --test scripts/lib/geonames-cities.test.mjs",

@@ -12,31 +12,15 @@ const HOME_BY_ROLE: Record<Role, string> = {
   super_admin: "/admin/dashboard",
 };
 
-const ROLE_PREFIXES = ["/customer", "/vendor", "/admin"] as const;
-const ROLE_NEUTRAL_PATHS = ["/", "/reset-password", "/vendor-invite"] as const;
-
 export function isWalletApproverPath(pathname: string): boolean {
   return pathname === "/admin/withdrawals" || pathname.startsWith("/admin/withdrawals/");
-}
-
-function rolePrefix(role: Role): string {
-  if (role === "customer") return "/customer";
-  if (role === "vendor_owner" || role === "outlet_manager" || role === "event_vendor") return "/vendor";
-  if (role === "staff") return "/staff";
-  return "/admin";
-}
-
-function isRoleNeutralPath(pathname: string): boolean {
-  return ROLE_NEUTRAL_PATHS.includes(pathname as typeof ROLE_NEUTRAL_PATHS[number])
-    || pathname.startsWith("/outlet-manager-invitations/")
-    || pathname.startsWith("/staff-invitations/");
 }
 
 export function postLoginDestination(role: Role, next?: string | null): string {
   const safeNext = postLoginPath(next ?? null);
   if (!safeNext) return HOME_BY_ROLE[role];
 
-  const parsedNext = new URL(safeNext, "https://mywisata.invalid");
+  const parsedNext = new URL(safeNext, "https://mylawatan.invalid");
   const pathname = parsedNext.pathname;
 
   // Preserve only essential post-auth completion flows (password reset or invitation tokens)

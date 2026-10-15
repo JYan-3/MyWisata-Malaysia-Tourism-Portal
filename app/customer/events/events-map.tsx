@@ -20,8 +20,8 @@ function MapLoading() {
   );
 }
 
-const MyWisataExploreMap = dynamic(
-  () => import("@/components/demo-map/mywisata-explore-map").then((module) => module.MyWisataExploreMap),
+const MyLawatanExploreMap = dynamic(
+  () => import("@/components/demo-map/mylawatan-explore-map").then((module) => module.MyLawatanExploreMap),
   { ssr: false, loading: () => <MapLoading /> },
 );
 
@@ -43,7 +43,7 @@ export function EventsMap({ campaigns }: { campaigns: PromotionCampaignPublic[] 
     <div className="space-y-6">
       <section aria-label={t("ui.promotionCampaigns.map.mapRegion")} className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(310px,0.75fr)] xl:items-stretch">
         <div className="min-w-0">
-          <MyWisataExploreMap
+          <MyLawatanExploreMap
             presentation="events"
             selectedStateId={selectedStateId}
             stateEventCounts={stateEventCounts}

@@ -70,7 +70,6 @@ describe('activityToMapPlace', () => {
   });
 
   it('leaves distanceKm undefined when the source activity has none', () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { distanceKm: _unused, ...withoutDistance } = activity;
     const place = activityToMapPlace(withoutDistance as ComputedActivity);
     expect(place.distanceKm).toBeUndefined();

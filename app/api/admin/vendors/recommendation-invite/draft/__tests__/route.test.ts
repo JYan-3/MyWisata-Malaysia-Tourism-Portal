@@ -89,13 +89,13 @@ describe('POST /api/admin/vendors/recommendation-invite/draft', () => {
 
   it('drafts using the recommendation\'s real details and returns subject/body', async () => {
     mockRecommendationRow();
-    draftVendorInviteEmail.mockResolvedValue({ subject: 'Join MyWisata', body: 'We would love to have you.' });
+    draftVendorInviteEmail.mockResolvedValue({ subject: 'Join MyLawatan', body: 'We would love to have you.' });
 
     const response = await POST(request({ recommendationId: RECOMMENDATION_ID }));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      data: { subject: 'Join MyWisata', body: 'We would love to have you.' },
+      data: { subject: 'Join MyLawatan', body: 'We would love to have you.' },
     });
     expect(draftVendorInviteEmail).toHaveBeenCalledWith({
       vendorName: 'Rasa Malaysia Kitchen',

@@ -34,7 +34,7 @@ describe("development API production isolation", () => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("VERCEL_ENV", "production");
-    vi.stubEnv("MYWISATA_DEMO_TOOLS", "true");
+    vi.stubEnv("MYLAWATAN_DEMO_TOOLS", "true");
     mocks.createClient.mockRejectedValue(new Error("production guard initialized Supabase"));
   });
 

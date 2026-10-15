@@ -5,12 +5,12 @@
 **Status:** Research complete
 
 **Scope:** Public first-party documentation and source code, plus a read-only
-inventory of MyWisata. This note does not change the accepted MyWisata tier
+inventory of MyLawatan. This note does not change the accepted MyLawatan tier
 ladder.
 
 ## Question
 
-How should MyWisata keep progressive verification consistent across visible
+How should MyLawatan keep progressive verification consistent across visible
 frontend actions, API authorization, and database enforcement without forcing
 every newly registered user to complete the whole profile?
 
@@ -24,7 +24,7 @@ are for better UX and are not security checks. For JavaScript/Vue screens,
 GitLab exposes a backend-computed ability through `push_frontend_ability`, then
 checks the same underlying ability in backend code.
 
-This is the closest match for MyWisata: the frontend should receive a resolved
+This is the closest match for MyLawatan: the frontend should receive a resolved
 capability decision, not independently reinterpret the tier ladder. Every
 mutation must still recheck authorization on the server.
 
@@ -37,7 +37,7 @@ Discourse centralizes authorization in its `Guardian` methods, such as
 `can_create_topic` to clients. The UI can therefore render the correct action
 state without becoming the authority that grants the action.
 
-For MyWisata, `/api/auth/me` or a dedicated access endpoint can expose
+For MyLawatan, `/api/auth/me` or a dedicated access endpoint can expose
 capability decisions such as `checkout`, `recommendation_submit`, and
 `withdrawal`, while the corresponding routes and RPCs remain authoritative.
 
@@ -53,7 +53,7 @@ one generic error family. Its contribution guide also requires a permission
 denial to identify the required permissions. This lets a frontend implement a
 specific recovery path rather than display a generic failure.
 
-MyWisata should use stable blocker codes such as
+MyLawatan should use stable blocker codes such as
 `PHONE_VERIFICATION_REQUIRED`, `PROFILE_COMPLETION_REQUIRED`, `KYC_REQUIRED`,
 and `KYC_PENDING`. Localized frontend copy should be selected from those codes;
 the API message remains a fallback, not the primary UX contract.
@@ -68,7 +68,7 @@ level includes the preceding levels. GitHub's sudo mode applies the same UX
 principle to sensitive account operations: an already signed-in user is asked
 to authenticate again when the sensitive action is attempted.
 
-This supports MyWisata's existing cumulative ladder:
+This supports MyLawatan's existing cumulative ladder:
 
 `email_verified → phone_verified → profile_complete → kyc_verified`
 
@@ -80,7 +80,7 @@ Sources:
 - [Keycloak server administration guide — step-up authentication](https://www.keycloak.org/docs/latest/server_admin/)
 - [GitHub Docs — sudo mode](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/sudo-mode)
 
-## Applied MyWisata contract
+## Applied MyLawatan contract
 
 The accepted rules remain unchanged.
 
@@ -97,7 +97,7 @@ The accepted rules remain unchanged.
 | Request withdrawal | approved `kyc_verified`, eligible earnings, verified payout destination | Keep Withdraw visible; on click show the first concrete blocker | Typed blocker such as `KYC_REQUIRED`, `PAYOUT_DESTINATION_REQUIRED`, or `MINIMUM_NOT_MET` | Withdrawal route plus atomic withdrawal RPC |
 | Approve withdrawal | Admin approval | Show submitted/pending status to the customer | Customer cannot call the approval operation | Admin role policy and approval RPC |
 
-## Current MyWisata inventory
+## Current MyLawatan inventory
 
 Existing pieces to reuse:
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, LogOut, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -9,13 +10,14 @@ import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 
 export default function StaffHomePage() {
+  const router = useRouter();
   const { t } = useTranslation("auth");
   const { currentUser, staffRoleNames, staffModules = [], loading } = useRequireRole(["staff"]);
   const destinations = staffModules;
 
   async function signOut() {
     await createClient().auth.signOut();
-    window.location.assign("/login");
+    router.replace("/login");
   }
 
   if (loading || !currentUser) return <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">{t("staffHome.loading")}</main>;

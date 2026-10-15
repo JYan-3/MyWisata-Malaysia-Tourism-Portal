@@ -115,7 +115,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit, onCreateVo
     return () => {
       active = false;
     };
-  }, [outlet.id, outlet.name, vendorId]);
+  }, [outlet.id, outlet.name, t, vendorId]);
 
   if (loading)
     return (

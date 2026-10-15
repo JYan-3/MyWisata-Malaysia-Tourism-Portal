@@ -59,6 +59,8 @@ export default function WithdrawalReceiptPage() {
 
   useEffect(() => {
     if (!currentUser) {
+      // Clear the previous user’s withdrawal receipt immediately when authentication disappears.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReceipt(null);
       setError("");
       setLoading(false);

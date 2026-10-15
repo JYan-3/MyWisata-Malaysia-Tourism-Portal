@@ -83,6 +83,8 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // The query string initializes checkout state after the client can read the current URL.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVoucherCode(params.get("voucher"));
     setClaimId(params.get("claim"));
     setToyyibPayReturned(params.get("toyyibpay_return") === "1");
@@ -124,6 +126,8 @@ export default function CheckoutPage() {
     // once that one item is consumed.
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !checkoutAllowed || paying) return;
+    // Prevent duplicate confirmation while this one-time Stripe return is being verified.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPaying(true);
     fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))

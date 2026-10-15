@@ -6,10 +6,11 @@ describe('private guest credentials',()=>{
   const token=newGuestCredential();
   expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);expect(hashGuestCredential(token)).toMatch(/^[a-f0-9]{64}$/);
   expect(newGuestCredential()).not.toBe(token);
-  const request=new Request('https://mywisata.example/api/guest/session');const response=guestPrivateResponse({ready:true});setGuestCookie(response,request,token);
+  const request=new Request('https://mylawatan.example/api/guest/session');const response=guestPrivateResponse({ready:true});setGuestCookie(response,request,token);
   const cookie=response.headers.get('set-cookie')!;
-  expect(cookie).toContain('__Host-mywisata-guest=');expect(cookie).toContain('HttpOnly');expect(cookie).toContain('Secure');expect(cookie).toContain('SameSite=lax');expect(cookie).toContain('Path=/');expect(cookie).not.toContain('Domain=');
+  expect(cookie).toContain('__Host-mylawatan-guest=');expect(cookie).toContain('HttpOnly');expect(cookie).toContain('Secure');expect(cookie).toContain('SameSite=lax');expect(cookie).toContain('Path=/');expect(cookie).not.toContain('Domain=');
   expect(response.headers.get('cache-control')).toContain('no-store');
+  expect(readGuestCookie(new Request(request.url,{headers:{cookie:`__Host-mylawatan-guest=${token}`}}))).toBe(token);
   expect(readGuestCookie(new Request(request.url,{headers:{cookie:`__Host-mywisata-guest=${token}`}}))).toBe(token);
  });
  it('rejects same-site but different origin writes and malformed credentials',()=>{
@@ -17,6 +18,11 @@ describe('private guest credentials',()=>{
   expect(isSameOriginMutation(new Request('https://app.example/api',{headers:{origin:'https://app.example','sec-fetch-site':'cross-site'}}))).toBe(false);
   expect(isSameOriginMutation(new Request('https://app.example/api',{headers:{origin:'https://app.example'}}))).toBe(true);
   expect(readGuestCookie(new Request('https://app.example',{headers:{cookie:'__Host-mywisata-guest=email@example.com'}}))).toBeNull();
+ });
+ it('falls back to a valid legacy cookie when the new cookie is malformed',()=>{
+  const valid='a'.repeat(43);
+  const request=new Request('https://app.example',{headers:{cookie:`__Host-mylawatan-guest=invalid; __Host-mywisata-guest=${valid}`}});
+  expect(readGuestCookie(request)).toBe(valid);
  });
  it('bounds body consumption and handles invalid JSON',async()=>{
   expect(await readGuestJson(new Request('https://app.example',{method:'POST',body:JSON.stringify({email:'a@example.com'})}))).toEqual({email:'a@example.com'});

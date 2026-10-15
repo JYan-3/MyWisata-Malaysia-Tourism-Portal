@@ -34,7 +34,7 @@ const baseConfig = {
   user,
   password,
   database: adminDatabase,
-  application_name: 'mywisata-event-test-admin',
+  application_name: 'mylawatan-event-test-admin',
 };
 
 const safeIdentifier = (value) => {
@@ -67,7 +67,7 @@ async function createDatabase(admin, databaseName) {
 }
 
 async function dropDatabase(admin, databaseName) {
-  if (!/^mywisata_event_test_[0-9]+_[0-9]+$/.test(databaseName)) return;
+  if (!/^mylawatan_event_test_[0-9]+_[0-9]+$/.test(databaseName)) return;
   await query(admin, `DROP DATABASE IF EXISTS ${safeIdentifier(databaseName)} WITH (FORCE)`);
 }
 
@@ -146,9 +146,9 @@ async function runConcurrencyCheck(database) {
     database,
     application_name: applicationName,
   });
-  const editor = make('mywisata-event-test-editor');
-  const checkout = make('mywisata-event-checkout-b');
-  const observer = make('mywisata-event-test-observer');
+  const editor = make('mylawatan-event-test-editor');
+  const checkout = make('mylawatan-event-checkout-b');
+  const observer = make('mylawatan-event-test-observer');
   await Promise.all([editor.connect(), checkout.connect(), observer.connect()]);
   try {
     // Isolate this race from the seed commitments so a rejection below
@@ -177,7 +177,7 @@ async function runConcurrencyCheck(database) {
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const result = await query(observer, `
         SELECT 1 FROM pg_stat_activity
-         WHERE application_name = 'mywisata-event-checkout-b'
+         WHERE application_name = 'mylawatan-event-checkout-b'
            AND state = 'active'
            AND wait_event_type = 'Lock'
          LIMIT 1`);
@@ -206,7 +206,7 @@ async function runConcurrencyCheck(database) {
     let editorWait = false;
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const result = await query(observer, `SELECT 1 FROM pg_stat_activity
-        WHERE application_name='mywisata-event-test-editor' AND state='active' AND wait_event_type='Lock'`);
+        WHERE application_name='mylawatan-event-test-editor' AND state='active' AND wait_event_type='Lock'`);
       if (result.rowCount) { editorWait = true; break; }
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
@@ -268,7 +268,7 @@ async function runBoothConcurrencyCheck(database) {
   }
 }
 
-const database = `mywisata_event_test_${process.pid}_${Date.now()}`;
+const database = `mylawatan_event_test_${process.pid}_${Date.now()}`;
 const keepDatabase = env.EVENT_TEST_KEEP_DB === '1';
 const admin = new Client(baseConfig);
 let dbClient;
@@ -276,7 +276,7 @@ try {
   await admin.connect();
   for (const role of ['anon', 'authenticated', 'service_role']) await createRoleIfMissing(admin, role);
   await createDatabase(admin, database);
-  dbClient = new Client({ ...baseConfig, database, application_name: 'mywisata-event-test-runner' });
+  dbClient = new Client({ ...baseConfig, database, application_name: 'mylawatan-event-test-runner' });
   await dbClient.connect();
 
   await apply(dbClient, 'supabase/migrations/20260711160345_create_marketplace_schema.sql');

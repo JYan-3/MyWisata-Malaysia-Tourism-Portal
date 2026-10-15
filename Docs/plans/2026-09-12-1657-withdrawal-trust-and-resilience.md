@@ -1090,7 +1090,7 @@ One forward-only migration. It adds service-role-only submission and rejection R
 
 ## Risks
 
-- TNG remains mock-only. Binding proves MyWisata used the verified platform phone, not a production TNG ownership contract.
+- TNG remains mock-only. Binding proves MyLawatan used the verified platform phone, not a production TNG ownership contract.
 - Changing the verified account phone disables the previous TNG destination until the customer recreates it for the new verified number.
 - Rotating `TNG_MOCK_WEBHOOK_SECRET` changes deterministic mock references and disables older TNG destinations; customers must recreate them.
 - A browser timeout cannot cancel accepted server work; bounded reconciliation and the database active-withdrawal guard are mandatory.

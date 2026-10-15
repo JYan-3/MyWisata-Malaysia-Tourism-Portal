@@ -42,9 +42,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
+    qualities: [75, 90],
     remotePatterns: supabaseStorageRemotePattern(),
     localPatterns: [
-      { pathname: '/branding/mywisata-logo-transparent.png', search: '?v=2' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=2' },
       { pathname: '**', search: '' },
     ],
     minimumCacheTTL: 2592000,

@@ -4,7 +4,7 @@ Status: Approved design, awaiting implementation
 
 ## Context
 
-The customer navigation bar centers its content in a `max-w-7xl` container with `px-4 sm:px-6`. The customer profile page centers its title and content together in the shared `max-w-5xl` page shell. On desktop and wide screens, the profile title group therefore begins farther right than the `MyWisata` brand.
+The customer navigation bar centers its content in a `max-w-7xl` container with `px-4 sm:px-6`. The customer profile page centers its title and content together in the shared `max-w-5xl` page shell. On desktop and wide screens, the profile title group therefore begins farther right than the `MyLawatan` brand.
 
 The requested change applies only to the three-line title group:
 

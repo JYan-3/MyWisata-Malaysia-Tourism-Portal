@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { GET } from '../route';
 
 vi.mock('@/lib/supabase/service', () => ({
@@ -54,7 +55,7 @@ describe('GET /api/vendors/[vendorId]/outlets/[outletId]/calendar.ics', () => {
         }
         return { select: vi.fn() };
       }),
-    } as any);
+    } as unknown as SupabaseClient);
 
     const response = await GET(new Request('http://localhost:3000'), {
       params: Promise.resolve({ vendorId, outletId }),
@@ -79,7 +80,7 @@ describe('GET /api/vendors/[vendorId]/outlets/[outletId]/calendar.ics', () => {
           }),
         }),
       }),
-    } as any);
+    } as unknown as SupabaseClient);
 
     const response = await GET(new Request('http://localhost:3000'), {
       params: Promise.resolve({ vendorId, outletId: 'missing' }),

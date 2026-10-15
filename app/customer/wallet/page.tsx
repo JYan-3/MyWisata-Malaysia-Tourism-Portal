@@ -248,6 +248,8 @@ function WalletContent() {
 
   useEffect(() => {
     if (!currentUser) {
+      // Clear account-specific state on sign-out so the next session cannot see stale wallet details.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBuckets(null);
       setReadiness(null);
       setWithdrawals(null);
@@ -271,6 +273,8 @@ function WalletContent() {
   useEffect(() => {
     if (!currentUser) return;
     if (!returningFromOnboarding && (!walletReady || resolvedAvailableEarnings < CUSTOMER_WITHDRAWAL_MINIMUM_RM)) return;
+    // Refresh the external Stripe account state after onboarding or when the balance becomes eligible.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshConnectStatus();
   }, [currentUser, refreshConnectStatus, resolvedAvailableEarnings, returningFromOnboarding, walletReady]);
 

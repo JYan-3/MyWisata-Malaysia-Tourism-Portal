@@ -6,6 +6,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
@@ -21,13 +22,6 @@ interface TicketSummary {
   unread: boolean;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
-
 const STATUS_STYLE: Record<string, string> = {
   open: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   in_progress: "bg-teal/10 text-teal",
@@ -36,6 +30,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function CustomerSupportPage() {
+  const router = useRouter();
   const { t: tCustomer, i18n } = useTranslation("customer");
   const [tickets, setTickets] = useState<TicketSummary[] | null | undefined>(undefined);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
@@ -69,7 +64,7 @@ export default function CustomerSupportPage() {
       });
       const result = await response.json() as { data?: { id: string }; error?: { message?: string } };
       if (!response.ok || !result.data) throw new Error(result.error?.message ?? tCustomer("ui.support.createError"));
-      window.location.href = `/customer/support/${result.data.id}`;
+      router.push(`/customer/support/${result.data.id}`);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : tCustomer("ui.support.createError"));
     } finally { setSending(false); }

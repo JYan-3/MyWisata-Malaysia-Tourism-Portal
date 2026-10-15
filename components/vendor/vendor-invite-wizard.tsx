@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { readMigratedClientStorageValue } from '@/lib/client-storage';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 import { VendorInviteAccountStep } from '@/components/vendor/vendor-invite-account-step';
 import { VendorInviteDetailsStep } from '@/components/vendor/vendor-invite-details-step';
@@ -26,7 +27,8 @@ import {
   type VendorInviteStep,
 } from '@/components/vendor/vendor-invite-wizard-state';
 
-const STORAGE_KEY = 'mywisata.vendor-invite-wizard-v2';
+const STORAGE_KEY = 'mylawatan.vendor-invite-wizard-v2';
+const LEGACY_STORAGE_KEY = 'mywisata.vendor-invite-wizard-v2';
 
 export type { VendorInviteDraft, VendorInviteStep } from '@/components/vendor/vendor-invite-wizard-state';
 
@@ -82,7 +84,14 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
       if (!active) return;
       setTokenFingerprint(fingerprint);
       try {
-        const saved = restoreVendorInviteStoragePayload(window.sessionStorage.getItem(`${STORAGE_KEY}.${fingerprint}`), fingerprint);
+        const saved = restoreVendorInviteStoragePayload(
+          readMigratedClientStorageValue(
+            window.sessionStorage,
+            `${STORAGE_KEY}.${fingerprint}`,
+            `${LEGACY_STORAGE_KEY}.${fingerprint}`,
+          ),
+          fingerprint,
+        );
         if (saved) {
           const sanitized = reconcileVendorInvitePrefill(
             { draft: saved.draft, dirtyFields: saved.dirtyFields },

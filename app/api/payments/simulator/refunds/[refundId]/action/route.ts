@@ -12,6 +12,9 @@ export const dynamic = 'force-dynamic';
 
 const actionSchema = z.object({ outcome: z.enum(['succeeded', 'failed']) }).strict();
 type RouteContext = { params: Promise<{ refundId: string }> };
+type UserRoleRecord = {
+  roles: { name: string | null } | Array<{ name: string | null }> | null;
+};
 
 export async function POST(request: Request, { params }: RouteContext) {
   if (!isPaymentSimulatorEnabled()) {
@@ -34,7 +37,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
-  const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
+  const roleNames = (roles ?? []).map((row: UserRoleRecord) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return role?.name;
+  });
   if (!roleNames.includes('super_admin')) {
     return NextResponse.json({ error: 'Super Admin role required' }, { status: 403 });
   }

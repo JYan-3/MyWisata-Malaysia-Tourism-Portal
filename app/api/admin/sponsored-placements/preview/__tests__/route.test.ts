@@ -17,7 +17,7 @@ vi.mock("@/lib/staff-permissions/server", () => ({
 import { POST } from "@/app/api/admin/sponsored-placements/preview/route";
 
 function request(body: unknown) {
-  return new Request("https://mywisata.test/api/admin/sponsored-placements/preview", {
+  return new Request("https://mylawatan.test/api/admin/sponsored-placements/preview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

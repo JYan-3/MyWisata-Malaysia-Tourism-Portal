@@ -30,6 +30,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { ProductChatButton } from "@/components/customer/product-chat-button";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
+import { ProductSaveButton } from "@/components/customer/product-save-button";
 
 export function ActivityDetailClient({
   initialActivity,
@@ -199,6 +200,7 @@ export function ActivityDetailClient({
           </div>
         )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
+        <ProductSaveButton productId={activity.id} productName={activity.name} className="absolute right-3 top-3 z-10" />
         {activity.isHiddenGem && (
           <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>
             <Sparkles size={13} /> {t("ui.labels.hiddenGem")}

@@ -17,7 +17,7 @@ frontend, API, and database.
 
 ## Context
 
-MyWisata already has the required cumulative ladder:
+MyLawatan already has the required cumulative ladder:
 
 `email_unverified → email_verified → phone_verified → profile_complete → kyc_verified`
 

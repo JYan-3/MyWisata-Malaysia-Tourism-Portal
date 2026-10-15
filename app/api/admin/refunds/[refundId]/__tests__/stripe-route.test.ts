@@ -65,7 +65,7 @@ describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.createRefund).toHaveBeenCalledWith(
-      { payment_intent: 'pi_test_001', amount: 5000, metadata: { mywisata_refund_id: REFUND_ID } },
+      { payment_intent: 'pi_test_001', amount: 5000, metadata: { mylawatan_refund_id: REFUND_ID } },
       { idempotencyKey: `refund:${REFUND_ID}` },
     );
   });

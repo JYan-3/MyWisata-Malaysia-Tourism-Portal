@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Megaphone, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -37,7 +37,7 @@ export default function AnnouncementsPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/admin/announcements", { cache: "no-store" });
@@ -50,9 +50,9 @@ export default function AnnouncementsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
 
-  async function loadCampaigns() {
+  const loadCampaigns = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/promotion-campaigns", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
@@ -60,10 +60,10 @@ export default function AnnouncementsPage() {
     } catch {
       // Optional — the campaign-link picker is just hidden if this fails (e.g. no permission for that module).
     }
-  }
+  }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); void loadCampaigns(); }, []);
+  useEffect(() => { void load(); void loadCampaigns(); }, [load, loadCampaigns]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();

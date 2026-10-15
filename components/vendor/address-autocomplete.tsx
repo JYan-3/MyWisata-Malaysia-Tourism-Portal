@@ -62,7 +62,7 @@ export default function AddressAutocomplete({ value = '', onChange, onSelect, pl
     }, 300);
 
     return () => window.clearTimeout(timeout);
-  }, [value]);
+  }, [t, value]);
 
   function chooseSuggestion(suggestion: Suggestion) {
     setLoading(true);

@@ -61,7 +61,7 @@ export function defaultContent(type: WidgetType, t: WidgetTranslate): unknown {
     case "gallery": return { images: [{ url: "" }, { url: "" }, { url: "" }] } satisfies GalleryContent;
     case "contact": return { address: t("dev.customize.defaults.contactAddress", { ns: "auth" }), phone: t("dev.customize.defaults.contactPhone", { ns: "auth" }) } satisfies ContactContent;
     case "products": return { items: [{ name: t("dev.customize.defaults.productOne", { ns: "auth" }), price: "18" }, { name: t("dev.customize.defaults.productTwo", { ns: "auth" }), price: "42" }] } satisfies ProductsContent;
-    case "promo": return { title: t("dev.customize.defaults.promoTitle", { ns: "auth" }), code: "MYWISATA20" } satisfies PromoContent;
+    case "promo": return { title: t("dev.customize.defaults.promoTitle", { ns: "auth" }), code: "MYLAWATAN20" } satisfies PromoContent;
     case "reviews": return { items: [{ text: t("dev.customize.defaults.reviewText", { ns: "auth" }), rating: 5 }] } satisfies ReviewsContent;
     case "announcement": return { text: t("dev.customize.defaults.announcementText", { ns: "auth" }) } satisfies AnnouncementContent;
     case "social": return { links: [{ platform: "Instagram", url: "" }, { platform: "WhatsApp", url: "" }] } satisfies SocialContent;

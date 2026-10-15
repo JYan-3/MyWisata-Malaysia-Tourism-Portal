@@ -161,6 +161,8 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as RegistrationDraft;
+      // Restore the saved-draft banner from browser storage for this vendor and location.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (parsed?.savedAt) setDraftBanner({ savedAt: parsed.savedAt });
     } catch {
       window.localStorage.removeItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
@@ -286,6 +288,8 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
 
   useEffect(() => {
     if (!productDropdownOpen) return;
+    // Search the catalogue when the picker opens or its debounced query changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadProductOptions(debouncedSearchQuery);
   }, [productDropdownOpen, debouncedSearchQuery, loadProductOptions]);
 

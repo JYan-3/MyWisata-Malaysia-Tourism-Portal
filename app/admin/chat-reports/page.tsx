@@ -64,8 +64,10 @@ export default function AdminChatReportsPage() {
   const { prompt } = useAppDialog();
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const reasonLabel = (value: string, fallback: string) => t(`chatReports.reasons.${value}`);
-  const resolutionLabel = (value: string, fallback: string) => t(`chatReports.resolutions.${value}`);
+  const labelOrFallback = (key: string, fallback: string) =>
+    i18n.exists(key, { ns: "admin" }) ? t(key) : fallback;
+  const reasonLabel = (value: string, fallback: string) => labelOrFallback(`chatReports.reasons.${value}`, fallback);
+  const resolutionLabel = (value: string, fallback: string) => labelOrFallback(`chatReports.resolutions.${value}`, fallback);
   const reportStatusLabel = (value: string) => t(`chatReports.status.${value}`);
   const [reports, setReports] = useState<ChatReport[] | null>(null);
   const [statusTab, setStatusTab] = useState<StatusTab>("open");

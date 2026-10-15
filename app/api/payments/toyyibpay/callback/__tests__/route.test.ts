@@ -45,7 +45,7 @@ function callbackRequest(overrides: Record<string, string> = {}) {
   const hash = createHash('md5')
     .update(`${SECRET}${fields.status}${fields.order_id}${fields.refno}ok`)
     .digest('hex');
-  return new Request('https://mywisata.example/api/payments/toyyibpay/callback?return=untrusted', {
+  return new Request('https://mylawatan.example/api/payments/toyyibpay/callback?return=untrusted', {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ ...fields, hash: overrides.hash ?? hash }),

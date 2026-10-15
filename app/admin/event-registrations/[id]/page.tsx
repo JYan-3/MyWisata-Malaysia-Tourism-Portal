@@ -105,7 +105,6 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
     }
   }, [id, t]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   async function removeFromLocation() {

@@ -8,8 +8,17 @@ const savedPagePath = resolve(process.cwd(), "app/customer/saved/page.tsx");
 const wishlistPagePath = resolve(process.cwd(), "app/customer/wishlist/page.tsx");
 const designDemoPath = resolve(process.cwd(), "app/customer/design-demo/design-demo-client.tsx");
 const activityCardPath = resolve(process.cwd(), "components/customer/activity-card.tsx");
+const savedDestinationCardPath = resolve(process.cwd(), "components/customer/saved-destination-card.tsx");
+const customerHomePath = resolve(process.cwd(), "app/customer/customer-home-client.tsx");
 
 describe("saved hub UI contract", () => {
+  it("uses the bookmark icon for the saved hub shortlist marker", () => {
+    const client = readFileSync(clientPath, "utf8");
+
+    expect(client).toContain('<Bookmark size={17} fill="currentColor" />');
+    expect(client).not.toContain("Heart");
+  });
+
   it("renders places and experiences as one saved destination", () => {
     expect(existsSync(clientPath)).toBe(true);
     const client = readFileSync(clientPath, "utf8");
@@ -29,5 +38,27 @@ describe("saved hub UI contract", () => {
     expect(designDemo).toContain("toggleSaved");
     expect(client).toContain('returnTo="/customer/wishlist"');
     expect(activityCard).toContain("returnTo?: string");
+  });
+
+  it("omits the Saved intro and destination descriptions", () => {
+    const client = readFileSync(clientPath, "utf8");
+    const destinationCard = readFileSync(savedDestinationCardPath, "utf8");
+
+    expect(client).not.toContain('tCustomer("ui.wishlist.description")');
+    expect(destinationCard).not.toContain("{destination.tagline}");
+    for (const locale of ["en", "zh-CN", "ms"]) {
+      const messages = JSON.parse(readFileSync(resolve(process.cwd(), `app/i18n/locales/${locale}/customer.json`), "utf8")) as { ui: { wishlist: Record<string, unknown> } };
+      expect(messages.ui.wishlist).not.toHaveProperty("description");
+    }
+  });
+
+  it("uses the Customer Home caption reveal for Saved experiences", () => {
+    const client = readFileSync(clientPath, "utf8");
+    const customerHome = readFileSync(customerHomePath, "utf8");
+    const savedActivityCard = client.match(/<ActivityCard key=\{activity\.id\}[\s\S]*?\/>/)?.[0] ?? "";
+
+    expect(customerHome).toContain('detailsRevealStyle="caption"');
+    expect(savedActivityCard).toContain("detailsRevealOnHover");
+    expect(savedActivityCard).toContain('detailsRevealStyle="caption"');
   });
 });

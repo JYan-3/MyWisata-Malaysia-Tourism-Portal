@@ -80,7 +80,7 @@ describe('ToyyibPay checkout presentation', () => {
     vi.stubEnv('NEXT_PUBLIC_TOYYIBPAY_ENABLED', 'true');
     vi.stubEnv('NEXT_PUBLIC_TOYYIBPAY_ENV', 'sandbox');
     document = installTestDom();
-    Object.assign(globalThis.window, { location: { search: '', href: 'https://mywisata.example/customer/checkout' } });
+    Object.assign(globalThis.window, { location: { search: '', href: 'https://mylawatan.example/customer/checkout' } });
     ({ createRoot } = await import('react-dom/client'));
     CheckoutPage = (await import('../page')).default;
   });
@@ -88,7 +88,7 @@ describe('ToyyibPay checkout presentation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (globalThis.window as unknown as { location: { search: string; href: string; assign?: (url: string) => void } }).location = {
-      search: '', href: 'https://mywisata.example/customer/checkout',
+      search: '', href: 'https://mylawatan.example/customer/checkout',
       assign: (url: string) => { (globalThis.window as unknown as { location: { href: string } }).location.href = url; },
     };
     mocks.gate.mockReturnValue(true);

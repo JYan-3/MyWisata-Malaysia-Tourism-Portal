@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { Bookmark } from "lucide-react";
 import {
   ACCOUNT_MENU_GROUPS,
   CUSTOMER_NAV,
@@ -11,6 +12,13 @@ import {
 } from "@/lib/customer/header-navigation";
 
 describe("customer header navigation", () => {
+  it("uses the bookmark icon for the Saved account destination", () => {
+    const savedEntry = ACCOUNT_MENU_GROUPS.flatMap((group) => group.items)
+      .find((item) => item.href === "/customer/saved");
+
+    expect(savedEntry?.icon).toBe(Bookmark);
+  });
+
   it("keeps every customer destination discoverable", () => {
     expect(CUSTOMER_NAV.map((item) => item.href)).toEqual([
       "/customer",

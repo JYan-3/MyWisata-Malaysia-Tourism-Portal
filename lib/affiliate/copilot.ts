@@ -309,7 +309,7 @@ function extractJson(text: string): unknown {
 }
 
 function buildCopilotSystemPrompt(lang: ChatLanguage): string {
-  return `You are an assistant helping an affiliate marketer improve their referral performance on a Malaysian tourism platform, MyWisata.
+  return `You are an assistant helping an affiliate marketer improve their referral performance on a Malaysian tourism platform, MyLawatan.
 
 Below is their REAL performance data (already computed — treat every number as fact, never change or invent a number, listing, or channel not present in it).
 
@@ -493,7 +493,7 @@ async function getCaptionListingFacts(productId: string): Promise<CaptionListing
 }
 
 function buildCaptionSystemPrompt(lang: ChatLanguage): string {
-  return `You are writing a short, ready-to-post social-media caption for an affiliate to share a real listing on MyWisata, a Malaysian tourism platform.
+  return `You are writing a short, ready-to-post social-media caption for an affiliate to share a real listing on MyLawatan, a Malaysian tourism platform.
 
 Below is the REAL listing's facts — the ONLY facts you may use. Never invent a feature, highlight, price, location detail, or claim not present in the data. If a field is null/missing, do not mention it at all (e.g. no rating given means no star rating in the caption).
 
@@ -509,7 +509,7 @@ Respond with ONLY the caption text itself — no quotes, no markdown, no JSON, n
 }
 
 function ruleBasedCaption(facts: CaptionListingFacts): string {
-  const parts = [`Check out ${facts.productName} on MyWisata!`];
+  const parts = [`Check out ${facts.productName} on MyLawatan!`];
   if (facts.rating !== null && facts.reviewCount > 0) parts.push(`Rated ${facts.rating.toFixed(1)}★ by ${facts.reviewCount} traveller${facts.reviewCount === 1 ? '' : 's'}.`);
   if (facts.basePriceRM !== null) parts.push(`From ${formatMYR(facts.basePriceRM)}.`);
   return parts.join(' ');

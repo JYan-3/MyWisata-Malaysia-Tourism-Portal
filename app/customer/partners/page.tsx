@@ -30,10 +30,18 @@ export default async function PartnersPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
+  const resultsPromise = searchActivities({ q: q || undefined }, db);
+  const recommendationPromise = q
+    ? Promise.resolve([])
+    : resultsPromise.then((results) => getRecommendedFeed(
+      user?.id ?? null,
+      { limit: 12, candidates: results },
+      db,
+    ));
   const [results, vendors, recommendationFeed, placementsResult, eventPromotions, publicEvents] = await Promise.all([
-    searchActivities({ q: q || undefined }, db),
+    resultsPromise,
     getVendors(db),
-    q ? Promise.resolve([]) : getRecommendedFeed(user?.id ?? null, { limit: 12 }, db),
+    recommendationPromise,
     db.rpc("list_active_sponsored_discovery_placements"),
     getFeaturedEventPromotions(db).catch(() => []),
     getPublicPromotionCampaigns(),

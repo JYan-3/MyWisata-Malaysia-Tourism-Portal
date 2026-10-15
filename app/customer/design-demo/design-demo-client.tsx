@@ -121,11 +121,6 @@ type DemoVendor = {
   outlets: Array<{ id: string; name: string; city: string | null; state: string | null }>;
 };
 
-function formatBusinessType(value: string | null) {
-  if (!value) return "Local experience partner";
-  return value.split(/[_-]/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-}
-
 function DemoVendorCard({ vendor, index }: { vendor: DemoVendor; index: number }) {
   const { t: tCustomer } = useTranslation("customer");
   const visual = getVendorVisual(vendor);

@@ -9,6 +9,7 @@ import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-authorization';
 import { filterProductsByOutlet, getOutletStock, isInventoryConfiguredForOutlets, scopeProductOutletData, resolveProductOutlet, type ProductOutletCandidate } from '@/lib/vendor/product-scope';
 import { getOutletProductIds } from '@/backend/domains/catalogue';
+import { canonicalCategorySlug, getDiscoveryCategoryLabel } from '@/lib/customer/discovery-categories';
 import {
   DEFAULT_PRODUCT_TICKET_ADMISSION,
   isDefaultProductTicketAdmission,
@@ -41,8 +42,10 @@ export async function GET(request: Request, { params }: Props) {
   const supabase = access.access.serviceDb;
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
-  const pageSize = Math.min(24, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
+  const listingMetadataOnly = url.searchParams.get('view') === 'listing_metadata';
   const metadataOnly = url.searchParams.get('view') === 'booking_metadata';
+  const maximumPageSize = listingMetadataOnly ? 100 : 24;
+  const pageSize = Math.min(maximumPageSize, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
   const outletId = url.searchParams.get('outlet_id');
   const categoryId = url.searchParams.get('category_id');
   const status = url.searchParams.get('status');
@@ -52,9 +55,11 @@ export async function GET(request: Request, { params }: Props) {
   const sort = url.searchParams.get('sort') || 'newest';
   const featured = url.searchParams.get('featured');
 
-  const selection = metadataOnly
-    ? 'id,name,requires_booking,status,outlet_id,outlets(id,name),outlet_offers(outlet_id,status,outlets(id,name))'
-    : 'id,display_id,name,slug,description,product_type,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state,status),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state,status)),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),booking_slots(outlet_id,starts_at,status,capacity,booked)';
+  const selection = listingMetadataOnly
+    ? 'id,name,base_price,requires_booking,status,outlet_id,categories(name,slug),outlets(id,name),outlet_offers(outlet_id,status,price,outlets(id,name))'
+    : metadataOnly
+      ? 'id,name,requires_booking,status,outlet_id,outlets(id,name),outlet_offers(outlet_id,status,outlets(id,name))'
+      : 'id,display_id,name,slug,description,product_type,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state,status),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state,status)),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),booking_slots(outlet_id,starts_at,status,capacity,booked)';
   const legacySelection = selection.replace('ticket_entry_policy,ticket_entry_limit,ticket_validity_days,', '');
   let outletProductIds: Set<string> | null = null;
 
@@ -68,10 +73,7 @@ export async function GET(request: Request, { params }: Props) {
   const scopedOutletIds = outletId ? [outletId] : access.access.outletIds;
   if (scopedOutletIds.length) {
     try {
-      const outletProductSets = await Promise.all(
-        scopedOutletIds.map((scopedOutletId) => getOutletProductIds(supabase, scopedOutletId)),
-      );
-      outletProductIds = new Set(outletProductSets.flatMap((productIds) => [...productIds]));
+      outletProductIds = await getOutletProductIds(supabase, scopedOutletIds);
     } catch (error) {
       return apiFail('DB_ERROR', error instanceof Error ? error.message : 'Unable to verify outlet products', 500);
     }
@@ -111,7 +113,7 @@ export async function GET(request: Request, { params }: Props) {
   };
 
   let listResult = await listProducts(selection);
-  const isLegacyTicketSchema = !metadataOnly
+  const isLegacyTicketSchema = !metadataOnly && !listingMetadataOnly
     && isMissingProductTicketAdmissionSchemaError(listResult.error);
   if (isLegacyTicketSchema) listResult = await listProducts(legacySelection);
 
@@ -134,7 +136,7 @@ export async function GET(request: Request, { params }: Props) {
   // Query review metrics for all scoped products
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productIds = scopedProducts.map((p: any) => p.id);
-  const metricRows = productIds.length
+  const metricRows = !metadataOnly && !listingMetadataOnly && productIds.length
     ? (await supabase.from('product_review_metrics').select('product_id,rating,reviews').in('product_id', productIds)).data ?? []
     : [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,6 +151,26 @@ export async function GET(request: Request, { params }: Props) {
     const scopedProduct = scopeProductOutletData(product, [...allowedOutletIds]);
     const resolvedOutlet = resolveProductOutlet(scopedProduct, [...allowedOutletIds]);
     if (!resolvedOutlet) return [];
+    if (listingMetadataOnly) {
+      const offer = scopedOffers.find(
+        (candidate: { outlet_id: string; price: number | string; status: string }) =>
+          candidate.outlet_id === resolvedOutlet.id && candidate.status === 'active',
+      );
+      const categorySlug = product.categories?.slug as string | undefined;
+      const category = canonicalCategorySlug(categorySlug)
+        ? getDiscoveryCategoryLabel(categorySlug)
+        : product.categories?.name ?? '';
+
+      return [{
+        id: product.id,
+        name: product.name,
+        outlet_id: resolvedOutlet.id,
+        outlet: { id: resolvedOutlet.id, name: resolvedOutlet.name ?? '' },
+        category,
+        requires_booking: Boolean(product.requires_booking),
+        price: Number(offer?.price ?? product.base_price),
+      }];
+    }
     if (metadataOnly) {
       return [{
         id: product.id,

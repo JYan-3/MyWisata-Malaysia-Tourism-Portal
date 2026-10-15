@@ -99,6 +99,8 @@ export default function VendorRedemptionsPage() {
   );
 
   useEffect(() => {
+    // Load the first results page when the vendor and current filters are ready.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRedemptions(1);
   }, [loadRedemptions]);
 

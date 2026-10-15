@@ -19,7 +19,7 @@ import * as collectionRoute from "@/app/api/admin/sponsored-placements/route";
 import * as itemRoute from "@/app/api/admin/sponsored-placements/[id]/route";
 
 function request(method: string, body: unknown) {
-  return new Request("https://mywisata.test/api/admin/sponsored-placements", {
+  return new Request("https://mylawatan.test/api/admin/sponsored-placements", {
     method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

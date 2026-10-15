@@ -24,20 +24,20 @@ describe('draftVendorInviteEmail', () => {
 
   it('parses a well-formed SUBJECT/BODY response', async () => {
     process.env.LLM_API_KEY = 'test-key';
-    const text = 'SUBJECT: Join MyWisata as a featured vendor\nBODY: We think Rasa Malaysia Kitchen would be a great fit.\nUse the sign-up link included below to get started.';
+    const text = 'SUBJECT: Join MyLawatan as a featured vendor\nBODY: We think Rasa Malaysia Kitchen would be a great fit.\nUse the sign-up link included below to get started.';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200 }),
     ));
 
     await expect(draftVendorInviteEmail(context)).resolves.toEqual({
-      subject: 'Join MyWisata as a featured vendor',
+      subject: 'Join MyLawatan as a featured vendor',
       body: 'We think Rasa Malaysia Kitchen would be a great fit.\nUse the sign-up link included below to get started.',
     });
   });
 
   it('returns null when the response is missing BODY', async () => {
     process.env.LLM_API_KEY = 'test-key';
-    const text = 'SUBJECT: Join MyWisata';
+    const text = 'SUBJECT: Join MyLawatan';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200 }),
     ));

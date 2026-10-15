@@ -190,7 +190,7 @@ Expected: 4 passing tests from Task 1, including the local sign-in return path c
 
 - [ ] **Step 2: Implement layout and catalogue**
 
-`app/guest/layout.tsx` renders only MyWisata branding, `Guest Mode`, and a `Sign in` link to `/login`. It imports no protected customer layout or provider.
+`app/guest/layout.tsx` renders only MyLawatan branding, `Guest Mode`, and a `Sign in` link to `/login`. It imports no protected customer layout or provider.
 
 `app/guest/explore/page.tsx` uses:
 

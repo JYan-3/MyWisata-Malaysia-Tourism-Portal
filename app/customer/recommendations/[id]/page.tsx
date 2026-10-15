@@ -52,6 +52,8 @@ export default function CustomerRecommendationDetailPage() {
     }
   }, [id, t]);
 
+  // Fetch the recommendation detail after the route id is available.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadDetail(); }, [loadDetail]);
 
   return <>

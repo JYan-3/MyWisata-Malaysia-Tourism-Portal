@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Clock3, Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { WALLET_REASON_CATEGORIES } from "@/lib/validation/wallet-reason-schemas";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -37,7 +37,7 @@ export default function WalletSettingsPage() {
   const [error, setError] = useState("");
   const [confirmSettings, setConfirmSettings] = useState(false);
 
-  async function loadSettings() {
+  const loadSettings = useCallback(async () => {
     setSettingsLoading(true);
     setSettingsLoadError("");
     const controller = new AbortController();
@@ -61,9 +61,9 @@ export default function WalletSettingsPage() {
       window.clearTimeout(timeout);
       setSettingsLoading(false);
     }
-  }
+  }, [t]);
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void loadSettings(); }, []);
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
 
   async function saveSettings() {
     setSaving(true); setError("");

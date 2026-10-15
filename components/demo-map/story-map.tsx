@@ -17,7 +17,7 @@ import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import type { StateCounts } from "./malaysia-state-map";
-import { MyWisataExploreMap } from "./mywisata-explore-map";
+import { MyLawatanExploreMap } from "./mylawatan-explore-map";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { HIDDEN_GEM_SYMBOL } from "@/lib/i18n/invariant-tokens";
 import { ReferencePrice } from "@/components/shared/reference-price";
@@ -378,7 +378,7 @@ export function StoryMap({
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)] lg:items-stretch">
           <div className="relative min-w-0 lg:h-full lg:min-h-0">
-            <MyWisataExploreMap selectedStateId={selectedStateId} onSelectState={selectState} />
+            <MyLawatanExploreMap selectedStateId={selectedStateId} onSelectState={selectState} />
 
             {selectedActivity && (
               <div className="relative z-20 mx-auto mt-3 w-[calc(100%-1.5rem)] max-w-2xl lg:absolute lg:bottom-4 lg:left-1/2 lg:mt-0 lg:-translate-x-1/2">

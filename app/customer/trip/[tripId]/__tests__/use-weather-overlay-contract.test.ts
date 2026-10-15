@@ -16,11 +16,11 @@ describe("useWeatherOverlay contract", () => {
 
   it("stops before fetching when the selected route has no weather coordinates", () => {
     const source = fs.readFileSync(path.resolve(process.cwd(), "app/customer/trip/[tripId]/use-weather-overlay.ts"), "utf8");
-    const missingCoordinatesIndex = source.indexOf("if (!hasCoordinates)");
+    const missingCoordinatesGuardIndex = source.indexOf("if (!enabled || !date || !hasCoordinates) return;");
     const fetchIndex = source.indexOf('fetch("/api/weather/overlay"');
 
-    expect(missingCoordinatesIndex).toBeGreaterThan(-1);
-    expect(missingCoordinatesIndex).toBeLessThan(fetchIndex);
+    expect(missingCoordinatesGuardIndex).toBeGreaterThan(-1);
+    expect(missingCoordinatesGuardIndex).toBeLessThan(fetchIndex);
     expect(source).toContain('status: "missing_coordinates"');
   });
 

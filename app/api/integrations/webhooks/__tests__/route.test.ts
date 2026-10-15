@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { POST } from "../[provider]/route";
 
 vi.mock("@/lib/supabase/service", () => ({
@@ -13,7 +14,12 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
   const sourceIdentifier = "klook_channel_101";
   const slotId = "11111111-2222-3333-4444-555555555555";
 
-  function createSignedRequest(provider: string, bodyObj: unknown, signWithSecret = secret) {
+  function createSignedRequest(
+    provider: string,
+    bodyObj: unknown,
+    signWithSecret = secret,
+    signatureHeader = "x-mylawatan-signature",
+  ) {
     const rawBody = JSON.stringify(bodyObj);
     const signature = createHmac("sha256", signWithSecret).update(rawBody, "utf8").digest("hex");
 
@@ -21,7 +27,7 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-mywisata-signature": `sha256=${signature}`,
+        [signatureHeader]: `sha256=${signature}`,
       },
       body: rawBody,
     });
@@ -65,7 +71,7 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
 
     vi.mocked(createServiceClient).mockReturnValue({
       from: vi.fn().mockReturnValue({ select: mockSelect }),
-    } as any);
+    } as unknown as SupabaseClient);
 
     // Sign with wrong secret
     const req = createSignedRequest("klook", body, "wrong_secret");
@@ -98,7 +104,7 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
     vi.mocked(createServiceClient).mockReturnValue({
       from: vi.fn().mockReturnValue({ select: mockSelect }),
       rpc: mockRpc,
-    } as any);
+    } as unknown as SupabaseClient);
 
     const response = await POST(createSignedRequest("klook", body), { params: Promise.resolve({ provider: "klook" }) });
 
@@ -160,7 +166,7 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
     vi.mocked(createServiceClient).mockReturnValue({
       from: vi.fn().mockReturnValue({ select: mockSelect }),
       rpc: mockRpc,
-    } as any);
+    } as unknown as SupabaseClient);
 
     const req = createSignedRequest("klook", body);
     const res = await POST(req, { params: Promise.resolve({ provider: "klook" }) });
@@ -173,6 +179,36 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
       p_external_booking_id: "ext-2",
       p_quantity: 2,
     }));
+  });
+
+  it("continues accepting signatures using the previous header name", async () => {
+    const body = {
+      sourceIdentifier,
+      externalBookingId: "ext-legacy-header",
+      slotId,
+      quantity: 1,
+    };
+    const mockSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { id: "src-1", webhook_secret: secret, sync_enabled: true },
+            error: null,
+          }),
+        }),
+      }),
+    });
+    vi.mocked(createServiceClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+      rpc: vi.fn().mockResolvedValue({ data: { success: true }, error: null }),
+    } as unknown as ReturnType<typeof createServiceClient>);
+
+    const response = await POST(
+      createSignedRequest("klook", body, secret, "x-mywisata-signature"),
+      { params: Promise.resolve({ provider: "klook" }) },
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("enforces database capacity authority and returns 409 on overbooking attempt", async () => {
@@ -213,7 +249,7 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
     vi.mocked(createServiceClient).mockReturnValue({
       from: vi.fn().mockReturnValue({ select: mockSelect }),
       rpc: mockRpc,
-    } as any);
+    } as unknown as SupabaseClient);
 
     const req = createSignedRequest("klook", body);
     const res = await POST(req, { params: Promise.resolve({ provider: "klook" }) });

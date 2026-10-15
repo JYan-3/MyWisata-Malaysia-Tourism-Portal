@@ -5,7 +5,7 @@
 
 ## Problem
 
-MyWisata has normalized staff roles and permissions, but its permission catalogue, role payload validation, Staff destinations, and Admin navigation are still compiled into TypeScript. Catalogue Review still checks a coarse Super Admin role, and the relationship between Catalogue Review and Vendor Approval is not represented as an indivisible domain rule.
+MyLawatan has normalized staff roles and permissions, but its permission catalogue, role payload validation, Staff destinations, and Admin navigation are still compiled into TypeScript. Catalogue Review still checks a coarse Super Admin role, and the relationship between Catalogue Review and Vendor Approval is not represented as an indivisible domain rule.
 
 ## Approved outcome
 

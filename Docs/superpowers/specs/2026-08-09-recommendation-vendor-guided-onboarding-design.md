@@ -5,10 +5,10 @@
 
 ## Context
 
-MyWisata supports two paths for a new Vendor to join:
+MyLawatan supports two paths for a new Vendor to join:
 
 1. Vendor self-registration.
-2. A Customer recommends a business that is not yet on MyWisata, Admin approves the recommendation, and Admin invites the business to apply.
+2. A Customer recommends a business that is not yet on MyLawatan, Admin approves the recommendation, and Admin invites the business to apply.
 
 Neither path publishes a Vendor immediately. Admin must approve or reject the Vendor application, and only approved Vendors may appear on Customer-facing surfaces.
 
@@ -20,7 +20,7 @@ The goal is a user-friendly, guided invitation journey that creates the account 
 
 ### Recommendation creates a Vendor Owner application
 
-A Customer recommendation represents a business that has not joined MyWisata. Claiming it creates:
+A Customer recommendation represents a business that has not joined MyLawatan. Claiming it creates:
 
 - one new pending Vendor representing the brand or company;
 - one Vendor onboarding profile;
@@ -203,7 +203,7 @@ Explain that one personal mobile can belong to only one account. Offer “Use an
 
 ### Invitation expired, cancelled, or already used
 
-Show a dedicated inactive-invitation state with actions to request a new invitation or contact MyWisata support. Do not expose token or database details.
+Show a dedicated inactive-invitation state with actions to request a new invitation or contact MyLawatan support. Do not expose token or database details.
 
 ### Submission failure
 

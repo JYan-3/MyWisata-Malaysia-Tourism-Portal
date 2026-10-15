@@ -2,7 +2,7 @@
 
 ## Goal
 
-Strengthen the existing MyWisata commerce, booking, vendor onboarding, voucher, and outlet-builder flows without deleting existing features, tables, columns, or records.
+Strengthen the existing MyLawatan commerce, booking, vendor onboarding, voucher, and outlet-builder flows without deleting existing features, tables, columns, or records.
 
 ## Non-destructive constraints
 

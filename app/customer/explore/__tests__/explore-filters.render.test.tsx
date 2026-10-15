@@ -164,7 +164,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     const destination = String(mocks.replace.mock.lastCall?.[0]);
     expect(destination).toContain("category=activity");
     expect(destination).not.toContain("type=");
-    mocks.params = new URL(destination, "https://mywisata.test").searchParams;
+    mocks.params = new URL(destination, "https://mylawatan.test").searchParams;
 
     act(() => root.unmount());
     root = createRoot(container as unknown as Element);

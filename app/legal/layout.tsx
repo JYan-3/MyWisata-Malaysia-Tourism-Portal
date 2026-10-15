@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { MyWisataLogo } from "@/components/shared/mywisata-logo";
+import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
 import { legalNavItems } from "@/components/legal/legal-nav";
 
 // Public, auth-free layout for the legal/trust pages — mirrors app/help/layout.tsx
@@ -20,7 +20,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href="/customer/explore" className="flex items-center gap-2">
-            <MyWisataLogo
+            <MyLawatanLogo
               markSize={32}
               wordmarkClassName="font-[family-name:var(--font-plus-jakarta-sans)] text-lg font-bold tracking-tight text-foreground"
             />

@@ -6,11 +6,11 @@
 
 ## Context
 
-MyWisata currently represents customer verification as one cumulative tier:
+MyLawatan currently represents customer verification as one cumulative tier:
 
 `email_verified -> phone_verified -> profile_complete -> kyc_verified`
 
-That representation conflicts with the accepted product rules. Phone, MyWisata
+That representation conflicts with the accepted product rules. Phone, MyLawatan
 profile completion, and KYC are independent qualifications that customers may
 complete in any order. Each qualification grants its own capability bundle:
 
@@ -19,7 +19,7 @@ complete in any order. Each qualification grants its own capability bundle:
 - Approved KYC independently grants recommendation submission, Full Affiliate,
   commission earning, and withdrawal requests.
 - KYC does not prove control of a phone number and does not prove that the
-  MyWisata profile fields are complete.
+  MyLawatan profile fields are complete.
 
 A customer with verified email and approved KYC, but no verified phone and an
 incomplete profile, is therefore a valid state. That customer may use the KYC

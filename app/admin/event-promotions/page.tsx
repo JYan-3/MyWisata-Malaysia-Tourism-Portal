@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Megaphone, Save, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -36,7 +36,7 @@ export default function AdminEventPromotionsPage() {
   const [maxConcurrent, setMaxConcurrent] = useState("4");
   const [savingCost, setSavingCost] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/admin/event-promotions", { cache: "no-store" });
@@ -49,9 +49,9 @@ export default function AdminEventPromotionsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
 
-  async function loadSettings() {
+  const loadSettings = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/event-promotion-settings", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
@@ -64,10 +64,10 @@ export default function AdminEventPromotionsPage() {
     } catch {
       // Keep the defaults (RM100/day, 4 concurrent) on failure.
     }
-  }
+  }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); void loadSettings(); }, []);
+  useEffect(() => { void load(); void loadSettings(); }, [load, loadSettings]);
 
   async function saveSettings() {
     const rm = Number(costPerDayRm);

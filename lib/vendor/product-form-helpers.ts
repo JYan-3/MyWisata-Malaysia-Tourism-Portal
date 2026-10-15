@@ -16,7 +16,6 @@ export function buildProductFormDefaults(initialData?: Partial<ProductCreate> & 
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, outletId: _outletId, inventoryConfigured: _inventoryConfigured, inventorySetupSingleEntry: _singleStockEntry, ...editableFields } = initialData;
   return {
     ...editableFields,
