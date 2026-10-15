@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+// These business-rule fixtures represent a session that has completed staff verification.
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
+import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSuperAdmin } from '../admin-guard';
 

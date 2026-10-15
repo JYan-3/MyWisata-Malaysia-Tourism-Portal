@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getClaims = vi.fn(async () => ({ data: { claims: { sub: '33333333-3333-4333-8333-333333333333', aal: 'aal2' } }, error: null }));
 const getUser = vi.fn();
@@ -16,6 +16,14 @@ vi.mock('@/lib/supabase/service', () => ({
 const { GET } = await import('../route');
 
 describe('GET /api/admin/kyc/documents/[submissionId]/[side]', () => {
+  // Exercise the existing KYC boundary against the explicit pre-rollout local mode.
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+  });
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => vi.clearAllMocks());
   it.each(['image/jpeg', 'application/pdf'])('returns private %s bytes without signed URLs or internal paths and disables caching', async (contentType) => {
     getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });

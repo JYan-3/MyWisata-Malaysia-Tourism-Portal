@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn(), transport: vi.fn() }));
+const settingsMocks = vi.hoisted(() => ({ ensureEnabled: vi.fn() }));
 vi.mock('nodemailer', () => ({ default: { createTransport: mocks.transport } }));
+vi.mock('@/lib/platform/operations-settings', () => ({ ensureCustomEmailDeliveryEnabled: settingsMocks.ensureEnabled }));
 vi.mock('@/lib/email/config', () => ({ getEmailConfig: () => ({ host: 'smtp.example.test', port: 587, user: 'sender@example.test', pass: 'test-only', from: 'sender@example.test' }) }));
 vi.mock('@/lib/pdf/receipt', () => ({ generateReceiptPdf: async () => Buffer.from('synthetic receipt') }));
 import { sendVendorEmail } from '../sender';
@@ -10,6 +12,7 @@ const notice = { eventType: 'vendor_order_update' as const, vendorName: 'Synthet
 describe('SMTP is behind the durable delivery boundary', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    settingsMocks.ensureEnabled.mockResolvedValue(undefined);
     mocks.transport.mockReturnValue({ sendMail: mocks.sendMail, close: mocks.close });
     mocks.sendMail.mockResolvedValue({ accepted: ['synthetic@example.test'], rejected: [], messageId: '<test@example.test>' });
   });
@@ -33,5 +36,12 @@ describe('SMTP is behind the durable delivery boundary', () => {
     expect(await sendOrderReceiptEmail({ orderId: 'synthetic-order', recipientName: 'Synthetic Guest', createdAt: '2026-10-14T00:00:00Z', paymentMethod: 'free_reservation', items: [], subtotal: 0, discount: 0, total: 0, recipientEmail: 'synthetic@example.test', delivery: { messageId: '<test@example.test>', beforeSend } })).toEqual({ id: '<test@example.test>' });
     expect(beforeSend).toHaveBeenCalledOnce();
     expect(mocks.sendMail).toHaveBeenCalledWith(expect.objectContaining({ messageId: '<test@example.test>' }));
+  });
+  it('blocks direct custom SMTP sends before creating a transport when paused', async () => {
+    settingsMocks.ensureEnabled.mockRejectedValue(new Error('custom_email_delivery_paused'));
+    await expect(sendVendorEmail(notice)).rejects.toThrow('custom_email_delivery_paused');
+    expect(mocks.transport).not.toHaveBeenCalled();
+    await expect(sendOrderReceiptEmail({ orderId: 'synthetic-order', recipientName: 'Synthetic Guest', createdAt: '2026-10-14T00:00:00Z', paymentMethod: 'free_reservation', items: [], subtotal: 0, discount: 0, total: 0, recipientEmail: 'synthetic@example.test' })).rejects.toThrow('custom_email_delivery_paused');
+    expect(mocks.transport).not.toHaveBeenCalled();
   });
 });

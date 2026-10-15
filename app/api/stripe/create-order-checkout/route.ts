@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { isPlatformOperationEnabled, PLATFORM_OPERATION_KEYS } from '@/lib/platform/operations-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,14 @@ export async function POST(request: Request) {
   const checkoutDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.CHECKOUT);
   const checkoutFailure = customerCapabilityFailure(CUSTOMER_CAPABILITY.CHECKOUT, checkoutDecision, 'Email verification is required before checkout');
   if (checkoutFailure) return checkoutFailure;
+
+  try {
+    if (await isPlatformOperationEnabled(PLATFORM_OPERATION_KEYS.pauseNewOrders)) {
+      return NextResponse.json({ error: { code: 'NEW_ORDERS_PAUSED', message: 'New orders are temporarily unavailable. Please try again later.' } }, { status: 503 });
+    }
+  } catch {
+    return NextResponse.json({ error: { code: 'CHECKOUT_UNAVAILABLE', message: 'Checkout is temporarily unavailable. Please try again later.' } }, { status: 503 });
+  }
 
   let body: { amount_rm?: unknown; voucher_code?: unknown } = {};
   try { body = await request.json(); } catch { /* use empty body */ }

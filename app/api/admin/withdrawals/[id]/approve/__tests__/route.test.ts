@@ -69,7 +69,7 @@ function request(body: Record<string, unknown> = { note: 'Review completed for p
   return new Request(`http://localhost/api/admin/withdrawals/${W_ID}/approve`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ proofId: "12345678-1234-4234-8234-123456789abc", ...body }),
   });
 }
 
@@ -137,6 +137,14 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     expect(res.status).toBe(401);
   });
 
+  it.each([undefined, 'invalid-proof'])('rejects a missing or malformed financial proof: %s', async (proofId) => {
+    const res = await POST(request({ proofId, note: 'Review completed for payout.', reasonCategory: 'review_completed' }), params());
+    expect(res.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
+    expect(mocks.executeApprovedWithdrawalPayout).not.toHaveBeenCalled();
+  });
+
   it('requires admin.withdrawal.approve before parsing or starting moderation', async () => {
     mocks.requireStaffPermission.mockResolvedValue({
       db: db(),
@@ -166,7 +174,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
   it('returns pending_second_approval for first approval on a dual-approval request', async () => {
     mockWithdrawal({ requires_dual_approval: true });
     mocks.rpc.mockImplementation((name: string) => {
-      if (name === 'approve_wallet_withdrawal') {
+      if (name === 'authorize_staff_withdrawal_action') {
         return Promise.resolve({
           data: { status: 'pending_second_approval', ready: false, approval_count: 1, required_approvals: 2, risk_level: 'low' },
           error: null,
@@ -220,7 +228,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
   it('starts payout execution when second distinct approver approves', async () => {
     mockWithdrawal({ requires_dual_approval: true, status: 'pending_second_approval' });
     mocks.rpc.mockImplementation((name: string) => {
-      if (name === 'approve_wallet_withdrawal') {
+      if (name === 'authorize_staff_withdrawal_action') {
         return Promise.resolve({
           data: { status: 'approved', ready: true, approval_count: 2, required_approvals: 2, risk_level: 'low', user_id: U_ID, amount_rm: 100 },
           error: null,
@@ -245,7 +253,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       destination_provider_reference: 'tng_dest_0123456789abcdef0123456789abcdef',
     });
     mocks.rpc.mockImplementation((name: string) => {
-      if (name === 'approve_wallet_withdrawal') {
+      if (name === 'authorize_staff_withdrawal_action') {
         return Promise.resolve({
           data: {
             status: 'approved',
@@ -308,7 +316,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
   it('returns a retryable error when processing state cannot be persisted', async () => {
     mockWithdrawal();
     mocks.rpc.mockImplementation((name: string) => {
-      if (name === 'approve_wallet_withdrawal') {
+      if (name === 'authorize_staff_withdrawal_action') {
         return Promise.resolve({
           data: { status: 'approved', ready: true, approval_count: 1, required_approvals: 1, risk_level: 'low', user_id: U_ID, amount_rm: 100 },
           error: null,

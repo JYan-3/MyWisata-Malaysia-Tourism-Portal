@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function StaffHomePage() {
   const { t } = useTranslation("auth");
-  const { currentUser, staffRoleNames, staffModules = [], loading } = useRequireRole(["staff"]);
+  const { currentUser, staffRoleNames, staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["staff"]);
   const destinations = staffModules;
 
   async function signOut() {
@@ -18,7 +18,7 @@ export default function StaffHomePage() {
     window.location.assign("/login");
   }
 
-  if (loading || !currentUser) return <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">{t("staffHome.loading")}</main>;
+  if (loading || !currentUser || staffMfaRequired || (staffPasskeyRequired && !staffVerified)) return <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">{t("staffHome.loading")}</main>;
 
   return <main className="min-h-screen bg-background px-5 py-10 sm:px-8">
     <div className="mx-auto max-w-5xl">
@@ -28,6 +28,7 @@ export default function StaffHomePage() {
           <h1 className="mt-2 text-3xl font-black text-foreground">{t("staffHome.title", { name: currentUser.name })}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{staffRoleNames.length ? staffRoleNames.join(" · ") : t("staffHome.noRole")}</p>
         </div>
+        {staffPasskeyRequired && <Link href="/auth/staff-verification?next=%2Fstaff" className="rounded-full border border-border px-4 py-2 text-sm">{t("staffSecurity")}</Link>}
         <Button type="button" variant="outline" onClick={signOut} className="gap-2"><LogOut size={16} />{t("staffHome.signOut")}</Button>
       </header>
 

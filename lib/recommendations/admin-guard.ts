@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 
 type RoleRow = { roles: { name: string } | { name: string }[] | null };
 
@@ -8,6 +9,7 @@ export async function isRecommendationRewardAdmin(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<boolean> {
+  if (await requireStaffAssurance(supabase)) return false;
   const { data, error } = await supabase
     .from('user_roles')
     .select('roles(name)')

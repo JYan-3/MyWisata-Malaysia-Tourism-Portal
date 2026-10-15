@@ -17,7 +17,7 @@ const moduleMigrationSource = readFileSync(
 
 describe('admin navigation shell', () => {
   it('routes approvers away from unrelated pages and does not poll support unread counts', () => {
-    expect(layoutSource).toContain('if (!currentUser || currentUser.role === "approver") return;');
+    expect(layoutSource).toContain('if (!staffAccessReady || !currentUser || currentUser.role === "approver") return;');
     expect(layoutSource).toContain('router.replace(currentUser.role === "staff" ? "/staff" : navigationHrefs[0] ?? "/login")');
     expect(moduleMigrationSource).toContain("('withdrawals', 'approver', TRUE)");
     expect(readFileSync(resolve(process.cwd(), 'app/page.tsx'), 'utf8')).toContain('approver: "/admin/withdrawals"');

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
+import { withdrawalProofFailure, withdrawalSessionId } from '@/lib/wallet/withdrawal-authorization';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
 import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -11,6 +13,7 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 export const dynamic = 'force-dynamic';
 
 const retrySchema = z.object({
+  proofId: z.string().uuid(),
   note: z.string().trim().min(10).max(500),
   reasonCategory: z.string().trim().min(1),
 }).strict();
@@ -23,8 +26,10 @@ export async function POST(
   const authDb = await createClient();
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const assuranceResponse = await requireStaffAssurance(authDb);
+  if (assuranceResponse) return assuranceResponse;
 
-  const { data: canApprove, error: roleError } = await authDb.rpc('is_approver', { uid: user.id });
+  const { data: canApprove, error: roleError } = await authDb.rpc('has_staff_permission', { p_user_id: user.id, p_permission_key: 'admin.withdrawal.approve' });
   if (roleError || !canApprove) return apiFail('FORBIDDEN', 'Approver or Super Admin access required', 403);
 
   const parsed = await parseBody(request, retrySchema);
@@ -64,15 +69,21 @@ export async function POST(
     return apiFail('INVALID_STATE', 'Payout can only be retried while the withdrawal remains approved. Refresh the page to review its latest status.', 409);
   }
 
-  const { error: retryError } = await db.rpc('record_withdrawal_payout_retry', {
+  const sessionId = await withdrawalSessionId(authDb);
+  if (!sessionId) return apiFail('WITHDRAWAL_PASSKEY_REQUIRED', 'Verify your Passkey again for this withdrawal', 403);
+  const { error: retryError } = await db.rpc('authorize_staff_withdrawal_action', {
     p_withdrawal_id: withdrawalId,
+    p_action: 'retry-payout',
+    p_proof_id: parsed.data.proofId,
+    p_payload: { note: validated.data.reason, reasonCategory: validated.data.reasonCategory },
     p_actor_id: user.id,
-    p_note: validated.data.reason,
+    p_session_id: sessionId,
     p_ip: requestIp(request),
-    p_reason_category: validated.data.reasonCategory,
   });
   if (retryError) {
     const message = retryError.message ?? '';
+    const proofFailure = withdrawalProofFailure(message);
+    if (proofFailure) return proofFailure;
     if (message.includes('self_dealing')) return apiFail('SELF_DEALING', 'You cannot retry your own withdrawal. Ask another Approver or Super Admin to process it.', 403);
     if (message.includes('withdrawal_not_retryable')) return apiFail('INVALID_STATE', 'Payout can only be retried while the withdrawal remains approved. Refresh the page to review its latest status.', 409);
     if (message.includes('payout_execution_in_progress')) return apiFail('PAYOUT_EXECUTION_IN_PROGRESS', 'Another payout attempt is active. Do not retry. Refresh the page and ask a Super Admin to reconcile it if the lock remains.', 409, { retryable: false });

@@ -43,7 +43,8 @@
     "Orders": "Pesanan",
     "Event Promos": "Promo Acara",
     "Event Registrations": "Pendaftaran",
-    "Announcements": "Pengumuman"
+    "Announcements": "Pengumuman",
+    "System Settings": "Tetapan Sistem"
   },
   "navigationSections": {
     "workspace": "Ruang kerja",
@@ -2102,6 +2103,53 @@
       "title": "Pelulus dompet",
       "userLabel": "Pengguna yang layak"
     },
+    "systemSettings": {
+      "eyebrow": "Kawalan platform",
+      "title": "Tetapan Sistem",
+      "description": "Hentikan sementara operasi pelanggan terpilih semasa insiden atau penyelenggaraan.",
+      "loading": "Memuatkan tetapan sistem…",
+      "retry": "Cuba lagi",
+      "unsaved": "Perubahan belum disimpan",
+      "active": "Aktif",
+      "paused": "Dihentikan sementara",
+      "neverUpdated": "Tiada perubahan direkodkan",
+      "unknownActor": "Pentadbir tidak diketahui",
+      "updated": "Perubahan terakhir {{date}} oleh {{by}}",
+      "saved": "Tetapan sistem disimpan dan direkodkan.",
+      "controls": {
+        "title": "Kawalan platform",
+        "description": "Perubahan berkuat kuasa pada aktiviti baharu selepas disimpan."
+      },
+      "orders": {
+        "title": "Hentikan pesanan pelanggan baharu",
+        "description": "Menghentikan cubaan checkout baharu untuk troli, tempahan acara dan pembayaran pesanan.",
+        "existing": "Pesanan sedia ada masih boleh menerima pengesahan bayaran, pemenuhan, pembatalan, bayaran balik dan sokongan."
+      },
+      "email": {
+        "title": "Hentikan penghantaran e-mel tersuai",
+        "description": "Menahan e-mel SMTP tersuai dalam baris gilir dan menghentikan e-mel platform terus. Mesej tertunda disambung semula selepas fungsi diaktifkan.",
+        "authExemption": "E-mel pengesahan dan pemulihan kata laluan Supabase Auth tidak terjejas. E-mel yang sedang dihantar mungkin selesai."
+      },
+      "reasonLabel": "Sebab perubahan",
+      "reasonPlaceholder": "Terangkan sebab insiden atau penyelenggaraan (sekurang-kurangnya 10 aksara).",
+      "impact": {
+        "title": "Kesan perubahan",
+        "description": "Kawalan ini untuk insiden dan penyelenggaraan sementara.",
+        "orders": "Henti pesanan: menghalang pesanan pelanggan baharu tanpa membatalkan pesanan sedia ada.",
+        "email": "Henti e-mel: mengekalkan mesej dalam baris gilir dan menyambung semula kemudian.",
+        "audit": "Setiap simpanan merekodkan Super Admin, masa, nilai lama dan baharu serta sebab."
+      },
+      "confirm": {
+        "title": "Sahkan perubahan tetapan sistem?",
+        "pauseDescription": "Sekurang-kurangnya satu operasi aktif akan dihentikan sementara. Perubahan dan sebab akan direkodkan dalam log audit.",
+        "resumeDescription": "Sekurang-kurangnya satu operasi akan disambung semula. Perubahan dan sebab akan direkodkan dalam log audit."
+      },
+      "errors": {
+        "load": "Tidak dapat memuatkan tetapan sistem.",
+        "save": "Tidak dapat menyimpan tetapan sistem.",
+        "reason": "Masukkan sebab sekurang-kurangnya 10 aksara sebelum menyimpan."
+      }
+    },
     "walletSettings": {
       "audit": {
         "category": "Kategori perubahan",
@@ -2292,7 +2340,11 @@
       "recipientLanguage": "Bahasa penerima: {{language}}",
       "languageUnavailable": "Masukkan e-mel penerima yang sah untuk menyemak bahasa tersimpan.",
       "languageReview": "Semak subjek dan mesej dalam bahasa penerima. Menukar alamat mengekalkan suntingan anda; jana semula draf jika perlu. Tanpa pilihan tersimpan, bahasa Inggeris digunakan.",
-      "languages": {"en": "Inggeris", "zh-CN": "Cina", "ms": "Melayu"},
+      "languages": {
+        "en": "Inggeris",
+        "zh-CN": "Cina",
+        "ms": "Melayu"
+      },
       "close": "Tutup",
       "recipient": "E-mel penerima",
       "recipientPlaceholder": "vendor@example.com",
@@ -3728,6 +3780,34 @@
       "matching_one": "{{count}} pengecualian sepadan · Tertunggak {{amount}}",
       "matching_other": "{{count}} pengecualian sepadan · Tertunggak {{amount}}"
     }
+  },
+  "passkey": {
+    "title": "Pengesahan keselamatan kakitangan",
+    "description": "Gunakan peranti berdaftar untuk mengesahkan wajah, cap jari atau PIN peranti. Data biometrik kekal pada peranti anda.",
+    "verify": "Sahkan kunci laluan",
+    "verifyAndConfirm": "Sahkan dan teruskan",
+    "working": "Sedang mengesahkan…",
+    "grantLabel": "Kod pendaftaran sekali guna",
+    "deviceLabel": "Nama peranti",
+    "defaultDevice": "Peranti saya",
+    "register": "Daftar peranti",
+    "registered": "Peranti didaftarkan. Sahkan kunci laluan untuk meneruskan.",
+    "enrollmentRequired": "Minta kod pendaftaran sekali guna daripada pentadbir yang diberi kuasa. Jika persediaan dibatalkan, minta kod baharu.",
+    "passwordRequired": "Log masuk dengan kata laluan akaun sebelum mengesahkan peranti anda.",
+    "passwordLogin": "Kembali ke log masuk kata laluan",
+    "manage": "Keselamatan dan peranti",
+    "remove": "Buang peranti",
+    "recovery": "Daftar peranti sandaran. Jika semua peranti hilang, hubungi pentadbir yang diberi kuasa untuk pemulihan selepas semakan identiti.",
+    "rateLimited": "Terlalu banyak percubaan. Tunggu beberapa minit sebelum mencuba lagi.",
+    "unsupported": "Pelayar atau sambungan ini tidak menyokong kunci laluan. Gunakan peranti serasi dan sambungan selamat.",
+    "retryRequired": "Peranti atau butiran pengeluaran telah berubah. Muat semula halaman dan sahkan lagi.",
+    "unavailable": "Pengesahan keselamatan tidak tersedia. Hubungi pentadbir sebelum meneruskan.",
+    "failed": "Pengesahan dibatalkan atau gagal. Sila cuba lagi."
+  },
+  "staffMfa": {
+    "eyebrow": "Keselamatan kakitangan",
+    "title": "Sahkan aplikasi pengesah anda",
+    "description": "Akaun kakitangan anda memerlukan kod pengesah sebelum membuka alat pentadbir."
   },
   "security": {
     "eyebrow": "Keselamatan akaun",

@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), update: vi.fn(), send: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), update: vi.fn(), send: vi.fn(), paused: vi.fn() }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: mocks.rpc,
   from: () => ({ update: mocks.update }),
 }) }));
 vi.mock('@/lib/email/sender', () => ({ sendVendorEmail: mocks.send, sendAccountEmail: vi.fn(),
   sendRecommendationEmail: vi.fn(), sendTransactionEmail: vi.fn(), sendKycSecurityEmail: vi.fn(),
 }));
+vi.mock('@/lib/platform/operations-settings', () => ({ isPlatformOperationEnabled: mocks.paused, PLATFORM_OPERATION_KEYS: { pauseCustomDelivery: 'email.pause_custom_delivery' } }));
 import { processEmailOutbox } from '../outbox';
 
 const row = { id: '11111111-1111-4111-8111-111111111111', lease_token: '22222222-2222-4222-8222-222222222222',
@@ -16,6 +17,7 @@ const row = { id: '11111111-1111-4111-8111-111111111111', lease_token: '22222222
 describe('email delivery interruption boundaries', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.paused.mockResolvedValue(false);
     mocks.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
     mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery'
       ? { rows: [row], recovered: 0, reviewRequired: 0 }
@@ -62,6 +64,12 @@ describe('email delivery interruption boundaries', () => {
   it('reports existing review obligations even when no mail is claimable', async () => {
     mocks.rpc.mockResolvedValue({ data: { rows: [], recovered: 1, reviewRequired: 2 }, error: null });
     expect(await processEmailOutbox()).toEqual({ sent: 0, failed: 0, reviewRequired: 2 });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it('keeps queued rows untouched and does not claim them while custom delivery is paused', async () => {
+    mocks.paused.mockResolvedValue(true);
+    expect(await processEmailOutbox()).toEqual({ sent: 0, failed: 0, reviewRequired: 0 });
+    expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.send).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), getUser: vi.fn() }));
 
+// These fixtures represent an already verified staff session; this suite focuses on
+// the Super Admin role check and the earnings RPC.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     rpc: mocks.rpc,

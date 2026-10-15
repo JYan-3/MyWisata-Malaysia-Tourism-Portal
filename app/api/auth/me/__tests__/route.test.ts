@@ -1,7 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()), staffAssurance: vi.fn() }));
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { staffAssurance } from '@/lib/auth/staff-assurance';
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
+  getClaims: vi.fn(),
   from: vi.fn(),
   rpc: vi.fn(),
   resolveServerCustomerCapabilities: vi.fn(),
@@ -9,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: mocks.getUser },
+    auth: { getUser: mocks.getUser, getClaims: mocks.getClaims },
     from: mocks.from,
     rpc: mocks.rpc,
   })),
@@ -35,6 +38,8 @@ function queryResult(data: unknown) {
 describe("GET /api/auth/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(staffAssurance).mockReset().mockResolvedValue({ required: true, verified: true, passwordAuthenticated: true });
+    mocks.getClaims.mockResolvedValue({ data: { claims: { sub: 'user-1', aal: 'aal2' } }, error: null });
     mocks.getUser.mockResolvedValue({
       data: {
         user: {
@@ -97,6 +102,43 @@ describe("GET /api/auth/me", () => {
         nextAction: "verify_phone",
       },
     });
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('loads local staff before Passkey migrations without claiming Passkey verification', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    mocks.getClaims.mockResolvedValue({ data: { claims: { sub: 'user-1', aal: 'aal1' } }, error: null });
+    const actual = await vi.importActual<typeof import('@/lib/auth/staff-assurance')>('@/lib/auth/staff-assurance');
+    vi.mocked(staffAssurance).mockImplementationOnce(actual.staffAssurance);
+    const originalFrom = mocks.from.getMockImplementation()!;
+    mocks.from.mockImplementation((table: string) => table === 'user_roles'
+      ? queryResult([{ vendor_id: null, outlet_id: null, roles: { name: 'super_admin' }, outlets: null }])
+      : originalFrom(table));
+    mocks.rpc.mockImplementation(async (name: string) => name === 'staff_passkey_status'
+      ? { data: null, error: { code: 'PGRST202', message: 'Function not found' } }
+      : { data: { roleNames: [], permissionKeys: [], modules: [] }, error: null });
+    const response = await GET();
+    expect(response.status).toBe(200);
+    expect((await response.json()).user).toMatchObject({ staffVerified: false, staffPasskeyRequired: false, staffMfaRequired: true, roles: ['super_admin'] });
+    expect(staffAssurance).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('staff_passkey_status');
+  });
+
+  it('still fails closed on missing Passkey schema in production even with the local option', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    const originalFrom = mocks.from.getMockImplementation()!;
+    mocks.from.mockImplementation((table: string) => table === 'user_roles'
+      ? queryResult([{ vendor_id: null, outlet_id: null, roles: { name: 'super_admin' }, outlets: null }])
+      : originalFrom(table));
+    vi.mocked(staffAssurance).mockRejectedValueOnce(new Error('Function not found'));
+    expect((await GET()).status).toBe(503);
   });
 
   it("derives facts on the server and returns a resolver-authored capability snapshot", async () => {

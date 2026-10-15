@@ -10,11 +10,15 @@ import { pickDemoRole } from "@/lib/auth/demo-user-role";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
 import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
 import { isAppLocale } from "@/lib/i18n/locale";
+import { staffMfaDestination, staffVerificationDestination } from '@/lib/auth/staff-route-boundaries';
 import type { VerificationFacts } from "@/lib/entitlements/types";
 import type { Role, User } from "@/backend/core/types";
 import type { StaffModule, StaffPermissionKey } from "@/lib/staff-permissions/types";
 
 interface AuthContextValue {
+  staffVerified: boolean;
+  staffPasskeyRequired: boolean;
+  staffMfaRequired: boolean;
   currentUser: User | null;
   roles: Role[];
   activeVendorId?: string;
@@ -27,14 +31,18 @@ interface AuthContextValue {
   staffPermissionKeys: StaffPermissionKey[];
   staffModules: StaffModule[];
   loading: boolean;
-  switchUser: (id: string, user?: User) => Promise<User | null>;
+  switchUser: (id: string, user?: User) => Promise<StaffSessionUser | null>;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const GUEST_CAPABILITIES = resolveCustomerCapabilities(null);
+type StaffSessionUser = User & { staffVerified: boolean; staffPasskeyRequired: boolean; staffMfaRequired: boolean };
 
 type AuthMeUser = {
+  staffVerified?: boolean;
+  staffPasskeyRequired?: boolean;
+  staffMfaRequired?: boolean;
   id: string;
   email: string;
   fullName: string | null;
@@ -66,6 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [staffRoleNames, setStaffRoleNames] = useState<string[]>([]);
   const [staffPermissionKeys, setStaffPermissionKeys] = useState<StaffPermissionKey[]>([]);
   const [staffModules, setStaffModules] = useState<StaffModule[]>([]);
+  const [staffVerified, setStaffVerified] = useState(false);
+  const [staffPasskeyRequired, setStaffPasskeyRequired] = useState(true);
+  const [staffMfaRequired, setStaffMfaRequired] = useState(false);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
@@ -80,7 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const role = pickDemoRole(row.roles.map((name) => ({ roles: { name } })));
     const name = row.fullName ?? row.email ?? tAuth("userFallback");
-    const user: User = {
+    const user: StaffSessionUser = {
+      staffVerified: row.staffVerified === true,
+      staffPasskeyRequired: row.staffPasskeyRequired !== false,
+      staffMfaRequired: row.staffMfaRequired !== false,
       id: row.id,
       name,
       email: row.email,
@@ -108,6 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStaffRoleNames(row.staffRoleNames);
     setStaffPermissionKeys(row.staffPermissionKeys);
     setStaffModules(row.staffModules ?? []);
+    setStaffVerified(row.staffVerified === true);
+    setStaffPasskeyRequired(row.staffPasskeyRequired !== false);
+    setStaffMfaRequired(row.staffMfaRequired !== false);
     setCurrentUserId(authUserId);
     return user;
   }, [tAuth]);
@@ -122,6 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Do not trust the old localStorage-only demo selection. Server pages
         // authenticate through Supabase cookies, so both sides must agree.
         setCurrentUser(null);
+        setStaffVerified(false);
+        setStaffPasskeyRequired(true);
+        setStaffMfaRequired(false);
         setCapabilities(GUEST_CAPABILITIES);
         setVerificationFacts(null);
         setEntitlementGeneration(0);
@@ -139,6 +159,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     load().catch(() => {
       if (!active) return;
       setCurrentUser(null);
+        setStaffVerified(false);
+        setStaffPasskeyRequired(true);
+        setStaffMfaRequired(false);
       setCapabilities(GUEST_CAPABILITIES);
       setVerificationFacts(null);
       setEntitlementGeneration(0);
@@ -156,6 +179,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (_event === "INITIAL_SESSION") return;
       if (!session?.user) {
         setCurrentUser(null);
+        setStaffVerified(false);
+        setStaffPasskeyRequired(true);
+        setStaffMfaRequired(false);
         setCapabilities(GUEST_CAPABILITIES);
         setVerificationFacts(null);
         setEntitlementGeneration(0);
@@ -169,6 +195,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {
           if (!active) return;
           setCurrentUser(null);
+        setStaffVerified(false);
+        setStaffPasskeyRequired(true);
+        setStaffMfaRequired(false);
           setCapabilities(GUEST_CAPABILITIES);
           setVerificationFacts(null);
           setEntitlementGeneration(0);
@@ -225,6 +254,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadSupabaseUser, supabase]);
 
   const value: AuthContextValue = {
+    staffVerified,
+    staffPasskeyRequired,
+    staffMfaRequired,
     currentUser,
     roles: currentUser ? [currentUser.role] : [],
     activeVendorId: currentUser?.vendorId,
@@ -267,9 +299,12 @@ export function useRequireRole(
     if (!auth.currentUser && allowUnauthenticated) return;
     if (!auth.currentUser || !allowed.includes(auth.currentUser.role)) {
       router.replace(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
+    } else if (pathname === '/staff' || pathname === '/admin' || pathname.startsWith('/admin/')) {
+      if (auth.staffMfaRequired) router.replace(staffMfaDestination(pathname + window.location.search));
+      else if (auth.staffPasskeyRequired && !auth.staffVerified) router.replace(staffVerificationDestination(pathname + window.location.search));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowUnauthenticated, auth.loading, auth.currentUser?.role, pathname]);
+  }, [allowUnauthenticated, auth.loading, auth.currentUser?.role, auth.staffVerified, auth.staffPasskeyRequired, auth.staffMfaRequired, pathname]);
 
   return auth;
 }

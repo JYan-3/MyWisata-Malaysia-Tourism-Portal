@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/auth/safe-next";
 import { pickDemoRole, type DemoRoleAssignment } from "@/lib/auth/demo-user-role";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
+import { staffAssurance } from '@/lib/auth/staff-assurance';
+import { staffPasskeyEnforcementEnabled } from '@/lib/auth/staff-passkey-config';
+import { staffMfaRequiredForSession } from '@/lib/auth/staff-mfa';
 
 function resolveRedirectOrigin(requestUrl: URL): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -66,5 +69,15 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(invitationDestination, redirectOrigin));
   }
   const role = pickDemoRole((assignments ?? []) as DemoRoleAssignment[]);
-  return NextResponse.redirect(new URL(postLoginDestination(role, next), redirectOrigin));
+  let staffVerified = false;
+  let staffMfaRequired = false;
+  if (['admin', 'approver', 'staff', 'super_admin'].includes(role)) {
+    try { staffMfaRequired = await staffMfaRequiredForSession(supabase, user.id); }
+    catch { staffMfaRequired = true; }
+  }
+  const staffPasskeyRequired = staffPasskeyEnforcementEnabled();
+  if (staffPasskeyRequired && ['admin', 'approver', 'staff', 'super_admin'].includes(role)) {
+    try { staffVerified = (await staffAssurance(supabase)).verified; } catch { /* Verification page handles unavailable setup. */ }
+  }
+  return NextResponse.redirect(new URL(postLoginDestination(role, next, staffVerified, staffPasskeyRequired, staffMfaRequired), redirectOrigin));
 }

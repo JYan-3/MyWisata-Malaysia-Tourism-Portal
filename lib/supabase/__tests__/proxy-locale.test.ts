@@ -59,6 +59,30 @@ function localeFromResponse(response: Response) {
 describe("Supabase proxy locale resolution", () => {
   afterEach(() => {
     mocks.createServerClient.mockReset();
+    vi.unstubAllEnvs();
+  });
+
+  it('preserves the localhost KYC MFA route in explicit legacy mode instead of redirecting to undeployed Passkey', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    setupSupabase({ claimsSub: '11111111-1111-4111-8111-111111111111' });
+    const response = await updateSession(new NextRequest('http://localhost:3000/admin/kyc/mfa'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('does not honor local compatibility on a production server', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    setupSupabase({ claimsSub: '11111111-1111-4111-8111-111111111111' });
+    const response = await updateSession(new NextRequest('http://localhost:3000/api/admin/kyc/submissions'));
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "MFA_REQUIRED" } });
   });
 
   it("uses the authenticated account locale before the cookie and browser", async () => {

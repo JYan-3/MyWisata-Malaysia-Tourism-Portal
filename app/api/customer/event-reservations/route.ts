@@ -16,6 +16,7 @@ const RESERVATION_ERRORS: Array<[string, string, string]> = [
   ['event_item_unavailable', 'EVENT_ITEM_UNAVAILABLE', 'This item can no longer be reserved.'],
   ['invalid_payment_method', 'EVENT_PAYMENT_METHOD_INVALID', 'Choose a payment method for this reservation.'],
   ['email_verification_required', 'EMAIL_VERIFICATION_REQUIRED', 'Email verification is required before checkout'],
+  ['new_orders_paused', 'NEW_ORDERS_PAUSED', 'New orders are temporarily unavailable. Please try again later.'],
   ['idempotency_key_reused', 'IDEMPOTENCY_KEY_REUSED', 'Please refresh and try again.'],
 ];
 

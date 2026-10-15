@@ -43,7 +43,8 @@
     "Orders": "订单",
     "Event Promos": "活动推广",
     "Event Registrations": "报名审核",
-    "Announcements": "公告"
+    "Announcements": "公告",
+    "System Settings": "系统设置"
   },
   "navigationSections": {
     "workspace": "工作区",
@@ -2102,6 +2103,53 @@
       "title": "钱包审批人",
       "userLabel": "符合条件的用户"
     },
+    "systemSettings": {
+      "eyebrow": "平台控制",
+      "title": "系统设置",
+      "description": "在事故或计划维护期间，暂时暂停指定的顾客操作。",
+      "loading": "正在读取系统设置…",
+      "retry": "重试",
+      "unsaved": "有未保存的更改",
+      "active": "运行中",
+      "paused": "已暂停",
+      "neverUpdated": "尚无更改记录",
+      "unknownActor": "未知管理员",
+      "updated": "最近由 {{by}} 于 {{date}} 修改",
+      "saved": "系统设置已保存并记录。",
+      "controls": {
+        "title": "平台控制",
+        "description": "保存后会影响新的操作。"
+      },
+      "orders": {
+        "title": "暂停顾客新订单",
+        "description": "阻止新的购物车、活动预订及订单付款结账请求。",
+        "existing": "已创建订单仍可继续确认付款、履约、取消、退款及客服处理。"
+      },
+      "email": {
+        "title": "暂停自定义邮件发送",
+        "description": "暂存队列中的自定义 SMTP 邮件，并暂停平台直接发送的邮件。重新启用后会继续发送待处理邮件。",
+        "authExemption": "Supabase Auth 验证邮件和密码重设邮件不受影响。暂停时已经开始发送的邮件可能完成。"
+      },
+      "reasonLabel": "更改原因",
+      "reasonPlaceholder": "说明事故或维护原因（至少 10 个字符）。",
+      "impact": {
+        "title": "更改影响",
+        "description": "这些控制用于临时事故处理和维护。",
+        "orders": "暂停订单：阻止顾客创建新订单，不会取消已创建订单。",
+        "email": "暂停邮件：邮件保留在待发送队列，恢复后继续发送。",
+        "audit": "每次保存都会记录 Super Admin、时间、修改前后内容及原因。"
+      },
+      "confirm": {
+        "title": "确认更改系统设置？",
+        "pauseDescription": "你将暂停至少一项正在运行的功能。这次更改和原因会写入审计记录。",
+        "resumeDescription": "你将恢复至少一项功能。这次更改和原因会写入审计记录。"
+      },
+      "errors": {
+        "load": "无法读取系统设置。",
+        "save": "无法保存系统设置。",
+        "reason": "请填写至少 10 个字符的原因后再保存。"
+      }
+    },
     "walletSettings": {
       "audit": {
         "category": "更改类别",
@@ -2292,7 +2340,11 @@
       "recipientLanguage": "收件人语言：{{language}}",
       "languageUnavailable": "请输入有效收件人邮箱，以检查其已保存的语言。",
       "languageReview": "请按收件人语言检查主题和正文。更换邮箱会保留你的编辑，需要时请重新生成草稿。没有语言偏好则使用英文。",
-      "languages": {"en": "英文", "zh-CN": "华语", "ms": "马来文"},
+      "languages": {
+        "en": "英文",
+        "zh-CN": "华语",
+        "ms": "马来文"
+      },
       "close": "关闭",
       "recipient": "收件人邮箱",
       "recipientPlaceholder": "vendor@example.com",
@@ -3728,6 +3780,34 @@
       "matching_one": "匹配 {{count}} 条异常 · 待处理 {{amount}}",
       "matching_other": "匹配 {{count}} 条异常 · 待处理 {{amount}}"
     }
+  },
+  "passkey": {
+    "title": "后台安全验证",
+    "description": "使用已绑定设备，通过脸部识别、指纹或设备 PIN 验证。生物识别资料保留在你的设备上。",
+    "verify": "验证通行密钥",
+    "verifyAndConfirm": "验证并确认",
+    "working": "正在验证…",
+    "grantLabel": "一次性设备绑定码",
+    "deviceLabel": "设备名称",
+    "defaultDevice": "我的设备",
+    "register": "绑定设备",
+    "registered": "设备已绑定。请再验证通行密钥以继续。",
+    "enrollmentRequired": "请向有权限的管理员申请一次性绑定码。如果取消绑定，请申请新的绑定码。",
+    "passwordRequired": "请先使用账号密码登录，再验证设备。",
+    "passwordLogin": "返回密码登录",
+    "manage": "安全与设备",
+    "remove": "移除设备",
+    "recovery": "建议绑定备用设备。若所有设备遗失，请联系有权限的管理员，在核实身份后恢复。",
+    "rateLimited": "尝试次数过多，请稍等几分钟后重试。",
+    "unsupported": "当前浏览器或连接不支持通行密钥，请使用兼容设备和安全连接。",
+    "retryRequired": "设备或提现资料已变化，请刷新页面后重新验证。",
+    "unavailable": "安全验证暂时无法使用，请联系管理员后再继续。",
+    "failed": "验证已取消或失败，请重试。"
+  },
+  "staffMfa": {
+    "eyebrow": "后台账号安全",
+    "title": "验证你的验证器",
+    "description": "进入后台管理功能前，请先输入验证器 App 的动态验证码。"
   },
   "security": {
     "eyebrow": "账户安全",

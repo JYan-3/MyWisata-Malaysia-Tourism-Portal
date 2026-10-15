@@ -18,6 +18,7 @@ import { renderStaffInvitationEmail } from '@/lib/email/staff-invitation';
 import type { StaffInvitationEmailInput } from '@/lib/staff-invitations/types';
 import type { AppLocale } from '@/lib/i18n/locale';
 import { emailLocale } from './copy';
+import { ensureCustomEmailDeliveryEnabled } from '@/lib/platform/operations-settings';
 
 export type SendTransactionEmailInput = TransactionEmailInput & { to: string; delivery?: EmailDelivery };
 export type SendAccountEmailInput = AccountEmailInput & { to: string; delivery?: EmailDelivery };
@@ -38,6 +39,8 @@ async function sendRenderedEmail(to: string, rendered: { subject: string; html: 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     throw new Error('Email recipient is invalid');
   }
+
+  if (!delivery) await ensureCustomEmailDeliveryEnabled();
 
   const config = getEmailConfig();
   const transport = nodemailer.createTransport({
