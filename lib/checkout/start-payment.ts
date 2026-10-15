@@ -109,6 +109,7 @@ export async function startCheckoutPayment({ db, user, prepared, total, plan }: 
   total: number;
   plan: CheckoutPaymentPlan;
 }): Promise<NextResponse> {
+  if (!['pending_payment', 'requires_action', 'paid'].includes(prepared.status)) return privateCheckoutJson({ error: { code: 'CHECKOUT_CLOSED', message: 'This checkout has closed. Check your order before paying again.' } }, { status: 409 });
   const buyer: CheckoutBuyer = 'subject' in user ? user : { subject: { kind: 'account', userId: user.id }, contact: { email: user.email ?? '', phone: user.phone ?? null, name: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null } };
   const { paymentMethod, walletSplit, walletReservation, isToyyibPay, simulatorProvider } = plan;
   let response: Record<string, unknown> = { ...(prepared as Record<string, unknown>), total: total };

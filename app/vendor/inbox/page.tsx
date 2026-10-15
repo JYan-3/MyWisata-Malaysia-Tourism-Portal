@@ -26,8 +26,8 @@ interface Thread {
 interface RawMessage { id: string; sender_id: string; body: string; created_at: string; attachment_url?: string | null; reply_to_message_id?: string | null; context_product_id?: string | null; context_snapshot?: ChatMessage['context'] | null }
 
 const STATUS_CHIP_STYLES: Record<string, string> = {
-  archived: 'bg-gray-100 text-gray-500',
-  closed: 'bg-gray-200 text-gray-400',
+  archived: 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground',
+  closed: 'bg-gray-200 dark:bg-secondary text-gray-400 dark:text-muted-foreground',
 };
 
 type InboxFilter = 'all' | 'unread' | 'needs_reply';
@@ -344,32 +344,32 @@ export default function VendorInboxPage() {
     <div className="space-y-4">
       <div>
         <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><MessageCircle size={15} /> {t('ui.inbox.travellerConversations')}</div>
-        <h1 className="text-2xl font-bold text-gray-950">{t('ui.inbox.title')}</h1>
-        <p className="mt-1 text-sm text-gray-500">{t('ui.inbox.description')}</p>
+        <h1 className="text-2xl font-bold text-gray-950 dark:text-foreground">{t('ui.inbox.title')}</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.inbox.description')}</p>
       </div>
-      <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex w-80 shrink-0 flex-col border-r border-gray-200">
-          <div className="shrink-0 border-b border-gray-100 p-4">
+      <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm">
+        <div className="flex w-80 shrink-0 flex-col border-r border-gray-200 dark:border-border">
+          <div className="shrink-0 border-b border-gray-100 dark:border-border p-4">
             <div className="relative">
-              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
               <label className="sr-only" htmlFor="vendor-inbox-search">{t('ui.inbox.searchConversations')}</label>
               <input
                 id="vendor-inbox-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t('ui.inbox.searchConversations')}
-                className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 text-xs text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-primary"
+                className="h-9 w-full rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 pl-9 pr-3 text-xs text-gray-900 dark:text-foreground outline-none transition-colors placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary"
               />
             </div>
             <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 hide-scrollbar">
-              <SlidersHorizontal size={13} className="shrink-0 text-gray-400" />
+              <SlidersHorizontal size={13} className="shrink-0 text-gray-400 dark:text-muted-foreground" />
               {filters.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => setFilter(option.value)}
                   className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                    filter === option.value ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                    filter === option.value ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
                   }`}
                 >
                   {option.label}
@@ -379,21 +379,21 @@ export default function VendorInboxPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {loadError ? (
-              <div className="px-4 py-10 text-center text-xs text-red-600">
+              <div className="px-4 py-10 text-center text-xs text-red-600 dark:text-red-300">
                 <p>{loadError}</p>
                 <button type="button" onClick={() => void loadThreads()} className="mt-3 font-semibold text-primary hover:underline">{t('ui.common.tryAgain')}</button>
               </div>
             ) : loading ? (
-              <p className="px-4 py-10 text-center text-xs text-gray-400">{t('ui.inbox.loading')}</p>
+              <p className="px-4 py-10 text-center text-xs text-gray-400 dark:text-muted-foreground">{t('ui.inbox.loading')}</p>
             ) : visibleThreads.length === 0 ? (
-              <p className="px-4 py-10 text-center text-xs text-gray-400">{threads.length === 0 ? t('ui.inbox.noConversations') : t('ui.inbox.noMatchingConversations')}</p>
+              <p className="px-4 py-10 text-center text-xs text-gray-400 dark:text-muted-foreground">{threads.length === 0 ? t('ui.inbox.noConversations') : t('ui.inbox.noMatchingConversations')}</p>
             ) : visibleThreads.map((thread) => {
               const messages = thread.chat_messages ?? [];
               const latest = messages[messages.length - 1];
               const unreadCount = unreadByThread.get(thread.id) ?? 0;
               const name = thread.customer?.full_name || t('ui.inbox.traveller');
               return (
-                <button key={thread.id} type="button" onClick={() => setActive(thread.id)} className={`w-full border-b border-gray-100 px-4 py-4 text-left transition hover:bg-secondary ${active === thread.id ? 'bg-secondary' : ''}`}>
+                <button key={thread.id} type="button" onClick={() => setActive(thread.id)} className={`w-full border-b border-gray-100 dark:border-border px-4 py-4 text-left transition hover:bg-secondary ${active === thread.id ? 'bg-secondary' : ''}`}>
                   <div className="flex items-start gap-3">
                     <span className="relative shrink-0 rounded-full bg-secondary p-2 text-primary">
                       <UserRound size={16} />
@@ -402,21 +402,21 @@ export default function VendorInboxPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-2">
-                        <span className={`flex min-w-0 items-center gap-1 truncate text-sm text-gray-900 ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>
+                        <span className={`flex min-w-0 items-center gap-1 truncate text-sm text-gray-900 dark:text-foreground ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>
                           <span className="truncate">{name}</span>
-                          {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-gray-400" aria-label={t('ui.inbox.muted')} />}
+                          {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-gray-400 dark:text-muted-foreground" aria-label={t('ui.inbox.muted')} />}
                         </span>
-                        <span className="shrink-0 text-[11px] text-gray-400">{thread.last_message_at ? formatChatTimestamp(thread.last_message_at) : t('ui.inbox.newConversation')}</span>
+                        <span className="shrink-0 text-[11px] text-gray-400 dark:text-muted-foreground">{thread.last_message_at ? formatChatTimestamp(thread.last_message_at) : t('ui.inbox.newConversation')}</span>
                       </span>
                       <span className="mt-0.5 flex items-center gap-1.5">
-                        <span className="block truncate text-xs text-gray-500">{thread.outlets?.name || t('ui.inbox.malaysiaOutlet')}</span>
+                        <span className="block truncate text-xs text-gray-500 dark:text-muted-foreground">{thread.outlets?.name || t('ui.inbox.malaysiaOutlet')}</span>
                         {thread.status !== 'open' && (
-                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${STATUS_CHIP_STYLES[thread.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${STATUS_CHIP_STYLES[thread.status] ?? 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground'}`}>
                             {thread.status}
                           </span>
                         )}
                       </span>
-                      <span className={`mt-1 block truncate text-xs ${unreadCount > 0 ? 'font-medium text-gray-900' : 'text-gray-500'}`}>
+                      <span className={`mt-1 block truncate text-xs ${unreadCount > 0 ? 'font-medium text-gray-900 dark:text-foreground' : 'text-gray-500 dark:text-muted-foreground'}`}>
                         {latest ? truncateChatMessage(latest.body, 58) : t('ui.inbox.noMessages')}
                       </span>
                       {(unreadCount > 0 || (latest && latest.sender_id === user?.id)) && (
@@ -437,7 +437,7 @@ export default function VendorInboxPage() {
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {!selected ? (
-            <div className="flex flex-1 flex-col items-center justify-center text-gray-400">
+            <div className="flex flex-1 flex-col items-center justify-center text-gray-400 dark:text-muted-foreground">
               <MessageCircle size={34} className="mb-3 opacity-30" />
               <p className="text-sm">{t('ui.inbox.selectConversation')}</p>
             </div>

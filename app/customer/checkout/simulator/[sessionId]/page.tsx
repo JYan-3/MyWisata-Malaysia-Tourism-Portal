@@ -94,7 +94,7 @@ export default function PaymentSimulatorPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8 sm:px-6">
-      <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+      <div className="mb-5 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-950 dark:text-amber-200">
         <p className="flex items-center gap-2 text-sm font-bold"><ShieldCheck size={16} /> {tCustomer("strictMigration.paymentSimulator.eyebrow")}</p>
         <p className="mt-1 text-xs">{tCustomer("strictMigration.paymentSimulator.notice")}</p>
       </div>

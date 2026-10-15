@@ -1,3 +1,4 @@
+import { runEventOperationalJob } from '@/lib/events/operational-job';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { processQueuedEventRefunds } from '@/lib/refunds/process-queued-event-refunds';
@@ -12,7 +13,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const result = await processQueuedEventRefunds(createServiceClient());
-  if (result.error) return NextResponse.json({ error: 'event_refunds_failed' }, { status: 500 });
-  return NextResponse.json({ processed: result.processed, handedToAdmin: result.handedToAdmin });
+  const service = createServiceClient();
+  try {
+    const result = await runEventOperationalJob(service, 'process_event_refunds', async () => {
+      const result = await processQueuedEventRefunds(service);
+      if (result.error) throw new Error('event_refunds_failed');
+      return { processed: result.processed, awaitingProvider: result.awaitingProvider ?? 0, handedToAdmin: result.handedToAdmin };
+    });
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json({ error: 'event_refunds_failed' }, { status: 500 });
+  }
 }

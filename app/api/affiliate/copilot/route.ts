@@ -14,6 +14,7 @@ import {
   customerCapabilityFailure,
   resolveServerCustomerCapability,
 } from '@/lib/auth/customer-capabilities.server';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 const VALID_LANGS: ChatLanguage[] = ['en', 'bm', 'zh'];
 
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   const lang = parseLang(new URL(request.url).searchParams.get('lang'));
 
   const signals = await getCopilotSignals(supabase, user.id);
-  const result = await generateCopilotActions(signals, lang);
+  const result = await generateCopilotActions(signals, lang, await reserveAiQuota(request, 'affiliate-copilot', user.id));
 
   return apiOk(result);
 }

@@ -12,8 +12,9 @@ import {
   customerCapabilityFailure,
   resolveServerCustomerCapability,
 } from '@/lib/auth/customer-capabilities.server';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -46,6 +47,9 @@ export async function GET() {
     })),
   };
 
+  if (!(await reserveAiQuota(request, 'affiliate-insight', user.id))) {
+    return apiOk({ insight: ruleBasedUserInsight(insightStats), mode: 'rule-based' as const });
+  }
   try {
     const insight = await generateUserInsight(insightStats);
     return apiOk({ insight, mode: 'llm' as const });

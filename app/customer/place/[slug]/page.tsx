@@ -87,8 +87,8 @@ export default async function PlacePage({ params }: Props) {
   const entry = place.entryFee === null
     ? { text: t("ui.place.noGate"), tone: "bg-muted text-muted-foreground" }
     : place.entryFee === 0
-      ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 text-emerald-800" }
-      : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 text-amber-900" };
+      ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" }
+      : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200" };
 
   // Product-option counts for every card this page is about to render — one
   // batch of parallel lookups instead of each PlaceCard fetching its own.
@@ -127,13 +127,13 @@ export default async function PlacePage({ params }: Props) {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-slate-950/5" aria-hidden="true" />
         <div className="relative flex min-h-[330px] flex-col justify-end p-5 sm:min-h-[390px] sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+            <span className="rounded-full bg-white/90 dark:bg-card/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
               {t(`ui.place.levels.${place.level}`)}
             </span>
             <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${entry.tone}`}>
               {entry.text}
             </span>
-            {operator && <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
+            {operator && <span className="rounded-full bg-white/15 dark:bg-card/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
               {t("ui.place.operatedBy", { name: operator.name })}
             </span>}
           </div>

@@ -238,7 +238,7 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
               <Input value={reviewTitle} onChange={(event) => setReviewTitle(event.target.value)} maxLength={255} placeholder={t("ui.reviews.reviewTitlePlaceholder")} aria-label={t("ui.reviews.reviewTitle")} />
               <Textarea value={reviewBody} onChange={(event) => setReviewBody(event.target.value)} maxLength={600} rows={4} placeholder={t("ui.reviews.reviewBodyPlaceholder")} aria-label={t("ui.reviews.reviewBody")} />
             </div>
-            {reviewError && <p className="mt-3 text-sm text-red-700" role="alert">{reviewError}</p>}
+            {reviewError && <p className="mt-3 text-sm text-red-700 dark:text-red-200" role="alert">{reviewError}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setReviewFormOpen(false)}>{t("ui.reviews.cancel")}</Button>
               <Button type="submit" disabled={reviewSubmitting}>{reviewSubmitting ? t("ui.reviews.submitting") : t("ui.reviews.submit")}</Button>
@@ -273,7 +273,7 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
               <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label={t("ui.reviews.closeAll")}><X size={18} /></button>
             </div>
 
-            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : error ? <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">{t("ui.actions.retry")}</button></div> : reviews.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.states.noReviews")}</p> : <div className="mt-5 space-y-3">{reviews.map((review) => <ReviewCard key={review.id} review={review} />)}</div>}
+            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : error ? <div className="mt-5 rounded-xl bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">{t("ui.actions.retry")}</button></div> : reviews.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.states.noReviews")}</p> : <div className="mt-5 space-y-3">{reviews.map((review) => <ReviewCard key={review.id} review={review} />)}</div>}
 
             {!loading && !error && summaryTotal > 0 && (
               <nav aria-label={t("ui.reviews.pages")} className="mt-5 flex items-center justify-between border-t border-border pt-4">

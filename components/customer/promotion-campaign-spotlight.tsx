@@ -89,7 +89,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
               <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/90">
                 <CalendarDays size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span className="min-w-0">
-                  <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{t(getEventOperationalLabelKey(displayCampaign))}</span>{" "}
+                  <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${live ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>{t(getEventOperationalLabelKey(displayCampaign))}</span>{" "}
                   {displayCampaign.title} · {formatCampaignDate(displayCampaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {formatCampaignDate(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
                 </span>
               </p>
@@ -129,7 +129,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
               <span className="inline-flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${live ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${live ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
                   {t(getEventOperationalLabelKey(displayCampaign))}
                 </span>
                 <span className="text-sm">

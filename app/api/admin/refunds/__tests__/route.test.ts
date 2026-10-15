@@ -1,9 +1,11 @@
+// These business-rule fixtures represent a session that has completed staff verification.
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = '7df122f8-afae-4249-8504-bdd465a78f31';
 const REFUND_ID = '33333333-3333-4333-8333-333333333333';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFrom: vi.fn(), processRefund: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFrom: vi.fn(), serviceRpc: vi.fn(), processRefund: vi.fn() }));
 
 function queryResult(data: unknown, error: unknown = null) {
   const terminal = Promise.resolve({ data, error });
@@ -18,7 +20,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.authFrom })),
 }));
 vi.mock('@/lib/supabase/service', () => ({
-  createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom })),
+  createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.serviceRpc })),
 }));
 vi.mock('@/lib/refunds/process-refund', () => ({ processRefund: mocks.processRefund }));
 
@@ -28,6 +30,7 @@ import { POST } from '../[refundId]/route';
 describe('GET /api/admin/refunds', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.serviceRpc.mockResolvedValue({ data: { items: [], version: 'a'.repeat(32) }, error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult([{
@@ -35,6 +38,8 @@ describe('GET /api/admin/refunds', () => {
       order_id: '1d4057cf-c821-4b05-a454-61dbdc42d32c',
       amount: 50,
       reason: 'Customer request',
+      reasonCode: null,
+      evidence: { items: [], version: 'a'.repeat(32) },
       status: 'approved',
       provider_refund_id: 'sim_refund_0123456789abcdef0123456789abcdef01234567',
       manual_reference: null,
@@ -62,6 +67,8 @@ describe('GET /api/admin/refunds', () => {
       orderNumber: 'ORD-1001',
       amountRm: 50,
       reason: 'Customer request',
+      reasonCode: null,
+      evidence: { items: [], version: 'a'.repeat(32) },
       status: 'approved',
       provider: 'tng_ewallet_simulator',
       method: 'ewallet',
@@ -91,6 +98,7 @@ describe('GET /api/admin/refunds', () => {
 describe('POST /api/admin/refunds/[refundId]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.serviceRpc.mockResolvedValue({ data: { items: [], version: 'a'.repeat(32) }, error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult({ id: REFUND_ID, status: 'pending' }));

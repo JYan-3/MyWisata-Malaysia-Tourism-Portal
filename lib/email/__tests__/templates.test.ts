@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { renderTransactionEmail, renderVendorEmail } from '@/lib/email/templates';
 
 describe('transaction email templates', () => {
+  it('renders an operational vendor order link without exposing an internal reference', () => {
+    const result = renderVendorEmail({ eventType: 'vendor_order_update', vendorName: 'Craft House', reason: 'Pickup outcome needs verification. ORD-123 · 2 × Cake', reference: 'ORD-123', occurredAt: '2026-10-12T00:00:00Z', actionUrl: 'https://mylawatan.my/vendor/orders' });
+    expect(result.html).toContain('href="https://mylawatan.my/vendor/orders"');
+    expect(result.text).toContain('https://mylawatan.my/vendor/orders');
+  });
+  it('rejects unsafe vendor action links', () => {
+    const result = renderVendorEmail({ eventType: 'vendor_order_update', vendorName: 'Craft House', reason: 'Needs verification', occurredAt: '2026-10-12T00:00:00Z', actionUrl: 'javascript:alert(1)' });
+    expect(result.html).not.toContain('javascript:');
+    expect(result.text).not.toContain('javascript:');
+  });
   it('renders confirmed booth approval as approval and preserves Malaysia preparation times', () => {
     const result = renderVendorEmail({ eventType: 'vendor_event_update', vendorName: 'Craft House', reason: 'Participation approved', occurredAt: '2026-10-08T00:00:00Z',
       eventChange: { kind: 'approval', eventTitle: 'November Market', locationName: 'LG1 Concourse',
@@ -80,4 +90,12 @@ describe('event vendor change notices', () => {
     expect(result.html).not.toContain(internalId);
     expect(result.text).not.toContain(internalId);
   });
+});
+
+it('labels a completed order refund as a refund instead of a new payment', () => {
+  const result = renderTransactionEmail({ eventType: 'order_refunded', recipientName: 'Guest', amountRm: 7,
+    reference: 'ORDER-EXAMPLE', occurredAt: '2026-10-09T00:00:00Z', accessUrl: 'https://example.test/customer/orders/access#token=test' });
+  expect(result.subject).toBe('Order refund completed');
+  expect(result.text).toContain('7.00');
+  expect(result.text).not.toContain('Checkout payment received');
 });

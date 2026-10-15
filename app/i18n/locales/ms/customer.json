@@ -109,6 +109,10 @@
     "recommendVendor": {
       "label": "Cadangkan Vendor",
       "description": "Kongsi penemuan tempatan"
+    },
+    "privacyTerms": {
+      "label": "Privasi & Terma",
+      "description": "Dasar privasi, terma dan data anda"
     }
   },
   "categories": {
@@ -1229,7 +1233,11 @@
       "button_other": "Checkout ({{count}} item)",
       "nothingToCheckout": "Tiada apa-apa dalam itinerari anda yang boleh dibeli lagi.",
       "allNeedSlot": "Tiada satu pun perhentian berjadual anda mempunyai slot tempahan terbuka pada hari yang dirancang — pilih masa pada halaman setiap aktiviti dahulu.",
-      "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka."
+      "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka.",
+      "unavailable": "{{names}} tidak boleh dibeli dari perancang. Buka halamannya untuk menyemak pilihan yang ada.",
+      "addFailed": "Tidak dapat menambah {{name}} ke troli anda. Item yang ditambah sebelumnya masih dalam troli.",
+      "buy_one": "Beli {{count}}",
+      "buy_other": "Beli {{count}}"
     },
     "preferencesPage": {
       "eyebrow": "Keutamaan",
@@ -2893,7 +2901,28 @@
       "linkHint": "Kongsi pautan ini — anda memperoleh komisen apabila seseorang mengklik dan membuat tempahan.",
       "generating": "Sedang menjana…",
       "generateLink": "Jana pautan saya",
-      "totalEarnings": "Jumlah Pendapatan"
+      "totalEarnings": "Jumlah Pendapatan",
+      "earnings": {
+        "viewAll": "Lihat semua pendapatan",
+        "backToDashboard": "Kembali ke Jana & Kongsi",
+        "allTitle": "Semua pendapatan",
+        "allDescription": "Setiap komisen daripada pautan afiliasi anda. Tempoh yang dipilih menapis senarai dan muat turun.",
+        "download": "Muat turun pendapatan (CSV)",
+        "exporting": "Sedang dieksport…",
+        "exportFailed": "Tidak dapat mengeksport pendapatan. Sila cuba lagi.",
+        "referral": "Rujukan",
+        "order": "pesanan {{amount}}",
+        "cleared": "Dimasukkan ke dompet",
+        "pendingToday": "Belum selesai · selesai hari ini",
+        "pendingIn_other": "Belum selesai · selesai dalam {{count}} hari",
+        "pendingIn_one": "Belum selesai · selesai dalam {{count}} hari",
+        "pendingIn": "Belum selesai · selesai dalam {{count}} hari",
+        "reversed": "Dibatalkan — pesanan dibatalkan atau dibayar balik",
+        "rejected": "Tidak diluluskan selepas semakan",
+        "latest": "Memaparkan {{shown}} terkini daripada {{total}}",
+        "noneInRange": "Tiada pendapatan dalam tempoh ini.",
+        "period": "Tempoh"
+      }
     },
     "tripPlanner": {
       "scheduledFor": "Dijadualkan pada {{date}}",
@@ -3069,6 +3098,25 @@
           "windGust": "Tiupan angin sehingga {{speed}}",
           "uvIndex": "Indeks UV {{value}}"
         }
+      },
+      "longDayWarning": "{{duration}} perjalanan pada hari ini. Pertimbangkan untuk memindahkan beberapa hentian ke hari lain.",
+      "longLeg": "Perjalanan jauh antara hentian ini",
+      "addTime": "Masa",
+      "overview": "Gambaran keseluruhan",
+      "overviewEmpty": "Belum ada hentian",
+      "noTime": "Tiada masa",
+      "slotFull": "Penuh",
+      "seatsLeft_one": "{{count}} lagi",
+      "seatsLeft_other": "{{count}} lagi",
+      "notAvailableThisDay": "Tidak tersedia pada hari ini",
+      "closedThisDay": "Tutup pada hari ini",
+      "pickDayFirst": "Pilih hari dahulu",
+      "loadingTimes": "Memuatkan masa…",
+      "timeProblem": {
+        "full": "Masa ini sudah penuh. Pilih masa lain.",
+        "noSlot": "Masa ini tidak lagi ditawarkan. Pilih masa lain.",
+        "closed": "Tutup pada hari ini. Alihkan ke hari lain.",
+        "outsideHours": "Tutup pada masa ini. Pilih masa dalam waktu operasi."
       }
     },
     "paymentSimulator": {
@@ -3418,7 +3466,8 @@
       "terms": "Terma",
       "data": "Data & KYC",
       "about": "Perihal",
-      "help": "Pusat Bantuan"
+      "help": "Pusat Bantuan",
+      "footerLabel": "Undang-undang dan bantuan"
     },
     "privacy": {
       "title": "Dasar Privasi",
@@ -3554,5 +3603,24 @@
     "requestFailed": "Pautan tidak dapat diminta. Sila cuba lagi kemudian.",
     "opening": "Membuka pesanan anda…",
     "eventHint": "Semak e-mel sebelum mengesahkan. Kami akan menghantar resit dan pautan pesanan peribadi."
+  },
+  "footer": {
+    "ariaLabel": "Pengaki laman",
+    "groups": {
+      "support": "Sokongan",
+      "discover": "Teroka",
+      "partners": "Rakan kongsi",
+      "legal": "Terma & privasi",
+      "about": "Tentang"
+    },
+    "links": {
+      "contactSupport": "Hubungi sokongan",
+      "tripPlanner": "Perancang perjalanan",
+      "vouchers": "Baucar & tawaran",
+      "vendorLogin": "Log masuk vendor",
+      "privacyPolicy": "Dasar Privasi",
+      "termsOfService": "Terma Perkhidmatan",
+      "aboutUs": "Tentang MyLawatan"
+    }
   }
 }

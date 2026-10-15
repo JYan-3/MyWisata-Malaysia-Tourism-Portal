@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   rpc: vi.fn(),
+  emitOrderVendorEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -11,6 +12,9 @@ vi.mock('@/lib/supabase/server', () => ({
     rpc: mocks.rpc,
   })),
 }));
+
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: mocks.rpc }) }));
+vi.mock('@/lib/vendor-notifications/order-events', () => ({ emitOrderVendorEvent: mocks.emitOrderVendorEvent }));
 
 import { POST } from '../finalize/route';
 
@@ -65,4 +69,11 @@ describe('POST /api/checkout/finalize external confirmation boundary', () => {
       },
     });
   });
+  it.each(['payment_exception', 'paid'])('only notifies fulfilment-ready paid wallet outcomes: %s', async (status) => {
+    mocks.rpc.mockResolvedValue({ data: { order_id: '33333333-3333-4333-8333-333333333333', status }, error: null });
+    const response = await POST(request({ checkoutSessionId: '22222222-2222-4222-8222-222222222222', outcome: 'succeeded' }));
+    expect(response.status).toBe(200);
+    expect(mocks.emitOrderVendorEvent).toHaveBeenCalledTimes(status === 'paid' ? 1 : 0);
+  });
+
 });

@@ -5,6 +5,7 @@ import { Ban, CalendarDays, Clock, MapPin, Pencil, Plus, Trash2, X } from "lucid
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { MapView } from "@/components/map/map-view";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -51,10 +52,12 @@ type Props = {
   onLocalChange?: (next: EditableLocation[]) => void;
   onSaved?: () => void | Promise<void>;
   disabled?: boolean;
+  onDraftChange?: (open: boolean) => void;
+  onSavedLocation?: (key: string) => void;
 };
 
 const KUALA_LUMPUR: [number, number] = [3.139, 101.6869];
-const inputClass = "mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal text-foreground";
+const inputClass = "mt-1 h-10 w-full rounded-lg border border-input bg-background dark:bg-background px-3 text-sm font-normal text-foreground";
 
 export function toLocationPayload(location: EditableLocation) {
   return {
@@ -78,11 +81,15 @@ function isValid(location: EditableLocation) {
   return campaignLocationSchema.safeParse(toLocationPayload(location)).success;
 }
 
-export function EventLocationsEditor({ campaignId, locations, defaults, onLocalChange, onSaved, disabled = false }: Props) {
+export function EventLocationsEditor({ campaignId, locations, defaults, onLocalChange, onSaved, onDraftChange, onSavedLocation, disabled = false }: Props) {
   const { t, i18n } = useTranslation("admin");
   const { confirm, prompt } = useAppDialog();
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [draft, setDraft] = useState<EditableLocation | null>(null);
+  const draftOpen = Boolean(draft);
+  const validation = draft ? campaignLocationSchema.safeParse(toLocationPayload(draft)) : null;
+  const invalidFields = validation && !validation.success ? [...new Set(validation.error.issues.map(issue => String(issue.path[0])))].map(field => t(`promotionCampaigns.locations.${field === "lat" || field === "lng" ? "pin" : field}`)).join(" · ") : "";
+  useEffect(() => { onDraftChange?.(draftOpen); return () => onDraftChange?.(false); }, [draftOpen, onDraftChange]);
   const [busy, setBusy] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => {
@@ -172,6 +179,7 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(t(`promotionCampaigns.locations.errors.${payload.error?.code || "SAVE_FAILED"}`));
+      onSavedLocation?.(draft.key);
       setDraft(null);
       await onSaved?.();
       showFeedback("success", t(payload.data?.notificationQueued ? "promotionCampaigns.locations.notificationQueued" : "promotionCampaigns.locations.changesSaved"));
@@ -267,14 +275,14 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
               </div>
               {!disabled && location.status !== "cancelled" && (
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => openDraft(location)}>
+                  <Button type="button" variant="outline" size="sm" disabled={busy || draftOpen} onClick={() => openDraft(location)}>
                     <Pencil size={13} aria-hidden="true" /> {t("promotionCampaigns.locations.edit")}
                   </Button>
-                  <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void remove(location)}>
+                  <Button type="button" variant="outline" size="sm" disabled={busy || draftOpen} onClick={() => void remove(location)}>
                     <Trash2 size={13} aria-hidden="true" /> {t("promotionCampaigns.locations.remove")}
                   </Button>
                   {campaignId && location.id && (
-                    <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void cancelLocation(location)} className="text-destructive">
+                    <Button type="button" variant="outline" size="sm" disabled={busy || draftOpen} onClick={() => void cancelLocation(location)} className="text-destructive">
                       <Ban size={13} aria-hidden="true" /> {t("promotionCampaigns.locations.cancelLocation")}
                     </Button>
                   )}
@@ -288,43 +296,14 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
       {draft ? (
         <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/[0.03] p-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.maxStalls")}
-              <input type="number" min="1" step="1" value={draft.maxStalls ?? ""} className={inputClass}
-                onChange={(event) => update({ maxStalls: event.target.value ? Number(event.target.value) : null })} />
-            </label>
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input type="checkbox" checked={draft.applicationsOpen ?? false} onChange={(event) => update({ applicationsOpen: event.target.checked })} />
-              {t("promotionCampaigns.locations.acceptApplications")}
-            </label>
-            {([{ field: "applicationsCloseAt", label: t("promotionCampaigns.locations.applicationsCloseAt") },
-              { field: "approvalsCloseAt", label: t("promotionCampaigns.locations.approvalsCloseAt") },
-              { field: "setupStartsAt", label: t("promotionCampaigns.locations.setupStartsAt") }] as const).map(({ field, label }) => (
-              <label key={field} className="text-xs font-semibold text-muted-foreground">{label}
-                <input type="datetime-local" className={inputClass} value={draft[field] ? getMalaysiaDateTimeLocalValue(new Date(draft[field]!)) : ""}
-                  onChange={(event) => update({ [field]: event.target.value ? malaysiaDateTimeLocalToIso(event.target.value) : null })} />
-              </label>
-            ))}
-            <p className="text-xs text-muted-foreground md:col-span-2">{t("promotionCampaigns.locations.intakeScheduleHint")}</p>
+            <h3 className="font-semibold md:col-span-2">{t("promotionCampaigns.locations.placeHeading")}</h3>
             <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.name")}
-              <input value={draft.name} maxLength={120} onChange={(event) => update({ name: event.target.value })} className={inputClass} />
+              <Input value={draft.name} maxLength={120} onChange={(event) => update({ name: event.target.value })} className={inputClass} />
             </label>
             <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.address")}
-              <input value={draft.address} maxLength={300} onChange={(event) => update({ address: event.target.value })} className={inputClass} />
+              <Input value={draft.address} maxLength={300} onChange={(event) => update({ address: event.target.value })} className={inputClass} />
             </label>
-            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.startsOn")}
-              <input type="date" value={draft.startsOn} onChange={(event) => update({ startsOn: event.target.value })} className={inputClass} />
-            </label>
-            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.endsOn")}
-              <input type="date" value={draft.endsOn} min={draft.startsOn || undefined} onChange={(event) => update({ endsOn: event.target.value })} className={inputClass} />
-            </label>
-            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.opensAt")}
-              <input type="time" value={draft.opensAt} onChange={(event) => update({ opensAt: event.target.value })} className={inputClass} />
-            </label>
-            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.closesAt")}
-              <input type="time" value={draft.closesAt} min={draft.opensAt || undefined} onChange={(event) => update({ closesAt: event.target.value })} className={inputClass} />
-            </label>
-          </div>
-          <div>
+            <div className="md:col-span-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.pin")}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {/* "lng" would be read by i18next as a language override, so the placeholders are latitude/longitude. */}
@@ -339,16 +318,49 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
                 center={pin ?? KUALA_LUMPUR}
                 zoom={pin ? 16 : 11}
                 height={416}
-                userLocation={pin ?? KUALA_LUMPUR}
+                userLocation={pin ?? undefined}
                 onUserLocationDrag={(lat, lng) => void dragPin(lat, lng)}
                 markerStyle="pin"
               />
             </div>
+            {!pin && <Button type="button" variant="outline" className="mt-2" onClick={() => update({ lat: KUALA_LUMPUR[0], lng: KUALA_LUMPUR[1] })}>{t("promotionCampaigns.locations.placePin")}</Button>}
             {pin && (
-              <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => update({ lat: null, lng: null })}>
+              <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => { reverseRequest.current += 1; update({ lat: null, lng: null }); }}>
                 <X size={13} aria-hidden="true" /> {t("promotionCampaigns.locations.clearPin")}
               </Button>
             )}
+          </div>
+            <h3 className="font-semibold md:col-span-2">{t("promotionCampaigns.locations.scheduleHeading")}</h3>
+            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.startsOn")}
+              <Input type="date" value={draft.startsOn} onChange={(event) => update({ startsOn: event.target.value })} className={inputClass} />
+            </label>
+            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.endsOn")}
+              <Input type="date" value={draft.endsOn} min={draft.startsOn || undefined} onChange={(event) => update({ endsOn: event.target.value })} className={inputClass} />
+            </label>
+            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.opensAt")}
+              <Input type="time" value={draft.opensAt} onChange={(event) => update({ opensAt: event.target.value })} className={inputClass} />
+            </label>
+            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.closesAt")}
+              <Input type="time" value={draft.closesAt} min={draft.opensAt || undefined} onChange={(event) => update({ closesAt: event.target.value })} className={inputClass} />
+            </label>
+            <h3 className="font-semibold md:col-span-2">{t("promotionCampaigns.locations.intakeHeading")}</h3>
+            <label className="text-xs font-semibold text-muted-foreground">{t("promotionCampaigns.locations.maxStalls")}
+              <Input type="number" min="1" step="1" value={draft.maxStalls ?? ""} className={inputClass}
+                onChange={(event) => update({ maxStalls: event.target.value ? Number(event.target.value) : null })} />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" checked={draft.applicationsOpen ?? false} onChange={(event) => update({ applicationsOpen: event.target.checked })} />
+              {t("promotionCampaigns.locations.acceptApplications")}
+            </label>
+            {([{ field: "applicationsCloseAt", label: t("promotionCampaigns.locations.applicationsCloseAt") },
+              { field: "approvalsCloseAt", label: t("promotionCampaigns.locations.approvalsCloseAt") },
+              { field: "setupStartsAt", label: t("promotionCampaigns.locations.setupStartsAt") }] as const).map(({ field, label }) => (
+              <label key={field} className="text-xs font-semibold text-muted-foreground">{label}
+                <Input type="datetime-local" className={inputClass} value={draft[field] ? getMalaysiaDateTimeLocalValue(new Date(draft[field]!)) : ""}
+                  onChange={(event) => update({ [field]: event.target.value ? malaysiaDateTimeLocalToIso(event.target.value) : null })} />
+              </label>
+            ))}
+            <p className="text-xs text-muted-foreground md:col-span-2">{t("promotionCampaigns.locations.intakeScheduleHint")}</p>
           </div>
           {draft.id && (
             <label className="block text-sm font-semibold text-foreground">
@@ -357,9 +369,10 @@ export function EventLocationsEditor({ campaignId, locations, defaults, onLocalC
             </label>
           )}
           {impact && <p role="status" className="text-xs text-muted-foreground">{t("promotionCampaigns.locations.impact", impact)}</p>}
+          {!isValid(draft) && <p className="text-xs text-muted-foreground">{t("promotionCampaigns.locations.missingFields", { fields: invalidFields })}</p>}
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button type="button" size="sm" disabled={busy} onClick={() => void saveDraft()}>{t("promotionCampaigns.locations.save")}</Button>
+            <Button type="button" size="sm" disabled={busy || !isValid(draft)} onClick={() => void saveDraft()}>{t("promotionCampaigns.locations.save")}</Button>
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => { setDraft(null); setError(null); }}>{t("promotionCampaigns.locations.cancel")}</Button>
           </div>
         </div>

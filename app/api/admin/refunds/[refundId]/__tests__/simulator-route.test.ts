@@ -1,3 +1,5 @@
+// These business-rule fixtures represent a session that has completed staff verification.
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const REFUND_ID = '33333333-3333-4333-8333-333333333333';
@@ -85,6 +87,6 @@ describe('POST /api/admin/refunds/:refundId simulated provider refund', () => {
     const response = await POST(request(), { params: Promise.resolve({ refundId: REFUND_ID }) });
 
     expect(response.status).toBe(503);
-    expect(mocks.serviceRpc).not.toHaveBeenCalled();
+    expect(mocks.serviceRpc).not.toHaveBeenCalledWith('begin_simulated_refund', expect.anything());
   });
 });

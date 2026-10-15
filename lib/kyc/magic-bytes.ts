@@ -4,6 +4,8 @@ const SIGNATURES: Record<string, readonly Signature[]> = {
   'image/jpeg':      [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
   'image/png':       [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
   'application/pdf': [{ offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }],
+  // ZIP local file header: "PK" followed by bytes 03 04 (vendor digital downloads).
+  'application/zip': [{ offset: 0, bytes: [0x50, 0x4b, 0x03, 0x04] }],
   // WEBP is a RIFF container — "RIFF" at 0 alone also matches WAV/AVI, so this
   // also checks the "WEBP" format tag at offset 8.
   'image/webp':      [{ offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }],

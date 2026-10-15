@@ -28,34 +28,34 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             <LineChartIcon size={15} /> {t('charts.sales.livePerformance')}
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">{t('charts.sales.performance')}</h2>
-          <p className="text-sm text-gray-500">{t('charts.sales.description')}</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.sales.performance')}</h2>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t('charts.sales.description')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg bg-gray-100 p-1">
-            <button type="button" onClick={() => setView('timeline')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'timeline' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+          <div className="flex rounded-lg bg-gray-100 dark:bg-muted p-1">
+            <button type="button" onClick={() => setView('timeline')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'timeline' ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>
               {t('charts.sales.timeline')}
             </button>
-            <button type="button" onClick={() => setView('list')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+            <button type="button" onClick={() => setView('list')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'list' ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>
               <List size={14} className="mr-1 inline" /> {t('charts.sales.list')}
             </button>
           </div>
-          <div className="rounded-lg border border-gray-200 p-2 text-gray-500" title={t('charts.sales.malaysiaTimezone')}>
+          <div className="rounded-lg border border-gray-200 dark:border-border p-2 text-gray-500 dark:text-muted-foreground" title={t('charts.sales.malaysiaTimezone')}>
             <CalendarDays size={16} />
           </div>
         </div>
       </div>
 
       {view === 'list' ? (
-        <div className="divide-y divide-gray-100 overflow-auto rounded-xl border border-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-border overflow-auto rounded-xl border border-gray-100 dark:border-border">
           {data.map((point) => (
             <div key={point.label} className="flex items-center justify-between px-4 py-3 text-sm">
-              <span className="text-gray-500">{point.label}</span>
-              <span className="font-semibold text-gray-900">{formatMYR(point.revenue, locale, { minimumFractionDigits: 2 })}</span>
-              <span className="text-gray-500">{t('charts.sales.orders', { count: formatNumber(point.orders, locale) })}</span>
+              <span className="text-gray-500 dark:text-muted-foreground">{point.label}</span>
+              <span className="font-semibold text-gray-900 dark:text-foreground">{formatMYR(point.revenue, locale, { minimumFractionDigits: 2 })}</span>
+              <span className="text-gray-500 dark:text-muted-foreground">{t('charts.sales.orders', { count: formatNumber(point.orders, locale) })}</span>
             </div>
           ))}
-          {!data.length && <div className="px-4 py-12 text-center text-sm text-gray-400">{t('charts.sales.noPaidActivity')}</div>}
+          {!data.length && <div className="px-4 py-12 text-center text-sm text-gray-400 dark:text-muted-foreground">{t('charts.sales.noPaidActivity')}</div>}
         </div>
       ) : (
         <div className="min-h-[280px] flex-1">
@@ -71,13 +71,13 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-gray-400">{t('charts.sales.noPaidActivity')}</div>
+            <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">{t('charts.sales.noPaidActivity')}</div>
           )}
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
-        <button type="button" onClick={() => setMetric('revenue')} className={`rounded-full px-3 py-1 ${metric === 'revenue' ? 'bg-amber-50 font-semibold text-amber-700' : ''}`}>{t('charts.sales.revenue')}</button>
+      <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-muted-foreground">
+        <button type="button" onClick={() => setMetric('revenue')} className={`rounded-full px-3 py-1 ${metric === 'revenue' ? 'bg-amber-50 dark:bg-amber-500/10 font-semibold text-amber-700 dark:text-amber-200' : ''}`}>{t('charts.sales.revenue')}</button>
         <button type="button" onClick={() => setMetric('orders')} className={`rounded-full px-3 py-1 ${metric === 'orders' ? 'bg-secondary font-semibold text-primary' : ''}`}>{t('charts.sales.ordersLabel')}</button>
       </div>
     </div>

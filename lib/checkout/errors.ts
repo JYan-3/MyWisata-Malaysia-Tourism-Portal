@@ -22,6 +22,7 @@ export type CheckoutErrorCode =
   | "VOUCHER_CLAIM_UNAVAILABLE"
   | "VOUCHER_CLAIM_EXPIRED"
   | "VOUCHER_CLAIM_MISMATCH"
+  | "NEW_ORDERS_PAUSED"
   | "CHECKOUT_FAILED";
 
 function payloadText(payload: CheckoutErrorPayload): string {
@@ -48,6 +49,7 @@ export function getCheckoutErrorCode(payload: CheckoutErrorPayload): CheckoutErr
   if (text.includes("voucher_claim_expired")) return "VOUCHER_CLAIM_EXPIRED";
   if (text.includes("voucher_claim_mismatch")) return "VOUCHER_CLAIM_MISMATCH";
   if (text.includes("voucher_claim_unavailable") || text.includes("voucher_claim_hold_missing")) return "VOUCHER_CLAIM_UNAVAILABLE";
+  if (text.includes("new_orders_paused")) return "NEW_ORDERS_PAUSED";
   return "CHECKOUT_FAILED";
 }
 
@@ -87,6 +89,8 @@ export function getCheckoutErrorMessage(payload: CheckoutErrorPayload): string {
       return "This voucher claim does not match the selected voucher.";
     case "VOUCHER_CLAIM_UNAVAILABLE":
       return "This voucher claim is no longer available. Please choose another voucher.";
+    case "NEW_ORDERS_PAUSED":
+      return "New orders are temporarily unavailable. Please try again later.";
     case "CHECKOUT_FAILED":
     default:
       return "We could not start checkout right now. Please try again.";

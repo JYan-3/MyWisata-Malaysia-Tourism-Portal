@@ -14,6 +14,8 @@
 import { parseBody, apiOk, budgetGuardCheckSchema } from '@/lib/validation/schemas';
 import { createServiceClient } from '@/lib/supabase/service';
 import { resolveBudgetItems, evaluateBudget, generateBudgetGuardMessages } from '@/lib/customer/budget-guard';
+import { createClient } from '@/lib/supabase/server';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, budgetGuardCheckSchema);
@@ -23,7 +25,9 @@ export async function POST(request: Request) {
   const db = createServiceClient();
   const items = await resolveBudgetItems(lines, db);
   const result = await evaluateBudget(items, budgetRM, db);
-  const { messages, mode } = await generateBudgetGuardMessages(result, lang ?? 'en');
+  // Sign-in stays optional here; a signed-in caller is limited per account, anyone else per address.
+  const { data: { user } } = await (await createClient()).auth.getUser();
+  const { messages, mode } = await generateBudgetGuardMessages(result, lang ?? 'en', await reserveAiQuota(request, 'budget-guard', user?.id ?? null));
 
   return apiOk({ result, messages, mode });
 }

@@ -13,8 +13,8 @@
 // context." This function now reads THAT column first. The mw_ref cookie is
 // only a fallback, used when the column is empty (e.g. the dev simulator,
 // or any future caller that hasn't been updated to populate the column
-// yet). Cookie access is now wrapped defensively (tryReadClickIdCookie /
-// tryClearClickIdCookie below) — next/headers' cookies() throws outside a
+// yet). Cookie access is now wrapped defensively (tryReadClickIdCookie
+// below) — next/headers' cookies() throws outside a
 // request-scoped context, and the whole point of the new column is that
 // this function no longer requires one.
 //
@@ -94,22 +94,17 @@ async function tryReadClickIdCookie(): Promise<string | null> {
   }
 }
 
-/** Best-effort cookie clear — a no-op (not a throw) outside a request-scoped context. */
-async function tryClearClickIdCookie(): Promise<void> {
-  try {
-    const cookieStore = await cookies();
-    cookieStore.delete(MW_REF_COOKIE);
-  } catch {
-    // no-op — nothing to clear if this context has no cookie access
-  }
-}
-
 /**
- * Safe to call twice for the same order (the UNIQUE(order_id) constraint on
- * affiliate_attributions — migration 011 — makes the second call a no-op).
- * Never throws into the caller's checkout flow.
+ * Returns true when it finished (with or without a commission), false when it
+ * failed and should be retried.
+ *
+ * Safe to call any number of times for the same order: an already attributed
+ * order returns quietly, and the UNIQUE(order_id) constraint on
+ * affiliate_attributions covers concurrent runs. Never throws into the caller.
+ * Runs from the checkout page's fast path and from the paid-order background
+ * job (lib/orders/paid-order-effects.ts), so it must not depend on cookies.
  */
-export async function onOrderPaid(orderId: string): Promise<void> {
+export async function onOrderPaid(orderId: string): Promise<boolean> {
   try {
     // Service-role throughout: affiliate_links only has an owner-only SELECT
     // policy, and this hook has no reason to run as any particular user's
@@ -124,7 +119,15 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       .select('id, user_id, status, total_amount, affiliate_click_id, paid_at, created_at')
       .eq('id', orderId)
       .maybeSingle();
-    if (!order) return;
+    if (!order) return true;
+    // Nothing to do until it is paid; the paid-order job retries later.
+    if (order.status !== 'paid' && order.status !== 'completed') return true;
+    // Already attributed by an earlier run: quiet no-op (not a duplicate-payout flag).
+    const { count: existing } = await service
+      .from('affiliate_attributions')
+      .select('id', { count: 'exact', head: true })
+      .eq('order_id', orderId);
+    if ((existing ?? 0) > 0) return true;
 
     // Lazy + memoized: only queried the first time a guard actually needs
     // it (the common happy-path attribution never touches order_items or
@@ -138,21 +141,21 @@ export async function onOrderPaid(orderId: string): Promise<void> {
     }
 
     const clickId = order.affiliate_click_id ?? (await tryReadClickIdCookie());
-    if (!clickId) return; // nobody referred them
+    if (!clickId) return true; // nobody referred them
 
     const { data: click } = await service
       .from('affiliate_clicks')
       .select('id, created_at, link_id')
       .eq('id', clickId)
       .maybeSingle();
-    if (!click) return;
+    if (!click) return true;
 
     const { data: link } = await service
       .from('affiliate_links')
       .select('user_id, is_active')
       .eq('id', click.link_id)
       .maybeSingle();
-    if (!link) return;
+    if (!link) return true;
     const linkOwnerId = link.user_id as string;
 
     // LINK-DISABLED GUARD — live-found gap (2026-08-20): the link may have
@@ -172,12 +175,14 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         severity: 'low', // not new evidence — the link was already flagged/disabled by the time this ran
         detail: { clickId: click.id, ...(await purchaseDetail()) },
       });
-      return;
+      return true;
     }
 
-    // EXPIRY GUARD
+    // EXPIRY GUARD — the window runs from the buyer's last click to when they
+    // placed the order, not to when this runs: the background job may run
+    // minutes (or, after an outage, days) after payment.
     const cookieDays = await getAttributionCookieDays(service);
-    const clickAgeMs = Date.now() - new Date(click.created_at).getTime();
+    const clickAgeMs = new Date(order.created_at).getTime() - new Date(click.created_at).getTime();
     if (clickAgeMs > cookieDays * 86_400_000) {
       await logFraudFlag(service, {
         linkId: click.link_id,
@@ -187,22 +192,22 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         severity: 'low',
         detail: { clickId: click.id, clickCreatedAt: click.created_at, cookieDays, clickAgeDays: Math.floor(clickAgeMs / 86_400_000), ...(await purchaseDetail()) },
       });
-      return;
+      return true;
     }
 
-    if (order.status !== 'paid' && order.status !== 'completed') return;
-
-    // SELF-REFERRAL GUARD
+    // SELF-REFERRAL GUARD — no commission on your own purchase. Logged as a
+    // low-severity record only: buying something you shared is normal, so it
+    // never disables the link or counts toward the fraud rate (fraud.ts).
     if (order.user_id === linkOwnerId) {
       await logFraudFlag(service, {
         linkId: click.link_id,
         userId: linkOwnerId,
         orderId,
         flagType: 'self_referral',
-        severity: 'high',
+        severity: 'low',
         detail: { buyerId: order.user_id, linkOwnerId, clickId: click.id, ...(await purchaseDetail()) },
       });
-      return;
+      return true;
     }
 
     // VENDOR-INELIGIBILITY GUARD — the real enforcement (team decision
@@ -227,7 +232,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       // The sweep (item 3) still exists to catch links nobody ever tries to
       // use again.
       await autoDisableLink(service, click.link_id, `auto-disabled: link owner is ${ineligibleRole}, ineligible for affiliate commission`, null);
-      return;
+      return true;
     }
 
     // Tiered rate — based on the owner's CONFIRMED referrals as of right now.
@@ -242,7 +247,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       .select('tier, kyc_status')
       .eq('id', linkOwnerId)
       .maybeSingle();
-    if (owner?.kyc_status === 'rejected') return;
+    if (owner?.kyc_status === 'rejected') return true;
     const fullAffiliate = owner?.tier === 'kyc_verified' && owner?.kyc_status === 'approved';
     if (!fullAffiliate) {
       const startOfMonth = new Date();
@@ -255,7 +260,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         .gte('created_at', startOfMonth.toISOString())
         .in('click_id', (await service.from('affiliate_clicks').select('id').eq('link_id', click.link_id)).data?.map((row) => row.id) ?? []);
       const monthlyTotal = (monthlyRows ?? []).reduce((sum, row) => sum + Number(row.commission_amount), 0);
-      if (monthlyTotal >= LIMITED_MONTHLY_COMMISSION_CAP_RM || monthlyTotal + commission > LIMITED_MONTHLY_COMMISSION_CAP_RM) return;
+      if (monthlyTotal >= LIMITED_MONTHLY_COMMISSION_CAP_RM || monthlyTotal + commission > LIMITED_MONTHLY_COMMISSION_CAP_RM) return true;
     }
 
     const { data: attribution, error: attrErr } = await service
@@ -271,36 +276,29 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       .single();
 
     if (attrErr) {
-      // DUPLICATE-PAYOUT GUARD: 23505 = unique_violation on order_id. This
-      // order was already attributed by a previous call — not an error.
-      if (attrErr.code === '23505') {
-        await logFraudFlag(service, {
-          linkId: click.link_id,
-          userId: linkOwnerId,
-          orderId,
-          flagType: 'duplicate_attribution',
-          severity: 'medium',
-          detail: { clickId: click.id, orderId, pgErrorCode: attrErr.code, ...(await purchaseDetail()) },
-        });
-        return;
-      }
+      // DUPLICATE-PAYOUT GUARD: 23505 = unique_violation on order_id. Another
+      // run (the background job and the checkout page's call can overlap)
+      // attributed this order first. Expected, not abuse: no fraud flag, which
+      // would otherwise count against the affiliate's tier fraud rate.
+      if (attrErr.code === '23505') return true;
       throw attrErr;
     }
-    if (!attribution) return;
+    if (!attribution) return true;
 
     // CLAUDE-P4-EXTRAS.md Extra 3: fire-and-forget, never throws (see
     // lib/affiliate/notifications.ts's own header) — a notification failure
     // must not undo or mask the attribution that was just created above.
     await notifyCommissionEarned(service, { userId: linkOwnerId, amountRM: commission, attributionId: attribution.id as string });
 
-    // No wallet credit here anymore — see the Phase 2 note at the top of
-    // this file. The mw_ref cookie is still cleared (best-effort — it may
-    // not even be set if the click came from orders.affiliate_click_id):
-    // that's about preventing a second purchase in the same browser session
-    // from re-attributing off the same click, unrelated to when the wallet
-    // actually gets credited.
-    await tryClearClickIdCookie();
+    // No wallet credit here — see the Phase 2 note at the top of this file.
+    // The mw_ref cookie is deliberately NOT cleared (decision 2026-10-08,
+    // Docs/plans/2026-10-08-2216-server-side-referral-attribution.md): every
+    // purchase within the attribution window of the buyer's last click earns
+    // a commission, Shopee-style. The window is enforced by the expiry guard.
+    return true;
   } catch (error) {
+    // false = try again later (the paid-order job leaves the order unprocessed).
     console.error('[affiliate] onOrderPaid failed', error instanceof Error ? error.message : error);
+    return false;
   }
 }

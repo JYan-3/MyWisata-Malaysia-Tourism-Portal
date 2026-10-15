@@ -41,7 +41,7 @@ export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode, layout
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <h3 className="break-words font-bold text-foreground">{vendor.vendorName}</h3>
         {vendor.vendorKind === "event" && (
-          <span className="mt-1 inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">{t("ui.eventPartners.badge")}</span>
+          <span className="mt-1 inline-flex w-fit rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200">{t("ui.eventPartners.badge")}</span>
         )}
         {mode === "detail" && firstStall && <p className="mt-2 line-clamp-3 break-words text-sm leading-6 text-muted-foreground">{firstStall.stallDescription}</p>}
         {mode === "detail" && matchingStallNumbers.length > 0 && (

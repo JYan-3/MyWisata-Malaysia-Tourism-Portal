@@ -72,4 +72,11 @@ describe('getAffiliateAdminStats — tier resolution with all 4 signals', () => 
     const stats = await getAffiliateAdminStats(makeService(fixture));
     expect(stats.topEarners[0].tierName).toBe('top');
   });
+
+  it('does not count buying through your own link toward the fraud rate', async () => {
+    const fixture = buildFixture();
+    fixture.fraudFlags = fixture.fraudFlags.map((flag) => ({ ...flag, flag_type: 'self_referral' }));
+    const stats = await getAffiliateAdminStats(makeService(fixture));
+    expect(stats.topEarners[0].tierName).toBe('top');
+  });
 });

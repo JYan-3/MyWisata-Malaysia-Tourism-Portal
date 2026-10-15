@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ function request(body: Record<string, unknown> = {}) {
   return new Request(`http://localhost/api/admin/withdrawals/${W_ID}/fraud-override`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.1' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ proofId: "12345678-1234-4234-8234-123456789abc", ...body }),
   });
 }
 
@@ -53,6 +54,13 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     const res = await POST(request({ reason: 'Manually reviewed and confirmed legitimate.' }), params());
     expect(res.status).toBe(401);
+  });
+
+  it.each([undefined, 'invalid-proof'])('rejects a missing or malformed financial proof: %s', async (proofId) => {
+    const res = await POST(request({ proofId, reason: 'Manually reviewed and confirmed legitimate.' }), params());
+    expect(res.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
   });
 
   it('returns 403 when caller is a Wallet Approver (not Super Admin)', async () => {
@@ -129,10 +137,10 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
     const body = await res.json();
     expect(body.data?.risk_level ?? body.risk_level).toBe('review');
     expect(mocks.rpc).toHaveBeenCalledWith(
-      'override_withdrawal_risk',
+      'authorize_staff_withdrawal_action',
       expect.objectContaining({
         p_withdrawal_id: W_ID,
-        p_reason: 'Manually reviewed and confirmed legitimate.',
+        p_payload: { reason: 'Manually reviewed and confirmed legitimate.', reasonCategory: 'other' },
       }),
     );
   });
@@ -144,7 +152,7 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
     });
     await POST(request({ reason: 'Manually reviewed and confirmed legitimate.' }), params());
     expect(mocks.rpc).toHaveBeenCalledWith(
-      'override_withdrawal_risk',
+      'authorize_staff_withdrawal_action',
       expect.objectContaining({ p_ip: '198.51.100.1' }),
     );
   });

@@ -43,7 +43,8 @@
     "Orders": "Orders",
     "Event Promos": "Event Promos",
     "Event Registrations": "Registrations",
-    "Announcements": "Announcements"
+    "Announcements": "Announcements",
+    "System Settings": "System Settings"
   },
   "navigationSections": {
     "workspace": "Workspace",
@@ -1451,6 +1452,43 @@
       "title": "Verified users",
       "count_one": "{{count}} accounts",
       "count_other": "{{count}} accounts"
+    },
+    "mfa": {
+      "title": "Verify your authenticator",
+      "description": "KYC review requires an authenticator code in addition to your sign-in.",
+      "start": "Set up or verify authenticator",
+      "working": "Please wait…",
+      "scan": "Scan this QR code with your own authenticator app, then enter its six-digit code. Keep the QR code private.",
+      "qrAlt": "Private authenticator setup QR code",
+      "code": "Six-digit authenticator code",
+      "verify": "Verify and continue",
+      "cancel": "Cancel setup",
+      "setupError": "Unable to start authenticator verification. Please retry or reload the page.",
+      "verifyError": "Verification failed. Enter a fresh code and try again.",
+      "cancelError": "Unable to cancel setup. Please try again.",
+      "recovery": "If you lose your authenticator, contact the project administrator for identity-checked recovery. Never send your QR code, secret or verification code to support."
+    },
+    "security": {
+      "title": "KYC security status",
+      "description": "Cleanup run records and document-access alerts. A queued notification does not confirm email delivery.",
+      "unavailable": "Unable to load security status. Reload to retry.",
+      "run": "Latest cleanup: {{status}}",
+      "counts": "Claimed {{claimed}} · Deleted {{purged}} · Failed {{failed}}",
+      "checked": "Monitor last checked: {{time}}",
+      "notChecked": "Not yet checked",
+      "pending": "{{count}} security alerts are waiting for an eligible recipient.",
+      "queued": "Notifications queued",
+      "notQueued": "Awaiting recipient",
+      "resolved": "Resolved",
+      "status": {
+        "running": "Running",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "none": "No run recorded"
+      },
+      "noEmailRecipients": "No eligible reviewer has a real email address. Configure a recipient before relying on email alerts.",
+      "pending_one": "{{count}} security alerts are waiting for an eligible recipient.",
+      "pending_other": "{{count}} security alerts are waiting for an eligible recipient."
     }
   },
   "reconciliation": {
@@ -1485,6 +1523,21 @@
       "affiliate": "Affiliate",
       "recommendation": "Recommendation",
       "platformNet": "Platform net"
+    },
+    "filters": {
+      "search": "Search order number",
+      "clear": "Clear filters",
+      "unknownStatus": "Other status",
+      "orderWithoutNumber": "Order number unavailable",
+      "noMatches": "No orders match these filters.",
+      "scope": "Financial filters apply to the table, totals and CSV. Figures reflect loaded settlement data.",
+      "count": "Showing {{shown}} of {{total}} loaded orders.",
+      "net": {
+        "all": "All net amounts",
+        "positive": "Positive",
+        "zero": "Zero",
+        "negative": "Negative"
+      }
     }
   },
   "payouts": {
@@ -2050,6 +2103,53 @@
       "title": "Wallet approvers",
       "userLabel": "Eligible user"
     },
+    "systemSettings": {
+      "eyebrow": "Platform controls",
+      "title": "System Settings",
+      "description": "Pause selected customer-facing operations during incidents or planned maintenance.",
+      "loading": "Loading system settings…",
+      "retry": "Try again",
+      "unsaved": "Unsaved changes",
+      "active": "Active",
+      "paused": "Paused",
+      "neverUpdated": "No changes recorded yet",
+      "unknownActor": "Unknown administrator",
+      "updated": "Last changed {{date}} by {{by}}",
+      "saved": "System settings saved and recorded.",
+      "controls": {
+        "title": "Platform controls",
+        "description": "Changes apply to new activity after they are saved."
+      },
+      "orders": {
+        "title": "Pause new customer orders",
+        "description": "Stops new cart, event reservation, and order-payment checkout attempts.",
+        "existing": "Existing orders remain available for payment confirmation, fulfilment, cancellation, refunds, and support."
+      },
+      "email": {
+        "title": "Pause custom email delivery",
+        "description": "Holds queued custom SMTP messages and pauses direct platform emails. Pending messages resume after delivery is re-enabled.",
+        "authExemption": "Supabase Auth verification and password recovery emails are unaffected. A message already being sent may finish."
+      },
+      "reasonLabel": "Reason for this change",
+      "reasonPlaceholder": "Describe the incident or maintenance reason (at least 10 characters).",
+      "impact": {
+        "title": "Change impact",
+        "description": "These controls are intended for temporary incidents and maintenance.",
+        "orders": "Order pause: prevents creating new customer orders; it does not cancel existing orders.",
+        "email": "Email pause: keeps queued messages pending and resumes them later.",
+        "audit": "Every save records the Super Admin, timestamp, previous values, new values, and reason."
+      },
+      "confirm": {
+        "title": "Confirm system settings change?",
+        "pauseDescription": "You are pausing at least one live operation. The change and your reason will be written to the audit log.",
+        "resumeDescription": "You are resuming at least one operation. The change and your reason will be written to the audit log."
+      },
+      "errors": {
+        "load": "Unable to load system settings.",
+        "save": "Unable to save system settings.",
+        "reason": "Enter a reason with at least 10 characters before saving."
+      }
+    },
     "walletSettings": {
       "audit": {
         "category": "Change category",
@@ -2163,6 +2263,69 @@
     },
     "loading": {
       "adminContent": "Loading admin content"
+    },
+    "platformFees": {
+      "eyebrow": "Vendors",
+      "title": "Platform fees",
+      "back": "Back to vendors",
+      "description": "Set what the platform charges vendors per item sold, by vendor tier, and the fixed fee for items sold at events.",
+      "loading": "Loading platform fees…",
+      "retry": "Try again",
+      "saved": "Platform fees saved. They apply to orders paid from now on.",
+      "perItem": "item",
+      "readOnly": "You can view these fees. Only a Super Admin can change them.",
+      "howItWorks": "Vendors move between tiers every night based on their last 90 days of sales. Changes apply to orders paid from now on; past orders keep the fee they were charged. The fee is always raised to cover any affiliate or recommendation payout on the order.",
+      "tiers": {
+        "title": "Vendor tiers",
+        "description": "Each tier charges either a percentage of each item's price or a fixed amount per item.",
+        "tier": "Tier {{rank}}",
+        "name": "Tier name",
+        "feeType": "Fee type",
+        "percent": "Percentage of item price",
+        "fixed": "Fixed amount per item",
+        "percentValue": "Fee (%)",
+        "fixedValue": "Fee per item (RM)",
+        "minSales": "Sales needed (last 90 days)",
+        "minSalesHint": "Vendors reach this tier once their 90-day sales reach this amount.",
+        "entryTier": "Every vendor starts here.",
+        "vendors": "{{count}} vendors in this tier",
+        "vendors_one": "{{count}} vendor in this tier",
+        "vendors_other": "{{count}} vendors in this tier",
+        "preview": "{{qty}} items at {{price}} → fee {{fee}} ({{label}})"
+      },
+      "events": {
+        "title": "Event fees",
+        "description": "Items ordered from an event page pay a fixed fee per item instead of the vendor's tier fee.",
+        "default": "Default event fee per item",
+        "defaultHint": "Leave blank to charge event items the vendor's tier fee.",
+        "useTier": "Use tier fee",
+        "useDefault": "Use default",
+        "none": "No current events.",
+        "campaignFee": "Fee per item for {{title}}"
+      },
+      "reasonLabel": "Reason for this change",
+      "reasonPlaceholder": "Explain why the fees are changing (at least 10 characters).",
+      "confirm": {
+        "title": "Save platform fees?",
+        "description": "New fees apply to orders paid from now on. Past orders are not re-priced."
+      },
+      "errors": {
+        "load": "Unable to load platform fees.",
+        "save": "Unable to save platform fees.",
+        "invalid": "Fill in every tier's name and fee with a number of 0 or more.",
+        "percentTooHigh": "A percentage fee must be below 100%.",
+        "thresholdOrder": "Tier 1 starts at RM0, and each higher tier needs more sales than the one before.",
+        "reason": "Enter a reason of at least 10 characters before saving."
+      },
+      "drawer": {
+        "title": "Platform fee",
+        "current": "Current tier",
+        "sales": "Sales (last 90 days)",
+        "pin": "Tier assignment",
+        "bySales": "Automatic (by sales)",
+        "pinTo": "Always {{name}}",
+        "error": "Unable to load this vendor's platform fee."
+      }
     }
   },
   "actions": {
@@ -2174,6 +2337,14 @@
   "email": {
     "draft": {
       "advisory": "AI drafts the message below — edit anything before sending.",
+      "recipientLanguage": "Recipient language: {{language}}",
+      "languageUnavailable": "Enter a valid recipient email to check their saved language.",
+      "languageReview": "Review the subject and message in the recipient’s language. Changing the address keeps your edits; regenerate the draft if needed. No saved preference uses English.",
+      "languages": {
+        "en": "English",
+        "zh-CN": "Chinese",
+        "ms": "Malay"
+      },
       "close": "Close",
       "recipient": "Recipient email",
       "recipientPlaceholder": "vendor@example.com",
@@ -3137,7 +3308,7 @@
       "description": "Full description",
       "startsAt": "First date",
       "endsAt": "Last date",
-      "operatingHours": "Daily operating hours",
+      "operatingHours": "Default hours for new locations",
       "operatingHoursFrom": "Opens each day",
       "operatingHoursTo": "Closes each day",
       "timezone": "Dates and daily hours use Malaysia time (UTC+08:00).",
@@ -3146,10 +3317,41 @@
       "poster": "Event poster",
       "choosePoster": "Choose image",
       "removePoster": "Remove poster",
-      "saveChanges": "Publish changes",
+      "saveChanges": "Save draft changes",
       "saveDraft": "Publish event",
       "cancelEdit": "Cancel editing",
-      "changesSaved": "Changes saved."
+      "changesSaved": "Changes saved.",
+      "saveOnly": "Save draft",
+      "draftSaved": "Draft saved. It is not published.",
+      "published": "Event published.",
+      "savedRecovery": "Your saved event is retained. Continue from this form or the event list.",
+      "pendingRecovery": "The event was submitted. Complete publication with Publish event; editing is locked until this step finishes.",
+      "unsaved": "Unsaved changes",
+      "discardConfirm": "Discard the unsaved form changes?",
+      "completeChecklist": "Complete the missing items before publishing. You can save complete basic information as a draft without a poster or location.",
+      "checklistTitle": "Ready to publish?",
+      "checkDone": "Ready: {{item}}",
+      "checkMissing": "Needed: {{item}}",
+      "rowNotReady": "Add a poster and an active location that has not ended before publishing.",
+      "slugHint": "Use 3–120 lowercase letters, numbers or hyphens, for example november-market. Page preview:",
+      "defaultsHint": "These hours only prefill newly added locations. Customers use each saved location’s hours; existing locations are not changed.",
+      "previewPoster": "Preview event poster",
+      "checks": {
+        "basics": "Complete basic information and valid dates",
+        "poster": "Event poster uploaded",
+        "location": "An active location within the event dates that has not ended",
+        "savedLocations": "All open location forms saved or cancelled"
+      },
+      "fieldErrors": {
+        "title": "Enter a title of 3–120 characters.",
+        "slug": "Use 3–120 lowercase letters, numbers and single hyphens.",
+        "summary": "Enter a short description of 10–240 characters.",
+        "description": "Enter a description of 10–5,000 characters.",
+        "startsAt": "Choose a valid first date.",
+        "endsAt": "Choose a last date on or after the first date.",
+        "posterUrl": "Choose a valid event poster.",
+        "operatingHours": "Set valid default opening and closing times."
+      }
     },
     "locations": {
       "changeReason": "Reason for the change",
@@ -3194,7 +3396,7 @@
       "opensAt": "Opens",
       "closesAt": "Closes",
       "pin": "Map pin",
-      "pinHint": "Drag the marker to the exact spot (optional).",
+      "pinHint": "No location selected on the map. Search for the venue or explicitly place a pin (optional).",
       "pinSet": "Pinned at {{latitude}}, {{longitude}}",
       "clearPin": "Clear pin",
       "addressTba": "Address to be announced",
@@ -3225,14 +3427,26 @@
       "applicationsCloseAt": "Applications close (Malaysia time)",
       "approvalsCloseAt": "Approvals close (Malaysia time)",
       "setupStartsAt": "Setup starts (Malaysia time)",
-      "intakeScheduleHint": "Applications close → approvals close → setup starts → first opening. Closing applications does not pause customer reservations."
+      "intakeScheduleHint": "Applications close → approvals close → setup starts → first opening. Closing applications does not pause customer reservations.",
+      "placePin": "Place a pin, then drag to the exact venue",
+      "placeHeading": "1. Venue and map",
+      "scheduleHeading": "2. Dates and daily hours",
+      "intakeHeading": "3. Vendor applications and preparation",
+      "missingFields": "Complete or correct: {{fields}}"
     },
     "list": {
       "title": "Event workflow",
       "description": "{{count}} events in the current list",
       "description_one": "{{count}} event in the current list",
       "description_other": "{{count}} events in the current list",
-      "rejection": "Review note"
+      "rejection": "Review note",
+      "search": "Search event title or page address",
+      "statusFilter": "Approval status",
+      "scheduleLabel": "Operating schedule",
+      "dateFrom": "Overlaps from",
+      "dateTo": "Overlaps through",
+      "noMatches": "No events match these filters",
+      "scheduleLine": "Operating schedule: {{status}}"
     },
     "states": {
       "loading": "Loading events…",
@@ -3272,6 +3486,13 @@
       "save": "Could not save this event draft.",
       "transition": "Could not update this event.",
       "upload": "Unable to upload the poster."
+    },
+    "schedule": {
+      "unconfigured": "No active location",
+      "upcoming": "Not started",
+      "operating": "Open now",
+      "between_sessions": "Between opening sessions",
+      "ended": "Ended"
     }
   },
   "eventRegistrations": {
@@ -3469,5 +3690,128 @@
       "pauseSuccess": "Promotion paused — hidden from customers.",
       "resumeSuccess": "Promotion published — visible to customers again."
     }
+  },
+  "eventOperations": {
+    "pickupOverdue": "Pickup date passed — outcome unconfirmed",
+    "pickupHelp": "An uncollected order is not automatically a customer no-show. Review the items and contact evidence before closing. Amounts under review are not approved refund amounts.",
+    "refreshPickups": "Refresh overdue pickups",
+    "resolvePickup": "Close after verified pickup / refund",
+    "confirmNoShow": "Confirm customer no-show — close without refund",
+    "noShowNote": "Explain the verified customer no-show and contact evidence (20–500 characters).",
+    "resolveNote": "Explain the verified pickup or completed refund (5–500 characters).",
+    "noShowConfirm": "Confirm that the customer did not collect and no refund is required? This records closure without marking goods collected. Funds still require the waiting period and all other release checks.",
+    "resolutions": {
+      "customer_no_show": "Customer no-show verified; closed without refund",
+      "collected": "Recorded pickup verified",
+      "refunded": "Refund completion verified"
+    },
+    "title": "Event obligations needing attention",
+    "summary": "Open: {{open}} · Unassigned: {{unassigned}} · No deadline: {{undated}} · Overdue: {{overdue}} · Outstanding: {{amount}}",
+    "deadlineHelp": "Deadlines are for operator follow-up. Passing a deadline does not refund or close an order. Times use Malaysia time.",
+    "dueRequired": "Choose a future handling deadline.",
+    "conflict": "The record changed or the action is not permitted. Refresh and review it.",
+    "expiryJob": "Expired checkout cleanup",
+    "refundJob": "Event refund processing",
+    "neverRun": "No recorded run",
+    "running": "Running",
+    "failed": "Last run failed",
+    "stale": "No recent completed run",
+    "healthy": "Last run completed",
+    "empty": "No unresolved event obligations.",
+    "orderWithoutNumber": "Order awaiting display number",
+    "paymentException": "Payment received but reservation unavailable",
+    "refundAttention": "Refund needs attention",
+    "owner": "Responsible person",
+    "unassigned": "Not claimed",
+    "undated": "Deadline not set",
+    "overdue": "Overdue",
+    "reviewRefund": "Review refund",
+    "dueMalaysia": "Handling deadline (Malaysia time)",
+    "claim": "Claim / update my deadline",
+    "boundedList": "Showing the first 100 open cases. Totals include all open cases.",
+    "collectedRefundNote": "Explain why collected goods should be refunded.",
+    "collected": "Collected",
+    "uncollected": "Not collected",
+    "shortage": "Resolve shortage for this date",
+    "shortageReason": "Explain the confirmed shortage.",
+    "shortageConfirm": "Close new reservations for this listing/date and cancel {{orders}} affected orders ({{units}} units; {{amount}} paid)? Collected and unrelated orders are protected.",
+    "filters": {
+      "search": "Search exception order number",
+      "globalScope": "Overview covers all open exceptions. Filters below apply to the exception list and matching outstanding amount.",
+      "matching": "{{count}} matching exceptions · Outstanding {{amount}}",
+      "noMatches": "No exceptions match these filters.",
+      "refundConfirmed": "Refund completion verified",
+      "closureRecorded": "Lifecycle closure recorded",
+      "page": "Page {{page}} of {{pages}}",
+      "previous": "Previous",
+      "next": "Next",
+      "labels": {
+        "caseKind": "Exception type",
+        "caseHandling": "Handling state",
+        "caseOwner": "Responsibility",
+        "caseDeadline": "Deadline"
+      },
+      "caseKind": {
+        "pickup_overdue": "Pickup date passed — outcome unconfirmed",
+        "all": "All types",
+        "payment_unfulfillable": "Paid but unable to fulfil",
+        "refund_attention": "Refund requires attention"
+      },
+      "caseHandling": {
+        "open": "Open",
+        "needs_review": "Needs review",
+        "awaiting_provider": "Awaiting payment provider",
+        "refund_failed": "Refund failed",
+        "resolved": "Closed",
+        "all": "All handling states"
+      },
+      "caseOwner": {
+        "all": "All reviewers",
+        "unassigned": "Unassigned",
+        "mine": "Assigned to me",
+        "others": "Assigned to another reviewer"
+      },
+      "caseDeadline": {
+        "all": "All deadlines",
+        "overdue": "Overdue",
+        "upcoming": "Not yet due",
+        "undated": "No deadline"
+      },
+      "matching_one": "{{count}} matching exceptions · Outstanding {{amount}}",
+      "matching_other": "{{count}} matching exceptions · Outstanding {{amount}}"
+    }
+  },
+  "passkey": {
+    "title": "Staff security verification",
+    "description": "Use your registered device to verify with face recognition, fingerprint or device PIN. Your biometric data stays on your device.",
+    "verify": "Verify Passkey",
+    "verifyAndConfirm": "Verify and confirm",
+    "working": "Verifying…",
+    "grantLabel": "One-time enrollment code",
+    "deviceLabel": "Device name",
+    "defaultDevice": "My device",
+    "register": "Register a device",
+    "registered": "Device registered. Verify your Passkey to continue.",
+    "enrollmentRequired": "Ask an authorized administrator for a one-time enrollment code. If setup is cancelled, request a new code.",
+    "passwordRequired": "Sign in with your account password before verifying your device.",
+    "passwordLogin": "Return to password login",
+    "manage": "Security and devices",
+    "remove": "Remove device",
+    "recovery": "Register a backup device. If all devices are lost, contact an authorized administrator for identity-checked recovery.",
+    "rateLimited": "Too many attempts. Wait a few minutes before trying again.",
+    "unsupported": "This browser or connection does not support Passkeys. Use a compatible device and a secure connection.",
+    "retryRequired": "The device or withdrawal details changed. Reload the page and verify again.",
+    "unavailable": "Security verification is unavailable. Contact an administrator before continuing.",
+    "failed": "Verification was cancelled or failed. Please try again."
+  },
+  "staffMfa": {
+    "eyebrow": "Staff security",
+    "title": "Verify your authenticator",
+    "description": "Your staff account requires an authenticator code before opening the admin tools."
+  },
+  "security": {
+    "eyebrow": "Account security",
+    "title": "Verify your authenticator",
+    "description": "Admin access needs a code from your authenticator app as well as your password."
   }
 }

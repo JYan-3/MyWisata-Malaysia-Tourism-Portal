@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from "../errors";
 
 describe("checkout error handling", () => {
+  it("maps a platform order pause to a temporary checkout response", () => {
+    expect(getCheckoutErrorCode("new_orders_paused")).toBe("NEW_ORDERS_PAUSED");
+    expect(getCheckoutErrorMessage("new_orders_paused")).toContain("temporarily unavailable");
+  });
   it("maps the atomic booking capacity error to an actionable message", () => {
     expect(getCheckoutErrorCode("booking_capacity_unavailable")).toBe("BOOKING_CAPACITY_UNAVAILABLE");
     expect(getCheckoutErrorMessage("booking_capacity_unavailable")).toContain("choose another available slot");

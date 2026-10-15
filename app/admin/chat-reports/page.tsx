@@ -490,7 +490,7 @@ export default function AdminChatReportsPage() {
                 </div>
                 {viewReport.details && <p className="text-xs bg-secondary rounded-lg p-2 text-foreground">&ldquo;{viewReport.details}&rdquo;</p>}
                 {viewReport.sameThreadReportCount > 1 && (
-                  <p className="text-xs text-amber-700">{t("chatReports.separateReports", { count: viewReport.sameThreadReportCount })}</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-200">{t("chatReports.separateReports", { count: viewReport.sameThreadReportCount })}</p>
                 )}
                 {viewReport.status !== "open" && (
                   <div className="rounded-lg bg-secondary p-2 text-xs">

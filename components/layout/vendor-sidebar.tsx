@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { PortalSidebar, type PortalSidebarSection } from '@/components/layout/portal-sidebar';
 import { getVendorNavigationSections } from '@/lib/vendor/navigation';
+import { legalNavItems } from '@/components/legal/legal-nav';
 
 export default function VendorSidebar() {
   const { t: tVendor } = useTranslation('vendor');
@@ -69,6 +70,10 @@ export default function VendorSidebar() {
       contextLabel={contextLabel}
       contextDetail={contextDetail}
       sections={navSections}
+      footerLinks={[
+        ...legalNavItems(tVendor).filter((item) => item.href !== '/legal/about'),
+        { href: '/help', label: tVendor('customer:legal.nav.help') },
+      ]}
       fixed
     />
   );

@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import type { WithdrawalListResponse } from '@/lib/wallet/withdrawal-review';
 import { WITHDRAWAL_REVIEW_STATUSES } from '@/lib/wallet/withdrawal-display';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
   if (search) {
     // PostgREST's `or` grammar treats commas and parentheses as operators;
     // strip them before interpolating the user-supplied search term.
-    const safeSearch = search.replace(/[(),]/g, '');
+    const safeSearch = postgrestSearchTerm(search);
     if (safeSearch) query = query.or(`users.full_name.ilike.%${safeSearch}%,users.email.ilike.%${safeSearch}%`);
   }
 

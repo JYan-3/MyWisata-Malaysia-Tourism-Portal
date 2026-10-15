@@ -1,3 +1,4 @@
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -8,6 +9,8 @@ export async function GET() {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return assuranceResponse;
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
   if (!roleNames.includes('super_admin')) {
@@ -17,35 +20,41 @@ export async function GET() {
   const service = createServiceClient();
   const { data, error } = await service
     .from('refunds')
-    .select('id,order_id,amount,reason,status,provider_refund_id,manual_reference,wallet_topup_sen,wallet_earnings_sen,external_amount_sen,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(display_id)')
+    .select('id,order_id,amount,reason,reason_code,status,provider_refund_id,manual_reference,wallet_topup_sen,wallet_earnings_sen,external_amount_sen,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(display_id)')
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
 
-  const refunds = (data ?? []).map((refund: any) => {
-    const payment = Array.isArray(refund.payments) ? refund.payments[0] : refund.payments;
-    const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
-    return {
-      id: refund.id,
-      orderId: refund.order_id,
-      orderNumber: order?.display_id ?? null,
-      amountRm: Number(refund.amount),
-      reason: refund.reason ?? null,
-      status: refund.status,
-      provider: payment?.provider ?? null,
-      method: payment?.method ?? null,
-      providerRefundId: refund.provider_refund_id ?? null,
-      manualReference: refund.manual_reference ?? null,
-      walletTopupSen: Number(refund.wallet_topup_sen ?? 0),
-      walletEarningsSen: Number(refund.wallet_earnings_sen ?? 0),
-      externalAmountSen: Number(refund.external_amount_sen ?? Math.round(Number(refund.amount) * 100)),
-      failureCode: refund.provider_failure_code ?? null,
-      failureMessage: refund.provider_failure_message ?? null,
-      attemptCount: refund.attempt_count ?? 0,
-      createdAt: refund.created_at,
-      updatedAt: refund.updated_at,
-    };
-  });
+  try {
+    const refunds = await Promise.all((data ?? []).map(async (refund: any) => {
+      const { data: evidence, error: evidenceError } = await service.rpc('get_event_refund_evidence', { p_refund: refund.id });
+      if (evidenceError) throw new Error('refund_evidence_unavailable');
+      const payment = Array.isArray(refund.payments) ? refund.payments[0] : refund.payments;
+      const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
+      return {
+        id: refund.id,
+        orderId: refund.order_id,
+        orderNumber: order?.display_id ?? null,
+        amountRm: Number(refund.amount),
+        reason: refund.reason ?? null,
+        reasonCode: refund.reason_code ?? null,
+        evidence,
+        status: refund.status,
+        provider: payment?.provider ?? null,
+        method: payment?.method ?? null,
+        providerRefundId: refund.provider_refund_id ?? null,
+        manualReference: refund.manual_reference ?? null,
+        walletTopupSen: Number(refund.wallet_topup_sen ?? 0),
+        walletEarningsSen: Number(refund.wallet_earnings_sen ?? 0),
+        externalAmountSen: Number(refund.external_amount_sen ?? Math.round(Number(refund.amount) * 100)),
+        failureCode: refund.provider_failure_code ?? null,
+        failureMessage: refund.provider_failure_message ?? null,
+        attemptCount: refund.attempt_count ?? 0,
+        createdAt: refund.created_at,
+        updatedAt: refund.updated_at,
+      };
+    }));
 
-  return apiOk({ refunds });
+    return apiOk({ refunds });
+  } catch { return apiFail('DB_ERROR', 'Unable to load refund evidence', 500); }
 }

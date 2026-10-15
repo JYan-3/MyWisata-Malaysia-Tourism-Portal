@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { LOCALE_COOKIE, resolveAppLocale } from '@/lib/i18n/locale';
+import { staffAssurance } from '@/lib/auth/staff-assurance';
+import { staffPasskeyEnforcementEnabled } from '@/lib/auth/staff-passkey-config';
+import { isStaffProtectedPath, staffMfaDestination, staffVerificationDestination } from '@/lib/auth/staff-route-boundaries';
 
 const localeCookieOptions = {
   path: '/',
@@ -8,6 +11,24 @@ const localeCookieOptions = {
   sameSite: 'lax' as const,
   secure: process.env.NODE_ENV === 'production',
 };
+
+const ADMIN_PAGE = /^\/admin(\/|$)/;
+const ADMIN_API = /^\/api\/admin(-ai)?(\/|$)/;
+const MFA_SETUP_PAGES = ['/admin/security', '/admin/kyc/mfa'];
+
+/**
+ * Staff surfaces need an authenticator-verified (aal2) session: admin pages
+ * redirect to the setup/verify page, admin APIs refuse. Signed-out requests are
+ * left to each route's own sign-in handling. The database role functions enforce
+ * the same rule for direct Supabase calls.
+ * Plan: Docs/plans/2026-10-14-1543-staff-two-factor-login.md
+ */
+export function adminAssuranceGate(pathname: string, claims: { sub?: unknown; aal?: unknown } | null | undefined): 'page' | 'api' | null {
+  if (typeof claims?.sub !== 'string' || !claims.sub || claims.aal === 'aal2') return null;
+  if (ADMIN_API.test(pathname)) return 'api';
+  if (ADMIN_PAGE.test(pathname) && !MFA_SETUP_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`))) return 'page';
+  return null;
+}
 
 /**
  * Keep the Supabase session cookie fresh before Next renders a page or calls a
@@ -68,7 +89,28 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   });
 
   forwardedHeaders.set('x-app-locale', locale);
-  const supabaseResponse = NextResponse.next({ request: { headers: forwardedHeaders } });
+  const gate = adminAssuranceGate(request.nextUrl.pathname, claims);
+  let supabaseResponse = gate === 'api'
+    ? NextResponse.json({ data: null, error: { code: 'MFA_REQUIRED', message: 'Authenticator verification required' } }, { status: 403 })
+    : gate === 'page'
+      ? NextResponse.redirect(new URL(staffMfaDestination(request.nextUrl.pathname + request.nextUrl.search), request.url))
+      : NextResponse.next({ request: { headers: forwardedHeaders } });
+  if (!gate && isStaffProtectedPath(request.nextUrl.pathname) && staffPasskeyEnforcementEnabled()) {
+    try {
+      const status = claims?.sub ? await staffAssurance(supabase) : null;
+      if (!status?.required || !status.verified) {
+        supabaseResponse = request.nextUrl.pathname.startsWith('/api/')
+          ? NextResponse.json({ data: null, error: { code: 'STAFF_PASSKEY_REQUIRED', message: 'Password and Passkey verification required' } }, { status: claims?.sub ? 403 : 401 })
+          : NextResponse.redirect(new URL(claims?.sub ? staffVerificationDestination(request.nextUrl.pathname + request.nextUrl.search) : '/login', request.url));
+      }
+    } catch {
+      supabaseResponse = request.nextUrl.pathname.startsWith('/api/')
+        ? NextResponse.json({ data: null, error: { code: 'AUTHORIZATION_UNAVAILABLE', message: 'Staff verification unavailable' } }, { status: 503 })
+        : NextResponse.redirect(new URL(staffVerificationDestination(request.nextUrl.pathname + request.nextUrl.search), request.url));
+    }
+    supabaseResponse.headers.set('Cache-Control', 'private, no-store');
+  }
+
 
   responseHeaders.forEach((value, key) => supabaseResponse.headers.set(key, value));
   pendingCookies.forEach(({ name, value, options }) =>

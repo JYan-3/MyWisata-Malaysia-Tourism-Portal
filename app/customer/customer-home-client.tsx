@@ -186,7 +186,7 @@ export function CustomerHomeClient({
   return (
     <div className="bg-background min-h-screen text-foreground pb-20">
       {/* 1. Hero Section */}
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary text-white lg:h-auto lg:min-h-0">
+      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary dark:bg-[#010066] text-white lg:h-auto lg:min-h-0">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_12%,rgba(255,204,0,0.2),transparent_24%),radial-gradient(circle_at_8%_85%,rgba(84,112,210,0.18),transparent_30%),linear-gradient(125deg,#020044_0%,#05083d_58%,#0a243b_100%)]" />
         <div className="atlas-ambient absolute left-[55%] top-20 -z-10 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
         <div className="atlas-ambient atlas-ambient-delayed absolute left-[58%] top-32 -z-10 h-56 w-56 rounded-full border border-white/10 sm:h-72 sm:w-72" />
@@ -250,10 +250,10 @@ export function CustomerHomeClient({
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <div className="flex items-center gap-1" aria-label={t("ui.home.destinationCarouselControls")}>
-                  <button type="button" onClick={() => scrollDestinations("previous")} aria-label={t("ui.map.previous")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
+                  <button type="button" onClick={() => scrollDestinations("previous")} aria-label={t("ui.map.previous")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 dark:hover:bg-card/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
                     <ChevronLeft size={16} />
                   </button>
-                  <button type="button" onClick={() => scrollDestinations("next")} aria-label={t("ui.map.next")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
+                  <button type="button" onClick={() => scrollDestinations("next")} aria-label={t("ui.map.next")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 dark:hover:bg-card/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
                     <ChevronRight size={16} />
                   </button>
                 </div>
@@ -283,7 +283,7 @@ export function CustomerHomeClient({
 
           <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/15 bg-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:mt-6">
             <h2 className="text-lg font-bold text-white">{t("ui.home.eventCalendar")}</h2>
-            <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
+            <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-white dark:hover:bg-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
           </div>
         </div>
       </section>

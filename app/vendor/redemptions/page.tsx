@@ -147,10 +147,10 @@ export default function VendorRedemptionsPage() {
             <ClipboardCheck size={16} />
             <span>{t('ui.redemptions.eyebrow', 'Store Redemptions')}</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground sm:text-3xl">
             {t('ui.redemptions.title', 'Redemptions & Scan Logs')}
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-muted-foreground">
             {t(
               'ui.redemptions.description',
               'Audit logs of in-store voucher redemptions and ticket admissions across all your outlets.',
@@ -163,7 +163,7 @@ export default function VendorRedemptionsPage() {
             type="button"
             onClick={() => loadRedemptions(page)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span>{t('actions.refresh', 'Refresh')}</span>
@@ -182,33 +182,33 @@ export default function VendorRedemptionsPage() {
 
       {/* KPI Cards */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">{t('ui.redemptions.totalRedemptions', 'Total Redemptions')}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">{stats.totalCount}</p>
-          <p className="mt-1 text-xs text-gray-400">{t('ui.redemptions.allTime', 'All recorded scans')}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.totalRedemptions', 'Total Redemptions')}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.totalCount}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.allTime', 'All recorded scans')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">{t('ui.redemptions.todayScans', "Today's Scans")}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.todayScans', "Today's Scans")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.todayCount}</p>
-          <p className="mt-1 text-xs text-gray-400">{t('ui.redemptions.redeemedToday', 'Redeemed today')}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.redeemedToday', 'Redeemed today')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">{t('ui.redemptions.vouchersUsed', 'Vouchers Redeemed')}</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.voucherCount}</p>
-          <p className="mt-1 text-xs text-gray-400">{t('ui.redemptions.storePromos', 'Store vouchers')}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.vouchersUsed', 'Vouchers Redeemed')}</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-300">{stats.voucherCount}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.storePromos', 'Store vouchers')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">{t('ui.redemptions.ticketsAdmitted', 'Tickets Admitted')}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.ticketsAdmitted', 'Tickets Admitted')}</p>
           <p className="mt-1 text-2xl font-bold text-[#b45309]">{stats.ticketCount}</p>
-          <p className="mt-1 text-xs text-gray-400">{t('ui.redemptions.checkedInGuests', 'Guest check-ins')}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.checkedInGuests', 'Guest check-ins')}</p>
         </div>
       </section>
 
       {/* Filter and Search Bar */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {/* Kind Filter Pills */}
-          <div className="inline-flex rounded-xl bg-gray-100 p-1 text-xs font-semibold">
+          <div className="inline-flex rounded-xl bg-gray-100 dark:bg-muted p-1 text-xs font-semibold">
             {(
               [
                 { value: 'all', label: t('ui.redemptions.filters.all', 'All Activity') },
@@ -224,7 +224,7 @@ export default function VendorRedemptionsPage() {
                   setPage(1);
                 }}
                 className={`rounded-lg px-3 py-1.5 transition ${
-                  kindFilter === item.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  kindFilter === item.value ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
                 }`}
               >
                 {item.label}
@@ -240,7 +240,7 @@ export default function VendorRedemptionsPage() {
                 setOutletFilter(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-9 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-xs font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
               {outlets.map((o) => (
@@ -254,7 +254,7 @@ export default function VendorRedemptionsPage() {
 
         {/* Search */}
         <div className="relative w-full sm:max-w-xs">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
           <input
             type="text"
             value={search}
@@ -263,20 +263,20 @@ export default function VendorRedemptionsPage() {
               setPage(1);
             }}
             placeholder={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
-            className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none placeholder:text-gray-400 focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-9 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card pl-9 pr-3 text-xs text-gray-800 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
       </section>
 
       {/* Main Table */}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500">
+          <div className="p-8 text-center text-sm text-gray-500 dark:text-muted-foreground">
             <RefreshCw size={24} className="mx-auto mb-2 animate-spin text-primary" />
             <p>{t('ui.redemptions.loading', 'Loading redemption records...')}</p>
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-sm text-red-600">
+          <div className="p-8 text-center text-sm text-red-600 dark:text-red-300">
             <p>{error}</p>
             <button
               type="button"
@@ -289,17 +289,17 @@ export default function VendorRedemptionsPage() {
         ) : records.length === 0 ? (
           <div className="p-12 text-center">
             <ClipboardCheck size={36} className="mx-auto text-gray-300" />
-            <h3 className="mt-3 text-base font-bold text-gray-900">
+            <h3 className="mt-3 text-base font-bold text-gray-900 dark:text-foreground">
               {t('ui.redemptions.emptyTitle', 'No redemption records found')}
             </h3>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">
               {t('ui.redemptions.emptyDescription', 'When customers redeem vouchers or check in tickets at your outlets, scan activity will appear here.')}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50/75 text-xs font-bold uppercase tracking-wider text-gray-500">
+              <thead className="border-b border-gray-100 dark:border-border bg-gray-50/75 dark:bg-muted/75 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3.5">{t('ui.redemptions.table.type', 'Type')}</th>
                   <th className="px-5 py-3.5">{t('ui.redemptions.table.item', 'Item & Code')}</th>
@@ -309,18 +309,18 @@ export default function VendorRedemptionsPage() {
                   <th className="px-5 py-3.5">{t('ui.redemptions.table.time', 'Time')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-gray-700">
+              <tbody className="divide-y divide-gray-100 dark:divide-border text-gray-700 dark:text-foreground">
                 {records.map((r) => (
-                  <tr key={r.id} className="transition hover:bg-gray-50/60">
+                  <tr key={r.id} className="transition hover:bg-gray-50/60 dark:hover:bg-muted/60">
                     {/* Type Badge */}
                     <td className="whitespace-nowrap px-5 py-4">
                       {r.kind === 'voucher' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
                           <TicketPercent size={13} />
                           <span>{t('ui.redemptions.kindVoucher', 'Voucher')}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-200">
                           <Ticket size={13} />
                           <span>{t('ui.redemptions.kindTicket', 'Ticket Pass')}</span>
                         </span>
@@ -329,7 +329,7 @@ export default function VendorRedemptionsPage() {
 
                     {/* Item & Code */}
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-gray-900">{r.item.name}</p>
+                      <p className="font-semibold text-gray-900 dark:text-foreground">{r.item.name}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="break-all font-mono text-xs font-bold text-primary">
                           {r.item.code || '—'}
@@ -339,26 +339,26 @@ export default function VendorRedemptionsPage() {
                             type="button"
                             onClick={() => copyToClipboard(r.item.code!, r.id)}
                             title={t('ui.vouchers.copyCode')}
-                            className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                            className="rounded p-1 text-gray-400 dark:text-muted-foreground transition hover:bg-gray-100 dark:hover:bg-muted hover:text-gray-700 dark:hover:text-foreground"
                           >
                             {copiedId === r.id ? (
-                              <Check size={12} className="text-emerald-600" />
+                              <Check size={12} className="text-emerald-600 dark:text-emerald-300" />
                             ) : (
                               <Copy size={12} />
                             )}
                           </button>
                         )}
-                        <span className="text-xs text-gray-400">· {r.item.details}</span>
+                        <span className="text-xs text-gray-400 dark:text-muted-foreground">· {r.item.details}</span>
                       </div>
                     </td>
 
                     {/* Outlet */}
                     <td className="px-5 py-4">
-                      <p className="flex items-center gap-1 font-medium text-gray-900">
+                      <p className="flex items-center gap-1 font-medium text-gray-900 dark:text-foreground">
                         <Store size={14} className="shrink-0 text-primary" />
                         <span>{r.outlet.name}</span>
                       </p>
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400 dark:text-muted-foreground">
                         <MapPin size={11} />
                         <span>{r.outlet.location}</span>
                       </p>
@@ -366,27 +366,27 @@ export default function VendorRedemptionsPage() {
 
                     {/* Customer */}
                     <td className="px-5 py-4">
-                      <p className="font-medium text-gray-900">{r.customer.name}</p>
-                      <p className="text-xs text-gray-400">{r.customer.email}</p>
+                      <p className="font-medium text-gray-900 dark:text-foreground">{r.customer.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-muted-foreground">{r.customer.email}</p>
                     </td>
 
                     {/* Verified By */}
                     <td className="px-5 py-4">
                       {r.staff ? (
                         <div>
-                          <p className="flex items-center gap-1 text-xs font-semibold text-gray-800">
+                          <p className="flex items-center gap-1 text-xs font-semibold text-gray-800 dark:text-foreground">
                             <Users size={12} className="text-primary" />
                             <span>{r.staff.name}</span>
                           </p>
-                          <p className="text-[11px] text-gray-400">{r.staff.email}</p>
+                          <p className="text-[11px] text-gray-400 dark:text-muted-foreground">{r.staff.email}</p>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">{t('ui.redemptions.selfService', 'Counter checkout')}</span>
+                        <span className="text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.selfService', 'Counter checkout')}</span>
                       )}
                     </td>
 
                     {/* Time */}
-                    <td className="whitespace-nowrap px-5 py-4 text-xs font-medium text-gray-500">
+                    <td className="whitespace-nowrap px-5 py-4 text-xs font-medium text-gray-500 dark:text-muted-foreground">
                       {new Date(r.redeemedAt).toLocaleString('en-MY', {
                         year: 'numeric',
                         month: 'short',
@@ -404,7 +404,7 @@ export default function VendorRedemptionsPage() {
 
         {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
             <span>
               {t('ui.pagination.pageOf', { page, total: totalPages }) || `Page ${page} of ${totalPages}`}
             </span>
@@ -413,7 +413,7 @@ export default function VendorRedemptionsPage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
+                className="rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
               >
                 {t('actions.previous', 'Previous')}
               </button>
@@ -421,7 +421,7 @@ export default function VendorRedemptionsPage() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
+                className="rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
               >
                 {t('actions.next', 'Next')}
               </button>

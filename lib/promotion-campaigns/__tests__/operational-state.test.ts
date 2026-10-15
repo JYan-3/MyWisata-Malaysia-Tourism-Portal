@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { getEventOperationalLabelKey } from '@/lib/promotion-campaigns/locations';
+import { getEventOperationalLabelKey, getAdminEventScheduleStatus } from '@/lib/promotion-campaigns/locations';
 
 describe('location based operational labels', () => {
+  it('separates approval from Malaysia operational dates and daily hours', () => {
+    const campaign = { starts_at: '2026-10-01T00:00:00+08:00', ends_at: '2026-10-20T23:59:59+08:00', locations: [{ status: 'active', starts_on: '2026-10-12', ends_on: '2026-10-13', opens_at: '10:00', closes_at: '18:00' }] };
+    expect(getAdminEventScheduleStatus(campaign, new Date('2026-10-12T09:00:00+08:00'))).toBe('upcoming');
+    expect(getAdminEventScheduleStatus(campaign, new Date('2026-10-12T10:00:00+08:00'))).toBe('operating');
+    expect(getAdminEventScheduleStatus(campaign, new Date('2026-10-12T18:00:00+08:00'))).toBe('between_sessions');
+    expect(getAdminEventScheduleStatus(campaign, new Date('2026-10-13T18:00:00+08:00'))).toBe('ended');
+    expect(getAdminEventScheduleStatus({ ...campaign, locations: [{ ...campaign.locations[0], status: 'cancelled' }] }, new Date('2026-10-12T11:00:00+08:00'))).toBe('unconfigured');
+  });
   it('shows a break between sessions even within the overall event dates', () => {
     expect(getEventOperationalLabelKey({ visibility: 'live', operationalStatus: 'between_sessions' })).toBe('ui.promotionCampaigns.betweenSessions');
   });

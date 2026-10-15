@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { withdrawalProofFailure } from '@/lib/wallet/withdrawal-authorization';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
 import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
@@ -10,6 +11,7 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 export const dynamic = 'force-dynamic';
 
 const approveSchema = z.object({
+  proofId: z.string().uuid(),
   note: z.string().trim().min(10).max(500),
   reasonCategory: z.string().trim().min(1),
 }).strict();
@@ -47,15 +49,18 @@ export async function POST(
     );
   }
 
-  const { data: approvalResult, error: approvalError } = await db.rpc('approve_wallet_withdrawal', {
+  const { data: approvalResult, error: approvalError } = await db.rpc('authorize_staff_withdrawal_action', {
     p_withdrawal_id: withdrawalId,
-    p_note: note,
+    p_action: 'approve',
+    p_proof_id: parsed.data.proofId,
+    p_payload: { note: validated.data.reason, reasonCategory: validated.data.reasonCategory },
     p_ip: requestIp(request),
-    p_reason_category: validated.data.reasonCategory,
   });
 
   if (approvalError) {
     const message = approvalError.message ?? '';
+    const proofFailure = withdrawalProofFailure(message);
+    if (proofFailure) return proofFailure;
     if (message.includes('approver_required') || message.includes('withdrawal_permission_required')) return apiFail('FORBIDDEN', 'Withdrawal approval permission required', 403);
     if (message.includes('self_dealing')) return apiFail('SELF_DEALING', 'You cannot approve your own withdrawal. Ask another Approver or Super Admin to process it.', 403);
     if (message.includes('withdrawal_not_found')) return apiFail('NOT_FOUND', 'Withdrawal not found', 404);

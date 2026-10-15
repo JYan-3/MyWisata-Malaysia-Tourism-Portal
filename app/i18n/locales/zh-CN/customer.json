@@ -109,6 +109,10 @@
     "recommendVendor": {
       "label": "推荐商家",
       "description": "分享本地发现"
+    },
+    "privacyTerms": {
+      "label": "隐私与条款",
+      "description": "隐私政策、服务条款与您的数据"
     }
   },
   "categories": {
@@ -1229,7 +1233,11 @@
       "button_other": "结账（{{count}} 项）",
       "nothingToCheckout": "您的行程中还没有可购买的项目。",
       "allNeedSlot": "您已安排的行程在计划当天都没有可预订的时段 — 请先在各活动页面选择时段。",
-      "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。"
+      "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。",
+      "unavailable": "{{names}} 无法在行程规划中购买，请打开其页面查看可选项。",
+      "addFailed": "无法将 {{name}} 加入购物车。之前已加入的项目仍在购物车中。",
+      "buy_one": "购买 {{count}} 项",
+      "buy_other": "购买 {{count}} 项"
     },
     "preferencesPage": {
       "eyebrow": "偏好",
@@ -2893,7 +2901,28 @@
       "linkHint": "分享此链接——当有人点击并完成预订时，您将获得佣金。",
       "generating": "正在生成…",
       "generateLink": "生成我的链接",
-      "totalEarnings": "总收益"
+      "totalEarnings": "总收益",
+      "earnings": {
+        "viewAll": "查看全部收益",
+        "backToDashboard": "返回赚取与分享",
+        "allTitle": "全部收益",
+        "allDescription": "来自您推广链接的每一笔佣金。所选时间段会同时筛选列表和下载内容。",
+        "download": "下载收益（CSV）",
+        "exporting": "正在导出…",
+        "exportFailed": "无法导出收益，请重试。",
+        "referral": "推荐",
+        "order": "订单 {{amount}}",
+        "cleared": "已转入钱包",
+        "pendingToday": "待结算 · 今天结算",
+        "pendingIn_other": "待结算 · {{count}} 天后结算",
+        "pendingIn_one": "待结算 · {{count}} 天后结算",
+        "pendingIn": "待结算 · {{count}} 天后结算",
+        "reversed": "已撤销 — 订单已取消或退款",
+        "rejected": "审核未通过",
+        "latest": "显示最新 {{shown}} 条，共 {{total}} 条",
+        "noneInRange": "此时间段内暂无收益。",
+        "period": "时间段"
+      }
     },
     "tripPlanner": {
       "scheduledFor": "安排于 {{date}}",
@@ -3069,6 +3098,25 @@
           "windGust": "阵风最高 {{speed}}",
           "uvIndex": "紫外线指数 {{value}}"
         }
+      },
+      "longDayWarning": "当天行程需 {{duration}}，建议将部分站点移到其他日期。",
+      "longLeg": "这两个站点之间路程较长",
+      "addTime": "时间",
+      "overview": "总览",
+      "overviewEmpty": "暂无站点",
+      "noTime": "不设时间",
+      "slotFull": "已满",
+      "seatsLeft_one": "剩 {{count}} 位",
+      "seatsLeft_other": "剩 {{count}} 位",
+      "notAvailableThisDay": "当天不可预订",
+      "closedThisDay": "当天休息",
+      "pickDayFirst": "请先选择日期",
+      "loadingTimes": "正在加载时间…",
+      "timeProblem": {
+        "full": "该时段已满，请选择其他时间。",
+        "noSlot": "该时段已不再提供，请选择其他时间。",
+        "closed": "当天休息，请移到其他日期。",
+        "outsideHours": "该时间不在营业时间内，请选择营业时间内的时间。"
       }
     },
     "paymentSimulator": {
@@ -3418,7 +3466,8 @@
       "terms": "条款",
       "data": "数据与 KYC",
       "about": "关于",
-      "help": "帮助中心"
+      "help": "帮助中心",
+      "footerLabel": "法律与帮助"
     },
     "privacy": {
       "title": "隐私政策",
@@ -3554,5 +3603,24 @@
     "requestFailed": "暂时无法申请链接，请稍后再试。",
     "opening": "正在打开订单…",
     "eventHint": "确认前请检查邮箱。我们会发送收据和私人订单链接。"
+  },
+  "footer": {
+    "ariaLabel": "网站页脚",
+    "groups": {
+      "support": "支持",
+      "discover": "探索",
+      "partners": "合作伙伴",
+      "legal": "条款与隐私",
+      "about": "关于"
+    },
+    "links": {
+      "contactSupport": "联系客服",
+      "tripPlanner": "行程规划",
+      "vouchers": "优惠券与优惠",
+      "vendorLogin": "商家登录",
+      "privacyPolicy": "隐私政策",
+      "termsOfService": "服务条款",
+      "aboutUs": "关于 MyLawatan"
+    }
   }
 }

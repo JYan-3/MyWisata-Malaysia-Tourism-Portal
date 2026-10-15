@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Download, Gift, Link2, Megaphone, Share2, Wallet } from "lucide-react";
+import { Copy, Gift, Link2, Megaphone, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { sanitizeCampaign } from "@/lib/affiliate/campaign";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
@@ -17,6 +17,7 @@ import { AffiliateCopilotCard } from "@/components/customer/affiliate-copilot-ca
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
 import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
 import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
+import { AffiliateEarningsHistory } from "@/components/customer/affiliate-earnings-history";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import type { AffiliateCampaignStat, AffiliateCommission, AffiliateDailyClicks, AffiliateProductStat } from "@/lib/affiliate/stats";
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
-import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
 import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -61,37 +61,6 @@ export default function AffiliateDashboardPage() {
   // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1.
   const [campaignInput, setCampaignInput] = useState("");
   const [campaignCopied, setCampaignCopied] = useState(false);
-
-  // CLAUDE-P4-EXTRAS-2.md Extra 6.
-  const [exportRange, setExportRange] = useState<EarningsExportRange>("all");
-  const [exporting, setExporting] = useState(false);
-
-  async function downloadEarnings() {
-    if (exporting) return;
-    if (!gate("affiliate.earn_commission", "/customer/affiliate")) return;
-    setExporting(true);
-    try {
-      const res = await fetch(`/api/affiliate/earnings-export?range=${exportRange}`);
-      if (await gate.handleResponse(res, "/customer/affiliate")) return;
-      if (!res.ok) {
-        showFeedback("error", "Could not export earnings. Please try again.");
-        return;
-      }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mylawatan-affiliate-earnings.csv";
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = fileName;
-      anchor.click();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      showFeedback("error", "Could not export earnings. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  }
 
   async function loadStats() {
     try {
@@ -502,54 +471,7 @@ export default function AffiliateDashboardPage() {
         <AffiliateClicksChart data={stats.clicksByDay} />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-        <div className="px-4 py-2.5 bg-muted flex items-center justify-between flex-wrap gap-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{tCustomer("strictMigration.affiliate.earningsHistory")}</p>
-          <div className="flex items-center gap-2">
-            <select
-              value={exportRange}
-              onChange={(e) => setExportRange(e.target.value as EarningsExportRange)}
-              className="h-7 rounded-lg border border-border px-2 text-[0.6875rem] bg-background text-foreground"
-            >
-              <option value="month">{tCustomer("strictMigration.affiliate.thisMonth")}</option>
-              <option value="year">{tCustomer("strictMigration.affiliate.thisYear")}</option>
-              <option value="all">{tCustomer("strictMigration.affiliate.allTime")}</option>
-            </select>
-            <Button size="sm" variant="outline" className="h-7 text-[0.6875rem] px-2" onClick={downloadEarnings} disabled={exporting}>
-              <Download size={12} /> {exporting ? "Exporting…" : "Download earnings (CSV)"}
-            </Button>
-          </div>
-        </div>
-        <div className="divide-y divide-border">
-          {stats.commissions.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.noCommissions")}</p>
-          ) : (
-            stats.commissions.map((c) => (
-              <div key={c.id} className="px-4 py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="break-words whitespace-normal text-sm font-medium text-foreground">{c.productName ?? "Referral"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(c.createdAt).toLocaleDateString()}
-                    {c.orderAmount !== null && ` · order ${formatMYR(c.orderAmount)}`} · {tCustomer("strictMigration.affiliate.rate", { percent: (c.rate * 100).toFixed(0) })}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {c.status === "confirmed" && "Cleared to wallet"}
-                    {c.status === "pending" &&
-                      (c.clearsInDays === 0 ? "Pending · clears today" : `Pending · clears in ${c.clearsInDays} day${c.clearsInDays === 1 ? "" : "s"}`)}
-                    {c.status === "reversed" && "Reversed — order was cancelled or refunded"}
-                    {c.status === "rejected" && "Not approved after review"}
-                  </p>
-                </div>
-                <p
-                  className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
-                >
-                  {formatMYR(c.amount)}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      <AffiliateEarningsHistory commissions={stats.commissions} limit={5} viewAllHref="/customer/affiliate/earnings" returnPath="/customer/affiliate" />
       </CustomerPageShell>
     </>
   );

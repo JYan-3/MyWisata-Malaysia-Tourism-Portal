@@ -47,7 +47,7 @@ export function EventPartnersSection({ partners, featured = false }: { partners:
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-bold text-foreground">{partner.name}</p>
-                  <span className="mt-0.5 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">{t("ui.eventPartners.badge")}</span>
+                  <span className="mt-0.5 inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200">{t("ui.eventPartners.badge")}</span>
                 </div>
               </div>
               <p className="mt-4 flex items-start gap-1.5 text-xs leading-5 text-muted-foreground">
@@ -117,7 +117,7 @@ function FeaturedEventPartnerCard({ partner, locale }: { partner: EventPartner; 
           <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: partner.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(255,204,0,0.28),transparent_28%),linear-gradient(135deg,#010066,#172b72_58%,#2d5273)]">
-            <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-white/25 bg-white/10 text-2xl font-black text-white shadow-xl backdrop-blur-sm">
+            <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-white/25 bg-white/10 dark:bg-card/10 text-2xl font-black text-white shadow-xl backdrop-blur-sm">
               {visual.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={visual.logoUrl} alt="" className="h-full w-full object-contain p-2" />

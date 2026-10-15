@@ -74,7 +74,7 @@ const SOURCE_LABEL: Record<ConductFlag["source"], string> = {
 };
 
 const SEVERITY_STYLE: Record<ConductFlag["severity"], string> = {
-  medium: "bg-amber-100 text-amber-700",
+  medium: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-200",
   high: "bg-destructive/15 text-destructive",
 };
 

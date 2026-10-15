@@ -104,7 +104,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             )}
             <div className="min-w-0 p-5 sm:p-7 lg:flex lg:flex-col lg:justify-center">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${(campaign.operationalStatus ? campaign.operationalStatus === "operating" : campaign.visibility === "live") ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${(campaign.operationalStatus ? campaign.operationalStatus === "operating" : campaign.visibility === "live") ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
                   {t(getEventOperationalLabelKey(campaign))}
                 </span>
                 <CalendarDays size={14} className="ml-1 text-primary" />
@@ -130,7 +130,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
                 </section>
               )}
               {campaign.visibility === "upcoming" && (
-                <p className="mt-4 rounded-xl bg-amber-100/70 px-4 py-3 text-sm font-medium leading-5 text-amber-950">
+                <p className="mt-4 rounded-xl bg-amber-100/70 dark:bg-amber-500/15 px-4 py-3 text-sm font-medium leading-5 text-amber-950 dark:text-amber-200">
                   {t("ui.promotionCampaigns.upcomingNotice")}
                 </p>
               )}

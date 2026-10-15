@@ -11,6 +11,7 @@ import {
   Copy,
   ExternalLink,
   Filter,
+  Layers,
   Mail,
   MapPin,
   Package,
@@ -30,6 +31,9 @@ import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
+import Link from 'next/link';
+import { formatMYRFromSen } from '@/lib/i18n/format';
+import { feeLabel, type FeeTier } from '@/lib/vendor/fee-tiers';
 import { CreateEventVendorModal } from './create-event-vendor-modal';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -337,6 +341,9 @@ export default function AdminVendorsPage() {
           title={t('ui.vendors.title')}
           description={t('ui.vendors.description')}
           actions={<>
+            <Link href="/admin/vendors/platform-fees" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary">
+              <Layers size={16} /> {t('ui.platformFees.title')}
+            </Link>
             <button type="button" onClick={() => setEventVendorOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary">
               <Mail size={16} /> {t('ui.vendors.eventVendor.open')}
             </button>
@@ -431,7 +438,7 @@ export default function AdminVendorsPage() {
                   <th className="px-5 py-4 text-center">{t('ui.table.action')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-border">
                 {loading ? (
                   <tr><td colSpan={8} className="px-5 py-16 text-center text-sm text-muted-foreground">{t('ui.vendors.loading')}</td></tr>
                 ) : vendors.length === 0 ? (
@@ -445,7 +452,7 @@ export default function AdminVendorsPage() {
                       <td className="px-3 py-4 align-top">
                         <button type="button" onClick={() => setActiveVendor(vendor)} className="flex max-w-[290px] items-start gap-3 text-left">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-sm font-bold text-primary">{initials(vendor.name)}</div>
-                          <span className="min-w-0"><span className="block truncate font-bold text-foreground group-hover:text-primary">{vendor.name}</span>{vendor.kind === 'event' && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">{t('ui.vendors.eventVendor.badge')}</span>}<span className="mt-1 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">{vendor.id.slice(0, 8)}… <Copy size={11} /></span></span>
+                          <span className="min-w-0"><span className="block truncate font-bold text-foreground group-hover:text-primary">{vendor.name}</span>{vendor.kind === 'event' && <span className="mt-1 inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">{t('ui.vendors.eventVendor.badge')}</span>}<span className="mt-1 flex items-center gap-1 font-mono text-[11px] text-muted-foreground">{vendor.id.slice(0, 8)}… <Copy size={11} /></span></span>
                         </button>
                       </td>
                       <td className="px-3 py-4 align-top"><div className="flex items-start gap-2"><UserRound size={15} className="mt-0.5 shrink-0 text-muted-foreground" /><span><span className="block font-semibold text-foreground">{owner.full_name ?? t('ui.vendors.ownerUnnamed')}</span><span className="mt-1 block max-w-[210px] truncate text-xs text-muted-foreground">{owner.email ?? t('ui.vendors.noEmail')}</span></span></div></td>
@@ -535,12 +542,68 @@ function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedR
         <div className="rounded-2xl bg-muted p-4"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t('ui.vendors.drawer.id')}</p><div className="mt-2 flex items-center justify-between gap-3"><code className="truncate text-xs text-foreground">{vendor.id}</code><button type="button" onClick={onCopy} className="shrink-0 rounded-lg bg-card p-2 text-primary shadow-sm hover:bg-secondary" aria-label={t('ui.vendors.drawer.copyId')}><Copy size={15} /></button></div></div>
         <div><h3 className="mb-3 text-sm font-bold text-foreground">{t('ui.vendors.drawer.ownerVerification')}</h3><div className="flex items-center gap-3 rounded-xl border border-border p-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-bold text-primary">{initials(owner.full_name ?? t('ui.vendors.ownerUnnamed'))}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{owner.full_name ?? t('ui.vendors.ownerUnnamed')}</p><p className="truncate text-xs text-muted-foreground">{owner.email ?? t('ui.vendors.noEmail')}</p></div><span className="ml-auto shrink-0 text-right text-[11px] font-semibold text-muted-foreground">{t('ui.vendors.kyc')}<br /><span className={owner.kyc_status === 'approved' ? 'text-primary' : 'text-amber-700 dark:text-amber-400'}>{t(`ui.users.status.${owner.kyc_status ?? 'unverified'}`)}</span></span></div></div>
         <div><h3 className="mb-3 text-sm font-bold text-foreground">{t('ui.vendors.drawer.footprint')}</h3><div className="grid grid-cols-2 gap-3"><Metric icon={MapPin} label={t('ui.vendors.outletLabel')} value={countOf(vendor.outlets)} /><Metric icon={Package} label={t('ui.vendors.listingLabel')} value={countOf(vendor.products)} /></div></div>
-        <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.drawer.businessOnboarding')}</h3><dl className="divide-y divide-slate-100 rounded-xl border border-border text-sm"><DetailRow label={t('ui.vendors.details.businessType')} value={vendor.business_type?.replaceAll('_', ' ') ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.legalName')} value={onboarding?.legal_business_name ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.registration')} value={onboarding?.registration_number ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.contact')} value={onboarding?.contact_name ?? onboarding?.contact_email ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.onboarding')} value={onboarding?.status ?? t('ui.vendors.notStarted')} /><DetailRow label={t('ui.vendors.details.documents')} value={String(countOf(vendor.vendor_documents))} /><DetailRow label={t('ui.vendors.details.approvedOn')} value={vendor.approved_at ? format(new Date(vendor.approved_at), 'd MMM yyyy') : t('ui.vendors.notApproved')} /><DetailRow label={t('ui.vendors.details.reviewNote')} value={onboarding?.review_note ?? vendor.rejection_reason ?? t('ui.vendors.noNote')} /></dl></div>
+        <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.drawer.businessOnboarding')}</h3><dl className="divide-y divide-slate-100 dark:divide-border rounded-xl border border-border text-sm"><DetailRow label={t('ui.vendors.details.businessType')} value={vendor.business_type?.replaceAll('_', ' ') ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.legalName')} value={onboarding?.legal_business_name ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.registration')} value={onboarding?.registration_number ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.contact')} value={onboarding?.contact_name ?? onboarding?.contact_email ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.onboarding')} value={onboarding?.status ?? t('ui.vendors.notStarted')} /><DetailRow label={t('ui.vendors.details.documents')} value={String(countOf(vendor.vendor_documents))} /><DetailRow label={t('ui.vendors.details.approvedOn')} value={vendor.approved_at ? format(new Date(vendor.approved_at), 'd MMM yyyy') : t('ui.vendors.notApproved')} /><DetailRow label={t('ui.vendors.details.reviewNote')} value={onboarding?.review_note ?? vendor.rejection_reason ?? t('ui.vendors.noNote')} /></dl></div>
+        <VendorFeeTier vendorId={vendor.id} />
         {vendor.status === 'approved' && approvedRecs.length > 0 && <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.recommendations.title')}</h3><p className="mb-2 text-xs leading-5 text-muted-foreground">{t('ui.vendors.recommendations.description')}</p><div className="flex gap-2"><select value={selectedRecommendation} onChange={(event) => onSelectRecommendation(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-xs text-muted-foreground"><option value="">{t('ui.vendors.recommendations.select')}</option>{approvedRecs.map((recommendation) => <option key={recommendation.id} value={recommendation.id}>{recommendation.vendor_name}</option>)}</select><button type="button" onClick={onLinkRecommendation} disabled={linkingRecommendation || !selectedRecommendation} className="rounded-xl bg-secondary px-3 py-2.5 text-xs font-semibold text-primary disabled:opacity-40">{linkingRecommendation ? t('ui.vendors.recommendations.linking') : t('ui.vendors.recommendations.link')}</button></div></div>}
         {vendor.description && <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.details.description')}</h3><p className="rounded-xl bg-muted p-3 text-sm leading-6 text-muted-foreground">{vendor.description}</p></div>}
       </div>
       <div className="border-t border-border px-6 py-5"><div className="flex flex-wrap gap-2">{vendor.status === 'pending' && <><DrawerAction label={t('ui.vendors.actions.approveVendor')} icon={Check} onClick={() => onAction('approve')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label={t('ui.actions.requestInfo')} icon={Clipboard} onClick={() => onAction('request_information')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label={t('ui.actions.reject')} icon={XCircle} onClick={() => onAction('reject')} tone="danger" disabled={Boolean(actionBusy)} /></>}{vendor.status === 'approved' && !vendor.approval_email_sent_at && <DrawerAction label={t('ui.vendors.approvalEmail.send')} icon={Mail} onClick={onOpenApprovalEmail} tone="primary" disabled={Boolean(actionBusy)} />}{vendor.status === 'approved' && <DrawerAction label={t('ui.vendors.actions.suspendVendor')} icon={Archive} onClick={() => onAction('suspend')} tone="danger" disabled={Boolean(actionBusy)} />}{vendor.status === 'suspended' && <DrawerAction label={t('ui.vendors.actions.reactivateVendor')} icon={RefreshCw} onClick={() => onAction('unsuspend')} tone="primary" disabled={Boolean(actionBusy)} />}<button type="button" onClick={onClose} className="ml-auto rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted">{t('ui.actions.close')}</button></div></div>
     </aside>
+  </div>;
+}
+
+type VendorFee = { rank: number; pinnedRank: number | null; salesSen: number; tiers: FeeTier[] };
+
+function VendorFeeTier({ vendorId }: { vendorId: string }) {
+  const { t } = useTranslation('admin');
+  const [fee, setFee] = useState<VendorFee | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/admin/vendors/${vendorId}/fee-tier`, { cache: 'no-store' })
+      .then(async (response) => {
+        const body = await response.json() as { data?: VendorFee };
+        if (!active) return;
+        if (response.ok && body.data) setFee(body.data); else setFailed(true);
+      })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [vendorId]);
+
+  async function pin(value: string) {
+    if (!fee) return;
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/admin/vendors/${vendorId}/fee-tier`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinnedRank: value ? Number(value) : null }),
+      });
+      const body = await response.json() as { data?: Omit<VendorFee, 'tiers'> };
+      if (response.ok && body.data) setFee({ ...fee, ...body.data }); else setFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (failed) return <p className="text-xs text-destructive">{t('ui.platformFees.drawer.error')}</p>;
+  if (!fee) return null;
+  const tier = fee.tiers.find((row) => row.rank === (fee.pinnedRank ?? fee.rank));
+  return <div>
+    <h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.platformFees.drawer.title')}</h3>
+    <dl className="divide-y divide-slate-100 dark:divide-border rounded-xl border border-border text-sm">
+      <DetailRow label={t('ui.platformFees.drawer.current')} value={tier ? `${tier.name} · ${feeLabel(tier, (sen) => formatMYRFromSen(sen), t('ui.platformFees.perItem'))}` : '—'} />
+      <DetailRow label={t('ui.platformFees.drawer.sales')} value={formatMYRFromSen(fee.salesSen)} />
+    </dl>
+    <label className="mt-2 block text-xs text-muted-foreground">
+      <span className="mb-1 block">{t('ui.platformFees.drawer.pin')}</span>
+      <select value={fee.pinnedRank ?? ''} disabled={saving} onChange={(event) => void pin(event.target.value)} className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-xs text-muted-foreground">
+        <option value="">{t('ui.platformFees.drawer.bySales')}</option>
+        {fee.tiers.map((row) => <option key={row.rank} value={row.rank}>{t('ui.platformFees.drawer.pinTo', { name: row.name })}</option>)}
+      </select>
+    </label>
   </div>;
 }
 

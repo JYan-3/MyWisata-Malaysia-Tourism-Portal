@@ -219,7 +219,7 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
 
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">{t("ui.place.localNotes.guidance")}</p>
-              <span className={`text-xs ${body.length > 0 && body.length < 8 ? "font-semibold text-amber-600" : "text-muted-foreground"}`}>
+              <span className={`text-xs ${body.length > 0 && body.length < 8 ? "font-semibold text-amber-600 dark:text-amber-300" : "text-muted-foreground"}`}>
                 {body.length > 0 && body.length < 8
                   ? t("ui.place.localNotes.minCharWarning", { current: body.length })
                   : t("ui.place.localNotes.charCount", { current: body.length, max: 600 })}

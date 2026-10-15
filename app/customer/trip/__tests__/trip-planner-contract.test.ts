@@ -42,23 +42,36 @@ describe("trip planner workspace contract", () => {
     expect(plannerSource).toContain("const stopIdSet = new Set(trip.items.map((item) => item.experience_id ?? item.id));");
   });
 
-  it("keeps dated weather hints and the map available behind a simple toggle", () => {
+  it("keeps dated weather hints and gives the map its own column or tab", () => {
     expect(plannerSource).toContain("buildItineraryWeatherPlan");
     expect(plannerSource).toContain("useItineraryWeather");
     expect(plannerSource).toContain("TripWeatherHint");
     expect(plannerSource).toContain("TripWeatherItemMarker");
-    expect(plannerSource).toContain("aria-expanded={mapExpanded}");
-    expect(plannerSource).toContain("{mapExpanded &&");
     expect(plannerSource).toContain("<MapView pins={pins}");
-    expect(plannerSource).toContain("setMapExpanded(true)");
+    expect(plannerSource).toContain('(activePanel === "map" ? "flex" : "hidden")');
+    expect(plannerSource).toContain('setActivePanel("map")');
+    expect(plannerSource).not.toContain("mapExpanded");
   });
 
-  it("fits a compact, non-draggable 2D map to the selected day's route", () => {
+  it("fits the full-height, pannable map to the selected day's route", () => {
     expect(plannerSource).toContain("data-trip-route-map");
     expect(plannerSource).toContain("fitCoordinates={selectedRouteCoordinates}");
-    expect(plannerSource).toContain("disableNavigationGestures");
-    expect(plannerSource).toContain("h-44 overflow-hidden rounded-2xl");
+    expect(plannerSource).not.toContain("disableNavigationGestures");
     expect(plannerSource).toContain("data-trip-leg");
+  });
+
+  it("warns about unrealistic travel and lists every day in an overview", () => {
+    expect(plannerSource).toContain("LONG_DAY_TRAVEL_MIN");
+    expect(plannerSource).toContain("data-long-day-warning");
+    expect(plannerSource).toContain("data-long-leg");
+    expect(plannerSource).toContain("data-trip-overview");
+  });
+
+  it("labels the buy action with what checkout can actually add", () => {
+    expect(plannerSource).toContain("countTripPurchasableItems(trip.items, activitiesById)");
+    expect(plannerSource).toContain('tCustomer("ui.tripCheckout.buy", { count: purchasableCount })');
+    expect(plannerSource).toContain('tCustomer("ui.tripCheckout.addFailed"');
+    expect(plannerSource).toContain('tCustomer("ui.tripCheckout.unavailable"');
   });
 
   it("disables map navigation gestures while preserving route fitting and marker clicks", () => {
@@ -102,10 +115,10 @@ describe("trip planner workspace contract", () => {
 
   it("keeps panel controls usable when switching to the single-panel mobile view", () => {
     expect(plannerSource).toContain('plannerViews")}');
-    expect(plannerSource).toContain('(["ai", "itinerary", "places"] as const)');
+    expect(plannerSource).toContain('(["ai", "itinerary", "map", "places"] as const)');
     expect(plannerSource).toContain('aiCollapsed ? "flex xl:hidden" : "flex"');
     expect(plannerSource).toContain('placesCollapsed ? "flex xl:hidden" : "flex"');
-    expect(plannerSource).toContain("xl:grid-cols-[var(--planner-ai-width)_minmax(0,1fr)_var(--planner-places-width)]");
+    expect(plannerSource).toContain("xl:grid-cols-[var(--planner-ai-width)_minmax(360px,440px)_minmax(0,1fr)_var(--planner-places-width)]");
     expect(plannerSource).toContain("border-r border-border bg-card xl:flex");
   });
 
@@ -120,9 +133,10 @@ describe("trip planner workspace contract", () => {
     expect(plannerSource).toContain("const PLACES_PAGE_SIZE = 15");
   });
 
-  it("loads distance-enriched activities when a trip origin exists", () => {
-    expect(plannerSource).toContain("if (!near) return;");
-    expect(plannerSource).toContain('searchActivities({ category: null, near, sort: near ? "distance_asc" : "recommended" })');
+  it("loads distance-enriched activities around the start or the selected day's last stop", () => {
+    expect(plannerSource).toContain("const discoveryNear = near ?? (dayLastStop ?");
+    expect(plannerSource).toContain("if (!discoveryNear) return;");
+    expect(plannerSource).toContain('searchActivities({ category: null, near: discoveryNear, sort: discoveryNear ? "distance_asc" : "recommended" })');
   });
 
   it("reveals the map when a weather risk window is selected", () => {

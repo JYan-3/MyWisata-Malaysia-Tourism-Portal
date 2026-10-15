@@ -89,7 +89,7 @@ export function TripPlaceFilterPanel({
           <p className="flex items-center gap-2 text-xs font-bold text-foreground"><Clock3 size={15} className="text-muted-foreground" aria-hidden="true" />{t(`${key}.availability`)}</p>
           <button type="button" role="switch" aria-checked={filters.openNow} onClick={() => onChange({ openNow: !filters.openNow })} className="mt-2 flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
             {t(`${key}.openNow`)}
-            <span aria-hidden="true" className={`relative h-6 w-11 rounded-full transition ${filters.openNow ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${filters.openNow ? "left-6" : "left-1"}`} /></span>
+            <span aria-hidden="true" className={`relative h-6 w-11 rounded-full transition ${filters.openNow ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white dark:bg-card shadow transition ${filters.openNow ? "left-6" : "left-1"}`} /></span>
           </button>
         </div>
 

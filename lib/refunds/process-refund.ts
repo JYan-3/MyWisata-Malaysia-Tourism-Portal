@@ -36,6 +36,10 @@ export async function processRefund({ service, walletDb, refundId, actorId, note
   providerRefundOnly?: boolean;
 }): Promise<ProcessRefundResult> {
   void walletDb;
+  const { error: approvalError } = await service.rpc('assert_event_refund_review', { p_refund: refundId, p_actor: actorId });
+  if (approvalError) return { ok: false, code: 'REFUND_REVIEW_REQUIRED', message: 'Review current pickup evidence before issuing the refund', status: 409 };
+  const { error: fundingError } = await service.rpc('snapshot_order_refund_funding', { p_refund_id: refundId });
+  if (fundingError) return { ok: false, code: 'REFUND_FUNDING_INVALID', message: 'The original funds could not be verified', status: 409 };
   const { data } = await service.from('refunds').select('id,order_id,payment_id,amount,status,wallet_topup_sen,wallet_earnings_sen,external_amount_sen,payments(method,provider,provider_payment_id)').eq('id', refundId).maybeSingle();
   const refund = data as RefundRow | null;
   if (!refund) return { ok: false, code: 'NOT_FOUND', message: 'Refund request not found', status: 404 };

@@ -23,7 +23,7 @@ const accent = {
     subtitle: 'ranking.selling.subtitle',
     iconClass: 'text-primary',
     pillClass: 'bg-secondary text-primary ring-primary/10',
-    heroClass: 'border-primary/10 bg-gradient-to-br from-secondary via-white to-white',
+    heroClass: 'border-primary/10 bg-gradient-to-br from-secondary via-white dark:via-card to-white dark:to-card',
     rankClass: 'bg-primary text-white',
     barClass: 'bg-primary',
     hoverClass: 'hover:border-primary/20 hover:bg-secondary/40',
@@ -34,12 +34,12 @@ const accent = {
     eyebrow: 'ranking.rated.eyebrow',
     title: 'ranking.rated.title',
     subtitle: 'ranking.rated.subtitle',
-    iconClass: 'text-amber-600',
-    pillClass: 'bg-amber-50 text-amber-800 ring-amber-100',
-    heroClass: 'border-amber-100 bg-gradient-to-br from-amber-50 via-white to-white',
+    iconClass: 'text-amber-600 dark:text-amber-300',
+    pillClass: 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200 ring-amber-100',
+    heroClass: 'border-amber-100 dark:border-amber-500/30 bg-gradient-to-br from-amber-50 dark:from-amber-500/10 via-white dark:via-card to-white dark:to-card',
     rankClass: 'bg-amber-500 text-white',
     barClass: 'bg-amber-500',
-    hoverClass: 'hover:border-amber-200 hover:bg-amber-50/40',
+    hoverClass: 'hover:border-amber-200 dark:hover:border-amber-500/30 hover:bg-amber-50/40 dark:hover:bg-amber-500/10',
     linkLabel: 'ranking.rated.link',
   },
 } as const;
@@ -60,13 +60,13 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
     : kind === 'selling' ? t('ranking.selling.emptyInsight') : t('ranking.rated.emptyInsight');
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      <header className="border-b border-gray-100 p-6">
+    <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <header className="border-b border-gray-100 dark:border-border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400"><Icon size={14} className={style.iconClass} /> {t(style.eyebrow)}</div>
-            <h2 className="text-lg font-semibold text-gray-950">{t(style.title)}</h2>
-            <p className="mt-1 text-sm text-gray-500">{t(style.subtitle)}</p>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(style.eyebrow)}</div>
+            <h2 className="text-lg font-semibold text-gray-950 dark:text-foreground">{t(style.title)}</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t(style.subtitle)}</p>
           </div>
           <span className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${style.pillClass}`}>{periodLabel}</span>
         </div>
@@ -82,26 +82,26 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
               return (
                 <article key={`${item.name}-${index}`} className={`rounded-xl border px-3 py-3 transition ${isFirst ? style.heroClass : `border-transparent ${style.hoverClass}`}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isFirst ? style.rankClass : 'bg-gray-100 text-gray-500'}`}>{isFirst ? <Crown size={14} /> : `#${index + 1}`}</div>
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isFirst ? style.rankClass : 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground'}`}>{isFirst ? <Crown size={14} /> : `#${index + 1}`}</div>
                     <CompactThumbnail src={item.coverUrl} alt={item.name} kind="product" size={isFirst ? 'md' : 'sm'} />
                     <div className="min-w-0 flex-1">
-                      <p className={`truncate font-semibold text-gray-900 ${isFirst ? 'text-sm' : 'text-sm'}`}>{item.name}</p>
-                      <p className="mt-1 truncate text-xs text-gray-500">{item.outletName || (kind === 'selling' ? t('ranking.selling.unitsSold', { count: formatNumber((item as SellingItem).quantity, locale) }) : t('ranking.rated.travellerReviews', { count: formatNumber((item as RatedItem).reviews, locale) }))}</p>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className={`h-full rounded-full ${style.barClass}`} style={{ width: `${progress}%` }} /></div>
+                      <p className={`truncate font-semibold text-gray-900 dark:text-foreground ${isFirst ? 'text-sm' : 'text-sm'}`}>{item.name}</p>
+                      <p className="mt-1 truncate text-xs text-gray-500 dark:text-muted-foreground">{item.outletName || (kind === 'selling' ? t('ranking.selling.unitsSold', { count: formatNumber((item as SellingItem).quantity, locale) }) : t('ranking.rated.travellerReviews', { count: formatNumber((item as RatedItem).reviews, locale) }))}</p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-muted"><div className={`h-full rounded-full ${style.barClass}`} style={{ width: `${progress}%` }} /></div>
                     </div>
                     <div className="shrink-0 text-right">
-                      {kind === 'selling' ? <><p className="text-sm font-bold text-gray-950">{t('ranking.selling.sold', { count: formatNumber((item as SellingItem).quantity, locale) })}</p><p className="mt-1 text-[11px] text-gray-400">{formatMYR((item as SellingItem).revenue, locale, { minimumFractionDigits: 2 })}</p></> : <><p className="inline-flex items-center gap-1 text-sm font-bold text-amber-600"><Star size={14} fill="currentColor" />{formatNumber((item as RatedItem).rating, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p><p className="mt-1 text-[11px] text-gray-400">{t('ranking.rated.reviews', { count: formatNumber((item as RatedItem).reviews, locale) })}</p></>}
+                      {kind === 'selling' ? <><p className="text-sm font-bold text-gray-950 dark:text-foreground">{t('ranking.selling.sold', { count: formatNumber((item as SellingItem).quantity, locale) })}</p><p className="mt-1 text-[11px] text-gray-400 dark:text-muted-foreground">{formatMYR((item as SellingItem).revenue, locale, { minimumFractionDigits: 2 })}</p></> : <><p className="inline-flex items-center gap-1 text-sm font-bold text-amber-600 dark:text-amber-300"><Star size={14} fill="currentColor" />{formatNumber((item as RatedItem).rating, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p><p className="mt-1 text-[11px] text-gray-400 dark:text-muted-foreground">{t('ranking.rated.reviews', { count: formatNumber((item as RatedItem).reviews, locale) })}</p></>}
                     </div>
                   </div>
                 </article>
               );
             })}
           </div>
-        ) : <div className="px-4 py-10 text-center text-sm text-gray-400">{kind === 'selling' ? t('ranking.selling.empty') : t('ranking.rated.empty')}</div>}
+        ) : <div className="px-4 py-10 text-center text-sm text-gray-400 dark:text-muted-foreground">{kind === 'selling' ? t('ranking.selling.empty') : t('ranking.rated.empty')}</div>}
       </div>
 
-      <footer className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/60 px-6 py-4">
-        <p className="min-w-0 truncate text-xs text-gray-500"><span className="font-semibold text-gray-700">{t('ranking.insight')}</span> · {insight}</p>
+      <footer className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-6 py-4">
+        <p className="min-w-0 truncate text-xs text-gray-500 dark:text-muted-foreground"><span className="font-semibold text-gray-700 dark:text-foreground">{t('ranking.insight')}</span> · {insight}</p>
         <Link href={href} className={`inline-flex shrink-0 items-center gap-1 text-xs font-semibold ${style.iconClass} hover:underline`}>{t(style.linkLabel)} <ArrowRight size={14} /></Link>
       </footer>
     </section>

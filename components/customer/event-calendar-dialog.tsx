@@ -238,7 +238,7 @@ export function EventCalendarDialog({ open, onOpenChange }: { open: boolean; onO
             {isReady && <aside className="min-h-0 border-t border-border bg-card/70 p-5 sm:p-6 lg:border-l lg:border-t-0" aria-live="polite">
               {selectedEvent && selectedProps ? (
                 <article>
-                  <div className="relative mb-5 aspect-[16/10] overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-secondary to-amber-100">
+                  <div className="relative mb-5 aspect-[16/10] overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-secondary to-amber-100 dark:to-amber-500/15">
                     {selectedImage && selectedImage !== failedImage ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={selectedImage} alt={selectedEvent.title} onError={() => setFailedImage(selectedImage)} className="absolute inset-0 h-full w-full object-cover" />
@@ -250,7 +250,7 @@ export function EventCalendarDialog({ open, onOpenChange }: { open: boolean; onO
                       </div>
                     )}
                     {selectedImage && selectedImage !== failedImage && <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-slate-950/15" />}
-                    <button type="button" onClick={() => setSelectedEventId(null)} className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm transition hover:bg-white" aria-label={t("ui.home.closeEventDetails")}><X size={15} /></button>
+                    <button type="button" onClick={() => setSelectedEventId(null)} className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 dark:bg-card/95 text-slate-700 dark:text-foreground shadow-sm transition hover:bg-white dark:hover:bg-card" aria-label={t("ui.home.closeEventDetails")}><X size={15} /></button>
                     <h2 className="absolute bottom-4 left-4 right-4 text-xl font-bold leading-tight text-white drop-shadow-sm">{selectedEvent.title}</h2>
                   </div>
                   <div className="space-y-3 text-sm"><div className="flex gap-3"><CalendarDays size={17} className="mt-0.5 shrink-0 text-primary" /><span>{selectedProps.isAccommodation && <span className="font-semibold text-foreground">{t("ui.home.stayDate")}: </span>}{selectedProps.isAccommodation ? formatDate(selectedEvent.start, locale) : formatDateTime(selectedEvent.start, locale)}</span></div><div className="flex gap-3"><MapPin size={17} className="mt-0.5 shrink-0 text-primary" /><span>{selectedProps.outletName}</span></div><div className="flex gap-3"><Ticket size={17} className="mt-0.5 shrink-0 text-primary" /><span>{t("ui.home.spotsRemaining", { count: selectedProps.remainingCapacity })}</span></div></div>

@@ -1395,7 +1395,18 @@
       "clearsToday": "Ditahan · matang hari ini",
       "clearsInDays": "Ditahan · matang dalam {{count}} hari",
       "clearsInDays_one": "Ditahan · matang dalam {{count}} hari",
-      "clearsInDays_other": "Ditahan · matang dalam {{count}} hari"
+      "clearsInDays_other": "Ditahan · matang dalam {{count}} hari",
+      "perItem": "unit",
+      "feeMixed": "Yuran bercampur",
+      "feeFixed": "Yuran tetap setiap item",
+      "eventFee": "Acara",
+      "floorApplied": "Menampung bayaran rujukan",
+      "yourFee": "Yuran platform anda",
+      "tierSales": "Jualan anda dalam 90 hari terakhir: {{amount}}.",
+      "tierNext": "Jual {{amount}} lagi untuk mencapai {{tier}}.",
+      "tierTop": "Anda berada di peringkat tertinggi.",
+      "tierPinned": "Peringkat anda ditetapkan oleh pasukan platform.",
+      "feeRules": "Item yang dijual dari halaman acara menggunakan yuran setiap item acara itu. Jika pesanan datang melalui affiliate atau cadangan, yuran menampung bayaran tersebut."
     },
     "wallet": {
       "vendorFinance": "Kewangan vendor",

@@ -2,6 +2,7 @@ import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
 import { getAdminUserLabel } from "@/lib/admin/identity";
 import { createServiceClient } from "@/lib/supabase/service";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
+import { postgrestSearchTerm } from "@/lib/validation/postgrest-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
   }
 
   // PostgREST's OR filter uses punctuation as syntax. Keep the term literal.
-  const term = search.replace(/[%(),*]/g, " ").trim();
+  const term = postgrestSearchTerm(search);
   if (term.length < 2) return apiOk({ candidates: [] });
 
   const { data, error } = await createServiceClient()

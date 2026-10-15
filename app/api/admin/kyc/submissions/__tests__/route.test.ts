@@ -1,14 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
+  getClaims: vi.fn(async () => ({ data: { claims: { sub: '11111111-1111-4111-8111-111111111111', aal: 'aal2' } }, error: null })),
   rpc: vi.fn(),
   createServiceClient: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: mocks.getUser },
+    auth: { getUser: mocks.getUser, getClaims: mocks.getClaims },
     rpc: mocks.rpc,
   })),
 }));
@@ -20,12 +21,28 @@ vi.mock('@/lib/supabase/service', () => ({
 import { GET } from '../route';
 
 describe('GET /api/admin/kyc/submissions', () => {
+  // Exercise the existing KYC boundary against the explicit pre-rollout local mode.
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+  });
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({
       data: { user: { id: '11111111-1111-4111-8111-111111111111' } },
       error: null,
     });
+  });
+
+  it('denies AAL1 before loading any queue data', async () => {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.getClaims.mockResolvedValueOnce({ data: { claims: { sub: '11111111-1111-4111-8111-111111111111', aal: 'aal1' } }, error: null });
+    const response = await GET();
+    expect(response.status).toBe(403);
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 
   it('rejects callers without the KYC review capability before loading the queue', async () => {

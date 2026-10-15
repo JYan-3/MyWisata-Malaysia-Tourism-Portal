@@ -13,6 +13,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { resolveVendorScope, getVendorRevenueSignals, generateVendorRevenueActions } from '@/lib/vendor/revenue-assistant';
 import type { ChatLanguage } from '@/lib/chatbot/language';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 const VALID_LANGS: ChatLanguage[] = ['en', 'bm', 'zh'];
 
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
   const service = createServiceClient();
   const signals = await getVendorRevenueSignals(scope, service);
-  const result = await generateVendorRevenueActions(signals, lang);
+  const result = await generateVendorRevenueActions(signals, lang, await reserveAiQuota(request, 'vendor-revenue', user.id));
 
   return apiOk(result);
 }

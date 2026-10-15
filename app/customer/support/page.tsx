@@ -95,12 +95,12 @@ export default function CustomerSupportPage() {
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
 
-      {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
+      {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5 space-y-3">
         <p className="font-semibold text-foreground">{tCustomer("ui.support.contact")}</p>
         <p className="text-sm text-muted-foreground">{tCustomer("ui.support.reference")} {withdrawalId}</p>
         <input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
         <textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
-        {formError && <p role="alert" aria-live="assertive" className="text-sm text-red-600">{formError}</p>}
+        {formError && <p role="alert" aria-live="assertive" className="text-sm text-red-600 dark:text-red-300">{formError}</p>}
         <button type="submit" disabled={sending || !body.trim()} aria-busy={sending} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? tCustomer("ui.states.sending") : tCustomer("ui.support.sendInformation")}</button>
       </form>}
 

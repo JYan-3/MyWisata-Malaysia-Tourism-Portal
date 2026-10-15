@@ -1,11 +1,18 @@
 /// <reference types="vite/client" />
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// These fixtures represent an already verified staff session; this suite focuses
+// on the domain permission boundaries.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
+
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), service: vi.fn(),
   serviceFrom: vi.fn(), storage: vi.fn(), resolveVendor: vi.fn(),
 }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from, rpc: mocks.rpc }) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser, getClaims: async () => ({ data: { claims: { sub: 'actor', aal: 'aal2' } }, error: null }) }, from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.service }));
 vi.mock('@/lib/payments/simulator-config', () => ({ isPaymentSimulatorEnabled: () => true }));
 vi.mock('@/lib/demo/runtime', () => ({ isDemoToolRuntimeEnabled: () => true }));

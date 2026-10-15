@@ -305,7 +305,7 @@ export function ChatThreadPanel({
                 </span>
               )}
               {counterpart.badge && (
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                <span className="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-200">
                   {counterpart.badge}
                 </span>
               )}
@@ -377,7 +377,7 @@ export function ChatThreadPanel({
       )}
 
       {underReview && (
-        <p className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800 sm:px-7">
+        <p className="flex items-center gap-2 border-b border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-5 py-2 text-xs text-amber-800 dark:text-amber-200 sm:px-7">
           <Flag size={12} className="shrink-0" /> {t("ui.chat.underReview")}
         </p>
       )}

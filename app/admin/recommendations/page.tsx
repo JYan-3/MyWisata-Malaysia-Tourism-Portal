@@ -150,7 +150,7 @@ export default function AdminRecommendationsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-foreground">{r.name}</p><StatusBadge status={r.status} />
-                    {r.slaState !== "within_sla" && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{t(`ui.recommendations.sla.${r.slaState}`, { hours: r.ageHours })}</span>}
+                    {r.slaState !== "within_sla" && <span className="rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">{t(`ui.recommendations.sla.${r.slaState}`, { hours: r.ageHours })}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("ui.recommendations.contributorLine", { category: r.category, state: r.state, author: r.author.name })}</span><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>
                   <p className="mt-1 text-xs text-muted-foreground">{r.assignee ? t("ui.recommendations.assignedTo", { name: r.assignee.name }) : t("ui.recommendations.unassigned")}</p>

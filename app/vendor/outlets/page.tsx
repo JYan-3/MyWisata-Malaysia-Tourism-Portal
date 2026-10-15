@@ -155,23 +155,23 @@ export default function VendorOutletsPage() {
 
   if (managerShopMode && loading)
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white p-8 text-sm text-gray-500">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-8 text-sm text-gray-500 dark:text-muted-foreground">
         {t('ui.outlets.loadingShop')}
       </div>
     );
   if (managerShopMode && error)
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <div className="rounded-2xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
         {error}
       </div>
     );
   if (managerShopMode && !outlets[0])
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-        <h1 className="text-xl font-bold text-gray-950">
+      <div className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-6">
+        <h1 className="text-xl font-bold text-gray-950 dark:text-foreground">
           {t('ui.outlets.shopUnavailable')}
         </h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-gray-600 dark:text-muted-foreground">
           {t('ui.outlets.noAssignedOutlet')}
         </p>
       </div>
@@ -292,10 +292,10 @@ export default function VendorOutletsPage() {
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <MapPinned size={15} /> {t('ui.outlets.malaysiaNetwork')}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">
             {t('ui.outlets.title')}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
             {t('ui.outlets.description')}
           </p>
         </div>
@@ -365,7 +365,7 @@ export default function VendorOutletsPage() {
         />
       )}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           {error}
         </div>
       )}
@@ -374,12 +374,12 @@ export default function VendorOutletsPage() {
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
-              className="h-28 animate-pulse rounded-2xl bg-gray-100"
+              className="h-28 animate-pulse rounded-2xl bg-gray-100 dark:bg-muted"
             />
           ))}
         </div>
       ) : outlets.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100 bg-white px-6 py-16 text-center text-gray-400 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card px-6 py-16 text-center text-gray-400 dark:text-muted-foreground shadow-sm">
           <Store className="mx-auto mb-3 opacity-30" size={34} />
           <p className="text-sm">{t('ui.outlets.noMatches')}</p>
           <button
@@ -392,7 +392,7 @@ export default function VendorOutletsPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500 dark:text-muted-foreground">
             <span>
               {t('ui.outlets.resultCount', {
                 count: pagination.total.toLocaleString(),
@@ -401,7 +401,7 @@ export default function VendorOutletsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <span>{t('ui.outlets.perPage', { count: 10 })}</span>
               {isOwner && (
-                <label className="inline-flex items-center gap-2 font-semibold text-gray-700">
+                <label className="inline-flex items-center gap-2 font-semibold text-gray-700 dark:text-foreground">
                   <input
                     type="checkbox"
                     aria-label={t('ui.outlets.selectCurrentPage')}
@@ -426,7 +426,7 @@ export default function VendorOutletsPage() {
             {outlets.map((outlet) => (
               <article
                 key={outlet.id}
-                className="group flex min-w-0 gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
+                className="group flex min-w-0 gap-4 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
               >
                 {isOwner && (
                   <div className="pt-1">
@@ -452,31 +452,31 @@ export default function VendorOutletsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedOutlet(outlet)}
-                        className="block max-w-full truncate text-left font-semibold text-gray-900 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        className="block max-w-full truncate text-left font-semibold text-gray-900 dark:text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                       >
                         {outletShortName(outlet.name)}
                       </button>
-                      <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500">
+                      <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
                         <MapPinned size={12} aria-hidden="true" />{' '}
                         {outletLocation(outlet.city, outlet.state)}
                       </p>
-                      <p className="mt-1 font-mono text-[11px] text-gray-400">
+                      <p className="mt-1 font-mono text-[11px] text-gray-400 dark:text-muted-foreground">
                         {outlet.display_id || outletIdLabel(outlet.id)}
                       </p>
                     </div>
                     <StatusBadge status={outlet.status} />
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                    <span className="text-xs text-gray-500">
+                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-gray-100 dark:border-border pt-3">
+                    <span className="text-xs text-gray-500 dark:text-muted-foreground">
                       {outlet.productsCount > 0 ? (
                         <>
-                          <strong className="text-gray-800">
+                          <strong className="text-gray-800 dark:text-foreground">
                             {outlet.productsCount}
                           </strong>{' '}
                           {t('ui.outlets.listings')}
                         </>
                       ) : (
-                        <span className="font-medium text-gray-600">
+                        <span className="font-medium text-gray-600 dark:text-muted-foreground">
                           {t('ui.outlets.noListings')}
                         </span>
                       )}
@@ -532,7 +532,7 @@ export default function VendorOutletsPage() {
             ))}
           </section>
           {pagination.totalPages > 1 && (
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
               <PaginationControls
                 page={pagination.page}
                 totalPages={pagination.totalPages}
@@ -550,7 +550,7 @@ export default function VendorOutletsPage() {
 
       {isOwner && (showForm || editingOutlet) && vendorId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl">
             <OutletForm
               vendorId={vendorId}
               initialData={
@@ -608,14 +608,14 @@ export default function VendorOutletsPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
                 {t('ui.outlets.location')}
               </p>
-              <p className="mt-1 text-base font-semibold text-gray-950">
+              <p className="mt-1 text-base font-semibold text-gray-950 dark:text-foreground">
                 {outletLocation(selectedOutlet.city, selectedOutlet.state)}
               </p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
                 {selectedOutlet.address || t('ui.outlets.noAddress')}
               </p>
               <div className="mt-3 flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-500">
+                <span className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">
                   {t('ui.outlets.status')}
                 </span>
                 <StatusBadge status={selectedOutlet.status} />
@@ -623,12 +623,12 @@ export default function VendorOutletsPage() {
             </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+            <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
                 {t('ui.outlets.outletId')}
               </p>
               <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="break-all font-mono text-sm font-semibold text-gray-900">
+                <p className="break-all font-mono text-sm font-semibold text-gray-900 dark:text-foreground">
                   {selectedOutlet.display_id || selectedOutlet.id}
                 </p>
                 <button
@@ -638,17 +638,17 @@ export default function VendorOutletsPage() {
                     copyOutletId(selectedOutlet.display_id || selectedOutlet.id)
                   }
                   title={t('ui.outlets.copyOutletId')}
-                  className="shrink-0 rounded-lg p-2 text-gray-500 hover:bg-white hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="shrink-0 rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <Copy size={15} aria-hidden="true" />
                 </button>
               </div>
             </div>
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+            <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
                 {t('ui.outlets.listedProducts')}
               </p>
-              <p className="mt-2 text-xl font-bold text-gray-950">
+              <p className="mt-2 text-xl font-bold text-gray-950 dark:text-foreground">
                 {selectedOutlet.productsCount}
               </p>
             </div>
@@ -668,11 +668,11 @@ export default function VendorOutletsPage() {
             </div>
           )}
           {(selectedOutlet.phone || selectedOutlet.email) && (
-            <div className="mt-4 rounded-xl border border-gray-100 bg-white p-4 ring-1 ring-gray-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+            <div className="mt-4 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 ring-1 ring-gray-100">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
                 {t('ui.outlets.contactDetails')}
               </p>
-              <div className="mt-2 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
+              <div className="mt-2 grid gap-2 text-sm text-gray-700 dark:text-foreground sm:grid-cols-2">
                 {selectedOutlet.phone && (
                   <p>
                     {t('ui.outlets.phone', { value: selectedOutlet.phone })}
@@ -703,8 +703,8 @@ export default function VendorOutletsPage() {
               <ArrowUpRight size={15} aria-hidden="true" />
             </a>
           )}
-          <div className="mt-7 border-t border-gray-100 pt-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+          <div className="mt-7 border-t border-gray-100 dark:border-border pt-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-muted-foreground">
               {t('ui.outlets.actions')}
             </p>
             <OutletActionGroup

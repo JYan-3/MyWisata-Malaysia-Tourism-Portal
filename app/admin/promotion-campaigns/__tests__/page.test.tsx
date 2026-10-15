@@ -6,15 +6,19 @@ import { findElements, findOne, installTestDom, TestEvent, type TestDocument, ty
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   currentUser: { id: "creator-1" } as { id: string } | null,
+  confirm: vi.fn(async () => true),
 }));
 
 vi.mock("react-i18next", () => {
-  const t = (key: string) => key;
+  const t = (key: string, values?: Record<string, unknown>) => key === "pagination.showing"
+    ? `${key}:${values?.first}-${values?.last}/${values?.total}`
+    : key;
   return {
     useTranslation: () => ({ t, i18n: { resolvedLanguage: "en" } }),
   };
 });
-vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ confirm: vi.fn(), prompt: vi.fn() }) }));
+vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ confirm: mocks.confirm, prompt: vi.fn() }) }));
+vi.mock("@/components/map/map-view", () => ({ MapView: () => <div /> }));
 vi.mock("@/components/providers/action-feedback", () => ({ useActionFeedback: () => ({ showFeedback: vi.fn() }) }));
 vi.mock("@/components/providers/auth", () => ({ useAuth: () => ({ currentUser: mocks.currentUser }) }));
 
@@ -37,6 +41,7 @@ function campaignPayload(status: "draft" | "pending_approval" = "draft") {
       poster_url: "https://x/poster.jpg", operating_hours: "10:00 AM - 6:00 PM", status,
       starts_at: "2026-09-25T10:50:00.000Z", ends_at: "2027-03-12T23:00:00.000Z",
       created_by: "creator-1", updated_at: "2026-09-25T11:28:22.000Z", rejection_note: null,
+      locations: [{ id: 'location-1', name: 'Main Hall', address: null, lat: null, lng: null, starts_on: '2026-09-25', ends_on: '2027-03-13', opens_at: '10:00', closes_at: '18:00', status: 'active' }],
     }],
   }, error: null });
 }
@@ -53,7 +58,7 @@ async function setInputValue(input: TestElement, value: string) {
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
     setter?.call(input, value);
-    input.dispatchEvent(new TestEvent("input", { bubbles: true }));
+    input.dispatchEvent(new TestEvent(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
   });
 }
 
@@ -73,12 +78,163 @@ describe("Admin promotion campaign workbench", () => {
   });
 
   beforeEach(() => {
+    mocks.confirm.mockResolvedValue(true);
     mocks.currentUser = { id: "creator-1" };
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.fetch.mockReset().mockResolvedValue(campaignPayload());
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
+  });
+
+  it('recovers the workbench after permissions are restored and Refresh succeeds', async () => {
+    mocks.fetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({}) }).mockResolvedValue(campaignPayload());
+    await renderLoadedPage();
+    expect(container.textContent).toContain('promotionCampaigns.errors.forbidden');
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.refresh')));
+    expect(container.textContent).not.toContain('promotionCampaigns.errors.forbidden');
+    expect(findElements(container, element => element.tagName === 'FORM')).toHaveLength(1);
+  });
+
+  it.each(['date', 'time'])('confirms before discarding a new form with only %s changes', async (type) => {
+    await renderLoadedPage();
+    const form = findOne(container, element => element.tagName === 'FORM');
+    await setInputValue(findElements(form, element => element.tagName === 'INPUT' && element.type === type)[0], type === 'date' ? '2027-01-01' : '11:00');
+    mocks.confirm.mockResolvedValue(false);
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.actions.edit')));
+    expect(mocks.confirm).toHaveBeenCalledWith('promotionCampaigns.form.discardConfirm');
+    expect(findElements(form, element => element.tagName === 'INPUT' && element.value === 'Heritage Walk KL — Local Explorer Picks')).toHaveLength(0);
+  });
+
+  it('locks campaign switching and cancellation while a poster is uploading', async () => {
+    await renderLoadedPage();
+    const edit = () => findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.actions.edit'));
+    await click(edit());
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.form.removePoster')));
+    let release!: (value: Response) => void;
+    mocks.fetch.mockImplementation(async (_url, init) => init?.method === 'POST' ? new Promise<Response>(resolve => { release = resolve; }) : campaignPayload());
+    const input = findOne(container, element => element.tagName === 'INPUT' && element.type === 'file');
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['test'], 'poster.png', { type: 'image/png' })] });
+    await act(async () => { input.dispatchEvent(new TestEvent('change', { bubbles: true })); });
+    expect(edit().disabled).toBe(true);
+    expect(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.form.cancelEdit')).disabled).toBe(true);
+    await act(async () => { release(response({ data: { url: 'https://x/uploaded.jpg' } })); await Promise.resolve(); });
+    expect(edit().disabled).toBe(false);
+    expect(container.textContent).toContain('promotionCampaigns.form.removePoster');
+  });
+
+  it('publishes an existing draft with exactly one submit followed by approval', async () => {
+    mocks.fetch.mockImplementation(async (_url, init) => {
+      if (init?.method === 'PATCH') {
+        const action = JSON.parse(String(init.body)).action;
+        return response({ data: { id: 'campaign-1', status: action === 'submit' ? 'pending_approval' : 'approved', updated_at: action === 'submit' ? '2026-10-12T01:00:00Z' : '2026-10-12T01:01:00Z' } });
+      }
+      return campaignPayload();
+    });
+    await renderLoadedPage();
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'promotionCampaigns.actions.submit'));
+    expect(mocks.fetch.mock.calls.filter(([, init]) => init?.method === 'PATCH').map(([, init]) => JSON.parse(String(init.body)).action)).toEqual(['submit', 'approve']);
+  });
+
+  it('disables publishing before required information is ready and while a location is being edited', async () => {
+    await renderLoadedPage();
+    const publish = () => findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.form.saveDraft'));
+    expect(publish().disabled).toBe(true);
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.actions.edit')));
+    expect(publish().disabled).toBe(false);
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.locations.add')));
+    expect(publish().disabled).toBe(true);
+    expect(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'promotionCampaigns.locations.save').disabled).toBe(true);
+  });
+
+  it('saves basic information as a draft without triggering publication', async () => {
+    await renderLoadedPage();
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.actions.edit')));
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.form.removePoster')));
+    await act(async () => { findOne(container, element => element.tagName === 'FORM').dispatchEvent(new TestEvent('submit', { bubbles: true })); });
+    const actions = mocks.fetch.mock.calls.filter(([, init]) => init?.method === 'PATCH').map(([, init]) => JSON.parse(String(init.body)));
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({ action: 'save_draft', campaign: { posterUrl: null } });
+  });
+
+  it('retains the pending state after approval fails, allowing a single approve retry', async () => {
+    const row = (await campaignPayload().json()).data.campaigns[0];
+    let status = 'draft', fail = true;
+    mocks.fetch.mockImplementation(async (_url, init) => {
+      if (init?.method === 'PATCH') {
+        const action = JSON.parse(String(init.body)).action;
+        if (action === 'approve' && fail) { fail = false; return { ok: false, json: async () => ({ error: { message: 'approval unavailable' } }) }; }
+        status = action === 'submit' ? 'pending_approval' : 'approved';
+        return response({ data: { ...row, status } });
+      }
+      return response({ data: { campaigns: [{ ...row, status }] } });
+    });
+    await renderLoadedPage();
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'promotionCampaigns.actions.submit'));
+    expect(container.textContent).toContain('approval unavailable');
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'promotionCampaigns.actions.approve'));
+    expect(mocks.fetch.mock.calls.filter(([, init]) => init?.method === 'PATCH').map(([, init]) => JSON.parse(String(init.body)).action)).toEqual(['submit', 'approve', 'approve']);
+  });
+
+  it('paginates 31 loaded events and applies search before page counts', async () => {
+    const row = (await campaignPayload().json()).data.campaigns[0];
+    mocks.fetch.mockResolvedValue(response({ data: { campaigns: Array.from({ length: 31 }, (_, index) => ({ ...row, id: `campaign-${index}`, title: `Event ${index}` })) } }));
+    await renderLoadedPage();
+    expect(findElements(container, element => element.tagName === 'ARTICLE')).toHaveLength(15);
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'accessibility.nextPage'));
+    expect(findElements(container, element => element.tagName === 'ARTICLE')).toHaveLength(15);
+    await setInputValue(findOne(container, element => element.tagName === 'INPUT' && element.type === 'search'), ' Event 30 ');
+    const rows = findElements(container, element => element.tagName === 'ARTICLE');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('Event 30');
+  });
+
+  it('keeps page sizes, filtered totals, and page resets consistent across list controls', async () => {
+    const row = (await campaignPayload().json()).data.campaigns[0];
+    mocks.fetch.mockResolvedValue(response({ data: { campaigns: Array.from({ length: 61 }, (_, index) => ({
+      ...row, id: `campaign-${index}`, title: `Event ${index}`, slug: `event-${index}`,
+      status: index < 31 ? 'approved' : 'draft',
+    })) } }));
+    await renderLoadedPage();
+    const rows = () => findElements(container, element => element.tagName === 'ARTICLE');
+    const next = () => findOne(container, element => element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'accessibility.nextPage');
+    const perPage = findOne(container, element => element.tagName === 'SELECT' && element.getAttribute('aria-label') === 'ui.pagination.perPage');
+    expect(findElements(perPage, element => element.tagName === 'OPTION').map(element => element.value)).toEqual(['15', '25', '50']);
+    expect(container.textContent).toContain('pagination.showing:1-15/61');
+    await click(next());
+    expect(container.textContent).toContain('pagination.showing:16-30/61');
+
+    await setInputValue(perPage, '25');
+    expect(rows()).toHaveLength(25);
+    expect(rows()[0].textContent).toContain('Event 0');
+    expect(container.textContent).toContain('pagination.showing:1-25/61');
+    await click(next());
+    const status = findOne(container, element => element.tagName === 'SELECT' && Boolean(element.parentNode?.textContent.includes('promotionCampaigns.list.statusFilter')));
+    await setInputValue(status, 'draft');
+    expect(rows()[0].textContent).toContain('Event 31');
+    expect(container.textContent).toContain('pagination.showing:1-25/30');
+    await click(next());
+    expect(rows()).toHaveLength(5);
+    expect(container.textContent).toContain('pagination.showing:26-30/30');
+
+    const from = findOne(container, element => element.tagName === 'INPUT' && Boolean(element.parentNode?.textContent.includes('promotionCampaigns.list.dateFrom')));
+    await setInputValue(from, '2027-03-14');
+    expect(rows()).toHaveLength(0);
+    expect(container.textContent).toContain('pagination.showing:0-0/0');
+    await setInputValue(from, '');
+    expect(container.textContent).toContain('pagination.showing:1-25/30');
+    await setInputValue(perPage, '50');
+    expect(rows()).toHaveLength(30);
+    expect(container.textContent).toContain('pagination.showing:1-30/30');
+    await setInputValue(status, 'all');
+    expect(rows()).toHaveLength(50);
+    await click(next());
+    await setInputValue(findOne(container, element => element.tagName === 'INPUT' && element.type === 'search'), 'Event 60');
+    expect(rows()).toHaveLength(1);
+    expect(container.textContent).toContain('pagination.showing:1-1/1');
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'filters.clear'));
+    expect(rows()).toHaveLength(50);
+    expect(container.textContent).toContain('pagination.showing:1-50/61');
   });
 
   afterEach(() => {
@@ -151,7 +307,7 @@ describe("Admin promotion campaign workbench", () => {
 
   it("uses inclusive event dates and rejects equal daily opening and closing times", async () => {
     await renderLoadedPage();
-    const dates = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+    const dates = findElements(findOne(container, element => element.tagName === "FORM"), (element) => element.tagName === "INPUT" && element.type === "date");
     expect(dates).toHaveLength(2);
     expect(findElements(container, (element) => element.tagName === "INPUT" && element.type === "datetime-local")).toHaveLength(0);
 
@@ -172,7 +328,7 @@ describe("Admin promotion campaign workbench", () => {
   it("preserves legacy timestamps when editing copy without changing event dates", async () => {
     await renderLoadedPage();
     await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
-    const dates = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+    const dates = findElements(findOne(container, element => element.tagName === "FORM"), (element) => element.tagName === "INPUT" && element.type === "date");
     expect(dates.map((date) => date.value)).toEqual(["2026-09-25", "2027-03-13"]);
 
     await act(async () => {
@@ -191,7 +347,7 @@ describe("Admin promotion campaign workbench", () => {
   it("normalizes both boundaries when an admin changes a legacy event date", async () => {
     await renderLoadedPage();
     await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
-    const dates = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+    const dates = findElements(findOne(container, element => element.tagName === "FORM"), (element) => element.tagName === "INPUT" && element.type === "date");
     await setInputValue(dates[0], "2026-10-01");
     await setInputValue(dates[1], "2026-10-08");
 

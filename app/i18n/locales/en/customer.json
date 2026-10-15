@@ -109,6 +109,10 @@
     "recommendVendor": {
       "label": "Recommend a Vendor",
       "description": "Share local discoveries"
+    },
+    "privacyTerms": {
+      "label": "Privacy & Terms",
+      "description": "Privacy policy, terms and your data"
     }
   },
   "categories": {
@@ -1229,7 +1233,11 @@
       "button_other": "Checkout ({{count}} items)",
       "nothingToCheckout": "Nothing in your itinerary is available to purchase yet.",
       "allNeedSlot": "None of your scheduled stops have an open booking slot on their planned day — pick a time on each activity's page first.",
-      "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot."
+      "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot.",
+      "unavailable": "{{names}} can't be bought from the planner. Open their page to check what's available.",
+      "addFailed": "Couldn't add {{name}} to your cart. Anything added before it is still in your cart.",
+      "buy_one": "Buy {{count}}",
+      "buy_other": "Buy {{count}}"
     },
     "preferencesPage": {
       "eyebrow": "Preferences",
@@ -2893,7 +2901,28 @@
       "linkHint": "Share this link — you earn commission when someone clicks it and books.",
       "generating": "Generating…",
       "generateLink": "Generate my link",
-      "totalEarnings": "Total Earnings"
+      "totalEarnings": "Total Earnings",
+      "earnings": {
+        "viewAll": "View all earnings",
+        "backToDashboard": "Back to Earn & Share",
+        "allTitle": "All earnings",
+        "allDescription": "Every commission from your affiliate link. The period you pick filters both the list and the download.",
+        "download": "Download earnings (CSV)",
+        "exporting": "Exporting…",
+        "exportFailed": "Could not export earnings. Please try again.",
+        "referral": "Referral",
+        "order": "order {{amount}}",
+        "cleared": "Cleared to wallet",
+        "pendingToday": "Pending · clears today",
+        "pendingIn_other": "Pending · clears in {{count}} days",
+        "pendingIn_one": "Pending · clears in {{count}} day",
+        "pendingIn": "Pending · clears in {{count}} days",
+        "reversed": "Reversed — order was cancelled or refunded",
+        "rejected": "Not approved after review",
+        "latest": "Showing the latest {{shown}} of {{total}}",
+        "noneInRange": "No earnings in this period.",
+        "period": "Period"
+      }
     },
     "tripPlanner": {
       "scheduledFor": "Scheduled for {{date}}",
@@ -3069,6 +3098,25 @@
           "windGust": "Wind gusts up to {{speed}}",
           "uvIndex": "UV index {{value}}"
         }
+      },
+      "longDayWarning": "{{duration}} of travel this day. Consider moving some stops to another day.",
+      "longLeg": "Long trip between these stops",
+      "addTime": "Time",
+      "overview": "Overview",
+      "overviewEmpty": "No stops yet",
+      "noTime": "No time",
+      "slotFull": "Full",
+      "seatsLeft_one": "{{count}} left",
+      "seatsLeft_other": "{{count}} left",
+      "notAvailableThisDay": "Not available this day",
+      "closedThisDay": "Closed this day",
+      "pickDayFirst": "Pick a day first",
+      "loadingTimes": "Loading times…",
+      "timeProblem": {
+        "full": "This time is fully booked. Pick another time.",
+        "noSlot": "This time is no longer offered. Pick another time.",
+        "closed": "Closed on this day. Move it to another day.",
+        "outsideHours": "Closed at this time. Pick a time within opening hours."
       }
     },
     "paymentSimulator": {
@@ -3418,7 +3466,8 @@
       "terms": "Terms",
       "data": "Data & KYC",
       "about": "About",
-      "help": "Help Center"
+      "help": "Help Center",
+      "footerLabel": "Legal and help"
     },
     "privacy": {
       "title": "Privacy Policy",
@@ -3554,5 +3603,24 @@
     "requestFailed": "Unable to request a link. Please try again later.",
     "opening": "Opening your order…",
     "eventHint": "Check your email before confirming. We will send your receipt and a private order link."
+  },
+  "footer": {
+    "ariaLabel": "Site footer",
+    "groups": {
+      "support": "Support",
+      "discover": "Discover",
+      "partners": "Partners",
+      "legal": "Terms & privacy",
+      "about": "About"
+    },
+    "links": {
+      "contactSupport": "Contact support",
+      "tripPlanner": "Trip planner",
+      "vouchers": "Vouchers & deals",
+      "vendorLogin": "Vendor login",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "aboutUs": "About MyLawatan"
+    }
   }
 }

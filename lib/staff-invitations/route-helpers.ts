@@ -1,9 +1,10 @@
 import { sendStaffInvitationEmail } from "@/lib/email/sender";
+import { recipientEmailLocale } from "@/lib/email/locale";
 import {
   buildStaffInvitationUrl,
   staffInvitationOrigin,
 } from "@/lib/staff-invitations/server";
-import type { StaffInvitationLocale } from "@/lib/staff-invitations/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isStaffPermissionKey } from "@/lib/staff-permissions/types";
 import { apiFail } from "@/lib/validation/schemas";
 
@@ -50,14 +51,17 @@ export function preparedInvitation(value: unknown): PreparedStaffInvitation | nu
 }
 
 export async function deliverPreparedInvitation(
-  db: { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }> },
+  db: SupabaseClient,
   prepared: PreparedStaffInvitation,
   token: string,
   tokenHash: string,
-  locale: StaffInvitationLocale,
 ) {
   let sent = false;
   try {
+    // This runs only after the governed prepare RPC accepts the invitee, so
+    // rejected existing identities are never probed for account preferences.
+    const locale = await recipientEmailLocale(db, prepared.invited_email);
+
     await sendStaffInvitationEmail({
       to: prepared.invited_email,
       locale,

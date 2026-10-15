@@ -17,17 +17,17 @@
 // server-side (the real httpOnly cookie, not anything the client could
 // forge) before validating it against affiliate_clicks.
 
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
-import { onOrderPaid } from '@/lib/affiliate/attribution';
-import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
+import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
 import { settleOrderVendorEarnings } from '@/lib/vendor/settlement';
-import { enqueueUserTransactionEmail } from '@/lib/email/events';
-import { formatMYR } from '@/lib/i18n/format';
+import { runPaidOrderEffects } from '@/lib/orders/paid-order-effects';
 
+// Fast path only. The 5-minute job (/api/cron/process-paid-orders) runs the same
+// effects for every paid order, including guests, events and redirect payments
+// whose buyer never comes back here. Both are idempotent, so overlap is harmless.
 export async function POST(request: Request) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -43,44 +43,11 @@ export async function POST(request: Request) {
   const { data: order } = await service.from('orders').select('id,user_id').eq('id', orderId).maybeSingle();
   if (!order || order.user_id !== user.id) return apiFail('NOT_FOUND', 'Order not found', 404);
 
-  try {
-    const cookieStore = await cookies();
-    const mwRefCookie = cookieStore.get('mw_ref')?.value ?? null;
-    if (mwRefCookie) {
-      // Validate against affiliate_clicks so a stale/forged cookie degrades to
-      // null instead of violating orders.affiliate_click_id's FK.
-      const { data: click } = await service.from('affiliate_clicks').select('id').eq('id', mwRefCookie).maybeSingle();
-      if (click) {
-        await service.from('orders').update({ affiliate_click_id: click.id }).eq('id', orderId);
-      }
-    }
-  } catch (error) {
-    // Attribution must never block checkout — this route already runs after
-    // the order is paid, but still fail soft and let onOrderPaid() run
-    // (it will just find no click id and return early).
-    console.error('[checkout/attribute] cookie/click lookup failed', error instanceof Error ? error.message : error);
-  }
-
-  await onOrderPaid(orderId); // idempotent (UNIQUE(order_id)); never throws
+  // Normally saved at checkout already; this only fills it in if it is still missing.
+  await stampReferralFromCookie(orderId);
   await settleOrderVendorEarnings(service, orderId); // idempotent (order_settlements unique key); never throws
-  try {
-    const reward = await attributeRecommendationReward(service, orderId);
-    if (reward.kind === 'created') {
-      const deliveries = reward.rewards.flatMap(({ commissionId, recommenderId, amountSen }) => {
-        const amountRm = amountSen / 100;
-        return [
-          service.from('notifications').insert({ user_id: recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `${formatMYR(amountRm)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
-          enqueueUserTransactionEmail({ userId: recommenderId, eventType: 'recommendation_reward_pending', eventKey: `recommendation_reward_pending:${commissionId}`, reference: 'Recommendation reward', amountRm }),
-        ];
-      });
-      const results = await Promise.allSettled(deliveries);
-      for (const result of results) if (result.status === 'rejected') console.error('[checkout/attribute] recommendation reward notification failed', result.reason);
-    }
-  } catch (error) {
-    // The checkout is already paid; reward attribution failures must not
-    // misrepresent that payment as failed. The order can be reconciled safely.
-    console.error('[checkout/attribute] recommendation reward attribution failed', error);
-  }
+  // Commission, recommendation rewards and fee floor. A failure is retried by the job.
+  await runPaidOrderEffects(service, orderId);
 
   return apiOk({ attributed: true });
 }

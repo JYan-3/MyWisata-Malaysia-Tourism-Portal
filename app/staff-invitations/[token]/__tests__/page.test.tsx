@@ -25,6 +25,24 @@ describe("staff invitation acceptance page", () => {
     expect(source).toContain('router.push("/staff")');
   });
 
+  it("offers the shared language and appearance controls on the invitation page", () => {
+    expect(source).toContain('import { LanguageSwitcher } from "@/components/shared/language-switcher"');
+    expect(source).toContain('import { AppearanceControl } from "@/components/shared/appearance-control"');
+    expect(source).toContain("<LanguageSwitcher compact />");
+    expect(source).toContain("<AppearanceControl />");
+  });
+
+  it("refreshes the page after a successful existing-account sign-in to apply its saved locale", () => {
+    expect(source).toMatch(/setSessionEmail\(result\.data\.user\.email[\s\S]*?router\.refresh\(\)/);
+    expect(source).not.toContain("getUserByEmail");
+  });
+
+  it("lets invitees reveal or hide the password while creating their staff account", () => {
+    expect(source).toContain('import { CheckCircle2, Eye, EyeOff, Globe, LockKeyhole, Mail, ShieldCheck } from "lucide-react"');
+    expect(source).toContain('type={showPassword ? "text" : "password"}');
+    expect(source).toContain('aria-label={showPassword ? "Hide password" : "Show password"}');
+  });
+
   it("prevents the token-bearing document URL from being sent as a referrer or indexed", () => {
     expect(layoutSource).toContain('referrer: "no-referrer"');
     expect(layoutSource).toContain("index: false");

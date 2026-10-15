@@ -97,7 +97,7 @@ export default function VendorEventOrdersPage() {
                     <td className="px-4 py-2.5 text-foreground">{item.quantity} × {item.itemName}</td>
                     <td className="px-4 py-2.5 text-right">{item.lineTotal === 0 ? t('ui.eventOrders.free') : formatMYR(item.lineTotal)}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.status === 'fulfilled' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.status === 'fulfilled' ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200' : 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200'}`}>
                         {item.status === 'fulfilled' ? t('ui.eventOrders.collected') : t('ui.eventOrders.toCollect')}
                       </span>
                     </td>

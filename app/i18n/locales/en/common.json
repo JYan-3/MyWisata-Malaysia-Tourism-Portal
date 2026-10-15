@@ -202,6 +202,45 @@
       "recommendationApprovedWithName": {
         "title": "Your recommendation \"{{vendorName}}\" was approved",
         "body": "Great find! We will reach out to the vendor soon."
+      },
+      "kycSecurity": {
+        "title": "KYC security alert",
+        "purge_failed": "KYC evidence cleanup failed or completed with failures ({{count}} failed items).",
+        "purge_stalled": "KYC evidence cleanup has not completed within 15 minutes.",
+        "purge_missed": "No successful KYC evidence cleanup was recorded for more than 26 hours.",
+        "access_volume": "A reviewer requested documents for {{count}} distinct submissions within 10 minutes.",
+        "monitor_test": "Controlled KYC security alert delivery test. No identity documents are included.",
+        "generic": "Review KYC security status in the protected admin area."
+      },
+      "eventException": {
+        "payment_blocked": {
+          "title": "Payment received; reservation cannot be fulfilled",
+          "body": "Payment was received but this reservation cannot be fulfilled. Do not prepare or hand over goods. Admin is reviewing the payment. {{orderReference}} · {{items}}"
+        },
+        "pickup_review": {
+          "title": "Please verify the pickup outcome",
+          "body": "The pickup date has passed and collection is unconfirmed. Please verify whether your items were handed over and contact Admin with the actual outcome. {{orderReference}} · {{items}}"
+        },
+        "refund_pending": {
+          "title": "Refund awaiting confirmation",
+          "body": "A refund is under review or awaiting the payment provider. It has not been confirmed complete. Contact Admin before further fulfilment. {{orderReference}} · {{items}}"
+        },
+        "refund_attention": {
+          "title": "Refund needs Admin attention",
+          "body": "A refund needs Admin attention. Completion has not been confirmed. Contact Admin before further fulfilment. {{orderReference}} · {{items}}"
+        },
+        "refunded": {
+          "title": "Refund completion verified",
+          "body": "The order refund has been confirmed complete. Review your order and settlement records. {{orderReference}} · {{items}}"
+        },
+        "collected": {
+          "title": "Pickup exception closed: collection verified",
+          "body": "Collection has been verified and the pickup exception is closed. {{orderReference}} · {{items}}"
+        },
+        "no_show": {
+          "title": "Pickup exception closed: non-collection verified",
+          "body": "Admin has verified non-collection and closed this pickup exception without a refund. This does not mean goods were handed over or funds are immediately available. {{orderReference}} · {{items}}"
+        }
       }
     }
   },

@@ -5,6 +5,18 @@ const translate = (key: string, options?: Record<string, unknown>) =>
   JSON.stringify({ key, options: options ?? {} });
 
 describe('notification localization', () => {
+  it('localizes fixed KYC incident kinds and discards arbitrary metadata', () => {
+    const result = localizeNotification({ type: 'kyc_security_alert', title: 'KYC security alert', body: 'Review status', metadata: { kind: 'access_volume', count: 10, occurredAt: '2026-10-12T16:00:00Z', privatePath: 'identity/front.jpg' } }, translate);
+    expect(result.title).toContain('notifications.events.kycSecurity.title');
+    expect(result.body).toContain('notifications.events.kycSecurity.access_volume');
+    expect(result.body).not.toContain('identity/front.jpg');
+  });
+  it.each(['payment_blocked', 'pickup_review', 'refund_pending', 'refund_attention', 'refunded', 'collected', 'no_show'])('localizes event exception phase %s with readable scoped details', (phase) => {
+    const result = localizeNotification({ type: `vendor_event_exception_${phase}`, title: 'Event order update', body: 'Fallback', metadata: { orderReference: 'ORD-123', items: '2 × Cake · Main Hall · 2026-10-12 · 10:00–12:00' } }, translate);
+    expect(result.title).toContain(`notifications.events.eventException.${phase}.title`);
+    expect(result.body).toContain('ORD-123');
+    expect(result.body).toContain('2 × Cake');
+  });
   it('renders known system events from a stable type and metadata', () => {
     const result = localizeNotification({
       type: 'withdrawal_approved',

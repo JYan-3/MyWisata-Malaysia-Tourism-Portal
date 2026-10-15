@@ -27,6 +27,8 @@ type RefundRow = {
   orderNumber: string | null;
   amountRm: number;
   reason: string | null;
+  reasonCode: string | null;
+  evidence: { version: string; items: { name: string; quantity: number; status: string; collectedAt: string | null; venue: string | null; pickupDate: string | null; pickupWindow: string | null; vendor: string | null; scannedBy: string | null }[] };
   status: string;
   provider: string | null;
   method: string | null;
@@ -179,6 +181,11 @@ export default function AdminRefundsPage() {
   }
 
   async function review(refund: RefundRow, action: "approve" | "reject") {
+    let note: string | undefined;
+    if (action === 'approve' && refund.evidence?.items.some((item) => item.status === 'fulfilled')) {
+      note = (await prompt(t('eventOperations.collectedRefundNote')))?.trim();
+      if (!note || note.length < 5) return;
+    }
     let manualReference: string | undefined;
     if (action === "approve"
       && refund.method !== "wallet"
@@ -195,7 +202,7 @@ export default function AdminRefundsPage() {
       const response = await fetch(`/api/admin/refunds/${refundId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, ...(manualReference ? { manualReference } : {}) }),
+        body: JSON.stringify({ action, evidenceVersion: refund.evidence?.version, ...(note ? { note } : {}), ...(manualReference ? { manualReference } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok)
@@ -284,7 +291,7 @@ export default function AdminRefundsPage() {
               detail: t("refunds.metrics.needsAttention"),
             },
           ]} />
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-200">
           <strong>{t("refunds.sandbox.label")}</strong>{" "}
           {t("refunds.sandbox.description")}
         </section>
@@ -415,6 +422,15 @@ export default function AdminRefundsPage() {
                             <p className="mt-1 truncate text-xs text-muted-foreground">
                               {refund.reason ?? t("refunds.detail.noReason")}
                             </p>
+                            {refund.evidence?.items.map((item, index) => (
+                              <div key={index} className="mt-2 text-xs text-muted-foreground">
+                                <p>{item.quantity} × {item.name} · {item.vendor}</p>
+                                <p>{item.venue} · {item.pickupDate} · {item.pickupWindow}</p>
+                                <p>{item.status === 'fulfilled' ? t('eventOperations.collected') : t('eventOperations.uncollected')}
+                                  {item.collectedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.collectedAt))}`}
+                                  {item.scannedBy && ` · ${item.scannedBy}`}</p>
+                              </div>
+                            ))}
                             {refund.failureCode && (
                               <p className="mt-1 truncate font-[family-name:var(--font-mono)] text-[11px] font-semibold text-destructive">
                                 {refund.failureCode}
@@ -452,7 +468,7 @@ export default function AdminRefundsPage() {
                             {providerLabel(refund.provider, t)}
                           </p>
                           {simulated && (
-                            <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                            <span className="mt-1 inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">
                               {t("refunds.status.simulated")}
                             </span>
                           )}
@@ -526,11 +542,11 @@ export default function AdminRefundsPage() {
                           {refund.status === "processed" && (
                             <CheckCircle2
                               size={15}
-                              className="text-emerald-600"
+                              className="text-emerald-600 dark:text-emerald-300"
                             />
                           )}
                           {refund.status === "approved" && !simulated && (
-                            <Clock3 size={15} className="text-amber-600" />
+                            <Clock3 size={15} className="text-amber-600 dark:text-amber-300" />
                           )}
                         </div>
                       </div>

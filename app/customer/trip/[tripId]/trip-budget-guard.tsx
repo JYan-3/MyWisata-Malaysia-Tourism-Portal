@@ -172,7 +172,7 @@ export function TripBudgetGuard({
         <button
           type="button"
           onClick={checkSuggestions}
-          className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1.5 text-left text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
+          className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 text-left text-[11px] font-semibold text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-500/15"
         >
           <AlertTriangle size={13} className="shrink-0" />
           {t("ui.tripBudget.overBudgetWarning", { amount: formatMYR(overBudgetByRM) })}

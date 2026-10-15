@@ -10,8 +10,8 @@ function query(result: unknown) {
   builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
   return builder;
 }
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })) }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: vi.fn() }) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: vi.fn() })) }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from }) }));
 vi.mock('@/lib/chatbot/classify-ai', () => ({ classifyTicketSmart: mocks.classify }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));

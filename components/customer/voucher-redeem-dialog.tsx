@@ -120,7 +120,7 @@ export function VoucherRedeemDialog({
                   type="button"
                   onClick={() => setCodeType("qr")}
                   className={`rounded-lg px-4 py-1.5 transition ${
-                    codeType === "qr" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    codeType === "qr" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tCustomer("ui.voucherHub.barcodeModal.qrCode")}
@@ -129,7 +129,7 @@ export function VoucherRedeemDialog({
                   type="button"
                   onClick={() => setCodeType("barcode")}
                   className={`rounded-lg px-4 py-1.5 transition ${
-                    codeType === "barcode" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    codeType === "barcode" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tCustomer("ui.voucherHub.barcodeModal.barcode")}
@@ -140,11 +140,11 @@ export function VoucherRedeemDialog({
             {/* Code Visual Display */}
             <div className="flex flex-col items-center justify-center py-2">
               {codeType === "qr" ? (
-                <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-border bg-white dark:bg-card p-4 shadow-sm">
                   <canvas ref={canvasRef} className="h-auto max-w-full" aria-label={tCustomer("ui.voucherHub.barcodeModal.redemptionQrCode")} />
                 </div>
               ) : (
-                <div className="w-full max-w-xs rounded-2xl border border-border bg-white p-3 shadow-sm">
+                <div className="w-full max-w-xs rounded-2xl border border-border bg-white dark:bg-card p-3 shadow-sm">
                   <VoucherBarcode
                     value={storeToken}
                     text={voucher.code}
@@ -169,8 +169,8 @@ export function VoucherRedeemDialog({
               >
                 {storeTokenCopied ? (
                   <>
-                    <Check size={14} className="text-emerald-600" />
-                    <span className="text-emerald-600">{tCustomer("ui.voucherHub.storeTokenCopied")}</span>
+                    <Check size={14} className="text-emerald-600 dark:text-emerald-300" />
+                    <span className="text-emerald-600 dark:text-emerald-300">{tCustomer("ui.voucherHub.storeTokenCopied")}</span>
                   </>
                 ) : (
                   <>
@@ -182,7 +182,7 @@ export function VoucherRedeemDialog({
             </div>
           </>
         ) : (
-          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
+          <p className="rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-200" role="alert">
             {tCustomer("ui.voucherHub.storeTokenUnavailable")}
           </p>
         )}
@@ -204,8 +204,8 @@ export function VoucherRedeemDialog({
           >
             {copied ? (
               <>
-                <Check size={14} className="text-emerald-600" />
-                <span className="text-emerald-600">{tCustomer("ui.voucherHub.copied")}</span>
+                <Check size={14} className="text-emerald-600 dark:text-emerald-300" />
+                <span className="text-emerald-600 dark:text-emerald-300">{tCustomer("ui.voucherHub.copied")}</span>
               </>
             ) : (
               <>

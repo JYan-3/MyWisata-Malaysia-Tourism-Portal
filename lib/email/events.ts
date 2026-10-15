@@ -1,3 +1,4 @@
+import { emailLocale } from './copy';
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
 import type {
@@ -29,7 +30,7 @@ export async function enqueueRecommendationApprovalEmail(input: {
   const db = createServiceClient();
   const { data: user, error } = await db
     .from('users')
-    .select('email, full_name')
+    .select('email, full_name, preferred_locale')
     .eq('id', input.userId)
     .single();
 
@@ -41,6 +42,7 @@ export async function enqueueRecommendationApprovalEmail(input: {
     eventKey: `recommendation_approved:${input.recommendationId}`,
     userId: input.userId,
     toEmail,
+    locale: emailLocale(user.preferred_locale),
     eventType: 'recommendation_approved',
     recipientName: (user as { full_name?: string | null }).full_name ?? null,
     vendorName: input.vendorName,
@@ -49,8 +51,8 @@ export async function enqueueRecommendationApprovalEmail(input: {
 
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] recommendation approval failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
 
@@ -58,7 +60,7 @@ export async function enqueueVendorEmail(input: VendorEmailEventInput): Promise<
   const db = createServiceClient();
   const { data: user, error } = await db
     .from('users')
-    .select('email, full_name')
+    .select('email, full_name, preferred_locale')
     .eq('id', input.userId)
     .single();
 
@@ -70,6 +72,7 @@ export async function enqueueVendorEmail(input: VendorEmailEventInput): Promise<
     eventKey: input.eventKey,
     userId: input.userId,
     toEmail,
+    locale: emailLocale(user.preferred_locale),
     eventType: input.eventType,
     recipientName: (user as { full_name?: string | null }).full_name ?? input.recipientName ?? null,
     vendorName: input.vendorName,
@@ -81,8 +84,8 @@ export async function enqueueVendorEmail(input: VendorEmailEventInput): Promise<
 
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] vendor notification failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
 
@@ -96,7 +99,7 @@ export async function enqueueUserAccountEmail(input: {
   const db = createServiceClient();
   const { data: user, error } = await db
     .from('users')
-    .select('email, full_name')
+    .select('email, full_name, preferred_locale')
     .eq('id', input.userId)
     .single();
 
@@ -108,6 +111,7 @@ export async function enqueueUserAccountEmail(input: {
     eventKey: input.eventKey,
     userId: input.userId,
     toEmail,
+    locale: emailLocale(user.preferred_locale),
     eventType: input.eventType,
     recipientName: (user as { full_name?: string | null }).full_name ?? null,
     reason: input.reason,
@@ -116,8 +120,8 @@ export async function enqueueUserAccountEmail(input: {
 
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] account notification failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
 
@@ -142,7 +146,7 @@ export async function enqueueUserTransactionEmail(input: UserEmailEventInput): P
   const db = createServiceClient();
   const { data: user, error } = await db
     .from('users')
-    .select('email, full_name')
+    .select('email, full_name, preferred_locale')
     .eq('id', input.userId)
     .single();
 
@@ -154,6 +158,7 @@ export async function enqueueUserTransactionEmail(input: UserEmailEventInput): P
     eventKey: input.eventKey,
     userId: input.userId,
     toEmail,
+    locale: emailLocale(user.preferred_locale),
     eventType: input.eventType,
     recipientName: (user as { full_name?: string | null }).full_name ?? null,
     amountRm: input.amountRm,
@@ -164,7 +169,7 @@ export async function enqueueUserTransactionEmail(input: UserEmailEventInput): P
   // Payment/status routes should deliver promptly, while failures remain in the outbox.
   try {
     await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] enqueue/process failed:', error);
+  } catch {
+    console.error('[email-outbox] email_processing_unavailable');
   }
 }
