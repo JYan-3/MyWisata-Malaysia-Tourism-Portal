@@ -36,7 +36,7 @@ export default function DashboardFilter() {
           href={`?filter=${opt.value}`}
           className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
             filter === opt.value 
-              ? 'bg-gray-100 dark:bg-muted font-semibold text-gray-900 dark:text-foreground' 
+              ? 'bg-gray-100 dark:bg-muted font-semibold text-gray-900 dark:text-foreground'
               : 'font-medium text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground'
           }`}
         >
