@@ -32,7 +32,7 @@ function renderLayout() {
 }
 
 function navigationHrefs(markup: string) {
-  return [...markup.matchAll(/href="([^"]+)"/g)].map((match) => match[1]).filter(href => !href.startsWith("/auth/staff-verification"));
+  return [...markup.matchAll(/href="([^"]+)"/g)].map((match) => match[1]).filter(href => !href.startsWith("/auth/staff-verification") && href !== "/admin/help");
 }
 
 function moduleFor(href: string, index: number) {
@@ -81,6 +81,18 @@ describe("admin navigation role rendering", () => {
     mocks.staffPasskeyRequired = false;
     mocks.staffMfaRequired = true;
     expect(renderLayout()).not.toContain('Protected page content');
+  });
+
+  it("links every staff role to the staff help page and mounts it outside their menu", () => {
+    mocks.pathname = "/admin/help";
+    const markup = renderLayout();
+    expect(markup).toContain('href="/admin/help"');
+    expect(markup).toContain("Protected page content");
+  });
+
+  it("mounts an individual staff help guide outside the staff member's menu", () => {
+    mocks.pathname = "/admin/help/event-campaigns";
+    expect(renderLayout()).toContain("Protected page content");
   });
 
   it("shows only Withdrawals to wallet approvers", () => {
