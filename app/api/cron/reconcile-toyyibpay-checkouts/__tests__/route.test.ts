@@ -39,7 +39,7 @@ vi.mock('@/lib/vendor-notifications/order-events', () => ({ emitOrderVendorEvent
 import { GET } from '../route';
 
 function request(secret = 'cron-test-secret') {
-  return new Request('https://mywisata.example/api/cron/reconcile-toyyibpay-checkouts', {
+  return new Request('https://mylawatan.example/api/cron/reconcile-toyyibpay-checkouts', {
     headers: { authorization: `Bearer ${secret}` },
   });
 }
@@ -106,7 +106,7 @@ describe('GET /api/cron/reconcile-toyyibpay-checkouts', () => {
   });
 
   it('rejects missing and wrong cron secrets before service work', async () => {
-    expect((await GET(new Request('https://mywisata.example/api/cron/reconcile-toyyibpay-checkouts'))).status).toBe(401);
+    expect((await GET(new Request('https://mylawatan.example/api/cron/reconcile-toyyibpay-checkouts'))).status).toBe(401);
     expect((await GET(request('wrong'))).status).toBe(401);
     expect(mocks.from).not.toHaveBeenCalled();
   });

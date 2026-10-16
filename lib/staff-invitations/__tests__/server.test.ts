@@ -25,8 +25,8 @@ describe("staff invitation server helpers", () => {
 
   it("requires a configured trusted origin", () => {
     expect(() => staffInvitationOrigin({})).toThrow("NEXT_PUBLIC_SITE_URL");
-    expect(() => staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "https://mywisata.example/path" })).toThrow("origin");
-    expect(() => staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "http://mywisata.example" })).toThrow("HTTPS");
+    expect(() => staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "https://mylawatan.example/path" })).toThrow("origin");
+    expect(() => staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "http://mylawatan.example" })).toThrow("HTTPS");
   });
 
   it("reuses the existing trusted application origin when the dedicated setting is absent", () => {
@@ -36,14 +36,14 @@ describe("staff invitation server helpers", () => {
   });
 
   it("allows HTTPS and local HTTP, then builds an encoded link", () => {
-    expect(staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "https://staff.mywisata.test/" })).toBe(
-      "https://staff.mywisata.test",
+    expect(staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "https://staff.mylawatan.test/" })).toBe(
+      "https://staff.mylawatan.test",
     );
     expect(staffInvitationOrigin({ NEXT_PUBLIC_SITE_URL: "http://localhost:3000" })).toBe(
       "http://localhost:3000",
     );
-    expect(buildStaffInvitationUrl("https://staff.mywisata.test", "a/b+c")).toBe(
-      "https://staff.mywisata.test/staff-invitations/a%2Fb%2Bc",
+    expect(buildStaffInvitationUrl("https://staff.mylawatan.test", "a/b+c")).toBe(
+      "https://staff.mylawatan.test/staff-invitations/a%2Fb%2Bc",
     );
   });
 });

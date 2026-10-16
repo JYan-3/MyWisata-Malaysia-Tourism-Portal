@@ -20,7 +20,7 @@ test.describe("Customer vendor-fair event journeys", () => {
     page.on("pageerror", (error) => runtimeErrors.push(`${error.message}\n${error.stack ?? ""}`));
 
     await page.goto("/customer/events", { waitUntil: "domcontentloaded" });
-    const mapCanvas = page.locator(".mywisata-explore-map canvas.maplibregl-canvas");
+    const mapCanvas = page.locator(".mylawatan-explore-map canvas.maplibregl-canvas");
     await expect(mapCanvas).toBeVisible();
     await page.waitForTimeout(1_500);
     const bounds = await mapCanvas.boundingBox();

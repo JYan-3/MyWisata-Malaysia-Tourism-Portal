@@ -11,6 +11,12 @@ const catalogueSource = read("backend/domains/catalogue.ts");
 const filterSource = read("components/customer/discovery-filters.tsx");
 
 describe("customer vendor search contract", () => {
+  it("reuses the directory catalogue for the no-query recommendation feed", () => {
+    expect(pageSource).toContain("const resultsPromise = searchActivities");
+    expect(pageSource).toContain("resultsPromise.then((results) => getRecommendedFeed");
+    expect(pageSource).toContain("candidates: results");
+  });
+
   it("loads outlet-owned gallery photos for sponsored outlets even when a Hero exists", () => {
     expect(pageSource).toContain("attachSponsoredOutletGalleryCovers");
     expect(pageSource).toContain('.from("media_assets")');

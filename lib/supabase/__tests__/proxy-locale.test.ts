@@ -49,7 +49,7 @@ function makeRequest({ cookie, acceptLanguage }: { cookie?: string; acceptLangua
   const headers = new Headers();
   if (cookie) headers.set("cookie", cookie);
   if (acceptLanguage) headers.set("accept-language", acceptLanguage);
-  return new NextRequest(new Request("https://mywisata.example/customer", { headers }));
+  return new NextRequest(new Request("https://mylawatan.example/customer", { headers }));
 }
 
 function localeFromResponse(response: Response) {

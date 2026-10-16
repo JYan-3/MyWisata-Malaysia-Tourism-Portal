@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KycSecurityStatus } from "@/lib/kyc/types";
 import { Clock3, FileCheck2, Search, ShieldCheck } from "lucide-react";
@@ -31,7 +31,7 @@ export default function AdminKycPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "info_requested">("all");
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/kyc/submissions", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
@@ -61,10 +61,10 @@ export default function AdminKycPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : t("kyc.errors.loadQueue"));
     }
-  }
+  }, [router, t]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const queueUsers = users.filter((user) => submissions.has(user.id));
   const pendingReview = queueUsers.filter((user) => submissions.get(user.id)?.status === "pending");

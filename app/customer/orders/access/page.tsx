@@ -15,6 +15,8 @@ export default function GuestOrderAccessPage() {
   useEffect(() => {
     const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
     window.history.replaceState(null,'',window.location.pathname);
+    // A missing one-time URL token immediately switches to the recovery form.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!token) { setFailed(true); return; }
     fetch('/api/guest/orders/access',{ method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}) })
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })

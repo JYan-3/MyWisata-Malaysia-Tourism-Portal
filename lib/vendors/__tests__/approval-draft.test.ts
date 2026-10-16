@@ -25,14 +25,14 @@ describe('draftVendorApprovalEmail', () => {
 
   it('parses a well-formed SUBJECT/BODY response', async () => {
     process.env.LLM_API_KEY = 'test-key';
-    const text = "SUBJECT: Congratulations, Rasa Malaysia Kitchen is approved!\nBODY: Hi Ah Meng, we're thrilled to welcome Rasa Malaysia Kitchen to MyWisata.\nLog in using the link below to get started.";
+    const text = "SUBJECT: Congratulations, Rasa Malaysia Kitchen is approved!\nBODY: Hi Ah Meng, we're thrilled to welcome Rasa Malaysia Kitchen to MyLawatan.\nLog in using the link below to get started.";
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200 }),
     ));
 
     await expect(draftVendorApprovalEmail(context)).resolves.toEqual({
       subject: 'Congratulations, Rasa Malaysia Kitchen is approved!',
-      body: "Hi Ah Meng, we're thrilled to welcome Rasa Malaysia Kitchen to MyWisata.\nLog in using the link below to get started.",
+      body: "Hi Ah Meng, we're thrilled to welcome Rasa Malaysia Kitchen to MyLawatan.\nLog in using the link below to get started.",
     });
   });
 

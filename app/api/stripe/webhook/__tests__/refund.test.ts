@@ -40,7 +40,7 @@ function stripeRefundEvent(
         amount: 2800,
         currency: 'myr',
         failure_reason: status === 'failed' ? 'failed_to_process' : null,
-        metadata: { mywisata_refund_id: REFUND_ID } as Record<string, string>,
+        metadata: { mylawatan_refund_id: REFUND_ID } as Record<string, string>,
       },
     },
   };
@@ -89,7 +89,7 @@ describe('POST /api/stripe/webhook refund outcomes', () => {
     });
   });
 
-  it('acknowledges Stripe refunds outside the MyWisata refund flow without writing', async () => {
+  it('acknowledges Stripe refunds outside the MyLawatan refund flow without writing', async () => {
     const event = stripeRefundEvent('refund.created', 'pending');
     event.data.object.metadata = {};
     mocks.constructEvent.mockReturnValue(event);
@@ -98,6 +98,19 @@ describe('POST /api/stripe/webhook refund outcomes', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('continues to accept refunds created with the previous metadata key', async () => {
+    const event = stripeRefundEvent('refund.created', 'pending');
+    event.data.object.metadata = { mywisata_refund_id: REFUND_ID };
+    mocks.constructEvent.mockReturnValue(event);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('record_order_refund_provider_outcome', expect.objectContaining({
+      p_refund_id: REFUND_ID,
+    }));
   });
 
   it('rejects an invalid Stripe signature without a database write', async () => {

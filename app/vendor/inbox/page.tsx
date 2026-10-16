@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { formatMYR } from '@/lib/i18n/format';
@@ -36,6 +36,7 @@ const FILTERS: { value: InboxFilter; translationKey: string }[] = [
   { value: 'unread', translationKey: 'ui.inbox.filter.unread' },
   { value: 'needs_reply', translationKey: 'ui.inbox.filter.needs_reply' },
 ];
+const INBOX_RECONCILE_POLL_MS = 15_000;
 
 function toChatMessages(thread: Thread): ChatMessage[] {
   return (thread.chat_messages ?? [])
@@ -75,6 +76,7 @@ export default function VendorInboxPage() {
   const [filter, setFilter] = useState<InboxFilter>('all');
   // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2
   const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
+  const refreshRequest = useRef<{ vendorId: string; controller: AbortController } | null>(null);
   const filters = FILTERS.map((option) => ({ value: option.value, label: t(option.translationKey) }));
 
   const presence = useChatPresence(vendorId ? `chat-presence-vendor-${vendorId}` : undefined, user?.id, 'vendor');
@@ -85,27 +87,61 @@ export default function VendorInboxPage() {
       if (showLoading) setLoading(false);
       return;
     }
+    if (refreshRequest.current?.vendorId === vendorId) return;
+    refreshRequest.current?.controller.abort();
+    const controller = new AbortController();
+    refreshRequest.current = { vendorId, controller };
     if (showLoading) setLoading(true);
-    setLoadError(null);
     try {
-      const response = await fetch(`/api/vendors/${vendorId}/inbox`, { cache: 'no-store' });
+      const response = await fetch(`/api/vendors/${vendorId}/inbox`, { cache: 'no-store', signal: controller.signal });
       const payload = await parseInboxResponse<Thread>(response);
+      if (controller.signal.aborted) return;
+      if (payload.error) {
+        if (showLoading) {
+          setThreads(payload.data);
+          setLoadError(payload.error);
+        }
+        return;
+      }
       setThreads(payload.data);
-      setLoadError(payload.error);
+      setLoadError(null);
     } catch {
-      setThreads([]);
-      setLoadError(t('ui.inbox.loadFailed'));
+      if (!controller.signal.aborted && showLoading) {
+        setThreads([]);
+        setLoadError(t('ui.inbox.loadFailed'));
+      }
     } finally {
-      if (showLoading) setLoading(false);
+      if (refreshRequest.current?.controller === controller) {
+        refreshRequest.current = null;
+        if (showLoading) setLoading(false);
+      }
     }
   }, [t, vendorId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadThreads();
-    const timer = window.setInterval(() => void loadThreads(false), 3000);
-    return () => window.clearInterval(timer);
-  }, [loadThreads]);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadThreads(false);
+      }
+    }, INBOX_RECONCILE_POLL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadThreads(false);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      const request = refreshRequest.current;
+      if (request && request.vendorId === vendorId) {
+        refreshRequest.current = null;
+        request.controller.abort();
+      }
+    };
+  }, [loadThreads, vendorId]);
 
   // Deep-link from a "New message" notification (/vendor/inbox?thread=<id>).
   // One-shot: only before the user has opened a thread themselves.

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { MyWisataLogo } from '@/components/shared/mywisata-logo';
+import { MyLawatanLogo } from '@/components/shared/mylawatan-logo';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { CustomerSiteFooter } from '@/components/customer/customer-site-footer';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ export function AuthPageShell({ title, description, children }: { title: ReactNo
     <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-gradient-to-b from-secondary/80 via-background/40 to-transparent" aria-hidden="true" />
     <main className="mx-auto mb-auto mt-2 w-full max-w-[490px] py-2 sm:mt-4 sm:py-4">
       <header className="relative mb-5 flex min-h-[60px] items-center justify-between gap-4 sm:mb-6 sm:justify-center">
-        <MyWisataLogo markSize={60} priority />
+        <MyLawatanLogo markSize={60} priority />
         <div className="w-28 shrink-0 sm:absolute sm:right-0 sm:top-1/2 sm:w-32 sm:-translate-y-1/2"><LanguageSwitcher compact /></div>
       </header>
       <Card className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

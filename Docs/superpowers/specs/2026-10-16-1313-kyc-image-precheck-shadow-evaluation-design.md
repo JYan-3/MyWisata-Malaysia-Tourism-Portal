@@ -1,7 +1,7 @@
 # KYC Image Pre-check Shadow Evaluation Design
 
-Status: design for user review  
-Date: 2026-10-16  
+Status: design for user review
+Date: 2026-10-16
 Branch: `feature/event-part`
 
 ## Context

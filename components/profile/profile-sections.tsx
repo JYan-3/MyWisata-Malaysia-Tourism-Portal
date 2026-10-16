@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, ChevronRight, Loader2, MessageCircle, Trash2 } from "lucide-react";
@@ -58,7 +58,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/profile/me", { cache: "no-store" });
@@ -70,10 +70,10 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       setError(null);
     } catch { setError(tCommon("errors.generic")); }
     finally { setLoading(false); }
-  }
+  }, [tCommon]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void loadProfile(); }, []);
+  useEffect(() => { void loadProfile(); }, [loadProfile]);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   async function savePersonal() {

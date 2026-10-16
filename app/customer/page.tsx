@@ -14,6 +14,15 @@ import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import type { EventPartner } from "@/components/customer/event-partners-section";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 import { nextVendorEvent } from "@/lib/promotion-campaigns/vendor-events";
+import { Instrument_Serif } from "next/font/google";
+
+const discoverTitleFont = Instrument_Serif({
+  variable: "--font-discover-title",
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
+  display: "swap",
+});
 
 export default async function CustomerHomePage() {
   const db = await createClient();
@@ -121,5 +130,5 @@ export default async function CustomerHomePage() {
     .filter((partner) => partner.next)
     .sort((a, b) => (a.next?.startsOn ?? "9999").localeCompare(b.next?.startsOn ?? "9999") || a.name.localeCompare(b.name));
 
-  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} eventPartners={featuredEventPartners} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={Boolean(campaignResult.error)} />;
+  return <CustomerHomeClient titleFontClassName={discoverTitleFont.variable} popular={activities} recommended={recommended} vendors={featuredVendors} eventPartners={featuredEventPartners} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={Boolean(campaignResult.error)} />;
 }

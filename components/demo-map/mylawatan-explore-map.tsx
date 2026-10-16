@@ -10,10 +10,10 @@ import { Compass, Map as MapIcon, MapPin } from "lucide-react";
 import geoJson from "@/lib/demo-map/malaysia-states.json";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 
-export const MYWISATA_EXPLORE_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-const STATE_SOURCE_ID = "mywisata-states";
-const STATE_FILL_LAYER_ID = "mywisata-state-fill";
-const STATE_LINE_LAYER_ID = "mywisata-state-line";
+export const MYLAWATAN_EXPLORE_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const STATE_SOURCE_ID = "mylawatan-states";
+const STATE_FILL_LAYER_ID = "mylawatan-state-fill";
+const STATE_LINE_LAYER_ID = "mylawatan-state-line";
 
 type StateFeature = {
   type: "Feature";
@@ -71,7 +71,7 @@ function applyBuildingStyle(map: MapLibreMap): boolean {
 
 import { useTranslation } from "react-i18next";
 
-export function MyWisataExploreMap({
+export function MyLawatanExploreMap({
   selectedStateId,
   onSelectState,
   presentation = "explore",
@@ -119,8 +119,8 @@ export function MyWisataExploreMap({
 
   return (
     <>
-    <div className={`mywisata-explore-map relative w-full overflow-hidden rounded-[1.8rem] border border-primary/20 bg-card shadow-sm ${isEventsMap ? "h-[min(58svh,560px)] min-h-[360px] lg:h-[620px]" : "aspect-[1600/1060] min-h-[440px] sm:min-h-[500px] lg:h-[620px] lg:aspect-auto lg:min-h-0"}`}>
-      <style>{`.mywisata-explore-map .maplibregl-canvas-container { overflow: hidden; }`}</style>
+    <div className={`mylawatan-explore-map relative w-full overflow-hidden rounded-[1.8rem] border border-primary/20 bg-card shadow-sm ${isEventsMap ? "h-[min(58svh,560px)] min-h-[360px] lg:h-[620px]" : "aspect-[1600/1060] min-h-[440px] sm:min-h-[500px] lg:h-[620px] lg:aspect-auto lg:min-h-0"}`}>
+      <style>{`.mylawatan-explore-map .maplibregl-canvas-container { overflow: hidden; }`}</style>
       <MapLibre
         ref={mapRef}
         initialViewState={{
@@ -130,7 +130,7 @@ export function MyWisataExploreMap({
           pitch: isEventsMap ? 0 : 48,
           bearing: isEventsMap ? 0 : -12,
         }}
-        mapStyle={MYWISATA_EXPLORE_MAP_STYLE}
+        mapStyle={MYLAWATAN_EXPLORE_MAP_STYLE}
         maxPitch={isEventsMap ? 0 : 70}
         dragRotate={!isEventsMap}
         touchPitch={!isEventsMap}

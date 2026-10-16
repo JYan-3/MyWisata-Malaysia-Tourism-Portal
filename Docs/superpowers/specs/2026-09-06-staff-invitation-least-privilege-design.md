@@ -4,7 +4,7 @@
 
 ## Problem
 
-Staff Roles currently solves only half of the staffing workflow. A Super Admin can create a reusable permission role and assign it to an existing global Admin, Approver, or Super Admin, but cannot invite a new employee who has no MyWisata account. The current employee search therefore cannot create an identity, send a real email, collect the employee's consent, or connect a newly registered account to the selected role.
+Staff Roles currently solves only half of the staffing workflow. A Super Admin can create a reusable permission role and assign it to an existing global Admin, Approver, or Super Admin, but cannot invite a new employee who has no MyLawatan account. The current employee search therefore cannot create an identity, send a real email, collect the employee's consent, or connect a newly registered account to the selected role.
 
 Assigning a new employee the existing coarse `admin` identity would also violate the requested least-privilege model. The Admin shell still exposes many modules by coarse role, while configurable Staff Roles currently enforce only four dedicated permission keys. A new employee must not gain broad Admin access merely to enter the back office.
 
@@ -31,7 +31,7 @@ The Outlet Manager invitation implementation is a reference, not a drop-in solut
   - `admin.vendor.manage`
   - `admin.map_campaign.manage`
 - An invited Staff user can see and invoke only the modules represented by their effective permission set.
-- Email addresses already carrying any MyWisata application role—including Customer, Vendor Owner, Outlet Manager, Staff, Admin, Approver, or Super Admin—cannot enter the new-employee invitation flow. The only exception is a roleless identity created solely from an earlier attempt for the same Staff invitation email; it may resume or receive a replacement invitation.
+- Email addresses already carrying any MyLawatan application role—including Customer, Vendor Owner, Outlet Manager, Staff, Admin, Approver, or Super Admin—cannot enter the new-employee invitation flow. The only exception is a roleless identity created solely from an earlier attempt for the same Staff invitation email; it may resume or receive a replacement invitation.
 - Existing Staff employees are managed in a separate “Employees and permissions” area and are not sent through the new-employee invitation flow.
 - An invitation is valid for seven days.
 - Resending rotates the token and immediately invalidates every earlier link.
@@ -153,7 +153,7 @@ Apply a resend cooldown to prevent accidental email bursts. Revocation changes t
 
 The email includes:
 
-- MyWisata Staff invitation purpose;
+- MyLawatan Staff invitation purpose;
 - role name;
 - localized, human-readable permission list;
 - exact expiry time in Malaysia time;
@@ -341,7 +341,7 @@ Never audit or log raw tokens, passwords, OAuth material, SMTP credentials, Supa
 ### Out of scope
 
 - Adding new permission keys for Refunds, Catalogue Review, Support, Chat Reports, Affiliate, Chatbot, AI Assistant, User Management, Wallet Settings, Payout Reports, Recommendations, or Staff Conduct.
-- Inviting an email that already carries any MyWisata application role, including Customer, Vendor Owner, Outlet Manager, Staff, Admin, Approver, or Super Admin.
+- Inviting an email that already carries any MyLawatan application role, including Customer, Vendor Owner, Outlet Manager, Staff, Admin, Approver, or Super Admin.
 - Multiple roles in one invitation; additional roles are granted after joining from “Employees and permissions.”
 - Bulk Staff import or bulk invitation.
 - Custom invitation-email editing by the Super Admin.

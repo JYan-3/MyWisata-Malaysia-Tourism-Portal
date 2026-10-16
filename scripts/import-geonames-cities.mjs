@@ -56,11 +56,11 @@ export async function importGeoNamesCities({ archivePath, databaseUrl, supabaseU
   const transport = resolveImportTransport({ databaseUrl, supabaseUrl, serviceRoleKey });
   requireUnzip();
 
-  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "mywisata-geonames-"));
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "mylawatan-geonames-"));
   const downloadedPath = path.join(temporaryDirectory, "cities1000.zip");
   const sourcePath = archivePath ? path.resolve(archivePath) : downloadedPath;
   const postgresClient = transport === "postgres"
-    ? new pg.Client({ connectionString: databaseUrl, application_name: "mywisata-geonames-import" })
+    ? new pg.Client({ connectionString: databaseUrl, application_name: "mylawatan-geonames-import" })
     : null;
   const supabaseClient = transport === "supabase"
     ? createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })

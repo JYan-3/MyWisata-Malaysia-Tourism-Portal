@@ -7,7 +7,7 @@ const read = (file: string) => {
   return existsSync(path) ? readFileSync(path, "utf8") : "";
 };
 
-const mapSource = read("components/demo-map/mywisata-explore-map.tsx");
+const mapSource = read("components/demo-map/mylawatan-explore-map.tsx");
 const storySource = read("components/demo-map/story-map.tsx");
 
 describe("production Explore MapLibre map", () => {
@@ -53,7 +53,7 @@ describe("production Explore MapLibre map", () => {
     expect(storySource).toContain("selectedDestination.image");
     expect(storySource).toContain("selectedDestination.attraction");
     expect(storySource).toContain("<Image");
-    expect(storySource).toContain("<MyWisataExploreMap");
+    expect(storySource).toContain("<MyLawatanExploreMap");
   });
 
   it("adds restrained depth to the selected destination photo while respecting reduced motion", () => {

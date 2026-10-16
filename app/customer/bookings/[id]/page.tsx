@@ -85,7 +85,7 @@ export default function CustomerBookingDetailsPage() {
   }
 
   const bookingOutlet = outlets.find((outlet) => outlet.id === booking.outletId);
-  const outletName = bookingOutlet?.name ?? tCustomer("ui.labels.mywisataOutlet");
+  const outletName = bookingOutlet?.name ?? tCustomer("ui.labels.mylawatanOutlet");
 
   return (
     <main className="min-h-full bg-background">

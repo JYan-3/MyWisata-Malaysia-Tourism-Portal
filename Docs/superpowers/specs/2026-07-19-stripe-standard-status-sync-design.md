@@ -2,7 +2,7 @@
 
 ## Context
 
-MyWisata uses Stripe Standard connected accounts with the Stripe Dashboard set to
+MyLawatan uses Stripe Standard connected accounts with the Stripe Dashboard set to
 `full`. The wallet currently assumes that every linked account can receive a new
 `account_onboarding` Account Link. A completed Standard account can reject that
 request, leaving the user with the generic `Unable to start Stripe onboarding`

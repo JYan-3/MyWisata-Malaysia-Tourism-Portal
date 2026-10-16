@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stop MyWisata from creating invalid onboarding links for completed Standard/Full Dashboard accounts, while synchronizing Stripe payout status safely before wallet display and withdrawal.
+**Goal:** Stop MyLawatan from creating invalid onboarding links for completed Standard/Full Dashboard accounts, while synchronizing Stripe payout status safely before wallet display and withdrawal.
 
 **Architecture:** Add a server-only Stripe account retrieval helper, a status-reconciliation API used by the wallet, and a final reconciliation check in the withdrawal route. Keep `account.updated` as the asynchronous path; all writes to `stripe_payouts_enabled` remain server-side and fail closed.
 

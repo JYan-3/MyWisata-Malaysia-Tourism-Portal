@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import {
   duplicateOutletPageBlock,
-  getBuilderViewportConfig,
   isOutletBuilderBusy,
   OUTLET_BUILDER_CLOSE_TRANSITION_MS,
   type BuilderConfirmationAction,
@@ -218,7 +217,7 @@ export default function OutletPageBuilder({
     return () => {
       active = false;
     };
-  }, [draftStorageKey, outletId, outletName, vendorId]);
+  }, [draftStorageKey, outletId, outletName, t, vendorId]);
 
   useEffect(() => {
     if (loading || !dirty) return;
@@ -455,7 +454,7 @@ export default function OutletPageBuilder({
     } finally {
       setSaving(false);
     }
-  }, [document, draftStorageKey, draftVersion, outletId, publishedAt, vendorId]);
+  }, [document, draftStorageKey, draftVersion, outletId, publishedAt, t, vendorId]);
 
   useEffect(() => {
     if (loading || !dirty || saving || publishing) return;
@@ -563,8 +562,6 @@ export default function OutletPageBuilder({
         {t("builder.loading")}
       </div>
     );
-
-  const viewportConfig = getBuilderViewportConfig(view);
 
   async function closeBuilder() {
     if (isOutletBuilderBusy({ saving, publishing, discarding, closing })) return;

@@ -47,7 +47,7 @@ function request(overrides: Record<string, unknown> = {}) {
 
 function customRequest(overrides: Record<string, unknown> = {}) {
   return request({
-    subject: 'Join MyWisata',
+    subject: 'Join MyLawatan',
     body: 'We would love to have you on the platform.',
     ...overrides,
   });
@@ -157,7 +157,7 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
     expect(mocks.order).toEqual(['insert-invite', 'send-email', 'mark-invited']);
     expect(mocks.sendCustomVendorEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: 'owner@example.com',
-      subject: 'Join MyWisata',
+      subject: 'Join MyLawatan',
       body: expect.stringContaining('Complete your vendor sign-up here:'),
     }));
   });
@@ -208,7 +208,7 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
   });
 
   it('rejects subject without body', async () => {
-    const response = await POST(request({ subject: 'Join MyWisata' }));
+    const response = await POST(request({ subject: 'Join MyLawatan' }));
     expect(response.status).toBe(422);
   });
 

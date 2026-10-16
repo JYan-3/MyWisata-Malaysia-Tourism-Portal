@@ -47,7 +47,7 @@ describe("staff invitation recipient API", () => {
   });
 
   it("returns a no-store, human-readable preview without technical secrets", async () => {
-    const response = await GET(new Request(`https://mywisata.test/api/staff-invitations/${TOKEN}?locale=en`), {
+    const response = await GET(new Request(`https://mylawatan.test/api/staff-invitations/${TOKEN}?locale=en`), {
       params: Promise.resolve({ token: TOKEN }),
     });
     const body = await response.json();
@@ -75,7 +75,7 @@ describe("staff invitation recipient API", () => {
       expires_at: "2099-09-13T04:30:00.000Z",
       staff_roles: { name: "Changed", is_active: true, staff_role_permissions: [] },
     }));
-    const response = await GET(new Request(`https://mywisata.test/api/staff-invitations/${TOKEN}`), {
+    const response = await GET(new Request(`https://mylawatan.test/api/staff-invitations/${TOKEN}`), {
       params: Promise.resolve({ token: TOKEN }),
     });
     expect((await response.json()).data.status).toBe("role_changed");
@@ -83,7 +83,7 @@ describe("staff invitation recipient API", () => {
 
   it("requires authentication before accepting", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    const response = await POST(new Request(`https://mywisata.test/api/staff-invitations/${TOKEN}`, { method: "POST" }), {
+    const response = await POST(new Request(`https://mylawatan.test/api/staff-invitations/${TOKEN}`, { method: "POST" }), {
       params: Promise.resolve({ token: TOKEN }),
     });
     expect(response.status).toBe(401);
@@ -91,14 +91,14 @@ describe("staff invitation recipient API", () => {
   });
 
   it("accepts through the transactional RPC and sanitizes failures", async () => {
-    const response = await POST(new Request(`https://mywisata.test/api/staff-invitations/${TOKEN}`, { method: "POST" }), {
+    const response = await POST(new Request(`https://mylawatan.test/api/staff-invitations/${TOKEN}`, { method: "POST" }), {
       params: Promise.resolve({ token: TOKEN }),
     });
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledWith("accept_staff_invitation", { p_token_hash: expect.stringMatching(/^[0-9a-f]{64}$/) });
 
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "email_mismatch database-secret" } });
-    const mismatch = await POST(new Request(`https://mywisata.test/api/staff-invitations/${TOKEN}`, { method: "POST" }), {
+    const mismatch = await POST(new Request(`https://mylawatan.test/api/staff-invitations/${TOKEN}`, { method: "POST" }), {
       params: Promise.resolve({ token: TOKEN }),
     });
     const body = await mismatch.json();

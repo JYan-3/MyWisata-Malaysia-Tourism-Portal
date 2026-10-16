@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { MyWisataLogo } from "@/components/shared/mywisata-logo";
+import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import type { Role, User } from "@/backend/core/types";
 
@@ -273,7 +273,7 @@ function LoginContent() {
       <main className="w-full max-w-[490px] mx-auto mt-2 sm:mt-4 mb-auto py-2 sm:py-4">
         {/* Brand Logo with Language Switcher to the right, aligned with the card border below */}
         <header className="relative mb-5 sm:mb-6 flex items-center justify-center min-h-[60px]">
-          <MyWisataLogo markSize={60} priority />
+          <MyLawatanLogo markSize={60} priority />
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-28 sm:w-32">
             <LanguageSwitcher compact />
           </div>

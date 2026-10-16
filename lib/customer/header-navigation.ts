@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, CalendarDays, Compass, FileText, Gift, Heart, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
+import { Bookmark, CalendarDays, Compass, FileText, Gift, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -31,7 +31,7 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
     label: "My Trips & Saved",
     labelKey: "accountGroups.myTravel",
     items: [
-      { href: "/customer/saved", label: "Saved", labelKey: "accountItems.saved", description: "Saved places and destinations", icon: Heart },
+      { href: "/customer/saved", label: "Saved", labelKey: "accountItems.saved", description: "Saved places and destinations", icon: Bookmark },
       { href: "/customer/activity?tab=itinerary", label: "My Activity", labelKey: "accountItems.activity", description: "Itineraries and activities", icon: Compass },
     ],
   },

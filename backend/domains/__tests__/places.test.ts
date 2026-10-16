@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 // default export is never actually used here.
 vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
-const { getPlaceAccesses, getPlaceBySlug, getPlaceAncestors, getPlaceInformationalActivities, getPlaceProducts, getNearbyOutlets } = await import(
+const { getPlaceAccesses, getPlaceBySlug, getPlaceAncestors, getPlaceInformationalActivities, getPlaceProducts, getPlaceProductsForPlaces, getNearbyOutlets } = await import(
   "@/backend/domains/places"
 );
 
@@ -15,17 +15,23 @@ const { getPlaceAccesses, getPlaceBySlug, getPlaceAncestors, getPlaceInformation
  * — getPlaceAncestors walks the same "places" table by different ids on each
  * hop, so a stub that ignores the filter can't distinguish those calls.
  */
-function makeDb(tables: Record<string, Record<string, unknown>[]>) {
+function makeDb(
+  tables: Record<string, Record<string, unknown>[]>,
+  records: { filters?: Record<string, unknown>[]; seen?: string[] } = {},
+) {
   return {
     from(table: string) {
+      records.seen?.push(table);
       let rows = tables[table] ?? [];
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: (col: string, val: unknown) => {
+          records.filters?.push({ table, column: col, value: val });
           rows = rows.filter((row) => row[col] === val);
           return builder;
         },
         in: (col: string, vals: unknown[]) => {
+          records.filters?.push({ table, column: col, value: vals });
           rows = rows.filter((row) => vals.includes(row[col]));
           return builder;
         },
@@ -105,7 +111,7 @@ describe("getPlaceBySlug", () => {
 });
 
 const BASE_PRODUCT_ROW = {
-  id: "p1", outlet_id: null, name: "Monkey Beach Guided Trek", description: null, cover_url: null,
+  id: "p1", vendor_id: "v1", outlet_id: null, name: "Monkey Beach Guided Trek", description: null, cover_url: null,
   base_price: 45, requires_booking: true, status: "active", review_status: "approved", tags: null,
   created_at: "2026-01-01T00:00:00Z", attributes: null, is_hidden_gem: false, type_slugs: null,
   is_family_friendly: false, is_couple_friendly: false, place_state: null, place_district: null,
@@ -134,6 +140,35 @@ describe("getPlaceProducts", () => {
     expect(result[0].product.id).toBe("p1");
     expect(result[0].vendor.id).toBe("v1");
     expect(result[0].relation).toBe("guide_service");
+  });
+
+  it("loads multiple POI product lists with one link read and a unique ID-scoped product read", async () => {
+    const filters: Record<string, unknown>[] = [];
+    const seen: string[] = [];
+    const db = makeDb({
+      product_places: [
+        { product_id: "p1", place_id: "poi-1", relation_type: "guide_service" },
+        { product_id: "p1", place_id: "poi-2", relation_type: "admission" },
+        { product_id: "p2", place_id: "poi-2", relation_type: "addon" },
+        { product_id: "inactive", place_id: "poi-1", relation_type: "admission" },
+      ],
+      products: [
+        BASE_PRODUCT_ROW,
+        { ...BASE_PRODUCT_ROW, id: "p2", name: "Second experience" },
+      ],
+      vendors: [VENDOR_ROW],
+    }, { filters, seen });
+
+    const result = await getPlaceProductsForPlaces(["poi-1", "poi-2", "poi-1"], db);
+
+    expect(result.get("poi-1")?.map(({ product, relation }) => [product.id, relation]))
+      .toEqual([["p1", "guide_service"]]);
+    expect(result.get("poi-2")?.map(({ product, relation }) => [product.id, relation]))
+      .toEqual([["p1", "admission"], ["p2", "addon"]]);
+    expect(seen.filter((table) => table === "product_places")).toHaveLength(1);
+    expect(seen).not.toContain("product_review_metrics");
+    expect(filters).toContainEqual({ table: "product_places", column: "place_id", value: ["poi-1", "poi-2"] });
+    expect(filters).toContainEqual({ table: "products", column: "id", value: ["p1", "p2", "inactive"] });
   });
 });
 

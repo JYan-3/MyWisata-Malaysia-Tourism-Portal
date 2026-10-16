@@ -793,6 +793,7 @@
       "click_velocity": "点击速度激增",
       "duplicate_attribution": "重复提现尝试",
       "expired_attribution": "归因窗口已过期",
+      "link_disabled_at_payout": "由于链接在订单付款前已停用，佣金结算已被阻止",
       "self_referral": "自我推荐",
       "vendor_ineligible": "商家/门店经理不符合佣金资格",
       "visitor_clustering": "点击集中在同一访客",
@@ -3176,7 +3177,7 @@
     "providers": {
       "bankTransferSimulator": "银行转账 — 模拟器",
       "grabpaySimulator": "GrabPay — 模拟器",
-      "mywisataWallet": "MyLawatan 钱包",
+      "mylawatanWallet": "MyLawatan 钱包",
       "stripeSandbox": "Stripe 沙盒",
       "tngSimulator": "Touch ’n Go 电子钱包 — 模拟器",
       "unknown": "未知服务商"

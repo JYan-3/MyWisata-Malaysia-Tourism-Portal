@@ -8,7 +8,7 @@
 
 **Scope:** Primary sources only: official project source code, official project
 documentation, and identity specifications. This note is research and design
-guidance only; it does not modify MyWisata code or the implementation plan.
+guidance only; it does not modify MyLawatan code or the implementation plan.
 
 ## Question
 
@@ -32,7 +32,7 @@ A tier or progress label can remain as presentation, but it must not imply that
 one proof automatically establishes unrelated proofs. In particular, approved
 KYC proves only the identity claims and assurance recorded by the KYC process;
 it does not, by itself, prove control of a phone number or completion of a
-MyWisata profile.
+MyLawatan profile.
 
 ## Evidence from mature projects
 
@@ -72,7 +72,7 @@ The architecture names a Policy Decision Point and a Policy Enforcement Point.
 The resource server asks for and enforces an authorization decision. Therefore,
 client-visible permission information is not the enforcement boundary.
 
-**Applicable lesson:** use separate MyWisata facts for phone, profile, and KYC.
+**Applicable lesson:** use separate MyLawatan facts for phone, profile, and KYC.
 Optional KYC should not be implemented as a required-action sequence whose
 earlier steps must be cleared first. Map facts to action scopes/capabilities.
 
@@ -114,7 +114,7 @@ queries. See [`Where to check permissions`](https://docs.gitlab.com/development/
 and the API helper's backend
 [`authorize!`](https://github.com/gitlabhq/gitlabhq/blob/master/lib/api/helpers.rb).
 
-**Applicable lesson:** a MyWisata capability may be enabled by more than one
+**Applicable lesson:** a MyLawatan capability may be enabled by more than one
 independent verification route. The UI may consume the same resolved ability,
 but a sensitive endpoint must read current facts and authorize again rather
 than trust the UI snapshot or an old cached tier.
@@ -146,7 +146,7 @@ calls `guardian.can_create?(Post, @topic)` during validation before saving.
 The client cannot obtain posting authority merely because the UI showed a
 composer.
 
-**Applicable lesson:** MyWisata may retain user labels such as "Phone Verified"
+**Applicable lesson:** MyLawatan may retain user labels such as "Phone Verified"
 or "KYC Verified", but every feature should have its own `can_*` decision that
 combines only its relevant facts and restrictions.
 
@@ -172,7 +172,7 @@ data, webhooks, email, and external calls were not changed or triggered. See
 [`Saleor AGENTS — GraphQL Authorization Tests`](https://github.com/saleor/saleor/blob/main/AGENTS.md#graphql-authorization-tests).
 
 **Applicable lesson:** expose the same stable capability identifiers to
-MyWisata frontend and backend, support explicit `any`/OR predicates where the
+MyLawatan frontend and backend, support explicit `any`/OR predicates where the
 business rules permit alternative qualification, and test denied mutations for
 absence of side effects.
 
@@ -200,16 +200,16 @@ Therefore:
 - Approved KYC may establish `kyc_approved` and the specific identity claims
   recorded as verified by the KYC provider.
 - It establishes `phone_verified` only if phone ownership was explicitly part
-  of that verification, the result records that fact, and MyWisata intentionally
+  of that verification, the result records that fact, and MyLawatan intentionally
   accepts that assurance method as equivalent to its OTP rule.
 - It does not establish `profile_complete`, because profile completion is a
-  MyWisata product-data requirement (photo, biography, preferences, and other
+  MyLawatan product-data requirement (photo, biography, preferences, and other
   configured fields), not a generic identity claim.
 
-For the stated MyWisata rules, no such equivalence should be assumed: KYC,
+For the stated MyLawatan rules, no such equivalence should be assumed: KYC,
 phone verification, and profile completion remain independent.
 
-## Recommended MyWisata model
+## Recommended MyLawatan model
 
 ### Persist facts independently
 
@@ -224,7 +224,7 @@ kyc_approved_at
 account/role/eligibility restrictions
 ```
 
-`profile_completed_at` should describe completion of the MyWisata profile
+`profile_completed_at` should describe completion of the MyLawatan profile
 fields only. Phone verification should not be one of the facts required to set
 it, and KYC submission/approval should not require either phone verification or
 profile completion.
@@ -318,7 +318,7 @@ The frontend may use a server-produced capability snapshot to render controls,
 but stale snapshots are expected. It must handle the backend's typed denial and
 show the same recovery UX. It must never send a tier value as proof of access.
 
-## Design decision for MyWisata
+## Design decision for MyLawatan
 
 Adopt a **fact set + named capabilities** model and explicitly retire the
 assumption that the customer must progress through

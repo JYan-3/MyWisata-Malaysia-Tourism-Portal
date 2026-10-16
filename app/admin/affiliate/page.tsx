@@ -767,7 +767,7 @@ export default function AdminAffiliatePage() {
             className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allTypes")}</option>
-            {Object.entries(FLAG_TYPE_LABEL).map(([key, label]) => (
+            {Object.keys(FLAG_TYPE_LABEL).map((key) => (
               <option key={key} value={key}>
                 {t(`affiliate.flagTypes.${key}`)}
               </option>
@@ -797,7 +797,7 @@ export default function AdminAffiliatePage() {
       </AdminFilterBar>
 
       <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("affiliate.accessibility.selectAllFlags")} checked={filteredFraudFlags.length > 0 && filteredFraudFlags.filter((flag) => flag.status === "open").every((flag) => selectedFlagIds.has(flag.id))} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); filteredFraudFlags.filter((flag) => flag.status === "open").forEach((flag) => event.target.checked ? next.add(flag.id) : next.delete(flag.id)); return next; })} /><span className="text-muted-foreground">{t("affiliate.selectAllOpen")}</span></div>
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("affiliate.accessibility.selectAllFlags")} checked={filteredFraudFlags.length > 0 && filteredFraudFlags.filter((flag) => flag.status === "open").every((flag) => selectedFlagIds.has(flag.id))} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); filteredFraudFlags.filter((flag) => flag.status === "open").forEach((flag) => { if (event.target.checked) next.add(flag.id); else next.delete(flag.id); }); return next; })} /><span className="text-muted-foreground">{t("affiliate.selectAllOpen")}</span></div>
         <AdminBatchActionBar selectedCount={filteredFraudFlags.filter((flag) => selectedFlagIds.has(flag.id)).length} onClear={() => setSelectedFlagIds(new Set())} onApply={(action) => void applyFlagBatch(action as "dismiss" | "confirm")} actions={[{ value: "dismiss", label: t("batchActions.dismiss") }, { value: "confirm", label: t("batchActions.confirm") }]} busy={batchBusy} />
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
@@ -828,7 +828,7 @@ export default function AdminAffiliatePage() {
             ) : (
               filteredFraudFlags.map((f) => (
                 <tr key={f.id} className="border-t border-border align-top">
-                  <td className="px-4 py-2.5"><input type="checkbox" aria-label={t("affiliate.accessibility.selectFlag", { name: f.userName })} disabled={f.status !== "open"} checked={selectedFlagIds.has(f.id)} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(f.id) : next.delete(f.id); return next; })} /></td>
+                  <td className="px-4 py-2.5"><input type="checkbox" aria-label={t("affiliate.accessibility.selectFlag", { name: f.userName })} disabled={f.status !== "open"} checked={selectedFlagIds.has(f.id)} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(f.id); else next.delete(f.id); return next; })} /></td>
                   <td className="px-4 py-2.5 text-foreground">
                     {f.userName}
                     {f.affiliateCode && <span className="text-muted-foreground"> ({f.affiliateCode})</span>}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersion, payload, disabled = false, onBusyChange, onVerified, embedded = false }: Props) {
+  const router = useRouter();
   const { t } = useTranslation('admin');
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(operation === 'login');
@@ -101,7 +103,7 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
   async function passwordLogin() {
     const { error: signOutError } = await createClient().auth.signOut({ scope: 'local' });
     if (signOutError) { setError(t('passkey.failed')); return; }
-    window.location.assign('/login');
+    router.push('/login');
   }
 
   const verifyButton = <Button type="button" disabled={busy || disabled || loading || (!financial && (!passwordAuthenticated || devices.length === 0))} onClick={() => void perform({ operation, ...(financial ? { withdrawalId, expectedVersion, payload } : {}) }, onVerified)} className={embedded ? 'h-12 w-full gap-2 rounded-xl text-sm font-semibold shadow-sm sm:text-base' : 'gap-2'}><ShieldCheck size={16} />{t(busy ? 'passkey.working' : financial ? 'passkey.verifyAndConfirm' : 'passkey.verify')}</Button>;

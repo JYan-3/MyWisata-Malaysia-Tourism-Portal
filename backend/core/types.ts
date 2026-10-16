@@ -285,7 +285,7 @@ export interface PlaceAccess {
   imageUrl: string | null;
 }
 
-/** A source-backed attraction activity with no MyWisata vendor checkout path. */
+/** A source-backed attraction activity with no MyLawatan vendor checkout path. */
 export interface PlaceInformationalActivity {
   id: string;
   placeId: string;

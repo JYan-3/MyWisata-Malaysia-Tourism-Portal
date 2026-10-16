@@ -7,7 +7,7 @@ const customerLayoutSource = readFileSync(
   "utf8",
 );
 const logoSource = readFileSync(
-  resolve(process.cwd(), "components/shared/mywisata-logo.tsx"),
+  resolve(process.cwd(), "components/shared/mylawatan-logo.tsx"),
   "utf8",
 );
 
@@ -27,7 +27,7 @@ describe("customer header reference contract", () => {
   });
 
   it("uses the supplied logo asset without changing the header row geometry", () => {
-    expect(customerLayoutSource).toContain('src="/branding/mywisata-logo-transparent.png?v=2"');
+    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=2"');
     expect(customerLayoutSource).toContain("width={758}");
     expect(customerLayoutSource).toContain("height={306}");
     expect(customerLayoutSource).toContain("h-16");
@@ -49,6 +49,18 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).toContain('className="hidden md:flex w-28"');
     expect(customerLayoutSource).not.toContain('className="hidden md:block"');
     expect(customerLayoutSource).not.toContain("max-md:hidden");
+  });
+
+  it("keeps Saved in mobile navigation without a desktop utility shortcut", () => {
+    expect(customerLayoutSource.match(/href="\/customer\/saved"/g) ?? []).toHaveLength(1);
+    expect(customerLayoutSource).toContain('import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react"');
+    expect(customerLayoutSource).toContain('<Bookmark size={13} aria-hidden="true" fill={savedCount > 0 ? "currentColor" : "none"} />');
+
+    const utilityRowStart = customerLayoutSource.indexOf('className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1"');
+    const cartLinkStart = customerLayoutSource.indexOf('href="/customer/cart"', utilityRowStart);
+    const desktopUtilities = customerLayoutSource.slice(utilityRowStart, cartLinkStart);
+    expect(desktopUtilities).not.toContain('href="/customer/saved"');
+    expect(desktopUtilities).not.toContain("<Bookmark");
   });
 
   it("compresses the customer utility row at phone widths to keep account controls visible", () => {

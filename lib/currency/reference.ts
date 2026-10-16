@@ -3,7 +3,8 @@ export const REFERENCE_CURRENCIES = ["MYR", "SGD", "USD", "CNY", "EUR"] as const
 export type ReferenceCurrency = (typeof REFERENCE_CURRENCIES)[number];
 export type ForeignReferenceCurrency = Exclude<ReferenceCurrency, "MYR">;
 
-export const REFERENCE_CURRENCY_COOKIE = "MYWISATA_CURRENCY";
+export const REFERENCE_CURRENCY_COOKIE = "MYLAWATAN_CURRENCY";
+export const LEGACY_REFERENCE_CURRENCY_COOKIE = "MYWISATA_CURRENCY";
 export const DEFAULT_REFERENCE_CURRENCY: ReferenceCurrency = "MYR";
 
 const REFERENCE_CURRENCY_SYMBOLS: Record<ForeignReferenceCurrency, string> = {
@@ -19,6 +20,11 @@ export function isReferenceCurrency(value: unknown): value is ReferenceCurrency 
 
 export function resolveReferenceCurrency(value: unknown): ReferenceCurrency {
   return isReferenceCurrency(value) ? value : DEFAULT_REFERENCE_CURRENCY;
+}
+
+export function resolveReferenceCurrencyPreference(currentValue: unknown, legacyValue: unknown): ReferenceCurrency {
+  if (isReferenceCurrency(currentValue)) return currentValue;
+  return resolveReferenceCurrency(legacyValue);
 }
 
 export function convertMYR(amountMYR: number, rate: number): number | null {

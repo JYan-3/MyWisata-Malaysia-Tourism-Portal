@@ -20,7 +20,7 @@ export function DiscoveryPinPreview({ pins, onClose }: { pins: DiscoveryPin[]; o
     <aside className="rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="text-sm font-bold text-foreground">
-          {pins.length > 1 ? `${pins.length} ${t("ui.labels.places", { ns: "customer" })}` : pins[0].kind === "outlet" ? t("ui.labels.mywisataOutlet") : t("ui.labels.placeBasedExperience")}
+          {pins.length > 1 ? `${pins.length} ${t("ui.labels.places", { ns: "customer" })}` : pins[0].kind === "outlet" ? t("ui.labels.mylawatanOutlet") : t("ui.labels.placeBasedExperience")}
         </h3>
         <button type="button" onClick={onClose} aria-label={t("actions.close", { ns: "common" })} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
           <X size={16} />
@@ -38,7 +38,7 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
   return (
     <div className="p-4">
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
-        <Store size={12} /> {t("ui.labels.mywisataOutlet")}
+        <Store size={12} /> {t("ui.labels.mylawatanOutlet")}
       </div>
       <Link href={`/customer/outlet/${pin.outlet.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
         {pin.outlet.name}

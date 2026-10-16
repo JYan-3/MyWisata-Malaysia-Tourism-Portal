@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight, CheckCircle2, Clock3, ExternalLink, MapPin, N
 import { createClient } from '@/lib/supabase/server';
 import { ShareButton } from '@/components/shared/share-button';
 import { ReferencePrice } from "@/components/shared/reference-price";
+import { ProductSaveButton } from "@/components/customer/product-save-button";
 import { selectFeaturedVendorProducts, summarizeVendorReviews } from '@/lib/customer/vendor-page';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
@@ -61,6 +62,17 @@ type CatalogueProduct = {
 type LocationSummary = OutletRecord & {
   listingCount: number;
   fromPrice: number | null;
+};
+
+type RawVendorReviewRow = {
+  id: string;
+  rating: number | string;
+  title: string | null;
+  body: string | null;
+  created_at: string;
+  product_id: string | null;
+  outlet_id: string | null;
+  user_id: string | null;
 };
 
 function formatBusinessType(value: string | null, t: TFunction) {
@@ -184,11 +196,12 @@ async function getVendor(vendorId: string) {
   // Resolve vendor owner's chosen featured products
   const explicitFeaturedIds: string[] = Array.isArray(vendor.featured_product_ids) && vendor.featured_product_ids.length > 0
     ? vendor.featured_product_ids
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    : productRows.filter((p: any) => Array.isArray(p.tags) && p.tags.includes('featured')).map((p: any) => p.id);
+    : productRows
+      .filter((product) => Array.isArray(product.tags) && product.tags.some((tag: unknown) => tag === 'featured'))
+      .map((product) => product.id);
 
   // Map review records for full vendor review display
-  const reviews: VendorReviewItem[] = (rawReviews ?? []).map((row: any) => ({
+  const reviews: VendorReviewItem[] = ((rawReviews ?? []) as unknown as RawVendorReviewRow[]).map((row) => ({
     id: row.id,
     rating: Number(row.rating),
     title: row.title ?? undefined,
@@ -233,7 +246,8 @@ function vendorProductDetailHref(productId: string, vendorId: string, outletId?:
 }
 
 function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vendorId: string; t: TFunction }) {
-  return <Link href={vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined)} className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+  return <article className="mw-card group relative min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+    <Link href={vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined)} className="block min-w-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
     <div className="mw-card-media h-48 aspect-auto bg-secondary">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
@@ -244,7 +258,9 @@ function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vend
       <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="break-words whitespace-normal text-xs leading-5 text-muted-foreground">{product.description}</p>}</div>
       <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.locationCount', { count: product.soldAt.length })}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-200"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-muted-foreground/60">({product.reviews})</span></span> : <span className="font-semibold text-primary">{t('ui.vendor.viewProductDetails')} <ArrowRight size={13} className="ml-0.5 inline" /></span>}</div>
     </div>
-  </Link>;
+    </Link>
+    <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-10" />
+  </article>;
 }
 
 function LocationCard({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction }) {
@@ -349,7 +365,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
           </div>}
           <div className="relative mx-auto flex min-h-[280px] max-w-7xl flex-col justify-end px-6 py-12 text-left sm:min-h-[340px] sm:py-14 lg:min-h-[360px] lg:py-16">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
-              {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : <>{t('ui.outlet.verifiedMyWisata')} • {vendorType}</>}
+              {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : <>{t('ui.outlet.verifiedMyLawatan')} • {vendorType}</>}
             </p>
             <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">
               {vendor.name}
@@ -417,7 +433,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
                 {reviewSummary.rating !== null ? `${reviewSummary.rating.toFixed(1)} / 5` : t('ui.labels.verifiedVendor')}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {reviewSummary.reviews > 0 ? t('ui.vendor.travellerReviewCount', { count: reviewSummary.reviews }) : t('ui.vendor.approvedOnMyWisata')}
+                {reviewSummary.reviews > 0 ? t('ui.vendor.travellerReviewCount', { count: reviewSummary.reviews }) : t('ui.vendor.approvedOnMyLawatan')}
               </p>
             </div>
           </div>

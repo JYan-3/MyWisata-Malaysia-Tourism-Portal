@@ -1,13 +1,13 @@
 import Image from "next/image";
 import { LOGO_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
-export type MyWisataMarkProps = {
+export type MyLawatanMarkProps = {
   size?: number;
   className?: string;
   title?: string;
 };
 
-export type MyWisataLogoProps = {
+export type MyLawatanLogoProps = {
   markSize?: number;
   width?: number;
   height?: number;
@@ -16,10 +16,10 @@ export type MyWisataLogoProps = {
   priority?: boolean;
 };
 
-export function MyWisataMark({ size = 32, className, title }: MyWisataMarkProps) {
+export function MyLawatanMark({ size = 32, className, title }: MyLawatanMarkProps) {
   return (
     <Image
-      src="/branding/mywisata-mark-transparent.png"
+      src="/branding/mylawatan-mark-transparent.png"
       alt={title ?? LOGO_BRAND_NAME}
       width={279}
       height={230}
@@ -29,13 +29,13 @@ export function MyWisataMark({ size = 32, className, title }: MyWisataMarkProps)
   );
 }
 
-export function MyWisataLogo({
+export function MyLawatanLogo({
   markSize = 36,
   width,
   height,
   className,
   priority = false,
-}: MyWisataLogoProps) {
+}: MyLawatanLogoProps) {
   // Master logo natural dimensions: 758 x 306 (ratio ~2.477:1)
   const renderedHeight = height ?? markSize;
   const renderedWidth = width ?? Math.round(renderedHeight * (758 / 306));
@@ -48,7 +48,7 @@ export function MyWisataLogo({
       role="img"
     >
       <Image
-        src="/branding/mywisata-logo-transparent.png?v=2"
+        src="/branding/mylawatan-logo-transparent.png?v=2"
         alt={LOGO_BRAND_NAME}
         width={758}
         height={306}

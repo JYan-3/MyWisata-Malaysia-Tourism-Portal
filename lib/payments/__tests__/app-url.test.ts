@@ -6,26 +6,26 @@ describe('resolvePaymentAppUrl', () => {
 
   it('uses the trusted server APP_URL origin and strips a trailing slash', () => {
     vi.stubEnv('NODE_ENV', 'production');
-    vi.stubEnv('APP_URL', 'https://mywisata.example/');
+    vi.stubEnv('APP_URL', 'https://mylawatan.example/');
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://public-fallback.example');
 
-    expect(resolvePaymentAppUrl()).toBe('https://mywisata.example');
+    expect(resolvePaymentAppUrl()).toBe('https://mylawatan.example');
   });
 
   it('falls back to the configured public app origin', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('APP_URL', '');
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://mywisata.example');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://mylawatan.example');
 
-    expect(resolvePaymentAppUrl()).toBe('https://mywisata.example');
+    expect(resolvePaymentAppUrl()).toBe('https://mylawatan.example');
   });
 
   it.each([
-    'https://user:password@mywisata.example',
-    'https://mywisata.example/path',
-    'https://mywisata.example?next=evil',
+    'https://user:password@mylawatan.example',
+    'https://mylawatan.example/path',
+    'https://mylawatan.example?next=evil',
     'javascript:alert(1)',
-    'http://mywisata.example',
+    'http://mylawatan.example',
     'http://localhost:3000',
   ])('rejects an unsafe production application URL: %s', (value) => {
     vi.stubEnv('NODE_ENV', 'production');

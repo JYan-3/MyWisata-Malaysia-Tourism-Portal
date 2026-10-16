@@ -9,7 +9,10 @@ describe("customer account switch", () => {
       "utf8",
     );
 
-    expect(layout).toContain("await supabase.auth.signOut()");
-    expect(layout).toContain('window.location.assign("/login")');
+    const signOutIndex = layout.indexOf("await supabase.auth.signOut()");
+    const loginNavigationIndex = layout.indexOf('router.replace("/login")');
+
+    expect(signOutIndex).toBeGreaterThan(-1);
+    expect(loginNavigationIndex).toBeGreaterThan(signOutIndex);
   });
 });

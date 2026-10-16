@@ -7,7 +7,7 @@
 
 ## Executive conclusion
 
-MyWisata should use a **hybrid database-driven RBAC model**:
+MyLawatan should use a **hybrid database-driven RBAC model**:
 
 1. Store modules, menu metadata, role-module assignments, and atomic module groups in Supabase.
 2. Keep executable routes and security-sensitive permission capabilities registered and enforced by application code and PostgreSQL RLS/RPCs.
@@ -17,7 +17,7 @@ MyWisata should use a **hybrid database-driven RBAC model**:
 
 This matches the strongest parts of Supabase, Frappe, RuoYi, Casbin, and Directus without importing a large authorization framework that does not fit the existing project.
 
-## Current MyWisata evidence
+## Current MyLawatan evidence
 
 The repository already has a useful RBAC base:
 
@@ -52,7 +52,7 @@ Supabase's official RBAC guide stores role-permission relationships in PostgreSQ
 Source: [Supabase custom-claims RBAC guide](https://github.com/supabase/supabase/blob/master/apps/docs/content/guides/api/custom-claims-and-role-based-access-control-rbac.mdx)
 
 **Adopt:** database-backed permission relations, one central authorization function, RLS enforcement.
-**Do not copy blindly:** relying only on JWT claims for immediately editable staff access; MyWisata's current database lookup can preserve prompt revocation.
+**Do not copy blindly:** relying only on JWT claims for immediately editable staff access; MyLawatan's current database lookup can preserve prompt revocation.
 
 ### Frappe: database metadata drives role configuration and visible workspaces
 
@@ -61,7 +61,7 @@ Frappe's Permission Manager loads roles and document types dynamically, while it
 Sources: [Permission Manager](https://github.com/frappe/frappe/blob/develop/frappe/core/page/permission_manager/permission_manager.py), [permission engine](https://github.com/frappe/frappe/blob/develop/frappe/permissions.py), [workspace visibility and desktop building](https://github.com/frappe/frappe/blob/develop/frappe/desk/desktop.py)
 
 **Adopt:** role UI reads from the catalogue; navigation is built from permitted database records.
-**Do not copy blindly:** Frappe's broad DocType framework; MyWisata already has concrete Next.js routes and Supabase tables.
+**Do not copy blindly:** Frappe's broad DocType framework; MyLawatan already has concrete Next.js routes and Supabase tables.
 
 ### RuoYi: menu tree, permission identifiers, and role-menu joins
 
@@ -90,7 +90,7 @@ Sources: [Directus repository](https://github.com/directus/directus), [permissio
 **Adopt:** fail closed; menu/app access and data/API permission are separate checks.
 **Do not copy blindly:** Directus's generic data-platform policy engine is much larger than this project's needs.
 
-## Recommended MyWisata model
+## Recommended MyLawatan model
 
 ```text
 staff_roles
@@ -125,7 +125,7 @@ For Catalogue Review and Pending Review, create explicit capabilities and make t
 Database-driven modules, groups, role assignment, and menus; code/RLS-owned route and data enforcement.
 
 - Meets the requested dynamic role/menu behavior.
-- Reuses current MyWisata RBAC.
+- Reuses current MyLawatan RBAC.
 - Safely supports existing registered functions without code changes to each new role.
 - Keeps arbitrary database content from becoming executable code.
 

@@ -10,19 +10,18 @@ type OverlayState = {
   result: WeatherOverlayResult | null;
 };
 
-export function useWeatherOverlay(tripId: string, date: string | null, hour: number, enabled: boolean, hasCoordinates = true) {
+export function useWeatherOverlay(
+  tripId: string,
+  date: string | null,
+  hour: number,
+  enabled: boolean,
+  hasCoordinates = true,
+): OverlayState {
   const requestFingerprint = useMemo(() => `${tripId}|${date ?? ""}|${hour}|${enabled}|${hasCoordinates}`, [date, enabled, hasCoordinates, hour, tripId]);
   const [state, setState] = useState<OverlayState>({ status: "idle", result: null });
 
   useEffect(() => {
-    if (!enabled || !date) {
-      setState({ status: "idle", result: null });
-      return;
-    }
-    if (!hasCoordinates) {
-      setState({ status: "missing_coordinates", result: null });
-      return;
-    }
+    if (!enabled || !date || !hasCoordinates) return;
 
     const controller = new AbortController();
     let active = true;
@@ -49,7 +48,7 @@ export function useWeatherOverlay(tripId: string, date: string | null, hour: num
         }
         if (!active) return;
         setState({ status: "ready", result: body.data });
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted || !active) return;
         setState({ status: "error", result: null });
       }
@@ -62,5 +61,7 @@ export function useWeatherOverlay(tripId: string, date: string | null, hour: num
     };
   }, [date, enabled, hasCoordinates, hour, requestFingerprint, tripId]);
 
+  if (!enabled || !date) return { status: "idle", result: null };
+  if (!hasCoordinates) return { status: "missing_coordinates", result: null };
   return state;
 }

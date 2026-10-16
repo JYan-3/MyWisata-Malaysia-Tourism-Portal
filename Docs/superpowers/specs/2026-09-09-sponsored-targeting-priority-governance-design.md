@@ -5,7 +5,7 @@
 
 ## Context
 
-MyWisata already supports governed sponsored-product campaigns with product selection, effective dates, state/category scope, draft submission, separate approval, pause actions, customer-safe projection, and a customer carousel capped at four advertisements. The existing implementation treats `priority` as an arbitrary integer from 0 to 1000, permits ties, and resolves them deterministically by start time and placement ID. It does not preview overlapping campaigns, reserve meaningful positions 1 through 4, shift displaced campaigns, or archive older paused campaigns.
+MyLawatan already supports governed sponsored-product campaigns with product selection, effective dates, state/category scope, draft submission, separate approval, pause actions, customer-safe projection, and a customer carousel capped at four advertisements. The existing implementation treats `priority` as an arbitrary integer from 0 to 1000, permits ties, and resolves them deterministically by start time and placement ID. It does not preview overlapping campaigns, reserve meaningful positions 1 through 4, shift displaced campaigns, or archive older paused campaigns.
 
 The desired behavior is a mature targeting and inventory workflow:
 

@@ -19,7 +19,7 @@ describe("outlet manager invitation helpers", () => {
   });
 
   it("builds an invitation link for the public acceptance page", () => {
-    expect(buildOutletManagerInvitationLink("https://mywisata.test", "abc123"))
-      .toBe("https://mywisata.test/outlet-manager-invitations/abc123");
+    expect(buildOutletManagerInvitationLink("https://mylawatan.test", "abc123"))
+      .toBe("https://mylawatan.test/outlet-manager-invitations/abc123");
   });
 });

@@ -19,7 +19,7 @@ describe("development force-clear authorization", () => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("VERCEL_ENV", "development");
-    vi.stubEnv("MYWISATA_DEMO_TOOLS", "true");
+    vi.stubEnv("MYLAWATAN_DEMO_TOOLS", "true");
     mocks.createClient.mockResolvedValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }) },
     });

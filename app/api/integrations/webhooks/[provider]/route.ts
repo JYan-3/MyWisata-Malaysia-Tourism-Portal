@@ -28,6 +28,7 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   const signature =
+    request.headers.get("x-mylawatan-signature") ||
     request.headers.get("x-mywisata-signature") ||
     request.headers.get("x-signature") ||
     request.headers.get("x-hub-signature-256");

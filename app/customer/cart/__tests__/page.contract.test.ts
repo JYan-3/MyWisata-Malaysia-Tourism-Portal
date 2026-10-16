@@ -55,7 +55,8 @@ describe("cart voucher outlet validation", () => {
 
   it("uses one resolved slot availability decision for cart rows and bulk selection", () => {
     expect(source).toContain("getCartLineAvailability");
-    expect(source).toMatch(/bookingSlotsLoad\.key === bookingActivityKey \? bookingSlotsLoad\.status : "loading"/);
+    expect(source).toContain("resolveBookingSlotLookupStatus");
+    expect(source).toMatch(/const bookingActivityRequestToken = useMemo\(\(\) => Symbol\(bookingActivityKey\)/);
     expect(source).toMatch(/if \(!activitiesReady \|\| bookingSlotsStatus === "loading"\) return;/);
     localeSources.forEach((localeSource) => {
       expect(localeSource).toContain('"checkingAvailability"');

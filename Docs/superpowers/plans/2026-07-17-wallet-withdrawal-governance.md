@@ -15,7 +15,7 @@
 - Currency is MYR only and every database money calculation uses integer sen; never use JavaScript floating point as the source of truth.
 - Wallet checkout drains Top-up balance first, then Earnings balance. Pending rewards and Reserved withdrawal money are never spendable.
 - Do not implement split payment. If Wallet spendable amount is insufficient, offer Top Up or Card; do not create a partial Wallet debit.
-- Only `kyc_verified` users with an enabled Stripe Connect payout account may submit a withdrawal. The destination is the single Stripe-managed, masked bank account; do not collect bank/e-wallet numbers in MyWisata.
+- Only `kyc_verified` users with an enabled Stripe Connect payout account may submit a withdrawal. The destination is the single Stripe-managed, masked bank account; do not collect bank/e-wallet numbers in MyLawatan.
 - **Wallet Approver** is the existing database `approver` role, relabelled in UI. It can review withdrawals only. Super Admin alone manages Wallet Approvers, Wallet settings, adjustments, escalation and reports.
 - Reject, Hold, adjustment, fraud override and role changes require a clean Gemini moderation result and a reason of at least 10 characters. Approve note is optional, but if supplied it must contain at least 10 characters.
 - Use existing Gmail/outbox plumbing for Customer email. Do not include KYC images, IC/passport numbers, raw fraud rules, secrets, or full bank details in email/notifications.
@@ -335,7 +335,7 @@ Render two explicit actions: link to `/customer/wallet?topup=1` and selection of
 test('wallet payment drains top-up before earnings and does not offer a split payment', async ({ page }) => {
   await signInAs(page, 'wallet-customer');
   await addPurchasableItem(page);
-  await page.getByRole('button', { name: 'MyWisata Wallet Balance' }).click();
+  await page.getByRole('button', { name: 'MyLawatan Wallet Balance' }).click();
   await page.getByRole('button', { name: /Pay RM/ }).click();
   await expect(page).toHaveURL(/\/customer\/orders\//);
   await expect(page.getByText('Split payment')).toHaveCount(0);

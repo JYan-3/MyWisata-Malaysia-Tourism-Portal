@@ -9,8 +9,8 @@ Prerequisites:
 
 - a disposable local database or isolated staging Supabase project;
 - no production users, orders, notifications, payout credentials, or live email;
-- `MYWISATA_DEMO_TOOLS=true` in the application runtime;
-- `MYWISATA_ENV=staging` for a non-Vercel staging build, or `VERCEL_ENV=preview`
+- `MYLAWATAN_DEMO_TOOLS=true` in the application runtime;
+- `MYLAWATAN_ENV=staging` for a non-Vercel staging build, or `VERCEL_ENV=preview`
   for a Vercel preview deployment.
 
 Install explicitly after canonical migrations:

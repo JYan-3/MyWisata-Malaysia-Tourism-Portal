@@ -13,6 +13,7 @@ import {
   getPlaceInformationalActivities,
   getRegionsWithPois,
   getPlaceProducts,
+  getPlaceProductsForPlaces,
   getNearbyOutlets,
 } from "@/backend/domains/places";
 import { getVendors } from "@/backend/domains/catalogue";
@@ -90,12 +91,11 @@ export default async function PlacePage({ params }: Props) {
       ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" }
       : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200" };
 
-  // Product-option counts for every card this page is about to render — one
-  // batch of parallel lookups instead of each PlaceCard fetching its own.
+  // Load all visible POI product counts together instead of rescanning the
+  // entire catalogue once per PlaceCard.
   const poisShown = place.level === "state" ? regionGroups.flatMap((group) => group.pois) : place.level === "region" ? children : [];
-  const productCounts = new Map(
-    await Promise.all(poisShown.map(async (poi) => [poi.id, (await getPlaceProducts(poi.id)).length] as const)),
-  );
+  const productsByPlace = await getPlaceProductsForPlaces(poisShown.map((poi) => poi.id));
+  const productCounts = new Map(poisShown.map((poi) => [poi.id, productsByPlace.get(poi.id)?.length ?? 0] as const));
 
   // Flattened for PlaceList — region is a filter now, not a grouping axis.
   const regionByPoi: Record<string, string> = {};

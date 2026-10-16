@@ -13,7 +13,7 @@ import {
   WEATHER_EFFECT_PRESETS,
 } from "@/lib/weather/overlay-particles";
 import { canUseLiveRadar, defaultOverlayHour, malaysiaDateHour } from "@/lib/weather/overlay-time";
-import type { WeatherOverlayResult, WeatherOverlaySample } from "@/lib/weather/types";
+import type { WeatherOverlaySample } from "@/lib/weather/types";
 
 function pointInRing(point: [number, number], ring: number[][]) {
   let inside = false;

@@ -89,8 +89,8 @@ describe('vendor invite wizard state', () => {
   });
 
   it('builds the exact safe Google callback and distinct public support mailto links', () => {
-    expect(buildGoogleInvitationCallbackUrl('https://mywisata.example', 'test-token-value')).toBe(
-      'https://mywisata.example/auth/callback?next=%2Fvendor-invite%3Frecommendation%3Dtest-token-value',
+    expect(buildGoogleInvitationCallbackUrl('https://mylawatan.example', 'test-token-value')).toBe(
+      'https://mylawatan.example/auth/callback?next=%2Fvendor-invite%3Frecommendation%3Dtest-token-value',
     );
     expect(buildVendorInviteSupportMailto('Request a new vendor invitation')).toBe(
       'mailto:support@mylawatan.my?subject=Request%20a%20new%20vendor%20invitation',

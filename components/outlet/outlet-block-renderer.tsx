@@ -8,8 +8,7 @@ import type { OutletRendererOutlet, OutletRendererProduct } from '@/components/o
 import { productImageUrl } from '@/lib/storage/product-image';
 import { density } from '@/lib/vendor/outlet-grid';
 import { formatMYR } from "@/lib/i18n/format";
-import type { OperatingHours } from "@/backend/core/types";
-import { formatOperatingHours, formatHours, type OutletContentHoursCopy } from "@/lib/customer/operating-hours";
+import { formatHours, type OutletContentHoursCopy } from "@/lib/customer/operating-hours";
 
 export { formatHours };
 export type { OutletContentHoursCopy };
@@ -147,7 +146,7 @@ export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode
       <img src={outlet.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: outlet.name })} className="h-full w-full object-contain" />
     </div>}
     <div className={`relative mx-auto max-w-7xl px-6 text-white ${mode === 'public' ? 'flex min-h-[280px] flex-col justify-end py-12 sm:min-h-[340px] sm:py-14 lg:min-h-[360px] lg:py-16' : 'py-24'}`} style={{ textAlign: hero.textAlign || 'left' }}>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">{t('ui.outlet.verifiedMyWisata')}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">{t('ui.outlet.verifiedMyLawatan')}</p>
       {mode === 'editor' && onEditHero ? (
         <input
           aria-label={t('ui.outlet.editHeroTitle')}

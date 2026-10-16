@@ -18,8 +18,8 @@ const request = {
     email: 'aisyah@example.com',
     phone: '+60123456789',
   },
-  returnUrl: 'https://mywisata.example/api/payments/toyyibpay/return',
-  callbackUrl: 'https://mywisata.example/api/payments/toyyibpay/callback',
+  returnUrl: 'https://mylawatan.example/api/payments/toyyibpay/return',
+  callbackUrl: 'https://mylawatan.example/api/payments/toyyibpay/callback',
 };
 
 describe('ToyyibPay checkout adapter', () => {
