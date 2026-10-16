@@ -4,11 +4,13 @@ import { createHash } from 'node:crypto';
 import { parseBody, eventCheckoutSchema } from '@/lib/validation/schemas';
 import { planCheckoutPayment, startCheckoutPayment, type PreparedCheckout } from '@/lib/checkout/start-payment';
 import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
+import { activeCheckoutOrderId } from '@/lib/checkout/errors';
 
 export const dynamic = 'force-dynamic';
 
 // Stable codes the reserve dialog translates; anything else is a generic failure.
 const RESERVATION_ERRORS: Array<[string, string, string]> = [
+  ['active_checkout_exists', 'ACTIVE_CHECKOUT_EXISTS', 'Complete or cancel your existing unpaid order before starting another checkout.'],
   ['event_sold_out', 'EVENT_SOLD_OUT', 'This item is sold out for the chosen date.'],
   ['event_slot_full', 'EVENT_SLOT_FULL', 'This pickup time is full. Choose another time.'],
   ['event_slot_invalid', 'EVENT_SLOT_INVALID', 'This pickup time is no longer available.'],
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
     const message = error?.message ?? '';
     const [, code, text] = RESERVATION_ERRORS.find(([key]) => message.includes(key))
       ?? ['', 'CHECKOUT_FAILED', 'The reservation could not be completed. Please try again.'];
-    return privateCheckoutJson({ data: null, error: { code, message: text } }, { status: 409 });
+    return privateCheckoutJson({ data: null, error: { code, message: text, ...(code === 'ACTIVE_CHECKOUT_EXISTS' ? { activeOrderId: activeCheckoutOrderId(error?.details) } : {}) } }, { status: 409 });
   }
 
   const checkout = prepared as PreparedCheckout;

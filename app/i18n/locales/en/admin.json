@@ -3704,6 +3704,8 @@
     }
   },
   "eventOperations": {
+    "checkout_hold_expired": "Payment received after the checkout hold ended. Fulfilment is paused; review the verified payment and manual refund request.",
+    "checkout_eligibility_lost": "Payment received after purchase eligibility changed. Fulfilment is paused; review the verified payment and manual refund request.",
     "pickupOverdue": "Pickup date passed — outcome unconfirmed",
     "pickupHelp": "An uncollected order is not automatically a customer no-show. Review the items and contact evidence before closing. Amounts under review are not approved refund amounts.",
     "refreshPickups": "Refresh overdue pickups",
@@ -3717,7 +3719,7 @@
       "collected": "Recorded pickup verified",
       "refunded": "Refund completion verified"
     },
-    "title": "Event obligations needing attention",
+    "title": "Order obligations needing attention",
     "summary": "Open: {{open}} · Unassigned: {{unassigned}} · No deadline: {{undated}} · Overdue: {{overdue}} · Outstanding: {{amount}}",
     "deadlineHelp": "Deadlines are for operator follow-up. Passing a deadline does not refund or close an order. Times use Malaysia time.",
     "dueRequired": "Choose a future handling deadline.",
@@ -3729,7 +3731,7 @@
     "failed": "Last run failed",
     "stale": "No recent completed run",
     "healthy": "Last run completed",
-    "empty": "No unresolved event obligations.",
+    "empty": "No unresolved order obligations.",
     "orderWithoutNumber": "Order awaiting display number",
     "paymentException": "Payment received but reservation unavailable",
     "refundAttention": "Refund needs attention",

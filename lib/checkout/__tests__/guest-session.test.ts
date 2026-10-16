@@ -1,7 +1,24 @@
 import { describe,expect,it,vi } from 'vitest';
 vi.mock('@/lib/supabase/service',()=>({createServiceClient:vi.fn()}));
-import { newGuestCredential,hashGuestCredential,setGuestCookie,guestPrivateResponse,readGuestCookie,isSameOriginMutation,readGuestJson } from '../guest-session';
+import { newGuestCredential,hashGuestCredential,setGuestCookie,guestPrivateResponse,readGuestCookie,isSameOriginMutation,readGuestJson,guestAddressRateKey } from '../guest-session';
 describe('private guest credentials',()=>{
+ it('trusts only the explicitly configured proxy and validates its final address',()=>{
+  const originalVercel=process.env.VERCEL; const originalProxy=process.env.GUEST_TRUSTED_PROXY;
+  try {
+   delete process.env.VERCEL; delete process.env.GUEST_TRUSTED_PROXY;
+   const request=new Request('https://example.test',{headers:{'x-forwarded-for':'198.51.100.1, 203.0.113.2','x-real-ip':'192.0.2.3'}});
+   expect(guestAddressRateKey(request)).toBe('guest-address:unavailable');
+   process.env.GUEST_TRUSTED_PROXY='hostinger-cdn';
+   expect(guestAddressRateKey(request)).toBe('guest-address:203.0.113.2');
+   expect(guestAddressRateKey(new Request(request.url,{headers:{'x-forwarded-for':'203.0.113.2, invalid'}}))).toBe('guest-address:unavailable');
+   expect(guestAddressRateKey(new Request(request.url,{headers:{'x-real-ip':'203.0.113.2'}}))).toBe('guest-address:unavailable');
+   process.env.VERCEL='1';
+   expect(guestAddressRateKey(new Request(request.url,{headers:{'x-vercel-forwarded-for':'203.0.113.4, 198.51.100.5'}}))).toBe('guest-address:203.0.113.4');
+  } finally {
+   if(originalVercel===undefined) delete process.env.VERCEL; else process.env.VERCEL=originalVercel;
+   if(originalProxy===undefined) delete process.env.GUEST_TRUSTED_PROXY; else process.env.GUEST_TRUSTED_PROXY=originalProxy;
+  }
+ });
  it('issues 256-bit opaque secrets and keeps them out of JSON',()=>{
   const token=newGuestCredential();
   expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);expect(hashGuestCredential(token)).toMatch(/^[a-f0-9]{64}$/);
