@@ -1348,7 +1348,11 @@
       "snapshotPhone": "手机号",
       "submittedAt": "提交时间",
       "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
-      "waitingTitle": "等待客户"
+      "waitingTitle": "等待客户",
+      "previewAlt": "用于身份资料对照的{{side}}证件",
+      "closePreview": "关闭证件预览",
+      "openPdf": "在浏览器中查看 PDF",
+      "pdfNote": "这份历史提交包含 PDF，请通过受保护的证件查看入口打开。"
     },
     "documents": {
       "driving_license": "驾驶执照 / MyPolis",
@@ -1490,6 +1494,54 @@
       "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。",
       "pending_one": "{{count}} 条安全告警正在等待符合权限的接收者。",
       "pending_other": "{{count}} 条安全告警正在等待符合权限的接收者。"
+    },
+    "operations": {
+      "title": "KYC 运营 · 今日（马来西亚时间）",
+      "next": "领取下一单",
+      "refresh": "刷新队列",
+      "noNext": "暂无未认领案件。请查看我的案件或稍后刷新。",
+      "workFailed": "无法更新认领状态，请刷新后重试。",
+      "unavailable": "运营数据暂不可用",
+      "submitted": "今日提交",
+      "decided": "今日审核决定",
+      "assigned": "已认领待审核",
+      "waitP95": "等待时间第 95 百分位（分钟）",
+      "worker": "预检查任务：{{queued}} 排队 · {{processing}} 处理中 · {{failed}} 需关注 · 今日完成 {{completedToday}}",
+      "notConfigured": "私有 OCR 后台任务尚未完整配置，仍可人工审核。",
+      "sessions_one": "{{count}} 段完整记录 · 共 {{minutes}} 分钟 · {{incomplete}} 段未完成记录已排除",
+      "sessions_other": "{{count}} 段完整记录 · 共 {{minutes}} 分钟 · {{incomplete}} 段未完成记录已排除",
+      "measurementNote": "记录区间不等于有效工作时间或单份处理时间。已排除中断及未结束区间，但仍可能包含空闲时间。产能与误接收率需要经校准的实测数据，此处不提供估算。",
+      "assignment": "认领状态",
+      "allAssignments": "全部认领状态",
+      "mine": "我认领的",
+      "unassigned": "未认领",
+      "pageSize": "每页条数",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
+      "range": "第 {{first}}–{{last}} 条，共 {{total}} 条符合筛选",
+      "precheck": "私有预检查",
+      "precheckNote": "预检查仅辅助人工核对，不证明证件真实或上传者身份，不批准 KYC，也不证明欺诈。",
+      "precheckStatus": {
+        "none": "暂无预检查记录",
+        "queued": "排队中",
+        "processing": "处理中",
+        "succeeded": "预检查已完成",
+        "failed": "预检查不可用，转人工核对",
+        "cancelled": "证据或案件已变更，预检查停止"
+      },
+      "precheckOutcome": {
+        "precheck_passed": "预检查通过，仍须人工决定",
+        "manual_review": "需要人工核对",
+        "resubmit_suggested": "建议考虑补件，由人工决定"
+      },
+      "start": "开始记录审核区间",
+      "pause": "暂停记录",
+      "release": "释放回队列",
+      "recording": "正在记录此区间。离开窗口会暂停，返回后请手动继续。",
+      "notRecording": "区间记录已暂停。开始审核时可开启，不影响审核决定。",
+      "recordingInterrupted": "无法确认暂停成功。未结束区间不会计入时间统计。",
+      "continueNext": "保存本次决定后，打开下一单",
+      "intervalMeans": "记录区间均值：初审 {{first}} 秒 · 补件重审 {{repeat}} 秒（不等于单份处理时间）"
     }
   },
   "reconciliation": {

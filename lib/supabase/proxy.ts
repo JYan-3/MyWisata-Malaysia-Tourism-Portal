@@ -82,9 +82,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
   }
 
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   const locale = resolveAppLocale({
     accountLocale,
-    cookieLocale: request.cookies.get(LOCALE_COOKIE)?.value,
+    cookieLocale,
     acceptLanguage: request.headers.get('accept-language'),
   });
 
@@ -116,7 +117,15 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   pendingCookies.forEach(({ name, value, options }) =>
     supabaseResponse.cookies.set(name, value, options as Parameters<typeof supabaseResponse.cookies.set>[2]),
   );
-  supabaseResponse.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions);
+  // Background responses may finish after /api/locale saves a newer preference.
+  // Only full document navigations initialize/sync this cookie; RSC and API
+  // reads still receive x-app-locale without persisting an older request snapshot.
+  const isDocumentNavigation = request.method === 'GET'
+    && request.headers.get('sec-fetch-dest') === 'document'
+    && !request.nextUrl.pathname.startsWith('/api/');
+  if (isDocumentNavigation && cookieLocale !== locale) {
+    supabaseResponse.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions);
+  }
 
   return supabaseResponse;
 }

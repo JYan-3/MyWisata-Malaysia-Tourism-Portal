@@ -8,12 +8,13 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, kycReviewSchema);
   if (!parsed.ok) return parsed.response;
-  const { submissionId, userId, action, reasonCode, reasonDetail } = parsed.data;
+  const { submissionId, userId, expectedVersion, action, reasonCode, reasonDetail } = parsed.data;
   const trimmedReasonDetail = reasonDetail?.trim() || null;
 
-  const { error: rpcErr } = await supabase.rpc('admin_review_kyc', {
+  const { error: rpcErr } = await supabase.rpc('review_kyc_case', {
     p_submission_id: submissionId,
     p_user_id: userId,
+    p_expected_version: expectedVersion,
     p_action: action,
     p_reason_code: action === 'approve' ? null : reasonCode ?? null,
     p_reason_detail: action === 'approve' ? null : trimmedReasonDetail,
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
       return apiFail('SELF_DEALING', 'You cannot review your own KYC submission', 403);
     if (message.includes('kyc_not_active_or_not_found'))
       return apiFail('CONFLICT', 'No active KYC submission found for this user', 409);
+    if (message.includes('kyc_assignment_changed'))
+      return apiFail('CONFLICT', 'Assignment changed; reload this case before deciding', 409);
     if (message.includes('kyc_not_assigned'))
       return apiFail('CONFLICT', 'This KYC submission is assigned to another reviewer', 409);
     if (message.includes('invalid_action') || message.includes('reason_not_allowed')

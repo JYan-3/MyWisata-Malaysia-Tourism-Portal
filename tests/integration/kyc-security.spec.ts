@@ -39,6 +39,7 @@ async function beginServerSubmission(userId: string, hash = 'a'.repeat(64)): Pro
     p_ic_hash: hash,
     p_ic_hash_version: 'hmac_sha256_v1',
     p_doc_type: 'national_id',
+    p_ocr_consent: true,
   });
   expect(error).toBeNull();
   expect(data).toMatch(/^[0-9a-f-]{36}$/i);
@@ -195,26 +196,35 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
       p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
     })).error).toBeNull();
     const admin = await createAdminClient();
+    const claim = await admin.client.rpc('claim_kyc_submission', { p_submission_id: submissionId });
+    expect(claim.error).toBeNull();
 
-    expect((await admin.client.rpc('admin_review_kyc', {
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
       p_user_id: applicantId, p_action: null, p_reason_code: null, p_reason_detail: null,
     })).error?.message).toContain('invalid_action');
-    expect((await admin.client.rpc('admin_review_kyc', {
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
       p_user_id: applicantId, p_action: 'reject', p_reason_code: null, p_reason_detail: null,
     })).error?.message).toContain('invalid_reason_code');
-    expect((await admin.client.rpc('admin_review_kyc', {
-      p_user_id: applicantId, p_action: 'reject', p_reason: null,
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
+      p_user_id: applicantId, p_action: 'reject', p_reason_code: null, p_reason_detail: null,
     })).error?.message).toContain('invalid_reason_code');
-    expect((await admin.client.rpc('admin_review_kyc', {
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
       p_user_id: applicantId, p_action: 'reject', p_reason_code: 'unknown', p_reason_detail: null,
     })).error?.message).toContain('invalid_reason_code');
-    expect((await admin.client.rpc('admin_review_kyc', {
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
       p_user_id: applicantId, p_action: 'reject', p_reason_code: 'document_unreadable', p_reason_detail: 'A supplied detail is not allowed.',
     })).error?.message).toContain('reason_detail_not_allowed');
-    expect((await admin.client.rpc('admin_review_kyc', {
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
       p_user_id: applicantId, p_action: 'reject', p_reason_code: 'other', p_reason_detail: '  too short  ',
     })).error?.message).toContain('reason_detail_too_short');
-    expect((await admin.client.rpc('admin_review_kyc', {
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: submissionId, p_expected_version: claim.data?.reviewVersion,
       p_user_id: applicantId, p_action: 'request_info', p_reason_code: 'document_suspected_tampering', p_reason_detail: null,
     })).error?.message).toContain('reason_code_not_allowed');
 
@@ -225,7 +235,10 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     expect((await admin.client.rpc('finalize_kyc_submission', {
       p_submission_id: adminSubmissionId, p_front_path: adminPaths.front, p_back_path: adminPaths.back,
     })).error).toBeNull();
-    expect((await admin.client.rpc('admin_review_kyc', {
+    const ownClaim = await admin.client.rpc('claim_kyc_submission', { p_submission_id: adminSubmissionId });
+    expect(ownClaim.error).toBeNull();
+    expect((await admin.client.rpc('review_kyc_case', {
+      p_submission_id: adminSubmissionId, p_expected_version: ownClaim.data?.reviewVersion,
       p_user_id: admin.id, p_action: 'reject', p_reason_code: 'document_unreadable', p_reason_detail: null,
     })).error?.message).toContain('self_dealing');
   });

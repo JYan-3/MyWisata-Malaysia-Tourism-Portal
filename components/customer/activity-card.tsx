@@ -19,6 +19,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { CardMediaHoverCaption } from "@/components/customer/card-media-hover-caption";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 type ActivityCardItem = ComputedActivity & {
   sponsorship?: { placementId: string; label: "Sponsored" } | null;
@@ -156,10 +157,15 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
         </div>
       </div>
       <div className={`mw-card-body ${detailsRevealOnHover ? "mw-card-body-compact" : ""} space-y-2 p-4`}>
-        <Link href={activityHref} onClick={onSponsoredClick} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={activity.name}>{activity.name}</h3>
+        <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name}>
+          {({ text, control }) => <>
+          <Link href={activityHref} onClick={onSponsoredClick} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3>
         {!detailsRevealOnHover && <div className="mw-card-meta mt-2 flex items-start gap-1.5 text-xs text-muted-foreground"><MapPin size={11} className="mt-0.5 shrink-0" aria-hidden="true" /> <span className="break-words whitespace-normal">{activity.outlet.city}, {activity.outlet.state}</span></div>}
-        </Link>
+          </Link>
+          {control}
+          </>}
+        </LocalizedContent>
         {!detailsRevealOnHover && <Link href={getOutletShopHref(activity.outlet.id)} className="mw-card-meta flex items-start gap-1.5 text-xs text-muted-foreground transition hover:text-primary" title={t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}>
           <Store size={11} className="mt-0.5 shrink-0" aria-hidden="true" /> <span className="break-words whitespace-normal">{t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}</span>
         </Link>}

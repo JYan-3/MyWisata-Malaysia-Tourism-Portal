@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const CODE_FILES = [
+  "components/shared/human-verification.tsx",
   "app/login/page.tsx",
   "app/reset-password/page.tsx",
   "app/account-restore/page.tsx",

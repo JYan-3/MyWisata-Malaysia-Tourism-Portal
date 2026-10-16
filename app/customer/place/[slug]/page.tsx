@@ -24,6 +24,7 @@ import { PlaceActivitySection } from "@/components/customer/place-activity-secti
 import { PlaceAccessSection } from "@/components/customer/place-access-section";
 import { PlaceInformationalActivitySection } from "@/components/customer/place-informational-activity-section";
 import { PlaceCommunitySection } from "@/components/customer/place-community-section";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
@@ -137,9 +138,9 @@ export default async function PlacePage({ params }: Props) {
               {t("ui.place.operatedBy", { name: operator.name })}
             </span>}
           </div>
-          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl">{place.name}</h1>
-          {place.tagline && <p className="mt-2 max-w-2xl text-base font-semibold text-white/90 sm:text-lg">{place.tagline}</p>}
-          {place.intro && <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75 sm:text-base">{place.intro}</p>}
+          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl"><LocalizedContent entityType="place" entityId={place.id} field="name" sourceText={place.name} /></h1>
+          {place.tagline && <p className="mt-2 max-w-2xl text-base font-semibold text-white/90 sm:text-lg"><LocalizedContent entityType="place" entityId={place.id} field="tagline" sourceText={place.tagline} /></p>}
+          {place.intro && <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75 sm:text-base"><LocalizedContent entityType="place" entityId={place.id} field="intro" sourceText={place.intro} /></p>}
         </div>
       </header>
 

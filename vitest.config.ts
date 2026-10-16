@@ -7,6 +7,7 @@ export default defineConfig({
     maxWorkers: 4,
     exclude: [
       "**/node_modules/**",
+      "**/output/**",
       ".worktrees/**",
       "worktrees/**",
       "tests/e2e/**",

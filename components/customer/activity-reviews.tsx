@@ -12,6 +12,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 interface Props {
   productId: string;
@@ -35,7 +36,7 @@ function ReviewCard({ review }: { review: ProductReview }) {
     <article className="rounded-xl bg-muted/70 px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{review.title || t("ui.reviews.guestReview")}</p>
+          <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{review.title ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title} /> : t("ui.reviews.guestReview")}</p>
           <p className="mt-1 break-words whitespace-normal text-xs text-muted-foreground">{review.authorName} · {formatDate(review.createdAt, locale)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1" aria-label={t("ui.reviews.ratingOutOfFive", { rating: review.rating })}>
@@ -43,7 +44,7 @@ function ReviewCard({ review }: { review: ProductReview }) {
           <span className="text-xs font-bold text-foreground">{review.rating}</span>
         </div>
       </div>
-      {review.body && <p className="mt-2 text-sm leading-6 text-foreground/80">“{review.body}”</p>}
+      {review.body && <p className="mt-2 text-sm leading-6 text-foreground/80">“<LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />”</p>}
       {review.verifiedPurchase && <p className="mt-2 text-[11px] font-semibold text-primary">✓ {t("ui.reviews.verifiedPurchase")}</p>}
     </article>
   );

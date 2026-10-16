@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowUpRight, MapPin } from "lucide-react";
 import type { Place } from "@/backend/core/types";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 export function entryLabel(place: Place, t?: (key: string, options?: Record<string, unknown>) => string): { text: string; tone: string } {
   if (place.entryFee === null) return { text: t?.("ui.place.noGate", { ns: "customer" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
@@ -18,12 +19,8 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
   const entry = entryLabel(place, t);
   const location = [place.district, place.state].filter(Boolean).join(", ");
   return (
-    <Link
-      href={`/customer/place/${place.slug}`}
-      aria-label={t("ui.place.explorePlace", { name: place.name })}
-      className="group flex h-full min-h-[390px] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-    >
-      <div className="relative h-48 shrink-0 overflow-hidden bg-secondary sm:h-52">
+    <article className="group flex h-full min-h-[390px] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-xl">
+      <Link href={`/customer/place/${place.slug}`} aria-label={t("ui.place.explorePlace", { name: place.name })} className="relative block h-48 shrink-0 overflow-hidden bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:h-52">
         {place.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={place.imageUrl} alt={place.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
@@ -39,28 +36,30 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
           </span>
           <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${entry.tone}`}>{entry.text}</span>
         </div>
-      </div>
+      </Link>
       <div className="flex flex-1 flex-col p-5">
         <h3 className="min-h-[3.5rem] break-words whitespace-normal font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight text-foreground">
-          {place.name}
+          <LocalizedContent entityType="place" entityId={place.id} field="name" sourceText={place.name}>
+            {({ text, control }) => <><Link href={`/customer/place/${place.slug}`} className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{text}</Link>{control}</>}
+          </LocalizedContent>
         </h3>
         <p className="mt-2 flex items-start gap-1.5 break-words whitespace-normal text-xs font-semibold text-muted-foreground">
           <MapPin size={13} className="shrink-0 text-primary" aria-hidden="true" />
           <span className="break-words whitespace-normal">{location}</span>
         </p>
         <p className="mt-3 min-h-[2.75rem] break-words whitespace-normal text-sm leading-6 text-muted-foreground">
-          {place.tagline || t("ui.place.cardFallback")}
+          {place.tagline ? <LocalizedContent entityType="place" entityId={place.id} field="tagline" sourceText={place.tagline} /> : t("ui.place.cardFallback")}
         </p>
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-5">
           <span className="text-xs font-bold text-primary">
             {productCount === 0 ? t("ui.labels.freeToExplore") : t("ui.place.vendorOptions", { count: productCount })}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-bold text-white">
+          <Link href={`/customer/place/${place.slug}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
             {productCount === 0 ? t("ui.actions.viewDetails") : t("ui.outletMenu.chooseOptions")}
             <ArrowUpRight size={14} aria-hidden="true" />
-          </span>
+          </Link>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }

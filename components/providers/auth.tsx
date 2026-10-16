@@ -31,7 +31,7 @@ interface AuthContextValue {
   staffPermissionKeys: StaffPermissionKey[];
   staffModules: StaffModule[];
   loading: boolean;
-  switchUser: (id: string, user?: User) => Promise<StaffSessionUser | null>;
+  switchUser: (id: string, user?: User, captchaToken?: string) => Promise<StaffSessionUser | null>;
   refreshUser: () => Promise<void>;
 }
 
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.status, loading, pathname, router]);
 
-  const switchUser = useCallback(async (id: string, selectedUser?: User) => {
+  const switchUser = useCallback(async (id: string, selectedUser?: User, captchaToken?: string) => {
     const user = selectedUser;
     if (!user || user.id !== id) throw new Error(tAuth('errors.demoLoad'));
 
@@ -234,7 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch('/api/auth/demo-signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email }),
+        body: JSON.stringify({ email: user.email, captchaToken }),
       });
       await response.json().catch(() => null);
       if (!response.ok) throw new Error(tAuth('signIn.error'));

@@ -41,7 +41,7 @@ function providerConfig(): ProviderConfig | null {
 export async function generateAiText(
   systemPrompt: string,
   userPrompt: string,
-  options: { temperature?: number; maxTokens?: number; signal?: AbortSignal } = {},
+  options: { temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number } = {},
 ): Promise<AiTextResult> {
   const config = providerConfig();
   if (!config) return { available: false, reason: 'not_configured' };
@@ -49,7 +49,8 @@ export async function generateAiText(
   const maxTokens = Math.min(1200, Math.max(100, Math.floor(options.maxTokens ?? 500)));
   let sawRateLimit = false;
 
-  for (const model of config.models) {
+  const providerAttempts = Math.min(config.models.length, Math.max(1, Math.floor(options.maxProviderAttempts ?? config.models.length)));
+  for (const model of config.models.slice(0, providerAttempts)) {
     if (options.signal?.aborted) return { available: false, reason: 'unavailable' };
     try {
       const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {

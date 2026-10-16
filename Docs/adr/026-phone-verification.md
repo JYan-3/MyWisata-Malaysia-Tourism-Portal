@@ -65,9 +65,13 @@ Unverified phone values (`phone_verified_at IS NULL`) are not constrained — us
 | Operation | Limit |
 |---|---|
 | OTP sends per phone per hour | 3 |
+| OTP sends per account per hour | 5 |
+| OTP sends per service per hour | 100 |
 | Verify attempts per token | 5 (Twilio default, not configurable here) |
 
-Rate limit state is stored in Redis (or Upstash) with TTL, not in PostgreSQL. Exceeding the send limit returns 429 with `code: 'rate_limited'`.
+Current send quotas are reserved atomically in PostgreSQL through the service-only `reserve_phone_otp_send(UUID, TEXT)` RPC and `phone_verifications` audit rows. Ordered advisory locks serialize per-account, per-phone, and global quota checks. Exceeding the send limit returns 429 with `code: 'RATE_LIMITED'`. A provider failure still consumes its reservation to bound retries.
+
+The October 2026 human-verification change validates Turnstile on the server before quota reservation or Twilio sends, covering both first sends and resends. Native email authentication uses Supabase CAPTCHA enforcement; it must be enabled with the same configured provider secret before production acceptance. The forward `restore_phone_otp_send` migration reconciles the previously missing deployed RPC without changing verified-phone ownership rules.
 
 ---
 

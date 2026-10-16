@@ -1348,7 +1348,11 @@
       "snapshotPhone": "Phone",
       "submittedAt": "Submitted at",
       "waitingDescription": "The customer must submit the requested information before another decision can be made.",
-      "waitingTitle": "Waiting for customer"
+      "waitingTitle": "Waiting for customer",
+      "previewAlt": "{{side}} document for identity comparison",
+      "closePreview": "Close document preview",
+      "openPdf": "Open PDF in browser",
+      "pdfNote": "This earlier submission contains a PDF. Open it through the protected document viewer."
     },
     "documents": {
       "driving_license": "Driving licence / MyPolis",
@@ -1490,6 +1494,54 @@
       "noEmailRecipients": "No eligible reviewer has a real email address. Configure a recipient before relying on email alerts.",
       "pending_one": "{{count}} security alerts are waiting for an eligible recipient.",
       "pending_other": "{{count}} security alerts are waiting for an eligible recipient."
+    },
+    "operations": {
+      "title": "KYC operations · today (Malaysia time)",
+      "next": "Next case",
+      "refresh": "Refresh queue",
+      "noNext": "No unassigned case is available. Check your assigned cases or refresh later.",
+      "workFailed": "Unable to update this assignment. Reload and try again.",
+      "unavailable": "Operations data unavailable",
+      "submitted": "Submitted today",
+      "decided": "Decisions today",
+      "assigned": "Assigned pending cases",
+      "waitP95": "95th percentile waiting time (minutes)",
+      "worker": "Pre-check jobs: {{queued}} queued · {{processing}} processing · {{failed}} need attention · {{completedToday}} completed today",
+      "notConfigured": "Private OCR worker is not fully configured. Human review remains available.",
+      "sessions_one": "{{count}} completed recording interval · {{minutes}} recorded minutes · {{incomplete}} incomplete intervals excluded",
+      "sessions_other": "{{count}} completed recording intervals · {{minutes}} recorded minutes · {{incomplete}} incomplete intervals excluded",
+      "measurementNote": "Recorded intervals are not effective working time or case handling time. They exclude interrupted/unclosed intervals and may include idle time. Capacity and false acceptance rates require calibrated measurements; no estimate is shown.",
+      "assignment": "Assignment",
+      "allAssignments": "All assignments",
+      "mine": "Assigned to me",
+      "unassigned": "Unassigned",
+      "pageSize": "Rows per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
+      "range": "{{first}}–{{last}} of {{total}} matching cases",
+      "precheck": "Private pre-check",
+      "precheckNote": "Pre-checks assist a human reviewer. They do not verify authenticity or the holder, approve KYC, or prove fraud.",
+      "precheckStatus": {
+        "none": "No pre-check recorded",
+        "queued": "Queued",
+        "processing": "Processing",
+        "succeeded": "Pre-check completed",
+        "failed": "Pre-check unavailable — human review",
+        "cancelled": "Pre-check stopped — evidence or case changed"
+      },
+      "precheckOutcome": {
+        "precheck_passed": "Pre-check passed — human decision required",
+        "manual_review": "Human review required",
+        "resubmit_suggested": "Consider requesting more information — human decision required"
+      },
+      "start": "Start recording interval",
+      "pause": "Pause recording",
+      "release": "Release to queue",
+      "recording": "Recording this interval. Leaving this window pauses it; restart manually when ready.",
+      "notRecording": "Interval recording is paused. Start it when reviewing; it does not affect the decision.",
+      "recordingInterrupted": "Could not confirm the recording pause. Unclosed intervals are excluded from timing statistics.",
+      "continueNext": "After saving this decision, open the next case",
+      "intervalMeans": "Mean recorded interval: first review {{first}} seconds · re-review {{repeat}} seconds (not case handling time)"
     }
   },
   "reconciliation": {

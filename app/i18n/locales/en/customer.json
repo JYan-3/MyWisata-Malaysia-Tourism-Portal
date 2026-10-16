@@ -179,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "Machine translated",
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "pending": "Translation is being prepared"
+    },
     "accessibility": {
       "carousel": "carousel"
     },
@@ -1296,13 +1302,13 @@
       "clickUpload": "Click to upload {{side}} of document",
       "fileHint": "JPG, PNG or WebP · max 5 MB",
       "clickChange": "click to change",
-      "consent": "I agree that MyLawatan may use a third-party AI service to assist with reading my document. A human administrator makes the final KYC decision.",
+      "consent": "I agree to private document processing for KYC. Evidence is not sent to external AI services. An authorised human makes the final decision.",
       "submitting": "Submitting…",
       "startNew": "Start new submission",
       "submitForReview": "Submit for review",
       "uploadRequired": "Please upload a document photo",
       "submissionFailed": "Submission failed.",
-      "manualReview": "AI document reading was unavailable or inconclusive. Your documents were submitted for manual administrator review.",
+      "manualReview": "Your submission is queued for human review. Private pre-checks may assist; they do not approve KYC.",
       "submitted": "KYC documents submitted for review.",
       "myKad": "MyKad (Malaysian IC)",
       "passport": "Passport",
@@ -1314,7 +1320,7 @@
       "passportHint": "Passport: 1–2 letters + 6–8 digits e.g. A12345678",
       "invalidFileType": "Each document must be a JPG, PNG, or WebP photo",
       "fileTooLarge": "File must be under 5 MB (current: {{size}} MB)",
-      "consentRequired": "Please consent to AI-assisted document reading before submitting.",
+      "consentRequired": "Please consent to private KYC document processing before submitting.",
       "tiers": {
         "emailVerified": "Email Verified",
         "phoneVerified": "Phone Verified",
@@ -1329,7 +1335,10 @@
         "document_suspected_tampering": "We could not complete verification with this submission. Please contact support if you need help.",
         "other": "We need more information to complete verification. Please review the reviewer note below.",
         "default": "We could not complete verification with this submission. Please review your documents and submit a new one."
-      }
+      },
+      "previewAlt": "Selected {{side}} photo",
+      "previewGuidance": "Check that this photo shows one document, all four corners, and a readable name and number. Avoid glare, fingers covering text, and collages. This preview does not verify your identity.",
+      "previewUnavailable": "This browser could not display the photo. You may replace it; the server will still validate your submission."
     },
     "recommendations": {
       "vendorNameMin": "Please enter a vendor or business name with at least 3 characters.",

@@ -31,20 +31,27 @@ describe('POST /api/vendor-invite/auth/email/send', () => {
   });
 
   it('sends an OTP only to the server-resolved invitation email', async () => {
-    const response = await POST(request({ token: 'valid-invite-token-value' }));
+    const response = await POST(request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'owner@example.com',
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: true, captchaToken: 'valid-proof' },
     });
     expect(body).toEqual({ data: { sent: true }, error: null });
     expect(JSON.stringify(body)).not.toContain('owner@example.com');
   });
 
+  it('rejects a direct send without a CAPTCHA token before contacting Auth', async () => {
+    const response = await POST(request({ token: 'valid-invite-token-value' }));
+    expect(response.status).toBe(422);
+    expect(mocks.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.resolve).not.toHaveBeenCalled();
+  });
+
   it('rejects an otherwise-valid payload containing a client email', async () => {
-    const response = await POST(request({ token: 'valid-invite-token-value', email: 'attacker@example.com' }));
+    const response = await POST(request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof', email: 'attacker@example.com' }));
 
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
@@ -55,7 +62,7 @@ describe('POST /api/vendor-invite/auth/email/send', () => {
   it('passes expired invitation errors through unchanged', async () => {
     mocks.resolve.mockResolvedValue({ ok: false, error: { code: 'INVITE_EXPIRED', message: 'This vendor invitation has expired.', status: 409 } });
 
-    const response = await POST(request({ token: 'valid-invite-token-value' }));
+    const response = await POST(request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' }));
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVITE_EXPIRED' } });
@@ -65,7 +72,7 @@ describe('POST /api/vendor-invite/auth/email/send', () => {
   it('maps provider rate limits to OTP_RATE_LIMITED without leaking provider details', async () => {
     mocks.signInWithOtp.mockResolvedValue({ error: { code: 'over_email_send_rate_limit', message: 'raw provider rate-limit detail', status: 429 } });
 
-    const response = await POST(request({ token: 'valid-invite-token-value' }));
+    const response = await POST(request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' }));
     const body = await response.json();
 
     expect(response.status).toBe(429);

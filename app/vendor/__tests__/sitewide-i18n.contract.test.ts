@@ -106,6 +106,10 @@ const priorTaskFiles = new Set([
   'components/shared/currency-switcher.tsx',
   'components/shared/empty-state.tsx',
   'components/shared/global-command-palette.tsx',
+  // Shared authentication challenge; it is outside the vendor translation task.
+  'components/shared/human-verification.tsx',
+  // Shared OTP countdown helper; its consumer owns the visible copy.
+  'components/shared/use-otp-resend.ts',
   'components/shared/header-icon-button.ts',
   'components/shared/language-switcher.tsx',
   'components/shared/mylawatan-logo.tsx',

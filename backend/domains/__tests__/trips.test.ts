@@ -190,6 +190,24 @@ describe("database-backed customer trips", () => {
     }, createDb({ trips: [{ ...ownedTrip, user_id: OTHER_USER_ID }] }).client)).rejects.toThrow("Trip not found");
   });
 
+  it("accepts PostgreSQL TIME values when validating the next schedule update", async () => {
+    const { client, database } = createDb({
+      trips: [ownedTrip],
+      trip_items: [
+        { id: "activity", trip_id: TRIP_ID, experience_id: PRODUCT_ID, sequence: 0, scheduled_date: "2026-09-16", scheduled_time: "09:00:00", created_at: NOW, source: "vendor", kind: null, lat: 5.4, lng: 100.3, label: "Activity", sublabel: null },
+        { id: "food", trip_id: TRIP_ID, experience_id: PRODUCT_ID, sequence: 1, scheduled_date: "2026-09-16", scheduled_time: null, created_at: NOW, source: "vendor", kind: null, lat: 5.4, lng: 100.3, label: "Food", sublabel: null },
+      ],
+    });
+
+    await updateTripItem("food", { scheduled_time: "17:30" }, client);
+
+    expect(database.trip_items.find((item) => item.id === "food")?.scheduled_time).toBe("17:30");
+    await expect(getTripItems(TRIP_ID, client)).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "activity", scheduled_time: "09:00:00" }),
+      expect.objectContaining({ id: "food", scheduled_time: "17:30" }),
+    ]));
+  });
+
   it("accepts PostgreSQL UUID identifiers outside the RFC version-bit range", async () => {
     const catalogueProductId = "a54fe0fb-042c-e2e4-9dde-c18a8444cb8e";
     const { client, database } = createDb({ trips: [ownedTrip] });

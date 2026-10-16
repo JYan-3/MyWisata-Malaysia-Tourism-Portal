@@ -492,6 +492,7 @@ export interface AdminKycSubmission {
 }
 
 export interface AdminKycSubmissionDetail extends AdminKycSubmission {
+  precheck?: { status: string; outcome: string | null; updatedAt: string } | null;
   assignedTo: string | null;
   claimedAt: string | null;
   legalIdentity: {
@@ -511,6 +512,7 @@ export interface AdminKycReviewDetail {
     avatarInitial: string;
   };
   assignment: {
+    reviewVersion: number;
     assignedTo: string | null;
     claimedAt: string | null;
     isAssignedToCurrentUser: boolean;

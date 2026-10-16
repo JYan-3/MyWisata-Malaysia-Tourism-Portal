@@ -7,16 +7,20 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   if (!isDemoToolRuntimeEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   try {
-    const body = await request.json() as { email?: string };
+    const body = await request.json() as { email?: string; captchaToken?: string };
     const email = body.email?.trim().toLowerCase();
     if (!email || !email.endsWith('@demo.local')) {
       return NextResponse.json({ error: 'Only seeded demo accounts can use this sign-in flow' }, { status: 400 });
     }
 
+    if (typeof body.captchaToken !== 'string' || !body.captchaToken.trim() || body.captchaToken.length > 2048) {
+      return NextResponse.json({ error: 'Human verification required' }, { status: 403 });
+    }
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password: 'demo123456',
+      options: { captchaToken: body.captchaToken },
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 401 });
 

@@ -41,7 +41,7 @@ describe('public outlet menu', () => {
     expect(card).toContain('break-words text-base font-bold leading-snug text-foreground');
     expect(card).toContain('mt-3 min-h-10 break-words text-sm leading-5 text-muted-foreground');
     expect(card).toContain('inline-flex min-w-0 flex-1 items-start gap-1.5 break-words');
-    expect(card).toContain('{product.description || descriptionFallback}');
+    expect(card).toContain('product.description ? <LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /> : descriptionFallback');
   });
 
   it('keeps short menus from leaving a wide empty panel', async () => {

@@ -29,6 +29,7 @@ import { ReferencePrice } from "@/components/shared/reference-price";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { ProductChatButton } from "@/components/customer/product-chat-button";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
 
@@ -221,7 +222,7 @@ export function ActivityDetailClient({
       <section className="min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
           <div className="flex items-start justify-between gap-4 mb-4 flex-wrap shrink-0">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]"><LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name} /></h1>
               {placeBound ? (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
                   <MapPin size={14} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience")} · {[selectedOutlet!.city, selectedOutlet!.state].filter(Boolean).join(", ") || t("ui.labels.malaysia")}
@@ -266,7 +267,7 @@ export function ActivityDetailClient({
         <div className="shrink-0">
           {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
 
-          <p className="text-sm leading-relaxed mb-6 text-foreground/80">{activity.description}</p>
+          <p className="text-sm leading-relaxed mb-6 text-foreground/80"><LocalizedContent entityType="product" entityId={activity.id} field="description" sourceText={activity.description} /></p>
         </div>
 
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">

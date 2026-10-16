@@ -199,8 +199,12 @@ async function ensureAliceKyc(service, aliceClient, adminClient, kycHmacKey) {
     }), "Alice KYC finalization failed");
   }
 
-  required(await adminClient.rpc("admin_review_kyc", {
+  const claim = required(await adminClient.rpc("claim_kyc_submission", {
     p_submission_id: submission.id,
+  }), "Alice KYC claim failed (reviewer MFA is required)");
+  required(await adminClient.rpc("review_kyc_case", {
+    p_submission_id: submission.id,
+    p_expected_version: claim.reviewVersion,
     p_user_id: ALICE_ID,
     p_action: "approve",
     p_reason_code: null,

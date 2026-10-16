@@ -12,6 +12,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/customer/outlet-shop";
 import { productImageUrl } from "@/lib/storage/product-image";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
 
 function productDetailHref(productId: string, outletId: string) {
@@ -131,15 +132,15 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
 
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
-          <Link href={detailHref} className="min-w-0">
-            <h3 className="break-words text-base font-bold leading-snug text-foreground">{product.name}</h3>
-          </Link>
+          <LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
+            {({ text, control }) => <><Link href={detailHref} className="min-w-0"><h3 className="break-words text-base font-bold leading-snug text-foreground">{text}</h3></Link>{control}</>}
+          </LocalizedContent>
           <div className="shrink-0 text-right">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">{t("ui.outletMenu.from")}</p>
           <p className="font-[family-name:var(--font-mono)] text-lg font-bold leading-tight text-primary">{priceLabel}</p>
           </div>
         </div>
-        <p className="mt-3 min-h-10 break-words text-sm leading-5 text-muted-foreground">{product.description || descriptionFallback}</p>
+        <p className="mt-3 min-h-10 break-words text-sm leading-5 text-muted-foreground">{product.description ? <LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /> : descriptionFallback}</p>
 
         <div className="mt-4 space-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
           <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">

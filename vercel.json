@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/process-content-translation-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/process-paid-orders",
       "schedule": "*/5 * * * *"
     },

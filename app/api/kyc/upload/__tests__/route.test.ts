@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
+import { abandonAndRemoveKycEvidence } from '@/lib/kyc/submission';
 import { runKycOcr } from '@/lib/kyc/ocr';
 
 vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn().mockResolvedValue({ ocr: Buffer.from('clean'), stored: Buffer.from('watermarked') }) }));
@@ -8,6 +9,7 @@ const getUser = vi.fn();
 const authenticatedRpc = vi.fn();
 const serviceRpc = vi.fn();
 const upload = vi.fn();
+const activeLookup = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser }, rpc: authenticatedRpc }),
@@ -15,6 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     rpc: serviceRpc,
+    from: () => ({ select: () => ({ eq: () => ({ in: () => ({ limit: activeLookup }) }) }) }),
     storage: { from: () => ({ upload, remove: vi.fn() }) },
   }),
 }));
@@ -46,6 +49,9 @@ const { POST } = await import('../route');
 
 describe('POST /api/kyc/upload', () => {
   beforeEach(() => {
+    vi.mocked(prepareKycEvidenceImage).mockReset().mockResolvedValue({ ocr: Buffer.from('clean'), stored: Buffer.from('watermarked') });
+    vi.mocked(abandonAndRemoveKycEvidence).mockReset().mockResolvedValue({ ok: true });
+    activeLookup.mockReset().mockResolvedValue({data:[],error:null});
     getUser.mockReset();
     authenticatedRpc.mockReset();
     serviceRpc.mockReset();
@@ -53,7 +59,7 @@ describe('POST /api/kyc/upload', () => {
     upload.mockResolvedValue({ error: null });
   });
 
-  it('stores only watermarked evidence and gives OCR only sanitized bytes', async () => {
+  it('stores only watermarked evidence and defers OCR until after durable finalization', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
     serviceRpc.mockResolvedValueOnce({ data: '33333333-3333-4333-8333-333333333333', error: null }).mockResolvedValue({ error: null });
     authenticatedRpc.mockResolvedValue({ error: null });
@@ -67,11 +73,15 @@ describe('POST /api/kyc/upload', () => {
     expect(response.status).toBe(201);
     expect(upload).toHaveBeenCalledTimes(2);
     expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
-    expect(runKycOcr).toHaveBeenCalledWith(expect.objectContaining({ front: { mimeType: 'image/jpeg', bytes: new Uint8Array(Buffer.from('clean')) } }));
+    expect(runKycOcr).not.toHaveBeenCalled();
+    expect(serviceRpc).not.toHaveBeenCalledWith('record_kyc_ocr_result', expect.anything());
+    expect(authenticatedRpc).toHaveBeenCalledWith('finalize_kyc_submission', expect.anything());
+    await expect(response.json()).resolves.toMatchObject({ data: { status: 'pending', ocrStatus: 'queued', manualReviewRequired: true } });
   });
 
-  it('rejects undecodable photos before creating a draft or storing evidence', async () => {
+  it('rejects undecodable photos without superseding an earlier information request', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
+    serviceRpc.mockResolvedValueOnce({ data: '33333333-3333-4333-8333-333333333333', error: null });
     vi.mocked(prepareKycEvidenceImage).mockRejectedValueOnce(new Error('invalid image'));
     const form = new FormData();
     form.set('ocrConsent', 'true'); form.set('icNumber', '900101-14-5678'); form.set('docType', 'national_id');
@@ -79,10 +89,11 @@ describe('POST /api/kyc/upload', () => {
     form.set('backFile', new File(['fake'], 'back.jpg', { type: 'image/jpeg' }));
     const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
     expect(response.status).toBe(422);
-    expect(serviceRpc).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
+    expect(serviceRpc).not.toHaveBeenCalled();
+    expect(abandonAndRemoveKycEvidence).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
   });
 
-  it('requires explicit consent before sending KYC images to Gemini OCR', async () => {
+  it('requires consent for private document processing', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
     const form = new FormData();
 
@@ -122,6 +133,7 @@ describe('POST /api/kyc/upload', () => {
 
     const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
 
+    expect(abandonAndRemoveKycEvidence).not.toHaveBeenCalled();
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'ACTIVE_SUBMISSION_EXISTS' } });
   });
@@ -147,4 +159,41 @@ describe('POST /api/kyc/upload', () => {
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({ error: { code } });
   });
+  function request() {
+    const body = new FormData();
+    for (const [key,value] of Object.entries({ocrConsent:'true',docType:'national_id',icNumber:'900101-14-5678'})) body.set(key,value);
+    body.set('frontFile',new File(['front'],'front.jpg',{type:'image/jpeg'}));
+    body.set('backFile',new File(['back'],'back.jpg',{type:'image/jpeg'}));
+    return new Request('http://localhost/api/kyc/upload',{method:'POST',body});
+  }
+  it('rejects a known active case before parsing or recoding photos', async () => {
+    getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
+    activeLookup.mockResolvedValue({data:[{id:'active'}],error:null});
+    const input=request(); const parse=vi.spyOn(input,'formData');
+    expect((await POST(input)).status).toBe(409);
+    expect(parse).not.toHaveBeenCalled(); expect(prepareKycEvidenceImage).not.toHaveBeenCalled(); expect(serviceRpc).not.toHaveBeenCalled();
+  });
+  it('fails closed when the early status lookup is unavailable', async () => {
+    getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
+    activeLookup.mockResolvedValue({data:null,error:{message:'private database detail'}});
+    expect((await POST(request())).status).toBe(503);
+    expect(prepareKycEvidenceImage).not.toHaveBeenCalled();
+  });
+  it('abandons only this draft when Storage throws', async () => {
+    getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
+    serviceRpc.mockResolvedValue({data:'33333333-3333-4333-8333-333333333333',error:null});
+    upload.mockRejectedValueOnce(new Error('secret storage path'));
+    const response=await POST(request());
+    expect(response.status).toBe(502); expect(abandonAndRemoveKycEvidence).toHaveBeenCalledOnce();
+    expect(await response.text()).not.toContain('secret');
+  });
+  it('preserves evidence when finalization outcome and abandonment are uncertain', async () => {
+    getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
+    serviceRpc.mockResolvedValue({data:'33333333-3333-4333-8333-333333333333',error:null});
+    authenticatedRpc.mockRejectedValue(new Error('timeout'));
+    vi.mocked(abandonAndRemoveKycEvidence).mockResolvedValue({ok:false,reason:'draft_not_abandoned'});
+    const response=await POST(request()); expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({error:{code:'CLEANUP_FAILED'}});
+  });
+
 });

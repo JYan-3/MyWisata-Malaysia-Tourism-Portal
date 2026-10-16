@@ -5,6 +5,9 @@ import { generateAiText } from '@/lib/ai/provider';
 describe('generateAiText', () => {
   beforeEach(() => {
     delete process.env.QWEN_API_KEY;
+    delete process.env.QWEN_MODEL;
+    delete process.env.QWEN_FALLBACK_MODEL;
+    delete process.env.QWEN_BASE_URL;
     delete process.env.DASHSCOPE_API_KEY;
     delete process.env.MODELSCOPE_API_KEY;
     delete process.env.MODELSCOPE_MODEL;
@@ -13,6 +16,9 @@ describe('generateAiText', () => {
 
   afterEach(() => {
     delete process.env.QWEN_API_KEY;
+    delete process.env.QWEN_MODEL;
+    delete process.env.QWEN_FALLBACK_MODEL;
+    delete process.env.QWEN_BASE_URL;
     delete process.env.DASHSCOPE_API_KEY;
     delete process.env.MODELSCOPE_API_KEY;
     delete process.env.MODELSCOPE_MODEL;
@@ -36,6 +42,16 @@ describe('generateAiText', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Authentication failed' } }), { status: 401 }));
 
     await expect(generateAiText('system', 'user')).resolves.toEqual({ available: false, reason: 'authentication_failed' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('can cap provider attempts for globally budgeted background work', async () => {
+    process.env.QWEN_API_KEY = 'test-token';
+    process.env.QWEN_MODEL = 'primary';
+    process.env.QWEN_FALLBACK_MODEL = 'fallback';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('unavailable', { status: 503 }));
+
+    await expect(generateAiText('system', 'user', { maxProviderAttempts: 1 })).resolves.toEqual({ available: false, reason: 'unavailable' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

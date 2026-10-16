@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), createServiceClient: vi.fn(), serviceRpc: vi.fn(), sendOtp: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), createServiceClient: vi.fn(), serviceRpc: vi.fn(), sendOtp: vi.fn(), verifyHumanChallenge: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock('@/lib/twilio', () => ({ sendOtp: mocks.sendOtp }));
+vi.mock('@/lib/auth/human-verification', () => ({ verifyHumanChallenge: mocks.verifyHumanChallenge }));
 
 import { POST } from '../route';
 
 function request(phone = '+60123456789') {
   return new Request('http://localhost/api/phone/send-otp', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone, captchaToken: 'valid-proof' }),
   });
 }
 
@@ -23,6 +24,26 @@ describe('POST /api/phone/send-otp', () => {
     mocks.serviceRpc.mockResolvedValue({ data: { reservation_id: 'reservation-1' }, error: null });
     mocks.createServiceClient.mockReturnValue({ rpc: mocks.serviceRpc });
     mocks.sendOtp.mockResolvedValue({ ok: true });
+    mocks.verifyHumanChallenge.mockResolvedValue({ ok: true });
+  });
+
+  it('rejects a failed challenge before reserving quota or sending SMS', async () => {
+    mocks.verifyHumanChallenge.mockResolvedValue({ ok: false, code: 'HUMAN_VERIFICATION_FAILED', status: 403 });
+    const response = await POST(request());
+    expect(response.status).toBe(403);
+    expect(mocks.serviceRpc).not.toHaveBeenCalled();
+    expect(mocks.sendOtp).not.toHaveBeenCalled();
+  });
+
+  it('rejects direct sends without proof before contacting either provider', async () => {
+    const response = await POST(new Request('http://localhost/api/phone/send-otp', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ phone: '+60123456789' }),
+    }));
+    expect(response.status).toBe(422);
+    expect(mocks.verifyHumanChallenge).not.toHaveBeenCalled();
+    expect(mocks.serviceRpc).not.toHaveBeenCalled();
+    expect(mocks.sendOtp).not.toHaveBeenCalled();
   });
 
   it('atomically reserves the account and phone quota before sending', async () => {

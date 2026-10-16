@@ -179,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "机器翻译",
+      "showOriginal": "显示原文",
+      "showTranslation": "显示译文",
+      "pending": "正在准备翻译"
+    },
     "accessibility": {
       "carousel": "轮播图"
     },
@@ -1296,13 +1302,13 @@
       "clickUpload": "点击上传文件{{side}}",
       "fileHint": "JPG、PNG 或 WebP · 最大 5 MB",
       "clickChange": "点击更换",
-      "consent": "我同意 MyLawatan 使用第三方 AI 服务协助读取我的文件。最终 KYC 决定由人工管理员作出。",
+      "consent": "我同意为 KYC 进行私有证件处理。证件不会发送至外部 AI 服务，最终决定由有权限的人工审核者作出。",
       "submitting": "提交中…",
       "startNew": "开始新的提交",
       "submitForReview": "提交审核",
       "uploadRequired": "请上传证件照片",
       "submissionFailed": "提交失败。",
-      "manualReview": "AI 证件读取不可用或结果不明确。你的证件已提交给管理员人工审核。",
+      "manualReview": "资料已进入人工审核队列。私有预检查仅作辅助，不会自动批准 KYC。",
       "submitted": "KYC 证件已提交审核。",
       "myKad": "MyKad（马来西亚身份证）",
       "passport": "护照",
@@ -1314,7 +1320,7 @@
       "passportHint": "护照：1–2 个字母加 6–8 位数字，例如 A12345678",
       "invalidFileType": "每份文件必须是 JPG、PNG 或 WebP 照片",
       "fileTooLarge": "文件必须小于 5 MB（当前：{{size}} MB）",
-      "consentRequired": "提交前请同意使用 AI 协助读取证件。",
+      "consentRequired": "请先同意私有 KYC 证件处理再提交。",
       "tiers": {
         "emailVerified": "邮箱已验证",
         "phoneVerified": "电话已验证",
@@ -1329,7 +1335,10 @@
         "document_suspected_tampering": "我们无法通过此次提交完成验证。如需帮助，请联系支持团队。",
         "other": "我们需要更多资料才能完成验证，请查看下方审核备注。",
         "default": "我们无法通过此次提交完成验证，请检查证件并重新提交。"
-      }
+      },
+      "previewAlt": "已选择的{{side}}照片",
+      "previewGuidance": "请确认照片只有一张证件、四角完整，姓名和号码清楚可读。避免反光、手指遮字及拼图。此预览不会验证身份。",
+      "previewUnavailable": "浏览器无法显示此照片。你可以更换照片；提交时服务器仍会进行校验。"
     },
     "recommendations": {
       "vendorNameMin": "请输入至少 3 个字符的商家或企业名称。",
