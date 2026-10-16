@@ -194,7 +194,7 @@ export default async function VendorOutletPage({ params }: Props) {
       <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{vendor ? <a href={`/customer/vendor/${vendorId}`} className="hover:text-primary hover:underline">{vendor.name}</a> : t("ui.labels.mywisataOutlet")}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{vendor ? <a href={`/customer/vendor/${vendorId}`} className="hover:text-primary hover:underline">{vendor.name}</a> : t("ui.labels.mylawatanOutlet")}</p>
           <p className="mt-1 text-sm font-semibold text-foreground">{outlet.name}</p>
           {vendor && (
             <p className="mt-0.5 text-xs text-muted-foreground/60">

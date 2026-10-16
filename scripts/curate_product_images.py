@@ -57,11 +57,11 @@ REJECT_TITLE_TERMS = {
     "kwan-kee-steamboat-for-two": {"geyser", "yellowstone", "volcano", "national park", "hot spring"},
     "baba-nyonya-heritage-trust-child-admission": {"foundling", "arms of", "hospital", "historical ticket"},
 }
-CACHE_PATH = Path("/tmp/mywisata-product-commons-cache.json")
-PROGRESS_PATH = Path("/tmp/mywisata-product-image-progress.json")
+CACHE_PATH = Path("/tmp/mylawatan-product-commons-cache.json")
+PROGRESS_PATH = Path("/tmp/mylawatan-product-image-progress.json")
 QUERY_LIMIT = 0
 ALLOW_EXISTING_FALLBACK = False
-USER_AGENT = "MyWisata-product-image-curator/1.0 (local development; Wikimedia Commons attribution recorded)"
+USER_AGENT = "MyLawatan-product-image-curator/1.0 (local development; Wikimedia Commons attribution recorded)"
 CACHE_QUERY_DELAY_SECONDS = 2.5
 
 CATEGORY_TERMS = {
@@ -925,7 +925,7 @@ def main() -> int:
     CACHE_PATH = Path(args.cache_path)
     QUERY_LIMIT = max(0, args.query_limit)
     ALLOW_EXISTING_FALLBACK = args.allow_existing_fallback
-    CACHE_QUERY_DELAY_SECONDS = max(0.0, float(os.environ.get("MYWISATA_COMMONS_QUERY_DELAY", "2.5")))
+    CACHE_QUERY_DELAY_SECONDS = max(0.0, float(os.environ.get("MYLAWATAN_COMMONS_QUERY_DELAY", "2.5")))
 
     rows = fetch_inventory()
     if not rows:

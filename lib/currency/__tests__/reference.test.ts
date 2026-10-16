@@ -2,13 +2,24 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_REFERENCE_CURRENCY,
   REFERENCE_CURRENCIES,
+  LEGACY_REFERENCE_CURRENCY_COOKIE,
+  REFERENCE_CURRENCY_COOKIE,
   convertMYR,
   formatReferenceCurrency,
   isReferenceCurrency,
   resolveReferenceCurrency,
+  resolveReferenceCurrencyPreference,
 } from "../reference";
 
 describe("reference currency contract", () => {
+  it("writes the new cookie and reads the legacy preference as a fallback", () => {
+    expect(REFERENCE_CURRENCY_COOKIE).toBe("MYLAWATAN_CURRENCY");
+    expect(LEGACY_REFERENCE_CURRENCY_COOKIE).toBe("MYWISATA_CURRENCY");
+    expect(resolveReferenceCurrencyPreference(undefined, "USD")).toBe("USD");
+    expect(resolveReferenceCurrencyPreference("SGD", "USD")).toBe("SGD");
+    expect(resolveReferenceCurrencyPreference("GBP", "EUR")).toBe("EUR");
+  });
+
   it("accepts exactly the approved display currencies", () => {
     expect(REFERENCE_CURRENCIES).toEqual(["MYR", "SGD", "USD", "CNY", "EUR"]);
     expect(REFERENCE_CURRENCIES.every(isReferenceCurrency)).toBe(true);

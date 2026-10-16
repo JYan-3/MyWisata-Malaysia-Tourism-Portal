@@ -246,7 +246,7 @@ export interface OutletChoice {
 export async function getOutletChoices(activity: Activity, db: SupabaseClient = supabase): Promise<OutletChoice[]> {
   if (!activity.offers?.length) return [];
   const [outlets, reviewMetrics] = await Promise.all([
-    getOutlets(db),
+    getDiscoveryOutlets(activity.offers.map((offer) => offer.outletId), db),
     getOutletReviewMetrics(activity.id, db),
   ]);
   const byId = new Map(outlets.map((outlet) => [outlet.id, outlet]));
@@ -304,13 +304,23 @@ export async function getOutletReviewMetrics(productId: string, db: SupabaseClie
 }
 
 /**
- * Product ids an outlet sells: the ones it owns directly, plus the shared
- * vendor products it has an offer for. Use this instead of filtering
- * `products.outlet_id`, which alone misses every multi-outlet product.
+ * Product ids the outlet(s) sell: directly owned products plus shared vendor
+ * products with an active offer. Multiple outlets are resolved in two batched
+ * relation queries instead of one pair of queries per outlet.
  */
-export async function getOutletProductIds(db: SupabaseClient, outletId: string, candidateIds?: string[]): Promise<Set<string>> {
-  let ownQuery = db.from("products").select("id").eq("outlet_id", outletId);
-  let offerQuery = db.from("outlet_offers").select("product_id").eq("outlet_id", outletId).eq("status", "active");
+export async function getOutletProductIds(db: SupabaseClient, outletId: string | string[], candidateIds?: string[]): Promise<Set<string>> {
+  const outletIds = typeof outletId === "string" ? [outletId] : [...new Set(outletId.filter(Boolean))];
+  if (!outletIds.length) return new Set();
+
+  let ownQuery = db.from("products").select("id");
+  let offerQuery = db.from("outlet_offers").select("product_id").eq("status", "active");
+  if (outletIds.length === 1) {
+    ownQuery = ownQuery.eq("outlet_id", outletIds[0]);
+    offerQuery = offerQuery.eq("outlet_id", outletIds[0]);
+  } else {
+    ownQuery = ownQuery.in("outlet_id", outletIds);
+    offerQuery = offerQuery.in("outlet_id", outletIds);
+  }
   if (candidateIds?.length) {
     ownQuery = ownQuery.in("id", candidateIds);
     offerQuery = offerQuery.in("product_id", candidateIds);
@@ -366,7 +376,7 @@ type ProductRow = {
 };
 
 const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
-const DISCOVERY_ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status)";
+const DISCOVERY_ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status)";
 
 async function getReviewMetricsForProducts(productIds: string[], db: SupabaseClient): Promise<Map<string, ReviewMetric>> {
   const metricRows = (await Promise.all(
@@ -465,12 +475,10 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
   return rows.map((row) => mapActivity(row, reviewMetrics.get(row.id)));
 }
 
-/**
- * Public Home/Explore data needs card, map, and ranking fields, not checkout
- * inventory or product-page pricing rules. Keep those full relations in
- * getActivities() and use this smaller selector for the cached discovery feed.
- */
-export async function getDiscoveryActivities(db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+async function loadDiscoveryActivityData(db: SupabaseClient): Promise<{
+  activities: Activity[];
+  outletMap: Map<string, Outlet>;
+}> {
   const { data, error } = await db
     .from("products")
     .select(DISCOVERY_ACTIVITY_SELECT)
@@ -479,7 +487,7 @@ export async function getDiscoveryActivities(db: SupabaseClient = supabase): Pro
   if (error) throw error;
 
   const rows = (data ?? []) as unknown as ProductRow[];
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { activities: [], outletMap: new Map() };
 
   const productIds = rows.map((row) => row.id);
   const outletIds = rows.flatMap((row) => [
@@ -491,9 +499,25 @@ export async function getDiscoveryActivities(db: SupabaseClient = supabase): Pro
     getDiscoveryOutlets(outletIds, db),
   ]);
 
-  const outletMap = new Map(outlets.map((outlet) => [outlet.id, outlet]));
-  return rows
-    .map((row) => toComputed(mapActivity(row, reviewMetrics.get(row.id)), outletMap))
+  return {
+    activities: rows.map((row) => mapActivity(row, reviewMetrics.get(row.id))),
+    outletMap: new Map(outlets.map((outlet) => [outlet.id, outlet])),
+  };
+}
+
+/**
+ * Public discovery searches need card, map, and ranking fields, not checkout
+ * inventory or product-page pricing rules. Keep those full relations in
+ * getActivities() and share this smaller selector with cached Home/Explore and
+ * related-product card data.
+ */
+export async function getDiscoveryActivities(
+  db: SupabaseClient = supabase,
+  from?: { lat: number; lng: number },
+): Promise<ComputedActivity[]> {
+  const { activities, outletMap } = await loadDiscoveryActivityData(db);
+  return activities
+    .map((activity) => toComputed(activity, outletMap, from))
     .filter((activity): activity is ComputedActivity => activity !== null)
     .sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
 }
@@ -694,19 +718,10 @@ function toComputed(
   };
 }
 
-async function getComputedActivities(from?: { lat: number; lng: number }, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
-  const outletMap = new Map(outlets.map((o) => [o.id, o]));
-  return activities
-    .map((a) => toComputed(a, outletMap, from))
-    .filter((a): a is ComputedActivity => a !== null);
-}
-
 /**
  * One product plus only the outlets it actually sells at. Deliberately does not
- * go through getComputedActivities(): that pulls the entire catalogue and every
- * outlet just to .find() a single row, so opening one product page — or one
- * wishlist entry — scanned the whole table (H4).
+ * use the discovery search: this query loads one product and its relevant
+ * outlets, rather than scanning the full catalogue for a detail/wishlist row.
  */
 export async function getComputedActivity(
   id: string,
@@ -768,8 +783,8 @@ export async function getComputedActivity(
 
 /** Products sold by one outlet, with the outlet's own offer price applied. */
 export async function getOutletActivities(outletId: string, excludeProductId?: string, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
-  const outlet = outlets.find((candidate) => candidate.id === outletId);
+  const { activities, outletMap } = await loadDiscoveryActivityData(db);
+  const outlet = outletMap.get(outletId);
   if (!outlet) return [];
 
   return activities
@@ -794,10 +809,9 @@ export async function getOutletActivities(outletId: string, excludeProductId?: s
  * single branch.
  */
 export async function getVendorActivities(vendorId: string, excludeProductId?: string, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
-  const vendorOutlets = outlets.filter((o) => o.vendorId === vendorId);
+  const { activities, outletMap } = await loadDiscoveryActivityData(db);
+  const vendorOutlets = [...outletMap.values()].filter((o) => o.vendorId === vendorId);
   if (vendorOutlets.length === 0) return [];
-  const outletMap = new Map(outlets.map((o) => [o.id, o]));
   const vendorOutletIds = new Set(vendorOutlets.map((o) => o.id));
 
   return activities
@@ -942,7 +956,7 @@ export function filterComputedActivities(filters: SearchFilters, activities: Com
 }
 
 export async function searchActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const activities = await getComputedActivities(filters.near, db);
+  const activities = await getDiscoveryActivities(db, filters.near);
   return filterComputedActivities(filters, activities);
 }
 

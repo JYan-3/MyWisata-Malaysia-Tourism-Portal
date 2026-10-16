@@ -7,7 +7,7 @@
 
 Profile currently stores free-text `city` and `country`. The product needs country-scoped, multilingual city suggestions for residents and international travellers while retaining manual entry. The first design used Google Places as the autocomplete master, but Google permits indefinite storage of Place IDs while restricting long-term storage of other Places content. A persistent Profile city is therefore a poor fit for Google-owned master data.
 
-The approved production architecture is provider-neutral: MyWisata owns a canonical city catalogue imported from GeoNames, and Google remains an optional future supplement for map/address workflows. Users never see provider IDs.
+The approved production architecture is provider-neutral: MyLawatan owns a canonical city catalogue imported from GeoNames, and Google remains an optional future supplement for map/address workflows. Users never see provider IDs.
 
 ## Goals
 
@@ -22,7 +22,7 @@ The approved production architecture is provider-neutral: MyWisata owns a canoni
 ## Non-goals
 
 - Residential addresses, postal codes, maps, pins, routes, or coordinates in the Profile UI.
-- Reusing Google Place IDs as MyWisata's city identity.
+- Reusing Google Place IDs as MyLawatan's city identity.
 - Refactoring Recommendation/Vendor location flows.
 - Changing Phone, KYC, Entitlements, Affiliate, Checkout, Wallet, or Admin rules.
 
@@ -80,7 +80,7 @@ Existing `city` and `country` strings remain the display and public-profile fiel
 
 ### City
 
-- Existing MyWisata input skeleton and design tokens remain unchanged.
+- Existing MyLawatan input skeleton and design tokens remain unchanged.
 - Suggestions start after two trimmed characters with a 300 ms debounce.
 - Up to five results show canonical city plus administrative context.
 - Selecting a result records its internal `city_id`; it does not submit automatically.

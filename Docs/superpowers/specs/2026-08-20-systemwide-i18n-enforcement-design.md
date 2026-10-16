@@ -3,11 +3,11 @@
 **Date:** 2026-08-20
 
 **Status:** Approved
-**Product:** MyWisata Malaysia Tourism Portal
+**Product:** MyLawatan Malaysia Tourism Portal
 
 ## Context
 
-MyWisata already persists a selected locale and has translation resources for English (`en`), Simplified Chinese (`zh-CN`), and Malay (`ms`). However, changing the language does not currently guarantee that all fixed system UI changes with it. The Preferences page demonstrates three distinct failure modes:
+MyLawatan already persists a selected locale and has translation resources for English (`en`), Simplified Chinese (`zh-CN`), and Malay (`ms`). However, changing the language does not currently guarantee that all fixed system UI changes with it. The Preferences page demonstrates three distinct failure modes:
 
 1. option definitions contain valid translation keys but the component renders their English `label` fields;
 2. customer navigation derives translation keys from URLs instead of using the existing explicit `labelKey`, so valid translated entries can fall through to English labels;
@@ -90,7 +90,7 @@ The implementation combines two necessary controls:
 
 The source lint must cover JSX children, relevant JSX attributes (`placeholder`, `title`, `alt`, `aria-label`, and similar), template literals, and user-visible object fields such as `label`, `title`, and `description`. It must treat string concatenation as an error where interpolation should be used.
 
-The allowlist is narrow and reviewable. Acceptable exceptions include product/brand names such as MyWisata and Google, currency codes such as RM, URLs, IDs, CSS values, protocol values, and test fixtures. Broad directory or short-string exemptions are not acceptable because they would hide the same class of defect.
+The allowlist is narrow and reviewable. Acceptable exceptions include product/brand names such as MyLawatan and Google, currency codes such as RM, URLs, IDs, CSS values, protocol values, and test fixtures. Broad directory or short-string exemptions are not acceptable because they would hide the same class of defect.
 
 ### 5. Catalogs and types are build artifacts with checks
 

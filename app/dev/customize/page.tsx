@@ -14,13 +14,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GripVertical, Maximize2, Plus, X } from "lucide-react";
+import { readMigratedClientStorageValue } from "@/lib/client-storage";
 import { cellFromPointer, fits, firstFreeSlot, type Rect } from "./grid";
 import { WIDGET_CATALOG, WIDGET_ORDER, WidgetEditor, defaultContent, type WidgetTranslate, type WidgetType } from "./widgets";
 
 const COLS = 8;
 const ROWS = 10;
 const ROW_PX = 92;
-const STORAGE_KEY = "mywisata:dev-customize:v2";
+const STORAGE_KEY = "mylawatan:dev-customize:v2";
+const LEGACY_STORAGE_KEY = "mywisata:dev-customize:v2";
 
 const SIZE_PRESETS: [number, number][] = [[1, 1], [2, 1], [2, 2], [3, 2], [3, 3], [4, 2]];
 
@@ -64,7 +66,7 @@ export default function DevCustomizePage() {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = readMigratedClientStorageValue(window.localStorage, STORAGE_KEY, LEGACY_STORAGE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setWidgets(JSON.parse(raw) as Placed[]);
     } catch {

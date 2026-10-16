@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { POST } from "../route";
 import { POST as resolveScan } from "../../../../scanner/resolve/route";
 import { signTicketPassToken } from "@/lib/tickets/tokens";
@@ -30,7 +31,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
         outletIds: [outletId],
         isOwner: true,
         isOutletManager: false,
-        authDb: {} as any,
+        authDb: {} as unknown as SupabaseClient,
         serviceDb: {
           from: vi.fn().mockImplementation((table: string) => {
             if (table === "bookings") {
@@ -121,7 +122,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
               select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn() }) }),
             };
           }),
-          rpc: state.rpc.mockImplementation((name: string, args: any) => {
+          rpc: state.rpc.mockImplementation((name: string, args: { p_entries_to_admit: number }) => {
             if (name === "admit_ticket_pass") {
               const remaining = entryLimit - state.entriesUsed;
               if (args.p_entries_to_admit > remaining) {
@@ -156,7 +157,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
             }
             return Promise.resolve({ data: null, error: null });
           }),
-        } as any,
+        } as unknown as SupabaseClient,
       },
     });
     return state;

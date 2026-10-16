@@ -13,6 +13,7 @@ import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/o
 import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/customer/outlet-shop";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { LocalizedContent } from "@/components/customer/localized-content";
+import { ProductSaveButton } from "@/components/customer/product-save-button";
 
 function productDetailHref(productId: string, outletId: string) {
   // Always navigate with outlet scope: outletId pre-selects the outlet in the
@@ -113,7 +114,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
   const priceLabel = t("ui.outletMenu.price", { price: formatMYRNumber(Number(product.base_price)) });
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
+    <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
       <Link href={detailHref} className="relative block aspect-[4/3] overflow-hidden bg-secondary" aria-label={t("ui.outletMenu.viewProduct", { product: product.name })}>
         {product.cover_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
@@ -127,6 +128,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
           {product.featured && <span className="rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">{t("ui.map.featured")}</span>}
         </div>
       </Link>
+      <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-10" />
 
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
@@ -170,7 +172,7 @@ export function OutletMenu({ outlet, products }: { outlet: OutletRendererOutlet;
     <section id="full-menu" aria-labelledby="full-menu-title" className="rounded-3xl border border-primary/10 bg-card p-5 shadow-sm sm:p-7">
       <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("ui.labels.mywisataOutlet")}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("ui.labels.mylawatanOutlet")}</p>
           <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt", { outlet: outlet.name })}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.description")}</p>
         </div>

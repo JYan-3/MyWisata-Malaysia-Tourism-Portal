@@ -793,6 +793,7 @@
       "click_velocity": "Click velocity spike",
       "duplicate_attribution": "Duplicate payout attempt",
       "expired_attribution": "Expired attribution window",
+      "link_disabled_at_payout": "Payout blocked because the link was disabled before payment",
       "self_referral": "Self-referral",
       "vendor_ineligible": "Vendor/outlet manager ineligible for commission",
       "visitor_clustering": "Clicks clustered on one visitor",
@@ -3228,7 +3229,7 @@
     "providers": {
       "bankTransferSimulator": "Bank transfer — Simulator",
       "grabpaySimulator": "GrabPay — Simulator",
-      "mywisataWallet": "MyLawatan Wallet",
+      "mylawatanWallet": "MyLawatan Wallet",
       "stripeSandbox": "Stripe Sandbox",
       "tngSimulator": "Touch ’n Go eWallet — Simulator",
       "unknown": "Unknown provider"

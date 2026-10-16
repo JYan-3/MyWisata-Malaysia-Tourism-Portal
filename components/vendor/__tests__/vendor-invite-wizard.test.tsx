@@ -38,6 +38,7 @@ describe('VendorInviteWizard contract', () => {
   it('keeps a privacy-safe v2 session draft scoped by a non-reversible token fingerprint', () => {
     const source = `${wizardSource()}\n${stateSource()}`;
 
+    expect(source).toContain('mylawatan.vendor-invite-wizard-v2');
     expect(source).toContain('mywisata.vendor-invite-wizard-v2');
     expect(source).toContain('crypto.subtle.digest');
     expect(source).toContain('tokenFingerprint');

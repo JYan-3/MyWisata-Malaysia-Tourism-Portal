@@ -11,4 +11,18 @@ describe('Vendor Inbox loading lifecycle', () => {
     expect(inboxSource).toContain("if (showLoading) setLoading(false);");
     expect(inboxSource).toContain("}, [t, vendorId]);");
   });
+
+  it('reconciles the inbox less often and only while visible', () => {
+    expect(inboxSource).toContain('const INBOX_RECONCILE_POLL_MS = 15_000;');
+    expect(inboxSource).toContain('document.visibilityState === \'visible\'');
+    expect(inboxSource).toContain("document.addEventListener('visibilitychange', onVisibilityChange)");
+  });
+
+  it('prevents overlapping reads and keeps loaded threads after background failures', () => {
+    expect(inboxSource).toContain('if (refreshRequest.current?.vendorId === vendorId) return;');
+    expect(inboxSource).toContain('refreshRequest.current?.controller.abort();');
+    expect(inboxSource).toContain('if (payload.error) {');
+    expect(inboxSource).toContain('if (showLoading) {');
+    expect(inboxSource).toContain('setThreads([]);');
+  });
 });

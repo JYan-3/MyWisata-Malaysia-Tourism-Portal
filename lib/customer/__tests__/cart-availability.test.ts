@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { BookingSlot } from "@/backend/core/types";
-import { getCartLineAvailability } from "@/lib/customer/cart-availability";
+import {
+  getCartLineAvailability,
+  resolveBookingSlotLookupStatus,
+  type BookingSlotLookupState,
+} from "@/lib/customer/cart-availability";
 
 function slot(overrides: Partial<BookingSlot> = {}): BookingSlot {
   return {
@@ -17,6 +21,19 @@ function slot(overrides: Partial<BookingSlot> = {}): BookingSlot {
 
 describe("cart line availability", () => {
   const now = new Date("2026-10-06T12:00:00.000Z");
+
+  it("requires a new lookup when an activity returns after the cart was emptied", () => {
+    const firstRequest = Symbol("activity-a");
+    const emptyCartRequest = Symbol("empty-cart");
+    const restoredRequest = Symbol("activity-a");
+    const previousLookup: BookingSlotLookupState = {
+      requestToken: firstRequest,
+      status: "loaded",
+    };
+
+    expect(resolveBookingSlotLookupStatus(true, restoredRequest, previousLookup)).toBe("loading");
+    expect(resolveBookingSlotLookupStatus(false, emptyCartRequest, previousLookup)).toBe("loaded");
+  });
 
   it("keeps a booking line in checking state until its slot lookup resolves", () => {
     expect(getCartLineAvailability({

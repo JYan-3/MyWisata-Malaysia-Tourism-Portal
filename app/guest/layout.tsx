@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { CurrencySwitcher } from "@/components/shared/currency-switcher";
-import { MyWisataLogo } from "@/components/shared/mywisata-logo";
+import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
 import { useTranslation } from "react-i18next";
 import { guestLoginHref, guestPathToCustomerPath } from "@/lib/auth/guest-mode";
 
@@ -26,7 +26,7 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:flex-nowrap sm:px-6">
           <Link href="/guest/explore" className="flex items-center gap-2">
-            <MyWisataLogo markSize={32} wordmarkClassName="font-[family-name:var(--font-plus-jakarta-sans)] text-lg font-bold tracking-tight text-foreground" />
+            <MyLawatanLogo markSize={32} wordmarkClassName="font-[family-name:var(--font-plus-jakarta-sans)] text-lg font-bold tracking-tight text-foreground" />
           </Link>
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
             <LanguageSwitcher compact className="min-w-0 sm:w-auto" />

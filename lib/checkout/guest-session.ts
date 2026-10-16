@@ -10,12 +10,19 @@ export function hashGuestCredential(token: string): string {
 }
 export function newGuestCredential(): string { return randomBytes(32).toString("base64url"); }
 export function guestCookieName(request: Request, order = false): string {
+  return `${new URL(request.url).protocol === "https:" ? "__Host-" : ""}mylawatan-${order ? "order-access" : "guest"}`;
+}
+function legacyGuestCookieName(request: Request, order = false): string {
   return `${new URL(request.url).protocol === "https:" ? "__Host-" : ""}mywisata-${order ? "order-access" : "guest"}`;
 }
 export function readGuestCookie(request: Request, order = false): string | null {
-  const name = guestCookieName(request, order);
-  const raw = (request.headers.get("cookie") ?? "").split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
-  return raw && /^[A-Za-z0-9_-]{43}$/.test(raw) ? raw : null;
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  for (const name of [guestCookieName(request, order), legacyGuestCookieName(request, order)]) {
+    const raw = cookieHeader.split(";").map((part) => part.trim())
+      .find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+    if (raw && /^[A-Za-z0-9_-]{43}$/.test(raw)) return raw;
+  }
+  return null;
 }
 export function setGuestCookie(response: NextResponse, request: Request, token: string, order = false) {
   response.cookies.set(guestCookieName(request, order), token, {

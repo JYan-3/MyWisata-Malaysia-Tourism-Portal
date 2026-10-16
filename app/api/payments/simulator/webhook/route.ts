@@ -10,7 +10,8 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
-  const signature = request.headers.get('x-mywisata-simulator-signature');
+  const signature = request.headers.get('x-mylawatan-simulator-signature')
+    ?? request.headers.get('x-mywisata-simulator-signature');
   try {
     const result = await settleSimulatorEvent(rawBody, signature);
     return NextResponse.json({ received: true, ...result });

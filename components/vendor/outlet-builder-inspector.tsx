@@ -9,7 +9,6 @@ import type {
 import { canResizeBlockTo } from "@/lib/vendor/outlet-page-schema";
 import { GRID_SIZE_PRESETS } from "@/lib/vendor/outlet-grid";
 import ProductMediaUploader from "@/components/vendor/product-media-uploader";
-import { getBuilderBlockLabel } from "@/components/vendor/outlet-builder-ui";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { resolveBlockContent } from "@/components/outlet/outlet-block-renderer";
 import type { OutletRendererOutlet } from "@/components/outlet/outlet-block-types";

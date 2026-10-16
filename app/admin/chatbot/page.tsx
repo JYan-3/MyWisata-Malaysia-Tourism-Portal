@@ -488,7 +488,7 @@ export default function AdminChatbotPage() {
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
               <div key={d.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} />
+                <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(d.id); else next.delete(d.id); return next; })} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
                     {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>}

@@ -2,7 +2,7 @@
 
 ## Context
 
-Customer pages currently use two different horizontal anchors. The customer navigation establishes a wide `max-w-7xl` grid: the page title should align with the MyWisata brand, while the primary content should use the narrower `max-w-5xl` account shell so its padded content aligns visually with the Home navigation item. Profile already demonstrates this relationship. Other account destinations either keep both title and content in the narrow shell, or, in the Activity calendar, keep both in the wide shell.
+Customer pages currently use two different horizontal anchors. The customer navigation establishes a wide `max-w-7xl` grid: the page title should align with the MyLawatan brand, while the primary content should use the narrower `max-w-5xl` account shell so its padded content aligns visually with the Home navigation item. Profile already demonstrates this relationship. Other account destinations either keep both title and content in the narrow shell, or, in the Activity calendar, keep both in the wide shell.
 
 ## Scope
 
@@ -33,7 +33,7 @@ Add one shared wide-title primitive beside `CustomerPageShell`:
 
 This makes the layout contract explicit:
 
-1. The title group's left edge aligns with MyWisata.
+1. The title group's left edge aligns with MyLawatan.
 2. The padded content inside the narrow body aligns visually with Home.
 3. Switching between Activity itinerary and orders does not change the horizontal anchors.
 
@@ -60,7 +60,7 @@ This makes the layout contract explicit:
 - Update the existing Profile alignment test to assert use of the shared primitive.
 - Run the affected Vitest files, ESLint, and TypeScript.
 - Capture the same desktop pages after implementation and compare the title/body anchors against the current audit:
-  - title aligned with MyWisata
+  - title aligned with MyLawatan
   - narrow body content aligned visually with Home
   - My Vouchers unchanged
 

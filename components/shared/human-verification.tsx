@@ -52,7 +52,9 @@ export function HumanVerification({ action, resetKey, onToken }: Props) {
       });
     } catch {
       onToken("");
-      setFailed(true);
+      queueMicrotask(() => {
+        if (active) setFailed(true);
+      });
     }
     return () => {
       active = false;

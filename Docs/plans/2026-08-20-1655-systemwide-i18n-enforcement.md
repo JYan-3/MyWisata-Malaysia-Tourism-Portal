@@ -6,7 +6,7 @@
 
 **Design:** [System-wide i18n enforcement design](../superpowers/specs/2026-08-20-systemwide-i18n-enforcement-design.md)
 
-**Goal:** Make every fixed MyWisata interface string follow the selected `en`, `zh-CN`, or `ms` locale, remove silent English fallback paths, and add a blocking AST/catalog CI gate that prevents regressions.
+**Goal:** Make every fixed MyLawatan interface string follow the selected `en`, `zh-CN`, or `ms` locale, remove silent English fallback paths, and add a blocking AST/catalog CI gate that prevents regressions.
 
 ## Confirmed root causes and baseline
 
@@ -310,7 +310,7 @@ Remove non-empty `defaultValue` from translation calls while preserving interpol
 
 **Reviewed non-copy/brand surface:**
 
-- `app/api/share-image/[type]/[id]/route.tsx` — keep MyWisata as a brand data constant with an explicit lint suppression limited to that expression; do not ignore the API directory.
+- `app/api/share-image/[type]/[id]/route.tsx` — keep MyLawatan as a brand data constant with an explicit lint suppression limited to that expression; do not ignore the API directory.
 
 **Steps:**
 
@@ -318,7 +318,7 @@ Remove non-empty `defaultValue` from translation calls while preserving interpol
 2. Convert concatenated translations to complete interpolated/pluralized messages.
 3. Move currency/date/count formatting to active-locale helpers.
 4. Route shared search, dialog, Google Maps picker, badges, and chatbot labels through `common` keys.
-5. Preserve technical font names, IDs, currency codes, and MyWisata/Google brand names as reviewed data, while translating surrounding UI.
+5. Preserve technical font names, IDs, currency codes, and MyLawatan/Google brand names as reviewed data, while translating surrounding UI.
 6. Run Vendor/Admin/Auth/Shared contract tests and AST lint after the cluster.
 
 ## Task 7: Complete all locale catalogs

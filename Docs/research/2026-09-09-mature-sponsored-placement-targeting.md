@@ -1,7 +1,7 @@
 # Mature Sponsored Placement Targeting Research
 
 **Date:** 2026-09-09  
-**Scope:** Geo/category targeting, national versus state campaigns, four visible positions, priority conflicts, overlapping schedules, and approval behavior for MyWisata.
+**Scope:** Geo/category targeting, national versus state campaigns, four visible positions, priority conflicts, overlapping schedules, and approval behavior for MyLawatan.
 
 ## Primary-source findings
 
@@ -9,7 +9,7 @@
 
 Google Ad Manager models geography as one targeting dimension on a line item. A line item can include or exclude geographic areas such as country, state, or city. Targeting narrows where an advertisement is eligible to serve; it is not itself the final rank. [Google Ad Manager: Target geographic locations for delivery](https://support.google.com/admanager/answer/1260290?hl=en)
 
-Conditions inside the same targeting dimension use OR semantics, while conditions across dimensions use AND semantics. Applied to MyWisata, multiple selected states would mean Penang OR Melaka, while a state plus category would mean Penang AND Food. [Google Ad Manager: How targeting works with multiple conditions](https://support.google.com/admanager/answer/9643591?hl=en)
+Conditions inside the same targeting dimension use OR semantics, while conditions across dimensions use AND semantics. Applied to MyLawatan, multiple selected states would mean Penang OR Melaka, while a state plus category would mean Penang AND Food. [Google Ad Manager: How targeting works with multiple conditions](https://support.google.com/admanager/answer/9643591?hl=en)
 
 ### Priority is a competition rule, not a permanent globally unique position
 
@@ -27,16 +27,16 @@ This means a Penang-only campaign should not conflict with a Melaka-only campaig
 
 Ad Manager offers inventory forecasting before booking and exposes contending line items so an operator can see whether a new campaign may displace existing commitments. [Google Ad Manager: Check available inventory](https://support.google.com/admanager/answer/82234?hl=en)
 
-For MyWisata, a lightweight equivalent is a conflict preview at draft creation and a required confirmation at approval. The reorder/pause/archive operation should be atomic at approval so a draft never disrupts live content.
+For MyLawatan, a lightweight equivalent is a conflict preview at draft creation and a required confirmation at approval. The reorder/pause/archive operation should be atomic at approval so a draft never disrupts live content.
 
-## Current MyWisata behavior
+## Current MyLawatan behavior
 
 - `state = null` and `category_slug = null` represent All States and All Categories.
 - `priority` currently accepts `0..1000`; duplicate values are allowed.
 - Customer requests first filter by approved status, effective dates, state and category, then sort by descending numeric priority and return at most four.
 - The current system does not reserve four positions per targeting scope, warn about overlap, shift ranks, pause displaced campaigns, or archive older paused campaigns.
 
-## Recommended MyWisata model
+## Recommended MyLawatan model
 
 ### 1. Treat the customer page as one four-position ad unit
 
@@ -85,7 +85,7 @@ The Admin warning should name the affected campaigns and show the proposed order
 
 Mature targeting systems treat country/national scope as an audience rule, not as proof assembled from child campaigns. Requiring a campaign to exist in every state would create duplicates and operational complexity.
 
-If MyWisata wants a quality gate before All Malaysia targeting, use an explicit national-eligibility rule instead. For example, allow All Malaysia only when the product is active and approved and an authorized reviewer marks it `nationally_eligible`. This is clearer and auditable. It should not be inferred merely because the product previously had a Penang campaign.
+If MyLawatan wants a quality gate before All Malaysia targeting, use an explicit national-eligibility rule instead. For example, allow All Malaysia only when the product is active and approved and an authorized reviewer marks it `nationally_eligible`. This is clearer and auditable. It should not be inferred merely because the product previously had a Penang campaign.
 
 ## Recommended decision for this project
 

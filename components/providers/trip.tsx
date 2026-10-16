@@ -2,8 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { readMigratedClientStorageValue } from "@/lib/client-storage";
 
-const STORAGE_KEY = "mywisata:trip";
+const STORAGE_KEY = "mylawatan:trip";
+const LEGACY_STORAGE_KEY = "mywisata:trip";
 
 // One special stop id — there is at most one "location" (your origin point) in
 // the list, and it keeps this stable id so drag/reorder treats it like any other
@@ -57,7 +59,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   // data with no real users to preserve trips for.
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = readMigratedClientStorageValue(window.localStorage, STORAGE_KEY, LEGACY_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredTrip> & { start?: unknown };
         // eslint-disable-next-line react-hooks/set-state-in-effect

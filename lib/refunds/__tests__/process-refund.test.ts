@@ -57,7 +57,7 @@ describe('processRefund', () => {
 
     expect(result.ok).toBe(true);
     expect(mocks.refundsCreate).toHaveBeenCalledWith(
-      { payment_intent: 'pi_1', amount: 1500, metadata: { mywisata_refund_id: 'refund-1' } },
+      { payment_intent: 'pi_1', amount: 1500, metadata: { mylawatan_refund_id: 'refund-1' } },
       { idempotencyKey: 'refund:refund-1' },
     );
     expect(service.rpc).toHaveBeenCalledWith('record_order_refund_provider_outcome', expect.objectContaining({

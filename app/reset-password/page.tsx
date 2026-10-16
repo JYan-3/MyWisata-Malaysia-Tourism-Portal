@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { Button } from "@/components/ui/button";
-import { MyWisataLogo } from "@/components/shared/mywisata-logo";
+import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
 import { useTranslation } from "react-i18next";
 
 export default function ResetPasswordPage() {
@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12">
       <div className="mb-6 flex items-center justify-center">
-        <MyWisataLogo markSize={36} />
+        <MyLawatanLogo markSize={36} />
       </div>
       <form onSubmit={submit} className="w-full space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div>

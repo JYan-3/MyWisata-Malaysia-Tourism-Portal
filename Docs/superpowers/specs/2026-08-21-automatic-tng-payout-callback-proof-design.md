@@ -8,7 +8,7 @@
 
 ## Context
 
-MyWisata currently moves an approved non-production TNG withdrawal to `processing`, creates an opaque provider payout ID, and then waits for `POST /api/tng/payout/webhook`. No component sends that callback automatically, so a valid withdrawal remains in `processing` indefinitely even though the mock provider accepted it.
+MyLawatan currently moves an approved non-production TNG withdrawal to `processing`, creates an opaque provider payout ID, and then waits for `POST /api/tng/payout/webhook`. No component sends that callback automatically, so a valid withdrawal remains in `processing` indefinitely even though the mock provider accepted it.
 
 The desired behavior follows the mature payout pattern used by Open Collective, BTCPay Server, Saleor, and Medusa: an administrator approves once, the provider executes asynchronously, and a verified provider result moves the withdrawal to a terminal status. Provider proof and ledger movement must be visible without giving either the administrator or customer a second way to approve or directly mark a payout as paid.
 
@@ -35,11 +35,11 @@ The desired behavior follows the mature payout pattern used by Open Collective, 
 | State | Authority | Meaning |
 |---|---|---|
 | `approved` | Admin approval RPC | Governance checks passed and payout is authorized. |
-| `processing` | Provider submission RPC | An opaque provider payout ID exists and MyWisata is waiting for the provider result. |
+| `processing` | Provider submission RPC | An opaque provider payout ID exists and MyLawatan is waiting for the provider result. |
 | `paid` | Verified provider callback or reconciliation | Provider reported success; Reserved funds moved to Withdrawn atomically. |
 | `failed` | Verified provider callback or reconciliation | Provider reported failure; Reserved funds returned to Earnings atomically. |
 
-There is no additional `waiting_callback` database status. `processing` is the waiting-for-provider state. A provider `completed` result, if ever accepted as an alias, normalizes to MyWisata's terminal `paid` status.
+There is no additional `waiting_callback` database status. `processing` is the waiting-for-provider state. A provider `completed` result, if ever accepted as an alias, normalizes to MyLawatan's terminal `paid` status.
 
 ## Approved Architecture
 
@@ -130,7 +130,7 @@ The projection exposes:
 - provider event ID;
 - provider event status;
 - amount and currency;
-- provider occurrence time and MyWisata receipt time;
+- provider occurrence time and MyLawatan receipt time;
 - `signatureVerified: true`, because no event reaches the receipt table before verification;
 - payload SHA-256, not the payload;
 - callback idempotency/delivery information that is safe to expose;

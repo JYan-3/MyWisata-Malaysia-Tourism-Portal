@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/auth";
 type WishlistContextValue = {
   savedIds: ReadonlySet<string>;
   loading: boolean;
+  hydrated: boolean;
   toggleSaved: (productId: string) => Promise<boolean>;
 };
 
@@ -17,6 +18,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const currentUserId = currentUser?.id;
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,17 +28,22 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedIds(new Set());
       setLoading(false);
+      setHydrated(true);
       return () => { cancelled = true; };
     }
 
     // Reset the previous identity's data before hydrating the active customer.
     setSavedIds(new Set());
     setLoading(true);
+    setHydrated(false);
     fetch("/api/wishlist")
       .then(async (response) => {
         if (!response.ok) return;
         const body = (await response.json()) as { data?: { productIds?: string[] } };
-        if (!cancelled) setSavedIds(new Set(body.data?.productIds ?? []));
+        if (!cancelled) {
+          setSavedIds(new Set(body.data?.productIds ?? []));
+          setHydrated(true);
+        }
       })
       .catch(() => {
         // Wishlist is an enhancement; browsing must remain available if it fails.
@@ -79,7 +86,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
   }, [savedIds]);
 
-  const value = useMemo(() => ({ savedIds, loading, toggleSaved }), [savedIds, loading, toggleSaved]);
+  const value = useMemo(() => ({ savedIds, loading, hydrated, toggleSaved }), [savedIds, loading, hydrated, toggleSaved]);
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
 }
 

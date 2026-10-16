@@ -18,10 +18,10 @@ const ROOT = process.cwd();
 const ASSET_ROOT = path.resolve(ROOT, "public/assets/customer/vendor-images");
 const SOURCE_ROOT = path.resolve(ASSET_ROOT, "source-v4");
 const MANIFEST_PATH = path.resolve(ASSET_ROOT, "entity-media-manifest-v4.json");
-const CACHE_PATH = path.resolve("/tmp/mywisata-vendor-outlet-commons-cache.json");
+const CACHE_PATH = path.resolve("/tmp/mylawatan-vendor-outlet-commons-cache.json");
 const PAGE_DELAY_MS = 1400;
 const GALLERY_COUNT = 3;
-const USER_AGENT = "MyWisata-vendor-outlet-media-curator/1.0 (local development; attribution recorded)";
+const USER_AGENT = "MyLawatan-vendor-outlet-media-curator/1.0 (local development; attribution recorded)";
 
 const STOPWORDS = new Set([
   "and", "the", "for", "with", "from", "this", "that", "your", "our", "one", "two", "at", "to", "of", "in", "by", "via",
@@ -299,7 +299,7 @@ async function appendRemoteSimilarFallback(entity, picked, usedPageIds, usedHash
     let body;
     let hash;
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      seed = `mywisata-${entity.type}-${entity.slug}-${index}-${attempt}`;
+      seed = `mylawatan-${entity.type}-${entity.slug}-${index}-${attempt}`;
       imageUrl = `https://picsum.photos/seed/${encodeURIComponent(seed)}/480/320`;
       const response = await fetch(imageUrl, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(20_000) });
       if (!response.ok || !/^image\//i.test(response.headers.get("content-type") || "")) continue;

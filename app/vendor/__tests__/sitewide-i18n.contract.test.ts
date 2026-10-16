@@ -112,7 +112,7 @@ const priorTaskFiles = new Set([
   'components/shared/use-otp-resend.ts',
   'components/shared/header-icon-button.ts',
   'components/shared/language-switcher.tsx',
-  'components/shared/mywisata-logo.tsx',
+  'components/shared/mylawatan-logo.tsx',
   'components/shared/notification-bell.tsx',
   'components/shared/notification-center.tsx',
   'components/shared/reference-price.tsx',

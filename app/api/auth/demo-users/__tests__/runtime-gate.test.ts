@@ -8,8 +8,8 @@ import { GET } from '../route';
 describe('GET /api/auth/demo-users runtime gate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'false');
-    vi.stubEnv('MYWISATA_ENV', '');
+    vi.stubEnv('MYLAWATAN_DEMO_TOOLS', 'false');
+    vi.stubEnv('MYLAWATAN_ENV', '');
     vi.stubEnv('VERCEL_ENV', '');
   });
 

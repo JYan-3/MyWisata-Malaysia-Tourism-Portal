@@ -67,7 +67,7 @@ function makeRequest({
   for (const [name, value] of Object.entries(extraHeaders)) headers.set(name, value);
   if (cookie) headers.set("cookie", cookie);
   if (acceptLanguage) headers.set("accept-language", acceptLanguage);
-  return new NextRequest(new Request(`https://mywisata.example${path}`, { method, headers }));
+  return new NextRequest(new Request(`https://mylawatan.example${path}`, { method, headers }));
 }
 
 function localeFromResponse(response: Response) {

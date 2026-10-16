@@ -2,6 +2,7 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { outletLocation, outletShortName } from '@/lib/outlet-display';
 import { formatTicketAdmissionDetails } from '@/lib/vendor/redemption-admission-details';
+import type { TicketEntryPolicy } from '@/lib/tickets/product-ticket-policy';
 
 interface Props {
   params: Promise<{ vendorId: string }>;
@@ -41,6 +42,61 @@ type EventPickupAuditRow = {
   after_data: Record<string, unknown> | null;
 };
 
+type Relation<T> = T | T[] | null;
+type RedemptionOutlet = {
+  id: string;
+  name: string | null;
+  city: string | null;
+  state: string | null;
+};
+type RedemptionUser = { full_name: string | null; email: string | null };
+type RedemptionOrderItem = {
+  outlet_id: string | null;
+  product_name: string | null;
+  quantity?: number | null;
+  outlets: Relation<RedemptionOutlet>;
+};
+type TicketBooking = {
+  id: string;
+  display_id: string | null;
+  users: Relation<RedemptionUser>;
+  order_items: Relation<RedemptionOrderItem>;
+};
+// The ticket_passes policy column is constrained to the shared admission-policy union.
+type TicketPass = { policy: TicketEntryPolicy | null; entries_used?: number | null };
+type VoucherRedemptionRow = {
+  id: string;
+  outlet_id: string;
+  user_id: string | null;
+  redeemed_by: string | null;
+  redeemed_at: string;
+  vouchers: Relation<{
+    id: string;
+    code: string | null;
+    name: string | null;
+    voucher_type: string | null;
+    discount_value: number | null;
+  }>;
+  outlets: Relation<RedemptionOutlet>;
+};
+type TicketScanRow = {
+  id: string;
+  entries_admitted: number | null;
+  scanned_at: string;
+  outlet_id: string | null;
+  bookings: Relation<TicketBooking>;
+  ticket_passes: Relation<TicketPass>;
+  outlets: Relation<RedemptionOutlet>;
+};
+type LegacyTicketRow = {
+  id: string;
+  display_id: string | null;
+  check_in_at: string;
+  users: Relation<RedemptionUser>;
+  order_items: Relation<RedemptionOrderItem>;
+  ticket_passes: Relation<TicketPass>;
+};
+
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
   const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
@@ -58,7 +114,7 @@ export async function GET(request: Request, { params }: Props) {
   const targetOutletIds = outletId ? [outletId] : vendorOutletIds;
 
   // 1. Query voucher store redemptions
-  let voucherRows: any[] = [];
+  let voucherRows: VoucherRedemptionRow[] = [];
   if (targetOutletIds.length > 0 && (kind === 'all' || kind === 'voucher')) {
     const query = service
       .from('voucher_store_redemptions')
@@ -68,13 +124,13 @@ export async function GET(request: Request, { params }: Props) {
       .order('redeemed_at', { ascending: false });
 
     const { data } = await query;
-    voucherRows = data || [];
+    voucherRows = (data ?? []) as unknown as VoucherRedemptionRow[];
   }
 
   // 2. Query ticket scan events. Every successful scan has its own audit row,
   // including repeated multi-entry visits and partial group admissions.
-  let ticketRows: any[] = [];
-  let legacyTicketRows: any[] = [];
+  let ticketRows: TicketScanRow[] = [];
+  let legacyTicketRows: LegacyTicketRow[] = [];
   if (targetOutletIds.length > 0 && (kind === 'all' || kind === 'ticket')) {
     const [eventResult, legacyResult] = await Promise.all([
       service
@@ -91,14 +147,15 @@ export async function GET(request: Request, { params }: Props) {
         .not('check_in_at', 'is', null)
         .order('check_in_at', { ascending: false }),
     ]);
-    ticketRows = eventResult.data || [];
+    ticketRows = (eventResult.data ?? []) as unknown as TicketScanRow[];
     const bookingsWithEvents = new Set(ticketRows.map((row) => {
       const booking = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
       return booking?.id;
-    }).filter(Boolean));
+    }).filter((id): id is string => typeof id === 'string'));
     // Keep pre-audit-log check-ins visible without duplicating bookings that
     // now have immutable per-scan events.
-    legacyTicketRows = (legacyResult.data || []).filter((row) => !bookingsWithEvents.has(row.id));
+    legacyTicketRows = ((legacyResult.data ?? []) as unknown as LegacyTicketRow[])
+      .filter((row) => !bookingsWithEvents.has(row.id));
   }
 
   // Event vendors have no outlets. Event pickup fulfilment is recorded in the
@@ -166,8 +223,8 @@ export async function GET(request: Request, { params }: Props) {
   voucherRows.forEach((row) => {
     const voucher = Array.isArray(row.vouchers) ? row.vouchers[0] : row.vouchers;
     const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets;
-    const customer = usersMap.get(row.user_id) || { name: 'Verified Customer', email: '—' };
-    const staff = usersMap.get(row.redeemed_by) || null;
+    const customer = usersMap.get(row.user_id ?? '') || { name: 'Verified Customer', email: '—' };
+    const staff = usersMap.get(row.redeemed_by ?? '') || null;
 
     const discountValue = Number(voucher?.discount_value || 0);
     const details = voucher?.voucher_type === 'percent'

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ClipboardCheck, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -32,7 +32,7 @@ export default function EventRegistrationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/admin/event-registrations", { cache: "no-store" });
@@ -45,10 +45,10 @@ export default function EventRegistrationsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const pending = registrations.filter((r) => r.status === "pending");
   const changesRequested = registrations.filter((r) => r.status === "changes_requested");

@@ -3,6 +3,8 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    // Bound fork concurrency so full-project checks do not starve other test workers.
+    maxWorkers: 4,
     exclude: [
       "**/node_modules/**",
       "**/output/**",

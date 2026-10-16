@@ -12,7 +12,11 @@ import { FontSizeProvider, FontSizeScript } from "@/components/providers/font-si
 import { AppI18nProvider, type AppI18nResources } from "@/components/providers/i18n-provider";
 import { ReferenceCurrencyProvider } from "@/components/providers/reference-currency";
 import { getReferenceRate } from "@/lib/currency/rates";
-import { REFERENCE_CURRENCY_COOKIE, resolveReferenceCurrency } from "@/lib/currency/reference";
+import {
+  LEGACY_REFERENCE_CURRENCY_COOKIE,
+  REFERENCE_CURRENCY_COOKIE,
+  resolveReferenceCurrencyPreference,
+} from "@/lib/currency/reference";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { loadLocaleResources } from "@/lib/i18n/resources";
 import { RouteScrollReset } from "@/components/shared/route-scroll-reset";
@@ -42,7 +46,10 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getRequestLocale();
   const cookieStore = await cookies();
-  const currency = resolveReferenceCurrency(cookieStore.get(REFERENCE_CURRENCY_COOKIE)?.value);
+  const currency = resolveReferenceCurrencyPreference(
+    cookieStore.get(REFERENCE_CURRENCY_COOKIE)?.value,
+    cookieStore.get(LEGACY_REFERENCE_CURRENCY_COOKIE)?.value,
+  );
   const referenceRate = await getReferenceRate(currency);
   const resources = await loadLocaleResources(locale);
   const englishResources = locale === "en" ? resources : await loadLocaleResources("en");

@@ -86,6 +86,8 @@ export default function ProfilePage() {
     }
   }, [currentUser, setBio, setCity, setCountry, setFullName]);
 
+  // This effect starts the initial request for the signed-in user’s saved profile.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadProfile(); }, [loadProfile]);
 
   // ── Identity handler ───────────────────────────────────────────────────────

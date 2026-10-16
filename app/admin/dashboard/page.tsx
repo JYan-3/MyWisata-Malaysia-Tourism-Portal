@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowUpRight, Banknote, CheckCircle2, Clock3, Database, Gem, Package, RefreshCw, Shield, TimerReset, UsersRound } from "lucide-react";
 import { getOutlets } from "@/backend/domains/catalogue";
 import { getUsers, getSupportTickets } from "@/backend/domains/identity";
@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
   const [loadError, setLoadError] = useState("");
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     setLoadError("");
     try {
       const [outlets, users, withdrawals, recs, tickets] = await Promise.all([
@@ -87,11 +87,11 @@ export default function AdminDashboardPage() {
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : t("dashboard.errors.load"));
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     queueMicrotask(() => { void loadDashboard(); });
-  }, []);
+  }, [loadDashboard]);
 
   const totalAttention = useMemo(() => data ? data.vendors + data.kyc + data.withdrawals + data.recs + data.tickets : 0, [data]);
   const maxActivity = Math.max(...(data?.activity ?? [0]), 1);

@@ -175,7 +175,7 @@ git commit -m "feat: add safe vendor invite preview"
 ```ts
 expect(pageSource).toContain('VendorInviteClient');
 expect(clientSource).toContain('Recommendation details');
-expect(clientSource).toContain('A MyWisata member recommended this business.');
+expect(clientSource).toContain('A MyLawatan member recommended this business.');
 expect(clientSource).toContain('Pre-filled from a customer recommendation');
 expect(clientSource).not.toContain('recommender.email');
 expect(formSource).toContain('initialValues');

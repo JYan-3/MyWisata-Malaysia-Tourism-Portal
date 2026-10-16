@@ -5,7 +5,7 @@
 
 ## Context
 
-A live RM 50 withdrawal demonstration confirmed that MyWisata already supports
+A live RM 50 withdrawal demonstration confirmed that MyLawatan already supports
 customer submission, administrator review, provider processing, approval,
 rejection, settlement, and customer transaction history. The demonstration also
 exposed four trust and usability gaps:
@@ -234,7 +234,7 @@ unrelated checkout worktree changes are outside scope and must remain untouched.
 ## Risks
 
 - The TNG provider flow remains a non-production mock. Identity binding proves that
-  MyWisata selected the authenticated user's verified platform phone; it does
+  MyLawatan selected the authenticated user's verified platform phone; it does
   not prove a production TNG account contract.
 - Changing or rotating the mock webhook secret changes deterministic provider
   references and therefore disables old mock destinations. Customers can create

@@ -11,17 +11,17 @@ import {
 describe("Guest Mode navigation", () => {
   it("identifies only private same-origin customer links while keeping the return query and hash", () => {
     expect(typeof guestProtectedCustomerPath).toBe("function");
-    const base = "https://mywisata.test/customer/explore";
+    const base = "https://mylawatan.test/customer/explore";
     expect(guestProtectedCustomerPath("/customer/profile?tab=account#preferences", base)).toBe("/customer/profile?tab=account#preferences");
     expect(guestProtectedCustomerPath("/customer/cart", base)).toBeNull();
-    expect(guestProtectedCustomerPath("https://mywisata.test/customer/chat", base)).toBe("/customer/chat");
+    expect(guestProtectedCustomerPath("https://mylawatan.test/customer/chat", base)).toBe("/customer/chat");
     expect(guestProtectedCustomerPath("/customer/wallet/withdrawals/123", base)).toBe("/customer/wallet/withdrawals/123");
   });
 
   it("leaves public browsing, explicit authentication and external navigation alone", () => {
     expect(typeof guestProtectedCustomerPath).toBe("function");
     for (const href of ["/customer", "/customer/explore", "/customer/activity/123", "/customer/wallet", "/customer/for-you", "/login?next=%2Fcustomer%2Fcart&mode=signup", "https://other.test/customer/cart", "//other.test/customer/cart", "mailto:help@example.com", "#listings", "http://[", "/customer-service"]) {
-      expect(guestProtectedCustomerPath(href, "https://mywisata.test/customer/explore")).toBeNull();
+      expect(guestProtectedCustomerPath(href, "https://mylawatan.test/customer/explore")).toBeNull();
     }
   });
 

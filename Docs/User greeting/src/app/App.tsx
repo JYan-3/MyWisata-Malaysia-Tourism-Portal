@@ -370,7 +370,7 @@ function TouristWebsite() {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: G }}>
               <Globe size={16} className="text-white" />
             </div>
-            <span className="font-bold text-base" style={{ color: S, fontFamily: "'Fraunces', serif" }}>MyWisata</span>
+            <span className="font-bold text-base" style={{ color: S, fontFamily: "'Fraunces', serif" }}>MyLawatan</span>
           </div>
 
           <div className="hidden md:flex items-center gap-6 flex-1">
@@ -608,7 +608,7 @@ function TouristWebsite() {
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: G }}>
                 <Globe size={13} className="text-white" />
               </div>
-              <span className="font-bold" style={{ color: S, fontFamily: "'Fraunces', serif" }}>MyWisata</span>
+              <span className="font-bold" style={{ color: S, fontFamily: "'Fraunces', serif" }}>MyLawatan</span>
             </div>
             <p className="text-xs leading-relaxed max-w-xs" style={{ color: "#5E7268" }}>
               Malaysia's trusted tourism discovery and commerce platform. Connecting travellers, vendors and communities across 16 states.
@@ -633,7 +633,7 @@ function TouristWebsite() {
         </div>
         <div className="max-w-7xl mx-auto px-6 pt-8 mt-8 border-t flex items-center justify-between"
           style={{ borderColor: "rgba(15,93,74,0.08)" }}>
-          <p className="text-xs" style={{ color: "#5E7268" }}>© 2024 MyWisata Sdn Bhd. All rights reserved.</p>
+          <p className="text-xs" style={{ color: "#5E7268" }}>© 2024 MyLawatan Sdn Bhd. All rights reserved.</p>
           <p className="text-xs" style={{ color: "#5E7268" }}>🇲🇾 Made in Malaysia</p>
         </div>
       </footer>
@@ -680,7 +680,7 @@ function VendorDashboard() {
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: G }}>
             <Globe size={16} className="text-white" />
           </div>
-          <span className="font-bold text-white" style={{ fontFamily: "'Fraunces', serif" }}>MyWisata</span>
+          <span className="font-bold text-white" style={{ fontFamily: "'Fraunces', serif" }}>MyLawatan</span>
         </div>
         <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(248,250,247,0.08)" }}>
           <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Vendor Account</p>
@@ -887,7 +887,7 @@ function AdminDashboard() {
             <Shield size={16} className="text-white" />
           </div>
           <div>
-            <span className="font-bold text-white text-sm" style={{ fontFamily: "'Fraunces', serif" }}>MyWisata</span>
+            <span className="font-bold text-white text-sm" style={{ fontFamily: "'Fraunces', serif" }}>MyLawatan</span>
             <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Panel</p>
           </div>
         </div>

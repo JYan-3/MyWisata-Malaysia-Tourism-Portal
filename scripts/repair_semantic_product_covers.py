@@ -23,8 +23,8 @@ from curate_product_images import candidate_score, object_compatible, photo_cate
 
 MANIFEST_PATH = ROOT / "scripts/data/product-cover-source-manifest.json"
 PRODUCTS_DIR = ROOT / "public/assets/customer/products"
-ROOM_ASSETS = Path("/tmp/mywisata-final-room-assets")
-CACHE_PATH = Path("/tmp/mywisata-product-commons-cache.json")
+ROOM_ASSETS = Path("/tmp/mylawatan-final-room-assets")
+CACHE_PATH = Path("/tmp/mylawatan-product-commons-cache.json")
 DISALLOWED = re.compile(r"picsum|placeholder|generated|illustrative|lorem ipsum", re.I)
 BAD_ACCOMMODATION = (
     "a350", "delta one", "airline", "airplane", "airport", "church of", "stadium",
@@ -93,10 +93,10 @@ def load_candidates() -> list[dict]:
         add_candidate(candidates, item, ROOT / "public" / item["asset_path"].lstrip("/"), "current", 5)
 
     pools = [
-        ("/tmp/mywisata-final-needed-candidates.json", ["/tmp/mywisata-final-needed-assets"], 2),
-        ("/tmp/mywisata-semantic-needed-candidates.json", ["/tmp/mywisata-semantic-needed-assets"], 2),
-        ("/tmp/mywisata-commons-candidate-pool.json", ["/tmp/mywisata-commons-candidate-assets"], 2),
-        ("/tmp/mywisata-commons-standard-pool.json", ["/tmp/mywisata-commons-standard-assets"], 2),
+        ("/tmp/mylawatan-final-needed-candidates.json", ["/tmp/mylawatan-final-needed-assets"], 2),
+        ("/tmp/mylawatan-semantic-needed-candidates.json", ["/tmp/mylawatan-semantic-needed-assets"], 2),
+        ("/tmp/mylawatan-commons-candidate-pool.json", ["/tmp/mylawatan-commons-candidate-assets"], 2),
+        ("/tmp/mylawatan-commons-standard-pool.json", ["/tmp/mylawatan-commons-standard-assets"], 2),
     ]
     for metadata_path, directories, priority in pools:
         path = Path(metadata_path)
@@ -120,7 +120,7 @@ def load_candidates() -> list[dict]:
         for pageid, item in by_page.items():
             add_candidate(candidates, item, ROOM_ASSETS / f"{pageid}.jpg", "room-cache", 3)
 
-    special_path = Path("/tmp/mywisata-semantic-special-assets.json")
+    special_path = Path("/tmp/mylawatan-semantic-special-assets.json")
     if special_path.is_file():
         for item in json.loads(special_path.read_text()):
             local = Path(item.get("local_path") or "")

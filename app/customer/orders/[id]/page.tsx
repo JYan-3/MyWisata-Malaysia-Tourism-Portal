@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -118,6 +118,7 @@ function OrderStatusBadge({ status, refundedLabel }: { status: string; refundedL
 }
 
 export default function OrderDetailPage() {
+  const router = useRouter();
   const { t: tCustomer, i18n } = useTranslation("customer");
   const params = useParams<{ id: string }>();
   const { currentUser } = useAuth();
@@ -257,7 +258,7 @@ export default function OrderDetailPage() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error("payment_session_close_failed");
       if (body.data?.canReviewCart) {
-        window.location.assign("/customer/cart");
+        router.push("/customer/cart");
         return;
       }
       if (body.data?.reason === "processing") {
