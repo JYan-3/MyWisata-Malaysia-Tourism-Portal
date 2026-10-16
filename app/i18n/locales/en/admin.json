@@ -1553,7 +1553,9 @@
       "payout_fees_rm": "Payout fees RM",
       "pending_earnings_amount_rm": "Pending earnings RM",
       "pending_withdrawal_amount_rm": "Pending withdrawal RM",
-      "reserved_amount_rm": "Reserved RM"
+      "reserved_amount_rm": "Reserved RM",
+      "vendor_clawback_shortfall_month_rm": "Vendor clawback shortfalls this month RM",
+      "vendor_clawback_open_shortfall_rm": "Open vendor clawback shortfalls RM"
     },
     "backToWallet": "Back to wallet",
     "balance": {
@@ -1597,6 +1599,15 @@
     "reportMonth": "Report month",
     "requestStatus": "Request status",
     "requestStatusDescription": "A quick view of the monthly payout queue.",
+    "riskExposureTitle": "Observed vendor clawback exposure",
+    "riskExposureDescription": "Recorded vendor settlement shortfalls only. This is not total platform or affiliate loss, nor an approved reserve amount.",
+    "riskExposure": {
+      "month": "Shortfalls recorded this month",
+      "open": "Unresolved shortfalls at report time",
+      "count": "{{count}} records",
+      "count_one": "{{count}} record",
+      "count_other": "{{count}} records"
+    },
     "searchPlaceholder": "Search user or source",
     "snapshot": "Monthly snapshot",
     "sourceFilter": "Filter by payout source",

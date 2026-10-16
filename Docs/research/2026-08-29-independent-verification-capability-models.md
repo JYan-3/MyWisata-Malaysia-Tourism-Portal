@@ -4,6 +4,8 @@
 
 **Status:** Research complete
 
+> Historical checkout requirements in this research were superseded by [the Guest and Email-verified purchase plan](../plans/2026-10-02-0046-guest-and-email-verified-purchases.md): Guest purchases are allowed, and registered purchases require verified Email. Other independent verification capabilities remain relevant.
+
 **Scope:** Primary sources only: official project source code, official project
 documentation, and identity specifications. This note is research and design
 guidance only; it does not modify MyLawatan code or the implementation plan.

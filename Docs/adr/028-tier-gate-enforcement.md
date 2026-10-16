@@ -3,6 +3,8 @@
 **Status:** Accepted  
 **PR:** 028 — (schema-only, no migration file)
 
+> Historical decision: phone-tier checkout requirements referenced by this ADR were superseded for purchase access by [the Guest and Email-verified purchase plan](../plans/2026-10-02-0046-guest-and-email-verified-purchases.md). Other tier-gated operations remain in scope.
+
 ---
 
 ## Context

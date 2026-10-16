@@ -1553,7 +1553,9 @@
       "payout_fees_rm": "提现手续费 RM",
       "pending_earnings_amount_rm": "待处理收益 RM",
       "pending_withdrawal_amount_rm": "待处理提现 RM",
-      "reserved_amount_rm": "预留 RM"
+      "reserved_amount_rm": "预留 RM",
+      "vendor_clawback_shortfall_month_rm": "本月商家结算追回缺口 RM",
+      "vendor_clawback_open_shortfall_rm": "未解决的商家结算追回缺口 RM"
     },
     "backToWallet": "返回钱包",
     "balance": {
@@ -1597,6 +1599,15 @@
     "reportMonth": "报告月份",
     "requestStatus": "请求状态",
     "requestStatusDescription": "月度提现队列的快速概览。",
+    "riskExposureTitle": "已记录的商家追回风险敞口",
+    "riskExposureDescription": "这里只统计已记录的商家结算追回缺口，不代表平台或联盟营销的全部损失，也不是已批准的准备金金额。",
+    "riskExposure": {
+      "month": "本月记录的缺口",
+      "open": "报告生成时尚未解决的缺口",
+      "count": "{{count}} 条记录",
+      "count_one": "{{count}} 条记录",
+      "count_other": "{{count}} 条记录"
+    },
     "searchPlaceholder": "搜索用户或来源",
     "snapshot": "月度快照",
     "sourceFilter": "按提现来源筛选",

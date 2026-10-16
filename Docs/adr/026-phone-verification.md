@@ -3,6 +3,8 @@
 **Status:** Accepted  
 **PR:** 026 — `026_phone_verification.sql`
 
+> Historical decision: this ADR's phone-verification requirement for checkout was superseded for purchase access by [the Guest and Email-verified purchase plan](../plans/2026-10-02-0046-guest-and-email-verified-purchases.md). Phone verification requirements for non-purchase capabilities remain in scope.
+
 ---
 
 ## Context
