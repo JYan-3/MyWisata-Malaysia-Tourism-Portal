@@ -12,6 +12,7 @@ vi.mock('@/lib/email/sender', () => ({
   sendTransactionEmail: mocks.sendTransactionEmail,
   sendVendorEmail: vi.fn(),
 }));
+vi.mock('@/lib/platform/operations-settings', () => ({ isPlatformOperationEnabled: async () => false, PLATFORM_OPERATION_KEYS: { pauseCustomDelivery: 'email.pause_custom_delivery' } }));
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
@@ -23,7 +24,7 @@ vi.mock('@/lib/supabase/service', () => ({
       }
       throw new Error(`Unexpected table ${table}`);
     },
-    rpc: async () => ({ data: mocks.claimed, error: null }),
+    rpc: async (name: string) => ({ data: name === 'claim_email_outbox_delivery' ? { rows: mocks.claimed, reviewRequired: 0 } : true, error: null }),
   }),
 }));
 
@@ -56,7 +57,7 @@ describe('recommendation approval email', () => {
 
   it('dispatches approval rows through the recommendation sender', async () => {
     mocks.claimed = [{
-      id: 'outbox-1',
+      id: 'outbox-1', lease_token: 'test-token',
       to_email: 'customer@example.com',
       event_type: 'recommendation_approved',
       payload: {
@@ -68,14 +69,14 @@ describe('recommendation approval email', () => {
       attempts: 1,
     }];
 
-    await expect(processEmailOutbox()).resolves.toEqual({ sent: 1, failed: 0 });
-    expect(mocks.sendRecommendationEmail).toHaveBeenCalledWith({
+    await expect(processEmailOutbox()).resolves.toEqual({ sent: 1, failed: 0, reviewRequired: 0 });
+    expect(mocks.sendRecommendationEmail).toHaveBeenCalledWith(expect.objectContaining({
       eventType: 'recommendation_approved',
       recipientName: 'Aina',
       vendorName: 'Kedai Amanah',
       occurredAt: '2026-08-07T02:00:00.000Z',
       to: 'customer@example.com',
-    });
+    }));
     expect(mocks.sendTransactionEmail).not.toHaveBeenCalled();
   });
 });

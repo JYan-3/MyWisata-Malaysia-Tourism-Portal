@@ -111,7 +111,7 @@ function VoucherCard({
       }}
     >
       {voucher.claim?.status === "claimed" && canUse ? (
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
           <Check size={14} aria-hidden="true" /> {tCustomer("ui.voucherHub.saved")}
         </span>
       ) : (

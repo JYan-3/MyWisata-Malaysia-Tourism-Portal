@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bookmark, CalendarDays, Compass, Gift, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
+import { Bookmark, CalendarDays, Compass, FileText, Gift, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -51,6 +51,7 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
       { href: "/customer/profile", label: "Profile & Verification", labelKey: "accountItems.profile", description: "Choose and manage independent verification", icon: ShieldCheck },
       { href: "/customer/preferences", label: "Preferences", labelKey: "accountItems.preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
       { href: "/customer/support", label: "Support & Help", labelKey: "accountItems.support", description: "Get help with your trip", icon: Inbox },
+      { href: "/legal/privacy", label: "Privacy & Terms", labelKey: "accountItems.privacyTerms", description: "Privacy policy, terms and your data", icon: FileText },
     ],
   },
 ];

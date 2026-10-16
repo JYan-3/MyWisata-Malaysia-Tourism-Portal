@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     );
   }
   const orderId = data && typeof data === 'object' && 'order_id' in data && typeof data.order_id === 'string' ? data.order_id : null;
-  if (parsed.data.outcome === 'succeeded' && orderId) {
+  if (parsed.data.outcome === 'succeeded' && orderId && data?.status === 'paid') {
     void emitOrderVendorEvent({
       serviceDb: createServiceClient(),
       orderId,

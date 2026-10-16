@@ -10,7 +10,7 @@ export default function CompactThumbnail({ src, alt, kind = 'product', size = 's
   const Icon = kind === 'food' ? Utensils : kind === 'experience' || kind === 'outlet' ? Landmark : ImageIcon;
   const sizeClass = size === 'md' ? 'h-20 w-24' : 'h-14 w-14';
   return (
-    <div className={`relative shrink-0 overflow-hidden rounded-xl ${sizeClass} ${kind === 'food' ? 'bg-amber-50 text-amber-700' : 'bg-secondary text-primary'}`}>
+    <div className={`relative shrink-0 overflow-hidden rounded-xl ${sizeClass} ${kind === 'food' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200' : 'bg-secondary text-primary'}`}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={alt} className="h-full w-full object-cover" />

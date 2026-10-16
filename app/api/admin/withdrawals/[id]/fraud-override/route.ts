@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
+import { withdrawalProofFailure } from '@/lib/wallet/withdrawal-authorization';
 import { createClient } from '@/lib/supabase/server';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
@@ -8,6 +10,7 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 export const dynamic = 'force-dynamic';
 
 const overrideSchema = z.object({
+  proofId: z.string().uuid(),
   reason: z.string().trim().min(10).max(500),
   reasonCategory: z.string().trim().min(1).default('other'),
 }).strict();
@@ -20,6 +23,8 @@ export async function POST(
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return assuranceResponse;
 
   const parsed = await parseBody(request, overrideSchema);
   if (!parsed.ok) return parsed.response;
@@ -29,14 +34,18 @@ export async function POST(
   const moderation = await moderateWalletAction({ actorId: user.id, withdrawalId, action: 'fraud_override', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
   if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
-  const { data, error } = await db.rpc('override_withdrawal_risk', {
+  const { data, error } = await db.rpc('authorize_staff_withdrawal_action', {
     p_withdrawal_id: withdrawalId,
-    p_reason:        parsed.data.reason,
+    p_action: 'fraud-override',
+    p_proof_id: parsed.data.proofId,
+    p_payload: { reason: validated.data.reason, reasonCategory: validated.data.reasonCategory },
     p_ip:            requestIp(request),
   });
 
   if (error) {
     const msg = error.message ?? '';
+    const proofFailure = withdrawalProofFailure(msg);
+    if (proofFailure) return proofFailure;
     if (msg.includes('super_admin_required')) return apiFail('FORBIDDEN', 'Super Admin access required', 403);
     if (msg.includes('self_dealing'))         return apiFail('SELF_DEALING', 'You cannot override risk on your own withdrawal', 409);
     if (msg.includes('withdrawal_not_found')) return apiFail('NOT_FOUND', 'Withdrawal not found', 404);

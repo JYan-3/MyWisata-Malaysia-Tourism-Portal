@@ -6,9 +6,9 @@ import type { WithdrawalListItem } from '@/lib/wallet/withdrawal-review';
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 function getReviewPriority(item: WithdrawalListItem) {
-  if (item.status === 'overdue') return { labelKey: 'withdrawals.priority.overdue', className: 'border-red-200 bg-red-50 text-red-700', icon: TimerReset };
-  if (item.requiresDualApproval && item.approvalCount < 2) return { labelKey: 'withdrawals.priority.waitingForSecondApprover', className: 'border-amber-200 bg-amber-50 text-amber-800', icon: UsersRound };
-  if (item.riskLevel === 'high') return { labelKey: 'withdrawals.priority.highRisk', className: 'border-red-200 bg-red-50 text-red-700', icon: AlertTriangle };
+  if (item.status === 'overdue') return { labelKey: 'withdrawals.priority.overdue', className: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-200', icon: TimerReset };
+  if (item.requiresDualApproval && item.approvalCount < 2) return { labelKey: 'withdrawals.priority.waitingForSecondApprover', className: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200', icon: UsersRound };
+  if (item.riskLevel === 'high') return { labelKey: 'withdrawals.priority.highRisk', className: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-200', icon: AlertTriangle };
   return { labelKey: 'withdrawals.priority.needsAction', className: 'border-border bg-muted text-muted-foreground', icon: Clock3 };
 }
 
@@ -50,8 +50,8 @@ export function WithdrawalReviewQueueRow({
       <div><p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">{formatAmount(item.amountSen)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval ? t('admin:withdrawals.table.rm500Threshold') : t('admin:withdrawals.table.standardReview')}</p></div>
       <div><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${priority.className}`}><PriorityIcon size={12} />{t(priority.labelKey)}</span>{item.riskLevel && <p className="mt-1 text-[11px] text-muted-foreground">{t('admin:withdrawals.table.risk', { level: displayStatus(item.riskLevel) })}</p>}</div>
       <div><p className="text-sm font-semibold text-foreground">{item.requiresDualApproval ? t('admin:withdrawals.table.dualApprovals', { count: Math.min(item.approvalCount, 2) }) : t('admin:withdrawals.table.singleApproval')}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval && item.approvalCount < 2 ? t('admin:withdrawals.table.waitingForSecondApprover') : t('admin:withdrawals.table.approvalPathReady')}</p></div>
-      <div><p className={`text-sm font-semibold ${item.status === 'overdue' ? 'text-red-700' : 'text-foreground'}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === 'overdue' ? t('admin:withdrawals.table.overdue') : t('admin:withdrawals.table.withinReviewWindow')}</p></div>
-      <div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === 'high' && <ShieldAlert size={15} aria-label={t('admin:withdrawals.accessibility.highRisk')} className="text-red-600" />}</div>
+      <div><p className={`text-sm font-semibold ${item.status === 'overdue' ? 'text-red-700 dark:text-red-200' : 'text-foreground'}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === 'overdue' ? t('admin:withdrawals.table.overdue') : t('admin:withdrawals.table.withinReviewWindow')}</p></div>
+      <div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === 'high' && <ShieldAlert size={15} aria-label={t('admin:withdrawals.accessibility.highRisk')} className="text-red-600 dark:text-red-300" />}</div>
       <ArrowUpRight size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
     </Link>
   );

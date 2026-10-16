@@ -202,6 +202,45 @@
       "recommendationApprovedWithName": {
         "title": "Cadangan anda \"{{vendorName}}\" telah diluluskan",
         "body": "Cadangan yang baik! Kami akan menghubungi vendor tidak lama lagi."
+      },
+      "kycSecurity": {
+        "title": "Amaran keselamatan KYC",
+        "purge_failed": "Pembersihan bukti KYC gagal atau selesai dengan kegagalan ({{count}} item gagal).",
+        "purge_stalled": "Pembersihan bukti KYC belum selesai dalam 15 minit.",
+        "purge_missed": "Tiada pembersihan bukti KYC yang berjaya direkodkan selama lebih 26 jam.",
+        "access_volume": "Seorang penyemak meminta dokumen bagi {{count}} penyerahan berbeza dalam 10 minit.",
+        "monitor_test": "Ujian terkawal penghantaran amaran keselamatan KYC. Tiada dokumen identiti disertakan.",
+        "generic": "Semak status keselamatan KYC di kawasan pentadbir yang dilindungi."
+      },
+      "eventException": {
+        "payment_blocked": {
+          "title": "Bayaran diterima; tempahan tidak dapat dipenuhi",
+          "body": "Bayaran telah diterima tetapi tempahan ini tidak dapat dipenuhi. Jangan sediakan atau serahkan barang. Admin sedang menyemak bayaran. {{orderReference}} · {{items}}"
+        },
+        "pickup_review": {
+          "title": "Sila sahkan hasil pengambilan",
+          "body": "Tarikh pengambilan telah berlalu dan penerimaan belum disahkan. Sila semak sama ada barang anda telah diserahkan dan maklumkan hasil sebenar kepada Admin. {{orderReference}} · {{items}}"
+        },
+        "refund_pending": {
+          "title": "Bayaran balik menunggu pengesahan",
+          "body": "Bayaran balik sedang disemak atau menunggu penyedia bayaran. Ia belum disahkan selesai. Hubungi Admin sebelum meneruskan penyerahan. {{orderReference}} · {{items}}"
+        },
+        "refund_attention": {
+          "title": "Bayaran balik memerlukan perhatian Admin",
+          "body": "Bayaran balik memerlukan perhatian Admin. Penyelesaian belum disahkan. Hubungi Admin sebelum meneruskan penyerahan. {{orderReference}} · {{items}}"
+        },
+        "refunded": {
+          "title": "Bayaran balik telah disahkan selesai",
+          "body": "Bayaran balik pesanan telah disahkan selesai. Semak rekod pesanan dan penyelesaian anda. {{orderReference}} · {{items}}"
+        },
+        "collected": {
+          "title": "Kes pengambilan ditutup: penerimaan disahkan",
+          "body": "Penerimaan telah disahkan dan kes pengambilan telah ditutup. {{orderReference}} · {{items}}"
+        },
+        "no_show": {
+          "title": "Kes pengambilan ditutup: barang tidak diambil",
+          "body": "Admin telah mengesahkan barang tidak diambil dan menutup kes tanpa bayaran balik. Ini tidak bermakna barang telah diserahkan atau dana boleh digunakan serta-merta. {{orderReference}} · {{items}}"
+        }
       }
     }
   },

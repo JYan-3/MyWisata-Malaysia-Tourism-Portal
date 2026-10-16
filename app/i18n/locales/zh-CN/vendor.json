@@ -1395,7 +1395,18 @@
       "clearsToday": "冻结中 · 今日解冻",
       "clearsInDays": "冻结中 · {{count}} 天后解冻",
       "clearsInDays_one": "冻结中 · {{count}} 天后解冻",
-      "clearsInDays_other": "冻结中 · {{count}} 天后解冻"
+      "clearsInDays_other": "冻结中 · {{count}} 天后解冻",
+      "perItem": "件",
+      "feeMixed": "混合费用",
+      "feeFixed": "每件固定费用",
+      "eventFee": "活动",
+      "floorApplied": "覆盖推荐奖励",
+      "yourFee": "您的平台费用",
+      "tierSales": "您最近 90 天的销售额：{{amount}}。",
+      "tierNext": "再销售 {{amount}} 即可升至 {{tier}}。",
+      "tierTop": "您已处于最高等级。",
+      "tierPinned": "您的等级由平台团队设定。",
+      "feeRules": "从活动页面售出的商品按该活动的每件费用收费。若订单来自联盟或推荐，费用将覆盖该奖励。"
     },
     "wallet": {
       "vendorFinance": "商家财务",

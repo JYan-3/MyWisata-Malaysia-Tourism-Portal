@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
+import { runKycOcr } from '@/lib/kyc/ocr';
+
+vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn().mockResolvedValue({ ocr: Buffer.from('clean'), stored: Buffer.from('watermarked') }) }));
 
 const getUser = vi.fn();
 const authenticatedRpc = vi.fn();
@@ -47,6 +51,35 @@ describe('POST /api/kyc/upload', () => {
     serviceRpc.mockReset();
     upload.mockReset();
     upload.mockResolvedValue({ error: null });
+  });
+
+  it('stores only watermarked evidence and gives OCR only sanitized bytes', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
+    serviceRpc.mockResolvedValueOnce({ data: '33333333-3333-4333-8333-333333333333', error: null }).mockResolvedValue({ error: null });
+    authenticatedRpc.mockResolvedValue({ error: null });
+    const form = new FormData();
+    form.set('ocrConsent', 'true');
+    form.set('icNumber', '900101-14-5678');
+    form.set('docType', 'national_id');
+    form.set('frontFile', new File(['front'], 'front.jpg', { type: 'image/jpeg' }));
+    form.set('backFile', new File(['back'], 'back.jpg', { type: 'image/jpeg' }));
+    const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
+    expect(response.status).toBe(201);
+    expect(upload).toHaveBeenCalledTimes(2);
+    expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
+    expect(runKycOcr).toHaveBeenCalledWith(expect.objectContaining({ front: { mimeType: 'image/jpeg', bytes: new Uint8Array(Buffer.from('clean')) } }));
+  });
+
+  it('rejects undecodable photos before creating a draft or storing evidence', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
+    vi.mocked(prepareKycEvidenceImage).mockRejectedValueOnce(new Error('invalid image'));
+    const form = new FormData();
+    form.set('ocrConsent', 'true'); form.set('icNumber', '900101-14-5678'); form.set('docType', 'national_id');
+    form.set('frontFile', new File(['fake'], 'front.jpg', { type: 'image/jpeg' }));
+    form.set('backFile', new File(['fake'], 'back.jpg', { type: 'image/jpeg' }));
+    const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
+    expect(response.status).toBe(422);
+    expect(serviceRpc).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
   });
 
   it('requires explicit consent before sending KYC images to Gemini OCR', async () => {

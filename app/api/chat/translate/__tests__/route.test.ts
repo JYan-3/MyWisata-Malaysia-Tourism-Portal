@@ -10,6 +10,9 @@ vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 const translateMessage = vi.fn();
 vi.mock('@/lib/chat/translate', () => ({ translateMessage }));
 
+const reserveAiQuota = vi.fn();
+vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota }));
+
 const { POST } = await import('../route');
 
 const MESSAGE_ID = '11111111-1111-4111-8111-111111111111';
@@ -46,6 +49,7 @@ describe('POST /api/chat/translate', () => {
     upsert = vi.fn().mockResolvedValue({ error: null });
     serviceFrom = vi.fn();
     createServiceClient.mockReturnValue({ from: serviceFrom });
+    reserveAiQuota.mockResolvedValue(true);
   });
 
   it('requires sign-in', async () => {
@@ -102,6 +106,22 @@ describe('POST /api/chat/translate', () => {
       { message_id: MESSAGE_ID, target_lang: 'bm', translated_text: 'Helo, ini tersedia?' },
       { onConflict: 'message_id,target_lang' },
     );
+  });
+
+  it('refuses with 429 and never calls the LLM once the caller is over the AI limit', async () => {
+    serviceFrom.mockImplementation((table: string) => {
+      if (table === 'chat_messages') return queryStub({ data: { id: MESSAGE_ID, thread_id: 'thread-1', body: 'Hello' }, error: null });
+      if (table === 'chat_message_translations') return queryStub({ data: null, error: null });
+      throw new Error(`unexpected table ${table}`);
+    });
+    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1', customer_id: USER_ID, outlet_id: 'outlet-1' }, error: null }));
+    reserveAiQuota.mockResolvedValue(false);
+
+    const response = await POST(request({ messageId: MESSAGE_ID, targetLang: 'zh' }));
+
+    expect(response.status).toBe(429);
+    expect(reserveAiQuota).toHaveBeenCalledWith(expect.any(Request), 'chat-translate', USER_ID, 60);
+    expect(translateMessage).not.toHaveBeenCalled();
   });
 
   it('fails gracefully (not a crash) when the LLM call throws', async () => {

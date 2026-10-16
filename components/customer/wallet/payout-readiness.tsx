@@ -34,8 +34,8 @@ export function PayoutReadiness({ readiness, connectStatus, error, busy, onSetup
     : t("ui.wallet.setupWhenWithdrawing");
 
   return <CustomerPanel className="mb-8"><div className="flex items-center gap-3">
-    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${ready ? "bg-primary/15" : warning ? "bg-amber-100" : failed ? "bg-red-100" : "bg-muted"}`}>
-      {ready ? <CheckCircle2 size={16} className="text-primary" /> : warning ? <Clock size={16} className="text-amber-600" /> : failed ? <AlertCircle size={16} className="text-red-600" /> : <Building2 size={16} className="text-muted-foreground" />}
+    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${ready ? "bg-primary/15" : warning ? "bg-amber-100 dark:bg-amber-500/15" : failed ? "bg-red-100 dark:bg-red-500/15" : "bg-muted"}`}>
+      {ready ? <CheckCircle2 size={16} className="text-primary" /> : warning ? <Clock size={16} className="text-amber-600 dark:text-amber-300" /> : failed ? <AlertCircle size={16} className="text-red-600 dark:text-red-300" /> : <Building2 size={16} className="text-muted-foreground" />}
     </div>
     <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{title}</p><p className="mt-0.5 text-xs text-muted-foreground">{description}</p>{readiness?.destinationSummary && <p className="mt-1 text-xs text-muted-foreground">{readiness.destinationSummary.displayLabel}</p>}{readiness?.lastProviderCheckAt && <p className="mt-1 text-[11px] text-muted-foreground">{new Date(readiness.lastProviderCheckAt).toLocaleString()}</p>}<p className="mt-1 text-xs text-muted-foreground">{t("ui.wallet.stripePrivacy")}</p></div>
     {(connectStatus === "unlinked" || connectStatus === "currently_due" || connectStatus === "past_due") && <Button size="sm" onClick={onSetup} disabled={busy}>{busy ? t("ui.states.loading") : t(connectStatus === "unlinked" ? "ui.wallet.setupWithdrawals" : "ui.wallet.updateDetails")}</Button>}

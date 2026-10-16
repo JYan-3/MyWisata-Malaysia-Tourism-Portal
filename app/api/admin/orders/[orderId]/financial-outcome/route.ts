@@ -1,3 +1,4 @@
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
@@ -8,6 +9,8 @@ export async function POST(request: Request, context: { params: Promise<{ orderI
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return assuranceResponse;
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   const allowed = (roles ?? []).some((row) => ['admin', 'super_admin'].includes((row.roles as { name?: string } | null)?.name ?? ''));
   if (!allowed) return apiFail('FORBIDDEN', 'Admin role required', 403);

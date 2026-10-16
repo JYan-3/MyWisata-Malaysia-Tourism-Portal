@@ -1,5 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { getOrderMoneyReconciliation } from '@/lib/admin/reconciliation';
+import { filterOrderReconciliationRows, summarizeOrderReconciliationRows, formatReconciliationSen } from '../reconciliation-filtering';
+import type { OrderReconciliationRow } from '../reconciliation';
+
+describe('financial report filtering', () => {
+  it('retains the sign of negative financial figures in the existing MYR format', () => {
+    expect(formatReconciliationSen(-25)).toBe('−RM0.25');
+    expect(formatReconciliationSen(0)).toBe('RM0.00');
+    expect(formatReconciliationSen(25)).toBe('RM0.25');
+  });
+  const rows: OrderReconciliationRow[] = [100, 0, -25].map((net, i) => ({
+    orderId: `private-${i}`, orderDisplayId: i === 2 ? null : `ORD-${i}`, status: i === 1 ? 'refunded' : 'paid', paidAt: null,
+    grossSen: 1000, platformFeeSen: 100, vendorNetSen: 900, affiliatePayoutSen: 100 - net,
+    recommendationPayoutSen: 0, platformNetSen: net, platformNetNegative: net < 0,
+  }));
+  it('combines normalized display-number search, status and net sign without changing source rows', () => {
+    const original = JSON.stringify(rows);
+    const result = filterOrderReconciliationRows(rows, { search: ' ord-0 ', status: 'paid', net: 'positive' });
+    expect(result).toEqual([rows[0]]);
+    expect(summarizeOrderReconciliationRows(result)).toMatchObject({ grossSen: 1000, platformNetSen: 100, negativeOrders: 0 });
+    expect(JSON.stringify(rows)).toBe(original);
+    expect(filterOrderReconciliationRows(rows, { search: 'private', status: 'all', net: 'all' })).toEqual([]);
+  });
+  it('includes unnamed orders with empty search and distinguishes zero and negative', () => {
+    expect(filterOrderReconciliationRows(rows, { search: '', status: 'all', net: 'negative' })).toEqual([rows[2]]);
+    expect(filterOrderReconciliationRows(rows, { search: '', status: 'refunded', net: 'zero' })).toEqual([rows[1]]);
+    expect(summarizeOrderReconciliationRows(rows)).toMatchObject({ grossSen: 3000, platformNetSen: 75, negativeOrders: 1 });
+    expect(summarizeOrderReconciliationRows([])).toEqual({ grossSen: 0, platformFeeSen: 0, vendorNetSen: 0, affiliatePayoutSen: 0, recommendationPayoutSen: 0, platformNetSen: 0, negativeOrders: 0 });
+  });
+});
 
 function serviceFor(opts: {
   settlements: unknown[];

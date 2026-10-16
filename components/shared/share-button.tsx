@@ -262,7 +262,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
         disabled={status === "working"}
         aria-label={t("share.actions.shareTitle", { title })}
         title={t("share.actions.share")}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition disabled:cursor-wait disabled:opacity-70"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 dark:bg-card/90 transition disabled:cursor-wait disabled:opacity-70"
       >
         <Share2 size={14} stroke="#334155" />
       </button>

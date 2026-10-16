@@ -14,6 +14,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -189,7 +190,7 @@ export default async function VendorOutletPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
         <div>

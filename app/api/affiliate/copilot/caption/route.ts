@@ -11,6 +11,7 @@ import {
   customerCapabilityFailure,
   resolveServerCustomerCapability,
 } from '@/lib/auth/customer-capabilities.server';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   const parsed = copilotCaptionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return apiFail('VALIDATION_ERROR', 'Invalid request body', 400);
 
-  const result = await draftCopilotCaption(parsed.data.productId, parsed.data.lang);
+  const result = await draftCopilotCaption(parsed.data.productId, parsed.data.lang, await reserveAiQuota(request, 'affiliate-caption', user.id));
   if (!result) return apiFail('NOT_FOUND', 'Listing not found or not currently active', 404);
 
   return apiOk(result);

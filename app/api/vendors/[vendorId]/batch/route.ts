@@ -5,12 +5,9 @@ import { authorizeVendor } from '@/lib/vendor-authorization';
 import { checkInBooking } from '@/lib/vendor/booking-checkin';
 import { canUseGenericFoodFulfilment } from '@/lib/food/generic-fulfil-policy';
 import { getOutletProductIds } from '@/backend/domains/catalogue';
+import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
 interface Props { params: Promise<{ vendorId: string }> }
-
-function safe(value: string | undefined) {
-  return (value || '').trim().replace(/[%(),]/g, ' ');
-}
 
 function relation<T>(value: T | T[] | null | undefined): T | null | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -30,7 +27,7 @@ function voucherStatus(voucher: Record<string, unknown>) {
 
 async function findFilteredIds(db: SupabaseClient, vendorId: string, input: VendorBatch, scopedOutletIds?: string[], scopedProductIds?: string[]) {
   const filters = input.filters || {};
-  const q = safe(filters.q as string | undefined);
+  const q = postgrestSearchTerm(filters.q as string | undefined);
 
   if (input.entity === 'products') {
     let query = db.from('products').select('id,name,slug').eq('vendor_id', vendorId);

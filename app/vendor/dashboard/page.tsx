@@ -29,10 +29,10 @@ function normalizeFilter(value: string | undefined): DashboardFilter {
 function statTone(tone: string) {
   return {
     teal: 'bg-secondary text-primary',
-    amber: 'bg-amber-50 text-amber-700',
+    amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200',
     blue: 'bg-secondary text-primary',
-    rose: 'bg-rose-50 text-rose-700',
-  }[tone] || 'bg-gray-100 text-gray-700';
+    rose: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-200',
+  }[tone] || 'bg-gray-100 dark:bg-muted text-gray-700 dark:text-foreground';
 }
 
 export default async function VendorDashboard({ searchParams }: Props) {
@@ -61,8 +61,8 @@ export default async function VendorDashboard({ searchParams }: Props) {
       <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary"><Landmark size={15} /> {t('ui.dashboard.partnerPortal')}</div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-950">{isOutletManager ? t('ui.dashboard.outletOperations') : t('ui.dashboard.overview')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{isOutletManager ? t('ui.dashboard.assignedOutletMoving') : t('strictMigration.dashboardTodayForVendor', { vendor: data.vendor.name })}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-foreground">{isOutletManager ? t('ui.dashboard.outletOperations') : t('ui.dashboard.overview')}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{isOutletManager ? t('ui.dashboard.assignedOutletMoving') : t('strictMigration.dashboardTodayForVendor', { vendor: data.vendor.name })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <DashboardFilterControl />
@@ -72,22 +72,22 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, note, icon: Icon, tone }) => (
-          <article key={label} className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <article key={label} className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="absolute -right-3 -top-3 opacity-[0.045] transition group-hover:scale-110"><Icon size={104} /></div>
-            <div className="mb-5 flex items-center gap-3"><div className={`flex h-10 w-10 items-center justify-center rounded-full ${statTone(tone)}`}><Icon size={20} /></div><p className="font-medium text-gray-600">{label}</p></div>
-            <p className="text-3xl font-bold tracking-tight text-gray-950">{value}</p>
-            <div className={`mt-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 text-gray-500'}`}><ArrowUpRight size={13} />{note}</div>
+            <div className="mb-5 flex items-center gap-3"><div className={`flex h-10 w-10 items-center justify-center rounded-full ${statTone(tone)}`}><Icon size={20} /></div><p className="font-medium text-gray-600 dark:text-muted-foreground">{label}</p></div>
+            <p className="text-3xl font-bold tracking-tight text-gray-950 dark:text-foreground">{value}</p>
+            <div className={`mt-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground'}`}><ArrowUpRight size={13} />{note}</div>
           </article>
         ))}
       </section>
 
-      {(data.stats.simulatedOrders > 0 || data.stats.unverifiedOrders > 0) && <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5" role="status">
+      {(data.stats.simulatedOrders > 0 || data.stats.unverifiedOrders > 0) && <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 p-5" role="status">
         <div className="flex items-start gap-3">
-          <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-700" />
+          <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-200" />
           <div className="min-w-0">
-            <h2 className="font-semibold text-amber-950">{t('ui.dashboard.salesProvenanceTitle')}</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-900">{t('ui.dashboard.salesProvenanceDescription')}</p>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium text-amber-950">
+            <h2 className="font-semibold text-amber-950 dark:text-amber-200">{t('ui.dashboard.salesProvenanceTitle')}</h2>
+            <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">{t('ui.dashboard.salesProvenanceDescription')}</p>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium text-amber-950 dark:text-amber-200">
               {data.stats.simulatedOrders > 0 && <span>{t('ui.dashboard.simulatedSales', { amount: formatMYR(data.stats.simulatedRevenue), count: data.stats.simulatedOrders })}</span>}
               {data.stats.unverifiedOrders > 0 && <span>{t('ui.dashboard.unverifiedSales', { amount: formatMYR(data.stats.unverifiedRevenue), count: data.stats.unverifiedOrders })}</span>}
             </div>
@@ -95,10 +95,10 @@ export default async function VendorDashboard({ searchParams }: Props) {
         </div>
       </section>}
 
-      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">{t('ui.dashboard.noOrdersPeriod')}</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? t('ui.dashboard.checkAnotherRange') : t('ui.dashboard.publishListing')}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">{t('ui.dashboard.manageListings')}</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">{t('ui.dashboard.viewOrders')}</Link></div></section>}
+      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">{t('ui.dashboard.noOrdersPeriod')}</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? t('ui.dashboard.checkAnotherRange') : t('ui.dashboard.publishListing')}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">{t('ui.dashboard.manageListings')}</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">{t('ui.dashboard.viewOrders')}</Link></div></section>}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
         <OutletPieChart data={data.salesByProduct} total={data.totalProductSales} />
       </section>
 
@@ -107,33 +107,33 @@ export default async function VendorDashboard({ searchParams }: Props) {
         <PerformanceRankingCard kind="rated" periodLabel={dashboardFilterLabel(data.filter)} items={data.topRated} href="/vendor/analytics" />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">{t('ui.dashboard.recentTransactions')}</h2><p className="mt-1 text-sm text-gray-500">{isOutletManager ? t('ui.dashboard.latestAssignedOutletOrders') : t('ui.dashboard.latestMalaysiaOutletOrders')}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-primary transition hover:bg-secondary/80">{t('ui.dashboard.viewAll')} <ArrowRight size={15} /></Link></div>
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900 dark:text-foreground">{t('ui.dashboard.recentTransactions')}</h2><p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{isOutletManager ? t('ui.dashboard.latestAssignedOutletOrders') : t('ui.dashboard.latestMalaysiaOutletOrders')}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-primary transition hover:bg-secondary/80">{t('ui.dashboard.viewAll')} <ArrowRight size={15} /></Link></div>
         <RecentTransactions items={data.recentTransactions} />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-2 border-b border-amber-100 bg-amber-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700" /><h2 className="font-semibold text-lg text-gray-900">{t('ui.dashboard.stockAlerts')}</h2></div><p className="mt-1 text-sm text-gray-600">{t('ui.dashboard.stockAlertsDescription')}</p></div>
-          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white px-3 py-2 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-50">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
+      <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-white dark:bg-card shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-amber-100 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700 dark:text-amber-200" /><h2 className="font-semibold text-lg text-gray-900 dark:text-foreground">{t('ui.dashboard.stockAlerts')}</h2></div><p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">{t('ui.dashboard.stockAlertsDescription')}</p></div>
+          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200 ring-1 ring-amber-200 transition hover:bg-amber-50 dark:hover:bg-amber-500/10">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
         </div>
-        {data.stockAlerts.length ? <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.stockAlerts.map((alert) => <div key={alert.variantId} className={`flex items-center gap-3 rounded-xl border p-3 ${alert.available === 0 ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/40'}`}><CompactThumbnail src={alert.coverUrl} alt={alert.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{alert.productName}</p><p className="mt-1 truncate text-xs text-gray-600">{alert.variantName} · {alert.available === 0 ? t('ui.dashboard.outOfStock') : t('ui.dashboard.availableCount', { count: alert.available })} · {t('ui.dashboard.alertAt', { threshold: alert.threshold })}</p></div></div>)}</div> : <div className="px-5 py-8 text-sm text-gray-500">{t('ui.dashboard.noLowStock')}</div>}
+        {data.stockAlerts.length ? <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.stockAlerts.map((alert) => <div key={alert.variantId} className={`flex items-center gap-3 rounded-xl border p-3 ${alert.available === 0 ? 'border-red-200 dark:border-red-500/30 bg-red-50/60 dark:bg-red-500/10' : 'border-amber-200 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10'}`}><CompactThumbnail src={alert.coverUrl} alt={alert.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900 dark:text-foreground">{alert.productName}</p><p className="mt-1 truncate text-xs text-gray-600 dark:text-muted-foreground">{alert.variantName} · {alert.available === 0 ? t('ui.dashboard.outOfStock') : t('ui.dashboard.availableCount', { count: alert.available })} · {t('ui.dashboard.alertAt', { threshold: alert.threshold })}</p></div></div>)}</div> : <div className="px-5 py-8 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.noLowStock')}</div>}
       </section>
 
-      {data.inventorySetupCount > 0 && <section className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-2 border-b border-amber-100 bg-amber-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700" /><h2 className="font-semibold text-lg text-gray-900">{t('ui.dashboard.inventorySetupTitle')}</h2></div><p className="mt-1 text-sm text-gray-600">{t('ui.dashboard.inventorySetupDescription', { count: data.inventorySetupCount })}</p></div>
-          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white px-3 py-2 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-50">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
+      {data.inventorySetupCount > 0 && <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-white dark:bg-card shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-amber-100 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700 dark:text-amber-200" /><h2 className="font-semibold text-lg text-gray-900 dark:text-foreground">{t('ui.dashboard.inventorySetupTitle')}</h2></div><p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">{t('ui.dashboard.inventorySetupDescription', { count: data.inventorySetupCount })}</p></div>
+          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200 ring-1 ring-amber-200 transition hover:bg-amber-50 dark:hover:bg-amber-500/10">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
         </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.inventorySetupItems.map((item) => <div key={`${item.productId}:${item.outletId}`} className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3"><CompactThumbnail src={item.coverUrl} alt={item.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.productName}</p><p className="mt-1 truncate text-xs text-gray-600">{item.outletName} · {t('ui.products.inventorySetupNeeded')}</p></div></div>)}</div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.inventorySetupItems.map((item) => <div key={`${item.productId}:${item.outletId}`} className="flex items-center gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10 p-3"><CompactThumbnail src={item.coverUrl} alt={item.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900 dark:text-foreground">{item.productName}</p><p className="mt-1 truncate text-xs text-gray-600 dark:text-muted-foreground">{item.outletName} · {t('ui.products.inventorySetupNeeded')}</p></div></div>)}</div>
       </section>}
 
       <VendorRevenueAssistantCard />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900">{t('ui.dashboard.bookingActivity')}</p><p className="text-xs text-gray-500">{t('ui.dashboard.itemsInPeriod', { count: data.stats.bookingItems })}</p></div></Link>
-        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900">{t('ui.dashboard.manageListings')}</p><p className="text-xs text-gray-500">{t('ui.dashboard.keepExperiencesCurrent')}</p></div></Link>
-        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><TicketPercent className="text-amber-700" /><div><p className="text-sm font-semibold text-gray-900">{t('ui.dashboard.voucherCampaigns')}</p><p className="text-xs text-gray-500">{t('ui.dashboard.createOffers')}</p></div></Link>}
+        <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.bookingActivity')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.itemsInPeriod', { count: data.stats.bookingItems })}</p></div></Link>
+        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.manageListings')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.keepExperiencesCurrent')}</p></div></Link>
+        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><TicketPercent className="text-amber-700 dark:text-amber-200" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.voucherCampaigns')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.createOffers')}</p></div></Link>}
       </div>
     </div>
   );

@@ -78,4 +78,11 @@ describe('Stripe order webhook provider settlement', () => {
     expect(mocks.enqueueUserTransactionEmail).not.toHaveBeenCalled();
     expect(mocks.emitOrderVendorEvent).not.toHaveBeenCalled();
   });
+  it('does not issue normal paid notices for an exact receipt requiring compensation', async () => {
+    mocks.service.rpc.mockResolvedValue({ data: { order_id: ORDER_ID, status: 'payment_exception', idempotent: false }, error: null });
+    expect((await POST(request())).status).toBe(200);
+    expect(mocks.enqueueUserTransactionEmail).not.toHaveBeenCalled();
+    expect(mocks.emitOrderVendorEvent).not.toHaveBeenCalled();
+  });
+
 });

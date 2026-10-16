@@ -19,6 +19,7 @@ export async function PATCH(request: Request, { params }: Props) {
     if (result.code === 'not_found') return apiFail('NOT_FOUND', 'Listing not found', 404);
     if (result.code === 'forbidden') return apiFail('FORBIDDEN', 'You do not have access to this listing', 403);
     if (result.code === 'not_editable') return apiFail('INVALID_STATE', 'This listing can no longer be changed', 409);
+    if (result.code === 'in_use') return apiFail('IN_USE', 'Stock cannot be reduced below existing reservations', 409);
     if (result.code === 'invalid') return apiFail('VALIDATION_FAILED', 'The listing details are invalid', 422);
     return apiFail('DB_ERROR', 'Failed to update the listing', 500);
   }

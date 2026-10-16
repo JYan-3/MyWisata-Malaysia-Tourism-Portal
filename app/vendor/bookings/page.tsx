@@ -643,10 +643,10 @@ export default function VendorBookingsPage() {
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <CalendarDays size={15} /> {t("ui.bookings.bookingOperations")}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">
             {t("ui.bookings.title")}
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-muted-foreground">
             {t("ui.bookings.description")}
           </p>
         </div>
@@ -664,7 +664,7 @@ export default function VendorBookingsPage() {
               type="button"
               onClick={handleExportBookings}
               disabled={loading || bookings.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
             >
               <Download size={16} /> {t("actions.exportCsv")}
             </button>
@@ -680,30 +680,30 @@ export default function VendorBookingsPage() {
       </header>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">{t("ui.status.confirmed")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.confirmed")}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
             {stats.confirmed || 0}
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
             {t("ui.bookings.currentFilter")}
           </p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">{t("ui.status.checked_in")}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.checked_in")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">
             {stats.checked_in || 0}
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
             {t("ui.bookings.currentFilter")}
           </p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs text-gray-500">{t("ui.status.cancelled")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.cancelled")}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
             {stats.cancelled || 0}
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
             {t("ui.bookings.currentFilter")}
           </p>
         </div>
@@ -720,27 +720,27 @@ export default function VendorBookingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex rounded-xl bg-gray-100 p-1">
+          <div className="flex rounded-xl bg-gray-100 dark:bg-muted p-1">
             <button
               type="button"
               onClick={() => switchTab("reservations")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "reservations" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "reservations" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
             >
               <Users size={15} /> {t("ui.bookings.reservations")}
             </button>
             <button
               type="button"
               onClick={() => switchTab("operating-hours")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "operating-hours" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "operating-hours" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
             >
               <Clock3 size={15} /> {t("ui.bookings.operatingHours")}
             </button>
           </div>
 
           {tab === "reservations" && (
-            <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1">
+            <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 dark:bg-muted p-1">
               {[
                 { value: "", label: t("ui.orders.allOrders") || "All" },
                 { value: "confirmed", label: t("ui.status.confirmed") },
@@ -753,7 +753,7 @@ export default function VendorBookingsPage() {
                   onClick={() =>
                     setFilters((current) => ({ ...current, status: f.value }))
                   }
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
                 >
                   {f.label}
                 </button>
@@ -765,7 +765,7 @@ export default function VendorBookingsPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="relative min-w-0 flex-1">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground"
               size={15}
             />
             <input
@@ -778,13 +778,13 @@ export default function VendorBookingsPage() {
                   ? t("ui.bookings.searchPlaceholder")
                   : t("ui.bookings.searchOperatingPlaceholder")
               }
-              className="h-10 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-primary"
+              className="h-10 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </label>
           <select
             value={filters.outletId}
             onChange={(event) => setOutletFilter(event.target.value)}
-            className="h-10 rounded-xl border border-gray-200 px-3 text-sm text-gray-600 outline-none focus:border-primary sm:w-52"
+            className="h-10 rounded-xl border border-gray-200 dark:border-border px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary sm:w-52"
           >
             <option value="">{t("ui.bookings.allOutlets")}</option>
             {outlets.map((outlet) => (
@@ -803,7 +803,7 @@ export default function VendorBookingsPage() {
                   productId: event.target.value,
                 }))
               }
-              className="h-10 rounded-xl border border-gray-200 px-3 text-sm text-gray-600 outline-none focus:border-primary sm:w-48"
+              className="h-10 rounded-xl border border-gray-200 dark:border-border px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary sm:w-48"
             >
               <option value="">{t("ui.bookings.allExperiences")}</option>
               {filteredProducts.map((product) => (
@@ -816,8 +816,8 @@ export default function VendorBookingsPage() {
         </div>
 
         {tab === "reservations" && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-            <SlidersHorizontal size={14} className="text-gray-400" />
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-border pt-3">
+            <SlidersHorizontal size={14} className="text-gray-400 dark:text-muted-foreground" />
             <input
               type="date"
               value={filters.from}
@@ -828,9 +828,9 @@ export default function VendorBookingsPage() {
                   from: event.target.value,
                 }))
               }
-              className="h-9 rounded-lg border border-gray-200 px-2.5 text-xs text-gray-600"
+              className="h-9 rounded-lg border border-gray-200 dark:border-border px-2.5 text-xs text-gray-600 dark:text-muted-foreground"
             />
-            <span className="text-xs text-gray-400">{t("ui.bookings.to")}</span>
+            <span className="text-xs text-gray-400 dark:text-muted-foreground">{t("ui.bookings.to")}</span>
             <input
               type="date"
               value={filters.to}
@@ -841,7 +841,7 @@ export default function VendorBookingsPage() {
                   to: event.target.value,
                 }))
               }
-              className="h-9 rounded-lg border border-gray-200 px-2.5 text-xs text-gray-600"
+              className="h-9 rounded-lg border border-gray-200 dark:border-border px-2.5 text-xs text-gray-600 dark:text-muted-foreground"
             />
             {(filters.q ||
               filters.status ||
@@ -907,14 +907,14 @@ export default function VendorBookingsPage() {
         />
       )}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           {error}
         </div>
       )}
 
       {tab === "reservations" ? (
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 text-xs text-gray-500">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
             <label className="inline-flex items-center gap-2 font-semibold">
               <input
                 type="checkbox"
@@ -945,12 +945,12 @@ export default function VendorBookingsPage() {
               {Array.from({ length: 5 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-16 animate-pulse rounded-xl bg-gray-100"
+                  className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-muted"
                 />
               ))}
             </div>
           ) : bookings.length === 0 ? (
-            <div className="px-6 py-16 text-center text-sm text-gray-400">
+            <div className="px-6 py-16 text-center text-sm text-gray-400 dark:text-muted-foreground">
               <p>{t("ui.bookings.noMatches")}</p>
               <button
                 type="button"
@@ -963,7 +963,7 @@ export default function VendorBookingsPage() {
           ) : (
             <div className="overflow-x-auto">
               <div className="xl:min-w-[960px]">
-                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 xl:grid">
+                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid">
                   <span></span>
                   <span>{t("ui.orders.customerColumn")}</span>
                   <span>{t("ui.orders.itemsColumn")}</span>
@@ -974,7 +974,7 @@ export default function VendorBookingsPage() {
                     {t("ui.orders.actionColumn")}
                   </span>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-border">
                   {bookings.map((booking) => {
                     const bookingOutlet = selectBookingOutlet(
                       booking.orderItem?.outlets,
@@ -1004,12 +1004,12 @@ export default function VendorBookingsPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedBooking(booking)}
-                            className="block max-w-full truncate text-left font-medium text-gray-900 hover:text-primary"
+                            className="block max-w-full truncate text-left font-medium text-gray-900 dark:text-foreground hover:text-primary"
                           >
                             {booking.customer?.full_name ||
                               t("ui.bookings.guest")}
                           </button>
-                          <p className="mt-1 truncate font-mono text-xs text-gray-500">
+                          <p className="mt-1 truncate font-mono text-xs text-gray-500 dark:text-muted-foreground">
                             {booking.display_id || `#${booking.id.slice(0, 8)}`}
                           </p>
                         </div>
@@ -1026,12 +1026,12 @@ export default function VendorBookingsPage() {
                             kind="experience"
                           />
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900">
+                            <p className="truncate text-sm font-semibold text-gray-900 dark:text-foreground">
                               {booking.orderItem?.product_name ||
                                 booking.slot?.products?.name ||
                                 t("ui.bookings.experience")}
                             </p>
-                            <p className="mt-1 truncate text-xs text-gray-500">
+                            <p className="mt-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
                               {t("ui.bookings.quantityDate", {
                                 quantity: booking.orderItem?.quantity || 1,
                                 date: dateLabel(
@@ -1043,27 +1043,27 @@ export default function VendorBookingsPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-600">
-                          <p className="truncate font-medium text-gray-800">
+                        <div className="text-xs text-gray-600 dark:text-muted-foreground">
+                          <p className="truncate font-medium text-gray-800 dark:text-foreground">
                             {outletShortName(bookingOutlet?.name)}
                           </p>
-                          <p className="mt-0.5 truncate text-gray-500">
+                          <p className="mt-0.5 truncate text-gray-500 dark:text-muted-foreground">
                             {outletLocation(
                               bookingOutlet?.city,
                               bookingOutlet?.state,
                             )}
                           </p>
-                          <p className="mt-0.5 font-mono text-[10px] text-gray-400">
+                          <p className="mt-0.5 font-mono text-[10px] text-gray-400 dark:text-muted-foreground">
                             {outletIdLabel(bookingOutlet?.id)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                             {lineTotal > 0
                               ? formatMYR(lineTotal)
                               : t("ui.bookings.freeToExplore")}
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-400">
+                          <p className="mt-0.5 text-xs text-gray-400 dark:text-muted-foreground">
                             {booking.orderItem?.quantity || 1}{" "}
                             {t("ui.bookings.guests").toLowerCase()}
                           </p>
@@ -1071,7 +1071,7 @@ export default function VendorBookingsPage() {
                         <div>
                           <StatusBadge status={booking.status} />
                           {booking.check_in_at && (
-                            <span className="mt-1 block text-[11px] text-gray-400">
+                            <span className="mt-1 block text-[11px] text-gray-400 dark:text-muted-foreground">
                               {new Intl.DateTimeFormat(locale, {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -1079,12 +1079,12 @@ export default function VendorBookingsPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-gray-100 pt-3 xl:border-0 xl:pt-0">
+                        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-gray-100 dark:border-border pt-3 xl:border-0 xl:pt-0">
                           <button
                             type="button"
                             onClick={() => setSelectedBooking(booking)}
                             title={t("ui.bookings.viewReservation")}
-                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-semibold text-gray-600 hover:border-primary/30 hover:bg-gray-50 hover:text-primary"
+                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-border px-2.5 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground hover:border-primary/30 hover:bg-gray-50 dark:hover:bg-muted/50 hover:text-primary"
                           >
                             <Eye size={15} aria-hidden="true" />
                             <span>{t("ui.orders.viewDetails")}</span>
@@ -1157,7 +1157,7 @@ export default function VendorBookingsPage() {
 
       {showSlotForm && vendorId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl">
             <SlotForm
               vendorId={vendorId}
               outlets={outlets}
@@ -1179,25 +1179,25 @@ export default function VendorBookingsPage() {
         >
           <aside
             onClick={(event) => event.stopPropagation()}
-            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   {t("ui.bookings.reservationDetails")}
                 </p>
-                <h2 className="mt-1 text-xl font-bold text-gray-950">
+                <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">
                   {selectedBooking.customer?.full_name ||
                     t("ui.bookings.guest")}
                 </h2>
-                <p className="mt-1 font-mono text-xs text-gray-500">
+                <p className="mt-1 font-mono text-xs text-gray-500 dark:text-muted-foreground">
                   {selectedBooking.display_id || `#${selectedBooking.id}`}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedBooking(null)}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"
+                className="rounded-lg p-2 text-gray-400 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted"
               >
                 <X size={18} />
               </button>
@@ -1214,15 +1214,15 @@ export default function VendorBookingsPage() {
               />
             </div>
             <div className="mt-6 space-y-3 text-sm">
-              <div className="rounded-xl bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">
+              <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+                <p className="text-xs text-gray-500 dark:text-muted-foreground">
                   {t("ui.bookings.experience")}
                 </p>
-                <p className="mt-1 font-semibold text-gray-900">
+                <p className="mt-1 font-semibold text-gray-900 dark:text-foreground">
                   {selectedBooking.orderItem?.product_name ||
                     selectedBooking.slot?.products?.name}
                 </p>
-                <p className="mt-1 text-gray-500">
+                <p className="mt-1 text-gray-500 dark:text-muted-foreground">
                   {dateLabel(
                     selectedBooking.slot?.starts_at,
                     locale,
@@ -1238,16 +1238,16 @@ export default function VendorBookingsPage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-xs text-gray-500">
+                <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground">
                     {t("ui.bookings.guests")}
                   </p>
-                  <p className="mt-1 font-semibold text-gray-900">
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-foreground">
                     {selectedBooking.orderItem?.quantity || 1}
                   </p>
                 </div>
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-xs text-gray-500">
+                <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground">
                     {t("ui.bookings.status")}
                   </p>
                   <div className="mt-1">
@@ -1255,11 +1255,11 @@ export default function VendorBookingsPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-muted-foreground">
                 {selectedBooking.customer?.email ||
                   t("ui.bookings.noEmailProvided")}
               </p>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-muted-foreground">
                 {t("ui.bookings.outletValue", {
                   outlet:
                     selectBookingOutlet(
@@ -1282,7 +1282,7 @@ export default function VendorBookingsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedBooking(null)}
-                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600"
+                className="rounded-xl border border-gray-200 dark:border-border px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-muted-foreground"
               >
                 {t("ui.bookings.close")}
               </button>
@@ -1348,14 +1348,14 @@ function WeeklyOperatingHoursRow({
   return (
     <div
       data-day={day}
-      className={`grid gap-3 rounded-2xl border px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors md:grid-cols-[minmax(110px,0.8fr)_120px_minmax(280px,1.4fr)] md:items-center ${isOpen ? "border-gray-200/80 bg-gradient-to-r from-white to-gray-50/80" : "border-gray-100 bg-gray-50/70"}`}
+      className={`grid gap-3 rounded-2xl border px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors md:grid-cols-[minmax(110px,0.8fr)_120px_minmax(280px,1.4fr)] md:items-center ${isOpen ? "border-gray-200/80 bg-gradient-to-r from-white dark:from-card to-gray-50/80" : "border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70"}`}
     >
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-900">{label}</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{label}</p>
       </div>
 
       <label
-        className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${isOpen ? "border-primary/15 bg-secondary/60 text-primary" : "border-gray-200 bg-white text-gray-500"} ${canEdit ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}
+        className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${isOpen ? "border-primary/15 bg-secondary/60 text-primary" : "border-gray-200 dark:border-border bg-white dark:bg-card text-gray-500 dark:text-muted-foreground"} ${canEdit ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}
       >
         <input
           type="checkbox"
@@ -1368,7 +1368,7 @@ function WeeklyOperatingHoursRow({
 
       <div className="flex min-w-0 items-center gap-2">
         <label
-          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 bg-white shadow-sm" : "border-gray-100 bg-white/70"}`}
+          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm" : "border-gray-100 bg-white/70 dark:bg-card/70"}`}
         >
           <span className="sr-only">{labels.opensAt}</span>
           <input
@@ -1376,7 +1376,7 @@ function WeeklyOperatingHoursRow({
             disabled={disabled}
             value={value.open || "09:00"}
             onChange={(event) => onChange({ open: event.target.value })}
-            className="h-10 min-w-0 w-full bg-transparent px-1 text-sm font-semibold text-gray-900 outline-none disabled:cursor-not-allowed disabled:text-gray-400"
+            className="h-10 min-w-0 w-full bg-transparent px-1 text-sm font-semibold text-gray-900 dark:text-foreground outline-none disabled:cursor-not-allowed disabled:text-gray-400 dark:disabled:text-muted-foreground"
           />
         </label>
         <span
@@ -1386,7 +1386,7 @@ function WeeklyOperatingHoursRow({
           –
         </span>
         <label
-          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 bg-white shadow-sm" : "border-gray-100 bg-white/70"}`}
+          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm" : "border-gray-100 bg-white/70 dark:bg-card/70"}`}
         >
           <span className="sr-only">{labels.closesAt}</span>
           <input
@@ -1394,7 +1394,7 @@ function WeeklyOperatingHoursRow({
             disabled={disabled}
             value={value.close || "18:00"}
             onChange={(event) => onChange({ close: event.target.value })}
-            className="h-10 min-w-0 w-full bg-transparent px-1 text-sm font-semibold text-gray-900 outline-none disabled:cursor-not-allowed disabled:text-gray-400"
+            className="h-10 min-w-0 w-full bg-transparent px-1 text-sm font-semibold text-gray-900 dark:text-foreground outline-none disabled:cursor-not-allowed disabled:text-gray-400 dark:disabled:text-muted-foreground"
           />
         </label>
       </div>
@@ -1479,13 +1479,13 @@ function OperatingHoursPanel({
       }
     >
       {showOutletSelector && (
-        <aside className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+        <aside className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
           <div className="flex items-center justify-between px-2 pb-3">
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                 {t("ui.bookings.yourOutlets")}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-muted-foreground">
                 {t(
                   canEdit
                     ? "ui.bookings.selectToEdit"
@@ -1501,7 +1501,7 @@ function OperatingHoursPanel({
                 {[1, 2, 3].map((item) => (
                   <div
                     key={item}
-                    className="h-12 animate-pulse rounded-xl bg-gray-100"
+                    className="h-12 animate-pulse rounded-xl bg-gray-100 dark:bg-muted"
                   />
                 ))}
               </div>
@@ -1511,13 +1511,13 @@ function OperatingHoursPanel({
                   type="button"
                   key={outlet.id}
                   onClick={() => setScheduleOutletId(outlet.id)}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition ${selectedOutlet?.id === outlet.id ? "bg-secondary text-primary ring-1 ring-primary/20" : "text-gray-600 hover:bg-gray-50"}`}
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition ${selectedOutlet?.id === outlet.id ? "bg-secondary text-primary ring-1 ring-primary/20" : "text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted/50"}`}
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold">
                       {outlet.name}
                     </span>
-                    <span className="mt-1 block truncate text-xs text-gray-500">
+                    <span className="mt-1 block truncate text-xs text-gray-500 dark:text-muted-foreground">
                       {outlet.city || outlet.state || t("ui.bookings.malaysia")}
                     </span>
                   </span>
@@ -1529,16 +1529,16 @@ function OperatingHoursPanel({
         </aside>
       )}
       <div className="space-y-5">
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 {t("ui.bookings.weeklyHours")}
               </p>
-              <h2 className="mt-1 text-xl font-bold text-gray-950">
+              <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">
                 {outletLabel(selectedOutlet, t("ui.bookings.allOutlets"))}
               </h2>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
                 {t(
                   canEdit
                     ? "ui.bookings.weeklyHoursDescription"
@@ -1549,7 +1549,7 @@ function OperatingHoursPanel({
             {canEdit ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <span
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scheduleDirty ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200" : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"}`}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${scheduleDirty ? "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200 ring-1 ring-amber-200" : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-100"}`}
                 >
                   {scheduleDirty
                     ? t("ui.bookings.unsavedChanges")
@@ -1558,7 +1558,7 @@ function OperatingHoursPanel({
                 <button
                   type="button"
                   onClick={() => setScheduleEditorOpen((current) => !current)}
-                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
                 >
                   {isScheduleEditorOpen
                     ? t("ui.bookings.doneEditing")
@@ -1581,27 +1581,27 @@ function OperatingHoursPanel({
                 )}
               </div>
             ) : (
-              <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-500">
+              <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 px-4 py-2.5 text-sm font-semibold text-gray-500 dark:text-muted-foreground">
                 <Eye size={15} /> {t("ui.bookings.viewOnly")}
               </span>
             )}
           </div>
           <div className="mt-4" data-booking-hours-summary>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-muted-foreground">
               {t("ui.bookings.scheduleSummary")}
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {scheduleGroups.map((group) => (
                 <div
                   key={group.key}
-                  className="rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2.5"
+                  className="rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 px-3 py-2.5"
                 >
-                  <p className="text-xs font-semibold text-gray-500">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">
                     {group.days
                       .map((day) => t(`ui.bookings.days.${day}`))
                       .join(" · ")}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                  <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-foreground">
                     {group.value.closed
                       ? t("ui.bookings.closed")
                       : `${group.value.open || "09:00"} – ${group.value.close || "18:00"}`}
@@ -1611,7 +1611,7 @@ function OperatingHoursPanel({
             </div>
           </div>
           {isScheduleEditorOpen && (
-            <div className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+            <div className="mt-4 space-y-2 border-t border-gray-100 dark:border-border pt-4">
               {dayLabels.map((day) => {
                 const value = scheduleDraft[day] || {};
                 return (
@@ -1644,16 +1644,16 @@ function OperatingHoursPanel({
             </p>
           )}
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-200">
                 {t("ui.bookings.dateExceptions")}
               </p>
-              <h2 className="mt-1 text-lg font-bold text-gray-950">
+              <h2 className="mt-1 text-lg font-bold text-gray-950 dark:text-foreground">
                 {t("ui.bookings.holidayHours")}
               </h2>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
                 {t("ui.bookings.exceptionsDescription")}
               </p>
             </div>
@@ -1672,39 +1672,39 @@ function OperatingHoursPanel({
                     },
                   ])
                 }
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border px-3 py-2 text-xs font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
               >
                 <CirclePlus size={14} /> {t("ui.bookings.addException")}
               </button>
             )}
           </div>
           {canEdit && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-              <span className="mr-1 text-xs font-semibold text-amber-900">
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-3">
+              <span className="mr-1 text-xs font-semibold text-amber-900 dark:text-amber-200">
                 {t("ui.bookings.quickAdd")}
               </span>
               <button
                 type="button"
                 onClick={() => addShortcutExceptions("today")}
-                className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-amber-200 hover:bg-amber-50"
+                className="rounded-lg bg-white dark:bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 {t("ui.bookings.today")}
               </button>
               <button
                 type="button"
                 onClick={() => addShortcutExceptions("tomorrow")}
-                className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-amber-200 hover:bg-amber-50"
+                className="rounded-lg bg-white dark:bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 {t("ui.bookings.tomorrow")}
               </button>
               <button
                 type="button"
                 onClick={() => addShortcutExceptions("weekend")}
-                className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-amber-200 hover:bg-amber-50"
+                className="rounded-lg bg-white dark:bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 {t("ui.bookings.thisWeekend")}
               </button>
-              <span className="basis-full text-[11px] text-amber-800 sm:basis-auto">
+              <span className="basis-full text-[11px] text-amber-800 dark:text-amber-200 sm:basis-auto">
                 {t("ui.bookings.quickAddHint")}
               </span>
             </div>
@@ -1713,10 +1713,10 @@ function OperatingHoursPanel({
             {exceptions.map((exception, index) => (
               <article
                 key={exception.date + "-" + index}
-                className="rounded-xl border border-gray-100 bg-gray-50/60 p-3"
+                className="rounded-xl border border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 p-3"
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                  <label className="min-w-0 flex-1 text-xs font-semibold text-gray-600">
+                  <label className="min-w-0 flex-1 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
                     <span className="mb-1.5 block">
                       {t("ui.bookings.exceptionDate")}
                     </span>
@@ -1733,7 +1733,7 @@ function OperatingHoursPanel({
                           ),
                         )
                       }
-                      className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
                   <div
@@ -1757,7 +1757,7 @@ function OperatingHoursPanel({
                       className={
                         exception.closed
                           ? "rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-                          : "rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          : "rounded-lg bg-white dark:bg-card px-3 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground ring-1 ring-gray-200 transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
                       }
                     >
                       {t("ui.bookings.closedAllDay")}
@@ -1778,7 +1778,7 @@ function OperatingHoursPanel({
                       className={
                         !exception.closed
                           ? "rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-                          : "rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          : "rounded-lg bg-white dark:bg-card px-3 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground ring-1 ring-gray-200 transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
                       }
                     >
                       {t("ui.bookings.customHours")}
@@ -1793,15 +1793,15 @@ function OperatingHoursPanel({
                         )
                       }
                       aria-label={t("ui.bookings.removeException")}
-                      className="self-start rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 lg:self-end"
+                      className="self-start rounded-lg p-2 text-gray-400 dark:text-muted-foreground hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300 lg:self-end"
                     >
                       <X size={15} />
                     </button>
                   )}
                 </div>
                 {!exception.closed && (
-                  <div className="mt-3 grid gap-3 border-t border-gray-200/80 pt-3 sm:grid-cols-2">
-                    <label className="text-xs font-semibold text-gray-600">
+                  <div className="mt-3 grid gap-3 border-t border-gray-200/80 dark:border-border pt-3 sm:grid-cols-2">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-muted-foreground">
                       {t("ui.bookings.opensAt")}
                       <input
                         type="time"
@@ -1816,10 +1816,10 @@ function OperatingHoursPanel({
                             ),
                           )
                         }
-                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
-                    <label className="text-xs font-semibold text-gray-600">
+                    <label className="text-xs font-semibold text-gray-600 dark:text-muted-foreground">
                       {t("ui.bookings.closesAt")}
                       <input
                         type="time"
@@ -1834,7 +1834,7 @@ function OperatingHoursPanel({
                             ),
                           )
                         }
-                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
                   </div>
@@ -1842,18 +1842,18 @@ function OperatingHoursPanel({
               </article>
             ))}
             {!exceptions.length && (
-              <p className="rounded-xl bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">
+              <p className="rounded-xl bg-gray-50 dark:bg-muted/50 px-4 py-5 text-center text-sm text-gray-400 dark:text-muted-foreground">
                 {t("ui.bookings.noExceptions")}
               </p>
             )}
           </div>
         </div>
         <div
-          className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+          className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm"
           data-booking-slot-list
         >
-          <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-5 py-3">
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 px-5 py-3">
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
               <input
                 type="checkbox"
                 checked={
@@ -1868,14 +1868,14 @@ function OperatingHoursPanel({
               />{" "}
               {t("ui.bookings.selectSlots")}
             </label>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-muted-foreground">
               {t("ui.bookings.slotsSummary", {
                 slots: pagination.total.toLocaleString(),
                 products: products.length,
               })}
             </span>
           </div>
-          <div className="hidden grid-cols-[32px_minmax(220px,1.5fr)_minmax(130px,0.8fr)_110px_110px_90px] gap-3 border-b border-gray-100 bg-gray-50/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500 md:grid">
+          <div className="hidden grid-cols-[32px_minmax(220px,1.5fr)_minmax(130px,0.8fr)_110px_110px_90px] gap-3 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground md:grid">
             <span />
             <span>{t("ui.bookings.slotTime")}</span>
             <span>{t("ui.bookings.outlet")}</span>
@@ -1883,13 +1883,13 @@ function OperatingHoursPanel({
             <span>{t("ui.bookings.slotStatus")}</span>
             <span className="text-right">{t("ui.orders.actionColumn")}</span>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-border">
             {loading ? (
               <div className="space-y-3 p-5">
                 {[1, 2, 3].map((item) => (
                   <div
                     key={item}
-                    className="h-16 animate-pulse rounded-xl bg-gray-100"
+                    className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-muted"
                   />
                 ))}
               </div>
@@ -1912,10 +1912,10 @@ function OperatingHoursPanel({
                       })}
                     />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-gray-900">
+                      <p className="truncate font-semibold text-gray-900 dark:text-foreground">
                         {slot.products?.name || t("ui.bookings.experience")}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">
                         {t("strictMigration.bookingReference", {
                           date: dateLabel(
                             slot.starts_at,
@@ -1926,16 +1926,16 @@ function OperatingHoursPanel({
                         })}
                       </p>
                     </div>
-                    <div className="text-xs text-gray-600">
-                      <p className="font-medium text-gray-800">
+                    <div className="text-xs text-gray-600 dark:text-muted-foreground">
+                      <p className="font-medium text-gray-800 dark:text-foreground">
                         {slot.outlets?.name || t("ui.bookings.outlet")}
                       </p>
-                      <p className="mt-1 text-gray-400">
+                      <p className="mt-1 text-gray-400 dark:text-muted-foreground">
                         {slot.outlets?.city || slot.outlets?.state || ""}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                         {slot.booked}/{slot.capacity}
                       </p>
                     </div>
@@ -1947,7 +1947,7 @@ function OperatingHoursPanel({
                         <button
                           type="button"
                           onClick={() => cancelSlot(slot.id)}
-                          className="text-xs font-semibold text-red-600 hover:underline"
+                          className="text-xs font-semibold text-red-600 dark:text-red-300 hover:underline"
                         >
                           {t("ui.bookings.cancel")}
                         </button>
@@ -1958,7 +1958,7 @@ function OperatingHoursPanel({
               })
             )}
             {!slots.length && !loading && (
-              <div className="px-6 py-16 text-center text-sm text-gray-400">
+              <div className="px-6 py-16 text-center text-sm text-gray-400 dark:text-muted-foreground">
                 {t("ui.bookings.noSlots")}
               </div>
             )}

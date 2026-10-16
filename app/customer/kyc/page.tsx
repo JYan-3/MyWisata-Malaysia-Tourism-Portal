@@ -317,7 +317,7 @@ export default function KycPage() {
           </label>
 
           {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
-          {ocrNotice && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{ocrNotice}</p>}
+          {ocrNotice && <p className="text-xs text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg px-3 py-2">{ocrNotice}</p>}
 
           <Button type="submit" disabled={submitDisabled || !ocrConsent} className="w-full">
             {submitting ? tCustomer("ui.kyc.submitting") : activeSubmission?.status === "rejected" || activeSubmission?.status === "info_requested" ? tCustomer("ui.kyc.startNew") : tCustomer("ui.kyc.submitForReview")}

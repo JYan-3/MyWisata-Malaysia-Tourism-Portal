@@ -68,11 +68,11 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
             <div
               role="img"
               aria-label={t("ui.activity.imageUnavailable", { name: activity.name })}
-              className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-slate-50 to-amber-50 text-primary"
+              className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-indigo-50 dark:from-indigo-500/10 via-slate-50 dark:via-muted to-amber-50 dark:to-amber-500/10 text-primary"
             >
               <ImageOff size={30} strokeWidth={1.5} aria-hidden="true" />
               <span className="mt-2 text-xs font-bold">{activity.category || t("ui.labels.placeBasedExperience")}</span>
-              <span className="mt-0.5 text-[10px] text-slate-500">{t("ui.labels.imageUnavailable")}</span>
+              <span className="mt-0.5 text-[10px] text-slate-500 dark:text-muted-foreground">{t("ui.labels.imageUnavailable")}</span>
             </div>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -87,8 +87,8 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
           <div className="absolute left-3 top-3 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5">
             {!detailsRevealOnHover && <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>}
-            {activity.sponsorship && <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
-            {!detailsRevealOnHover && activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-900"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
+            {activity.sponsorship && <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">{t("ui.labels.sponsored")}</span>}
+            {!detailsRevealOnHover && activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-900 dark:text-violet-200"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
             {!detailsRevealOnHover && activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
           </div>
           {!detailsRevealOnHover && activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</div>}
@@ -124,7 +124,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
             <div id={detailsId} className={`absolute inset-0 z-10 max-h-full flex-col gap-2 overflow-y-auto bg-primary/95 p-3 pt-12 text-white shadow-inner ${detailsVisibility}`}>
               <div className="flex flex-wrap gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>
-                {activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-900"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
+                {activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-900 dark:text-violet-200"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
                 {activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
                 {activity.outlet.verified && <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</span>}
                 {activity.outlet.wheelchairAccessible === true && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white"><Accessibility size={9} aria-hidden="true" /> {t("ui.labels.accessible")}</span>}

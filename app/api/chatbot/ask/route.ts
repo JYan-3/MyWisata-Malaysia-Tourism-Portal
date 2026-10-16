@@ -14,6 +14,7 @@ import { chatbotAskSchema } from '@/lib/validation/chatbot-schemas';
 import { answerQuestion } from '@/lib/chatbot/answer';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotAskSchema);
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   // storage + off external APIs"). The user's own message now displays
   // masked, same as everyone else's view of it.
   const cleaned = await cleanUserContent(question, service);
-  const result = await answerQuestion(cleaned.display);
+  const result = await answerQuestion(cleaned.display, await reserveAiQuota(request, 'chatbot', user?.id ?? null));
 
   const { data: userMsg, error: userMsgErr } = await service
     .from('chatbot_messages')

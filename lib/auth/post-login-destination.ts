@@ -1,5 +1,6 @@
 import type { Role } from "@/backend/core/types";
 import { postLoginPath } from "@/lib/auth/guest-mode";
+import { staffMfaDestination, staffVerificationDestination } from '@/lib/auth/staff-route-boundaries';
 
 const HOME_BY_ROLE: Record<Role, string> = {
   customer: "/customer",
@@ -16,9 +17,12 @@ export function isWalletApproverPath(pathname: string): boolean {
   return pathname === "/admin/withdrawals" || pathname.startsWith("/admin/withdrawals/");
 }
 
-export function postLoginDestination(role: Role, next?: string | null): string {
+export function postLoginDestination(role: Role, next?: string | null, staffVerified = false, staffPasskeyRequired = true, staffMfaRequired = false): string {
+  const staff = ['admin', 'approver', 'staff', 'super_admin'].includes(role);
+  const home = staff && staffMfaRequired ? staffMfaDestination(HOME_BY_ROLE[role])
+    : staff && staffPasskeyRequired && !staffVerified ? staffVerificationDestination(HOME_BY_ROLE[role]) : HOME_BY_ROLE[role];
   const safeNext = postLoginPath(next ?? null);
-  if (!safeNext) return HOME_BY_ROLE[role];
+  if (!safeNext) return home;
 
   const parsedNext = new URL(safeNext, "https://mylawatan.invalid");
   const pathname = parsedNext.pathname;
@@ -29,5 +33,5 @@ export function postLoginDestination(role: Role, next?: string | null): string {
   }
 
   // All other logins (customer, vendor, admin, approver) ALWAYS land on their fixed role home page
-  return HOME_BY_ROLE[role];
+  return home;
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getVendors, searchActivities } from "@/backend/domains/catalogue";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
@@ -43,7 +44,7 @@ export default async function PartnersPage({ searchParams }: Props) {
     getVendors(db),
     recommendationPromise,
     db.rpc("list_active_sponsored_discovery_placements"),
-    getFeaturedEventPromotions(db).catch(() => []),
+    getFeaturedEventPromotions(createServiceClient()).catch(() => []),
     getPublicPromotionCampaigns(),
   ]);
   // Event vendors never appear in the normal directory — only under "Event partners".

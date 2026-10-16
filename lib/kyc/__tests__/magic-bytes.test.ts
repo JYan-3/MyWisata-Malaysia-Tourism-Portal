@@ -34,8 +34,14 @@ describe('validateMagicBytes', () => {
     expect(await validateMagicBytes(bufferOf([0xff, 0xd8, 0xff]), 'image/png')).toBe(false);
   });
 
-  it('rejects an unsupported claimed type', async () => {
+  it('accepts a real ZIP and rejects other bytes claiming to be one', async () => {
+    expect(await validateMagicBytes(bufferOf([0x50, 0x4b, 0x03, 0x04, 0x14]), 'application/zip')).toBe(true);
     expect(await validateMagicBytes(bufferOf([0x00]), 'application/zip')).toBe(false);
+    expect(await validateMagicBytes(bufferOf([0x3c, 0x68, 0x74, 0x6d, 0x6c]), 'application/zip')).toBe(false);
+  });
+
+  it('rejects an unsupported claimed type', async () => {
+    expect(await validateMagicBytes(bufferOf([0x3c, 0x73, 0x76, 0x67]), 'image/svg+xml')).toBe(false);
   });
 
   it('rejects a buffer too short to hold the signature', async () => {

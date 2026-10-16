@@ -41,6 +41,7 @@ describe("customer header navigation", () => {
       "/customer/profile",
       "/customer/preferences",
       "/customer/support",
+      "/legal/privacy",
       "/customer/affiliate",
       "/customer/profile/register-vendor",
       "/customer/recommendations",

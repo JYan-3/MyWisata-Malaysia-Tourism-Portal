@@ -82,7 +82,7 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_24%,rgba(255,204,0,0.1),transparent_24%),linear-gradient(135deg,rgba(16,25,54,0.98),rgba(11,18,42,0.98))]" />
       <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white/90">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 dark:bg-card/10 px-3 py-1.5 text-xs font-bold text-white/90">
             <Sparkles size={12} className="text-accent" /> {t("ui.map.destinationCount", { count: MALAYSIA_DESTINATIONS.length })}
           </div>
           <p className="text-xs text-white/55">{t("ui.map.queueInstruction")}</p>
@@ -115,8 +115,8 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
                   <h2 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold sm:text-3xl">{t("ui.map.findState")}</h2>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => moveQueue("previous")} aria-label={t("ui.map.previous")} className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"><ChevronLeft size={17} /></button>
-                  <button type="button" onClick={() => moveQueue("next")} aria-label={t("ui.map.next")} className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"><ChevronRight size={17} /></button>
+                  <button type="button" onClick={() => moveQueue("previous")} aria-label={t("ui.map.previous")} className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 dark:hover:bg-card/10 hover:text-white"><ChevronLeft size={17} /></button>
+                  <button type="button" onClick={() => moveQueue("next")} aria-label={t("ui.map.next")} className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 dark:hover:bg-card/10 hover:text-white"><ChevronRight size={17} /></button>
                 </div>
               </div>
 
@@ -143,7 +143,7 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
 
               <div className="mt-3 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40" aria-hidden="true">
                 <span className="shrink-0 text-accent">{t("ui.map.exploreMalaysia")}</span>
-                <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10">
+                <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10 dark:bg-card/10">
                   <span key={routePulse} className="malaysia-route-pulse absolute inset-y-0 left-0 w-1/4 rounded-full bg-accent shadow-[0_0_14px_rgba(255,204,0,0.8)]" />
                 </div>
                 <span className="shrink-0">{t("ui.map.destinationCountShort", { count: MALAYSIA_DESTINATIONS.length })}</span>
@@ -155,10 +155,10 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
                 <p className="text-sm font-semibold text-white/90">{t("ui.map.searchExperience")}</p>
                 <p className="mt-1 text-xs text-white/50">{t("ui.map.searchHint")}</p>
               </div>
-              <form onSubmit={onSearch} className="flex min-w-0 rounded-2xl bg-white p-1.5 shadow-xl sm:w-[290px]">
+              <form onSubmit={onSearch} className="flex min-w-0 rounded-2xl bg-white dark:bg-card p-1.5 shadow-xl sm:w-[290px]">
                 <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5">
-                  <Search size={15} className="shrink-0 text-slate-400" />
-                  <input value={query} onChange={(event) => onQueryChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" placeholder={t("ui.map.searchMalaysia")} />
+                  <Search size={15} className="shrink-0 text-slate-400 dark:text-muted-foreground" />
+                  <input value={query} onChange={(event) => onQueryChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 dark:text-foreground outline-none placeholder:text-slate-400 dark:placeholder:text-muted-foreground" placeholder={t("ui.map.searchMalaysia")} />
                 </div>
                 <button type="submit" className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white">{t("ui.map.search")}</button>
               </form>

@@ -8,7 +8,8 @@ import { useEffect, useState } from "react";
 import { Receipt } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatMYRFromSen } from "@/lib/i18n/format";
-import type { VendorSettlements } from "@/lib/vendor/settlement";
+import type { VendorSettlementRow, VendorSettlements } from "@/lib/vendor/settlement";
+import { feeLabel } from "@/lib/vendor/fee-tiers";
 
 export function VendorSettlementPanel() {
   const { t } = useTranslation("vendor");
@@ -27,7 +28,15 @@ export function VendorSettlementPanel() {
   }, []);
 
   if (data === undefined || data === null) return null;
-  if (data.settlements.length === 0) return null;
+  if (data.settlements.length === 0 && !data.fee) return null;
+  const perItem = t("ui.settlement.perItem");
+  const feeBasis = (s: VendorSettlementRow) => {
+    const base = s.feeType === "mixed" ? t("ui.settlement.feeMixed")
+      : s.feeType === "fixed" && s.feePerItemSen != null ? `${formatMYRFromSen(s.feePerItemSen)} / ${perItem} × ${s.itemCount ?? 0}`
+      : s.feeType === "fixed" ? t("ui.settlement.feeFixed")
+      : `${Number((s.platformRate * 100).toFixed(2))}%`;
+    return s.feeSource === "event" ? `${t("ui.settlement.eventFee")} · ${base}` : base;
+  };
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -41,6 +50,26 @@ export function VendorSettlementPanel() {
         </div>
       </div>
 
+      {data.fee && (
+        <div className="border-b border-border bg-secondary/40 px-5 py-4 text-sm">
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.settlement.yourFee")}</p>
+          <p className="mt-1 font-bold text-foreground">
+            {data.fee.tier.name} · {feeLabel(data.fee.tier, (sen) => formatMYRFromSen(sen), perItem)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("ui.settlement.tierSales", { amount: formatMYRFromSen(data.fee.salesSen) })}
+            {" "}
+            {data.fee.pinned
+              ? t("ui.settlement.tierPinned")
+              : data.fee.next
+                ? t("ui.settlement.tierNext", { amount: formatMYRFromSen(Math.max(0, data.fee.next.minSalesSen - data.fee.salesSen)), tier: data.fee.next.name })
+                : t("ui.settlement.tierTop")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("ui.settlement.feeRules")}</p>
+        </div>
+      )}
+
+      {data.settlements.length > 0 && <>
       <div className="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-3">
         <div>
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.settlement.pending")}</p>
@@ -81,7 +110,8 @@ export function VendorSettlementPanel() {
                 <tr key={s.id} className={s.status === "reversed" ? "text-muted-foreground" : ""}>
                   <td className="px-5 py-3 font-mono text-xs text-muted-foreground">
                     {s.orderDisplayId ?? s.orderId.slice(0, 8)}
-                    <span className="ml-2 text-[0.625rem]">{(s.platformRate * 100).toFixed(0)}%</span>
+                    <span className="ml-2 text-[0.625rem]">{feeBasis(s)}</span>
+                    {s.payoutFloorApplied && <span className="ml-2 text-[0.625rem]">{t("ui.settlement.floorApplied")}</span>}
                   </td>
                   <td className="px-5 py-3 text-right font-[family-name:var(--font-mono)] text-sm">{formatMYRFromSen(s.grossSen)}</td>
                   <td className="px-5 py-3 text-right font-[family-name:var(--font-mono)] text-sm text-muted-foreground">−{formatMYRFromSen(s.platformFeeSen)}</td>
@@ -93,6 +123,7 @@ export function VendorSettlementPanel() {
           </tbody>
         </table>
       </div>
+      </>}
     </section>
   );
 }

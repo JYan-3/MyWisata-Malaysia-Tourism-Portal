@@ -408,13 +408,15 @@ export function ruleBasedCopilotActions(signals: CopilotSignals): CopilotAction[
  * every one of its actions fails grounding validation — the copilot must
  * never be blank or broken because the LLM is down.
  */
-export async function generateCopilotActions(signals: CopilotSignals, lang: ChatLanguage): Promise<CopilotActionsResult> {
+/** `useAi: false` (caller over its AI quota) skips the model and returns the rule-based actions. */
+export async function generateCopilotActions(signals: CopilotSignals, lang: ChatLanguage, useAi = true): Promise<CopilotActionsResult> {
   if (!signals.hasActivity) {
     return {
       actions: [{ kind: 'general', message: "Share your affiliate link a few times to start building performance history — we'll suggest what to do next once there's data to work from." }],
       mode: 'no-activity',
     };
   }
+  if (!useAi) return { actions: ruleBasedCopilotActions(signals), mode: 'rule-based' };
 
   try {
     const payload = {
@@ -525,9 +527,11 @@ function ruleBasedCaption(facts: CaptionListingFacts): string {
  * always a draft: the caller/UI is responsible for showing it as editable
  * and never auto-posting it anywhere.
  */
-export async function draftCopilotCaption(productId: string, lang: ChatLanguage): Promise<CaptionResult | null> {
+/** `useAi: false` (caller over its AI quota) skips the model and returns the rule-based caption. */
+export async function draftCopilotCaption(productId: string, lang: ChatLanguage, useAi = true): Promise<CaptionResult | null> {
   const facts = await getCaptionListingFacts(productId);
   if (!facts) return null;
+  if (!useAi) return { caption: ruleBasedCaption(facts), mode: 'rule-based' };
 
   try {
     const raw = await callGemini(buildCaptionSystemPrompt(lang), JSON.stringify(facts), { temperature: 0.5, maxOutputTokens: CAPTION_MAX_TOKENS });

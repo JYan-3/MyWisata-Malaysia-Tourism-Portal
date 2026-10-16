@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
 import type { TripItem } from "@/backend/domains/trips";
-import { resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
+import { countTripPurchasableItems, resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
 
 function item(id: string, overrides: Partial<TripItem> = {}): TripItem {
   return {
@@ -9,7 +9,7 @@ function item(id: string, overrides: Partial<TripItem> = {}): TripItem {
     trip_id: "trip-1",
     experience_id: id,
     sequence: 0,
-    scheduled_date: "2026-10-15",
+    scheduled_date: "2030-10-15",
     scheduled_time: null,
     created_at: "2026-08-01T00:00:00.000Z",
     source: "vendor",
@@ -51,7 +51,7 @@ function activity(id: string, overrides: Partial<ComputedActivity> = {}): Comput
 }
 
 function slot(id: string, startsAt: string, overrides: Partial<BookingSlot> = {}): BookingSlot {
-  return { id, activityId: "petronas", startsAt, capacity: 10, booked: 0, status: "available", ...overrides };
+  return { id, activityId: "petronas", outletId: "outlet-1", startsAt, capacity: 10, booked: 0, status: "available", ...overrides };
 }
 
 describe("resolveTripCheckoutLines", () => {
@@ -84,8 +84,8 @@ describe("resolveTripCheckoutLines", () => {
   it("picks the earliest open slot on the scheduled day when the item has no time", () => {
     const petronas = activity("petronas", { requiresBooking: true });
     const slots = new Map([["petronas", [
-      slot("late", "2026-10-15T14:00:00+08:00"),
-      slot("early", "2026-10-15T09:00:00+08:00"),
+      slot("late", "2030-10-15T14:00:00+08:00"),
+      slot("early", "2030-10-15T09:00:00+08:00"),
     ]]]);
 
     const { lines } = resolveTripCheckoutLines([item("petronas")], new Map([["petronas", petronas]]), slots);
@@ -93,15 +93,15 @@ describe("resolveTripCheckoutLines", () => {
     expect(lines).toEqual([{ activityId: "petronas", variantId: "variant-1", outletId: "outlet-1", slotId: "early", qty: 1 }]);
   });
 
-  it("picks the slot closest to the item's own scheduled time", () => {
+  it("books exactly the slot at the item's planned time", () => {
     const petronas = activity("petronas", { requiresBooking: true });
     const slots = new Map([["petronas", [
-      slot("morning", "2026-10-15T09:00:00+08:00"),
-      slot("afternoon", "2026-10-15T15:00:00+08:00"),
+      slot("morning", "2030-10-15T09:00:00+08:00"),
+      slot("afternoon", "2030-10-15T15:00:00+08:00"),
     ]]]);
 
     const { lines } = resolveTripCheckoutLines(
-      [item("petronas", { scheduled_time: "14:30" })],
+      [item("petronas", { scheduled_time: "15:00:00" })],
       new Map([["petronas", petronas]]),
       slots,
     );
@@ -109,9 +109,52 @@ describe("resolveTripCheckoutLines", () => {
     expect(lines[0].slotId).toBe("afternoon");
   });
 
+  it("asks for a slot instead of buying a different time than planned", () => {
+    const petronas = activity("petronas", { requiresBooking: true });
+    const slots = new Map([["petronas", [slot("afternoon", "2030-10-15T15:00:00+08:00")]]]);
+
+    const { lines, needsSlot } = resolveTripCheckoutLines(
+      [item("petronas", { scheduled_time: "14:30" })],
+      new Map([["petronas", petronas]]),
+      slots,
+    );
+
+    expect(lines).toEqual([]);
+    expect(needsSlot).toEqual([{ itemId: "petronas", label: "petronas" }]);
+  });
+
+  it("uses the outlet the stop was planned at, and only that outlet's slots", () => {
+    const petronas = activity("petronas", { requiresBooking: true });
+    const slots = new Map([["petronas", [
+      slot("outlet-1-morning", "2030-10-15T09:00:00+08:00"),
+      slot("outlet-2-noon", "2030-10-15T12:00:00+08:00", { outletId: "outlet-2" }),
+    ]]]);
+
+    const { lines } = resolveTripCheckoutLines(
+      [item("petronas", { outlet_id: "outlet-2" })],
+      new Map([["petronas", petronas]]),
+      slots,
+    );
+
+    expect(lines).toEqual([{ activityId: "petronas", variantId: "variant-1", outletId: "outlet-2", slotId: "outlet-2-noon", qty: 1 }]);
+  });
+
+  it("reports a non-booking item as unavailable when its planned outlet has no stock", () => {
+    const laksa = activity("laksa", { stockByOutlet: { "outlet-1": 5, "outlet-2": 0 } });
+
+    const { lines, unavailable } = resolveTripCheckoutLines(
+      [item("laksa", { outlet_id: "outlet-2" })],
+      new Map([["laksa", laksa]]),
+      new Map(),
+    );
+
+    expect(lines).toEqual([]);
+    expect(unavailable).toEqual([{ itemId: "laksa", label: "laksa" }]);
+  });
+
   it("reports needsSlot instead of fabricating a slot on a different day", () => {
     const petronas = activity("petronas", { requiresBooking: true });
-    const slots = new Map([["petronas", [slot("next-day", "2026-10-16T09:00:00+08:00")]]]);
+    const slots = new Map([["petronas", [slot("next-day", "2030-10-16T09:00:00+08:00")]]]);
 
     const { lines, needsSlot } = resolveTripCheckoutLines([item("petronas")], new Map([["petronas", petronas]]), slots);
 
@@ -121,7 +164,7 @@ describe("resolveTripCheckoutLines", () => {
 
   it("treats a fully-booked slot as unavailable, same as no slot at all", () => {
     const petronas = activity("petronas", { requiresBooking: true });
-    const slots = new Map([["petronas", [slot("full", "2026-10-15T09:00:00+08:00", { booked: 10, status: "full" })]]]);
+    const slots = new Map([["petronas", [slot("full", "2030-10-15T09:00:00+08:00", { booked: 10, status: "full" })]]]);
 
     const { lines, needsSlot } = resolveTripCheckoutLines([item("petronas")], new Map([["petronas", petronas]]), slots);
 
@@ -134,7 +177,7 @@ describe("resolveTripCheckoutLines", () => {
     // "Standard Entrance Pass", "Adult Admission") have no product_variants
     // row at all — the slot alone is meant to back the cart line.
     const petronas = activity("petronas", { requiresBooking: true, variants: [] });
-    const slots = new Map([["petronas", [slot("morning", "2026-10-15T09:00:00+08:00")]]]);
+    const slots = new Map([["petronas", [slot("morning", "2030-10-15T09:00:00+08:00")]]]);
 
     const { lines, needsSlot } = resolveTripCheckoutLines([item("petronas")], new Map([["petronas", petronas]]), slots);
 
@@ -145,10 +188,11 @@ describe("resolveTripCheckoutLines", () => {
   it("skips a non-booking product with zero variants — genuinely nothing to back the line", () => {
     const noVariant = activity("no-variant", { variants: [] });
 
-    const { lines, needsSlot } = resolveTripCheckoutLines([item("no-variant")], new Map([["no-variant", noVariant]]), new Map());
+    const { lines, needsSlot, unavailable } = resolveTripCheckoutLines([item("no-variant")], new Map([["no-variant", noVariant]]), new Map());
 
     expect(lines).toEqual([]);
     expect(needsSlot).toEqual([]);
+    expect(unavailable).toEqual([{ itemId: "no-variant", label: "no-variant" }]);
   });
 
   it("skips a custom location stop with no experience_id", () => {
@@ -160,5 +204,27 @@ describe("resolveTripCheckoutLines", () => {
 
     expect(lines).toEqual([]);
     expect(needsSlot).toEqual([]);
+  });
+});
+
+describe("countTripPurchasableItems", () => {
+  it("counts only scheduled stops checkout can put in the cart", () => {
+    const base = activity("trail");
+    const activities = new Map([
+      ["laksa", activity("laksa")],
+      ["petronas", activity("petronas", { requiresBooking: true, variants: [] })],
+      ["no-variant", activity("no-variant", { variants: [] })],
+      ["trail", activity("trail", { price: 0, typeSlugs: ["nature"], outlet: { ...base.outlet, vendorId: "", vendorName: "" } })],
+    ]);
+    const items = [
+      item("laksa"),
+      item("petronas"),
+      item("no-variant"),
+      item("trail"),
+      item("unscheduled-laksa", { experience_id: "laksa", scheduled_date: null }),
+      item("hotel", { experience_id: null, source: "location" }),
+    ];
+
+    expect(countTripPurchasableItems(items, activities)).toBe(2);
   });
 });

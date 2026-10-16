@@ -344,13 +344,13 @@ export default function VendorProductsPage() {
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Utensils size={15} /> {t('ui.products.catalogueManagement')}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950">{t('ui.products.title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{t('ui.products.description')}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{t('ui.products.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.products.description')}</p>
           {isOwner && (
-            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
-              <span className="font-semibold uppercase tracking-[0.1em] text-amber-800 shrink-0">{t('ui.products.catalogueManagement')}</span>
+            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+              <span className="font-semibold uppercase tracking-[0.1em] text-amber-800 dark:text-amber-200 shrink-0">{t('ui.products.catalogueManagement')}</span>
               <span className="text-amber-400">·</span>
-              <span className="text-amber-900">{t('ui.products.vendorReadOnlyNotice')}</span>
+              <span className="text-amber-900 dark:text-amber-200">{t('ui.products.vendorReadOnlyNotice')}</span>
             </div>
           )}
           {!isOwner && (
@@ -365,7 +365,7 @@ export default function VendorProductsPage() {
           <button
             type="button"
             onClick={handleExportProducts}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50"
           >
             <Download size={16} /> {t('ui.common.exportCsv')}
           </button>
@@ -383,26 +383,26 @@ export default function VendorProductsPage() {
 
       {/* Top 4 KPI Summary Cards */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.status.active')}
           </p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{stats.active}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-foreground">{stats.active}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.products.attentionNeeded')}
           </p>
-          <p className="mt-1 text-2xl font-bold text-amber-600">{stats.lowStockOrBooking}</p>
+          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.lowStockOrBooking}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.status.archived')}
           </p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{stats.archived}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-foreground">{stats.archived}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.products.outletsManaged')}
           </p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.outletCount}</p>
@@ -410,7 +410,7 @@ export default function VendorProductsPage() {
       </section>
 
       {/* Quick Status & Featured Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 pb-2">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 dark:border-border pb-2">
         {[
           { key: 'all', label: t('ui.products.allStatuses'), active: !filters.status && !filters.featured, onClick: () => setFilters((curr) => ({ ...curr, status: '', featured: false })) },
           ...(isOwner ? [{
@@ -429,7 +429,7 @@ export default function VendorProductsPage() {
             className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
               tab.active
                 ? 'bg-primary text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-100'
+                : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted'
             }`}
           >
             {tab.key === 'featured' && <Star size={12} className={tab.active ? 'fill-white text-white' : 'fill-amber-500 text-amber-500'} />}
@@ -440,19 +440,19 @@ export default function VendorProductsPage() {
 
       {/* Featured Selection Banner for Vendor Owner */}
       {isOwner && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/70 p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 dark:border-amber-500/30 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/70 p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
               <Star size={20} className="fill-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-gray-900">{t('ui.products.featuredBannerTitle', { count: featuredIds.length })}</h3>
-                <span className="rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-foreground">{t('ui.products.featuredBannerTitle', { count: featuredIds.length })}</h3>
+                <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">
                   {featuredIds.length} / 4
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-gray-600">{t('ui.products.featuredBannerDesc')}</p>
+              <p className="mt-0.5 text-xs text-gray-600 dark:text-muted-foreground">{t('ui.products.featuredBannerDesc')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -462,7 +462,7 @@ export default function VendorProductsPage() {
               className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                 filters.featured
                   ? 'bg-amber-600 text-white shadow-sm hover:bg-amber-700'
-                  : 'border border-amber-300 bg-white text-amber-900 hover:bg-amber-50'
+                  : 'border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-card text-amber-900 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10'
               }`}
             >
               {filters.featured ? t('ui.products.allStatuses') : t('ui.products.featuredTab', { count: featuredIds.length })}
@@ -474,13 +474,13 @@ export default function VendorProductsPage() {
       <CompactFilterBar search={filters.q} onSearchChange={(value) => setFilters((current) => ({ ...current, q: value }))} placeholder={t('ui.products.searchPlaceholder')} selects={filterSelects} onClear={clearFilters} />
 
       {canManageOutlet && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(products.map((product) => product.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'archive', label: t('ui.products.archiveSelected') }, { value: 'restore', label: t('ui.products.restoreSelected') }]} busy={batchBusy} message={batchMessage} />}
-      <div className="flex items-center justify-between text-xs text-gray-500"><span>{t('ui.products.resultCount', { count: pagination.total.toLocaleString() })}</span><span className="inline-flex items-center gap-1"><SlidersHorizontal size={14} /> {t('ui.products.perPage', { count: 10 })}</span></div>
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}</div> : products.length === 0 ? <div className="px-6 py-16 text-center text-gray-400"><PackageCheck className="mx-auto mb-3 opacity-30" size={34} /><p className="text-sm">{t('ui.products.noMatches')}</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-primary hover:underline">{t('ui.common.clearFilters')}</button></div> : <>
-          {canManageOutlet && <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs text-gray-500"><label className="inline-flex items-center gap-2 font-semibold"><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedIds.includes(product.id))} onChange={(event) => setSelectedIds(event.target.checked ? products.map((product) => product.id) : [])} /> {t('ui.products.selectCurrentPage')}</label></div>}
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-muted-foreground"><span>{t('ui.products.resultCount', { count: pagination.total.toLocaleString() })}</span><span className="inline-flex items-center gap-1"><SlidersHorizontal size={14} /> {t('ui.products.perPage', { count: 10 })}</span></div>
+      {error && <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}</div>}
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+        {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-muted" />)}</div> : products.length === 0 ? <div className="px-6 py-16 text-center text-gray-400 dark:text-muted-foreground"><PackageCheck className="mx-auto mb-3 opacity-30" size={34} /><p className="text-sm">{t('ui.products.noMatches')}</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-primary hover:underline">{t('ui.common.clearFilters')}</button></div> : <>
+          {canManageOutlet && <div className="border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground"><label className="inline-flex items-center gap-2 font-semibold"><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedIds.includes(product.id))} onChange={(event) => setSelectedIds(event.target.checked ? products.map((product) => product.id) : [])} /> {t('ui.products.selectCurrentPage')}</label></div>}
           <div className="overflow-x-auto">
-            <div className={`hidden ${tableGridClass} gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 xl:grid`}>
+            <div className={`hidden ${tableGridClass} gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid`}>
               {canManageOutlet && <span></span>}
               <span>{t('ui.products.listingColumn')}</span>
               <span>{isOwner ? t('ui.products.outletColumn') : t('ui.products.assignedOutlet')}</span>
@@ -488,7 +488,7 @@ export default function VendorProductsPage() {
               <span>{t('ui.products.statusColumn')}</span>
               <span className="text-right">{t('ui.products.actionColumn')}</span>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-border">
               {products.map((product) => (
                 <article key={product.id} className={`grid gap-3 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} xl:items-center xl:gap-4 xl:px-5`}>
                   {canManageOutlet && (
@@ -502,28 +502,28 @@ export default function VendorProductsPage() {
                     <CompactThumbnail src={productImageUrl(product.cover_url)} alt={product.name} kind={imageKind(product.product_type)} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <button type="button" onClick={() => setSelectedProduct(product)} className="text-left font-semibold leading-5 text-gray-900 hover:text-primary line-clamp-2">
+                        <button type="button" onClick={() => setSelectedProduct(product)} className="text-left font-semibold leading-5 text-gray-900 dark:text-foreground hover:text-primary line-clamp-2">
                           {product.name}
                         </button>
                         {featuredIds.includes(product.id) && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200">
                             <Star size={10} className="fill-amber-500 text-amber-500" />
                             {t('ui.products.featuredBadge')}
                           </span>
                         )}
                       </div>
-                      <div className="mt-0.5 flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                      <div className="mt-0.5 flex items-center gap-2 flex-wrap text-xs text-gray-500 dark:text-muted-foreground">
                         <span className="truncate">
                           {typeLabel(product.product_type, t)} {product.requires_booking ? t('ui.products.bookingRequired') : ''}
                         </span>
                         {product.rating !== undefined && product.rating > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900 border border-amber-200/60">
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-500/30">
                             <Star size={11} className="fill-amber-500 text-amber-500" />
                             {product.rating.toFixed(1)}
-                            <span className="text-[10px] text-gray-500">({product.reviews})</span>
+                            <span className="text-[10px] text-gray-500 dark:text-muted-foreground">({product.reviews})</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] text-gray-400">· {t('ui.products.noReviewsYet')}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-muted-foreground">· {t('ui.products.noReviewsYet')}</span>
                         )}
                       </div>
                       <button
@@ -533,7 +533,7 @@ export default function VendorProductsPage() {
                           copyProductId(product.display_id || product.id);
                         }}
                         title={t('ui.products.copyProductId')}
-                        className="mt-0.5 group/id inline-flex items-center gap-1 font-mono text-[10px] text-gray-400 hover:text-primary transition-colors focus:outline-none"
+                        className="mt-0.5 group/id inline-flex items-center gap-1 font-mono text-[10px] text-gray-400 dark:text-muted-foreground hover:text-primary transition-colors focus:outline-none"
                       >
                         <span>{product.display_id || product.id}</span>
                         {copiedProductId === (product.display_id || product.id) ? (
@@ -546,26 +546,26 @@ export default function VendorProductsPage() {
                   </div>
 
                   {/* OUTLET column: Outlet name, city/state, outlet ID or multi-outlet coverage */}
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 dark:text-muted-foreground">
                     {product.outlets && product.outlets.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => setViewingOutletsProduct(product)}
-                        className="group/outlets text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 -m-1.5 transition hover:bg-emerald-50/70 w-full max-w-[230px]"
+                        className="group/outlets text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 -m-1.5 transition hover:bg-emerald-50/70 dark:hover:bg-emerald-500/10 w-full max-w-[230px]"
                         title={t('ui.products.clickToViewAllOutlets', { count: product.outlets.length })}
                       >
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800 text-[11px] group-hover/outlets:border-emerald-300 group-hover/outlets:bg-emerald-100 transition-colors">
-                            <Store size={11} className="text-emerald-700" />
+                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-800 dark:text-emerald-200 text-[11px] group-hover/outlets:border-emerald-300 group-hover/outlets:bg-emerald-100 transition-colors">
+                            <Store size={11} className="text-emerald-700 dark:text-emerald-200" />
                             {product.outlets.length === outlets.length && outlets.length > 1
                               ? t('ui.products.allOutletsAvailable', { count: product.outlets.length })
                               : t('ui.products.multiOutletAvailable', { count: product.outlets.length })}
                           </span>
                         </div>
-                        <span className="mt-1 block font-medium text-gray-700 truncate group-hover/outlets:text-primary transition-colors" title={product.outlets.map((o) => o.short_name || o.name).join(', ')}>
+                        <span className="mt-1 block font-medium text-gray-700 dark:text-foreground truncate group-hover/outlets:text-primary transition-colors" title={product.outlets.map((o) => o.short_name || o.name).join(', ')}>
                           {product.outlets.map((o) => o.short_name || o.name).join(' · ')}
                         </span>
-                        <span className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-emerald-700 underline underline-offset-2 decoration-emerald-300 group-hover/outlets:text-emerald-900">
+                        <span className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-200 underline underline-offset-2 decoration-emerald-300 group-hover/outlets:text-emerald-900">
                           {t('ui.products.clickToViewAllOutlets', { count: product.outlets.length })}
                         </span>
                       </button>
@@ -573,21 +573,21 @@ export default function VendorProductsPage() {
                       <button
                         type="button"
                         onClick={() => setViewingOutletsProduct(product)}
-                        className="group/outlets text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 -m-1.5 transition hover:bg-gray-50 w-full max-w-[230px]"
+                        className="group/outlets text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 -m-1.5 transition hover:bg-gray-50 dark:hover:bg-muted/50 w-full max-w-[230px]"
                       >
-                        <span className="block truncate font-medium text-gray-700 group-hover/outlets:text-primary transition-colors">{outletShortName(product.outlet?.name || user?.activeOutletName)}</span>
-                        <span className="mt-0.5 block truncate text-[11px] text-gray-500">{outletLocation(product.outlet?.city, product.outlet?.state)}</span>
-                        <span className="mt-0.5 block font-mono text-[10px] text-gray-400">{outletIdLabel(product.outlet?.id || product.outlet_id || user?.activeOutletIds?.[0])}</span>
+                        <span className="block truncate font-medium text-gray-700 dark:text-foreground group-hover/outlets:text-primary transition-colors">{outletShortName(product.outlet?.name || user?.activeOutletName)}</span>
+                        <span className="mt-0.5 block truncate text-[11px] text-gray-500 dark:text-muted-foreground">{outletLocation(product.outlet?.city, product.outlet?.state)}</span>
+                        <span className="mt-0.5 block font-mono text-[10px] text-gray-400 dark:text-muted-foreground">{outletIdLabel(product.outlet?.id || product.outlet_id || user?.activeOutletIds?.[0])}</span>
                       </button>
                     )}
                   </div>
 
                   {/* TOTAL / PRICE column: Price + Stock / Time slots */}
                   <div className="text-xs">
-                    <span className="block text-sm font-semibold text-gray-900">
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-foreground">
                       {toRM(Number(product.base_price))}
                     </span>
-                    <span className={`mt-0.5 block text-[11px] font-semibold ${product.requires_booking || product.product_type === 'digital' ? 'text-gray-400' : product.inventoryConfigured === false ? 'text-amber-700' : product.availableStock === 0 ? 'text-red-600' : product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? 'text-amber-700' : 'text-primary'}`}>
+                    <span className={`mt-0.5 block text-[11px] font-semibold ${product.requires_booking || product.product_type === 'digital' ? 'text-gray-400 dark:text-muted-foreground' : product.inventoryConfigured === false ? 'text-amber-700 dark:text-amber-200' : product.availableStock === 0 ? 'text-red-600 dark:text-red-300' : product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? 'text-amber-700' : 'text-primary'}`}>
                       {product.requires_booking ? product.availableSlotCount ? t('ui.products.futureSlots', { count: product.availableSlotCount }) : product.fullFutureSlotCount ? t('ui.products.futureSlotsFull', { count: product.fullFutureSlotCount }) : t('ui.products.noFutureSlots') : product.product_type === 'digital' ? t('ui.products.digitalAvailability') : product.inventoryConfigured === false ? t('ui.products.inventorySetupNeeded') : product.availableStock === 0 ? t('ui.products.outOfStock') : t('ui.products.stockCount', { count: product.availableStock, low: product.availableStock !== undefined && product.availableStock <= (product.lowStockThreshold ?? 5) ? t('ui.products.lowStockSuffix') : '' })}
                     </span>
                     {product.requires_booking && !product.availableSlotCount && canManageOutlet && <button type="button" onClick={() => router.push(`/vendor/bookings?tab=operating-hours&productId=${product.id}&create=1`)} className="mt-1 text-[11px] font-semibold text-primary underline underline-offset-2">{t('ui.products.manageSchedule')}</button>}
@@ -615,20 +615,20 @@ export default function VendorProductsPage() {
                         }
                         className={`rounded-lg p-2 transition ${
                           featuredIds.includes(product.id)
-                            ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                            : 'text-gray-400 hover:bg-amber-50 hover:text-amber-700'
+                            ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-500/25'
+                            : 'text-gray-400 dark:text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200'
                         }`}
                       >
                         <Star size={16} className={featuredIds.includes(product.id) ? 'fill-amber-500 text-amber-500' : ''} />
                       </button>
                     )}
-                    <button type="button" onClick={() => setSelectedProduct(product)} title={t('ui.products.viewDetails')} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-primary transition">
+                    <button type="button" onClick={() => setSelectedProduct(product)} title={t('ui.products.viewDetails')} className="rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted hover:text-primary transition">
                       <Eye size={16} />
                     </button>
                     <ShareButton compact shareType="product" contentId={product.id} title={product.name} plainOnly />
                     {canManageOutlet && (
                       <>
-                        <button type="button" onClick={() => { setEditingProduct(product); setShowForm(true); }} title={t('ui.products.editListing')} className="rounded-lg p-2 text-gray-500 hover:bg-secondary hover:text-primary transition">
+                        <button type="button" onClick={() => { setEditingProduct(product); setShowForm(true); }} title={t('ui.products.editListing')} className="rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-secondary hover:text-primary transition">
                           <Pencil size={16} />
                         </button>
                         {product.status === 'archived' ? (
@@ -636,7 +636,7 @@ export default function VendorProductsPage() {
                             <RotateCcw size={16} />
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleDelete(product.id)} title={t('ui.products.archiveListing')} className="rounded-lg p-2 text-red-500 hover:bg-red-50 transition">
+                          <button type="button" onClick={() => handleDelete(product.id)} title={t('ui.products.archiveListing')} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
                             <Archive size={16} />
                           </button>
                         )}
@@ -655,33 +655,33 @@ export default function VendorProductsPage() {
       {/* Covered Outlets Modal */}
       {viewingOutletsProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-6 py-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-card shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 px-6 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200">
                   <Store size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-950">
+                  <h3 className="text-base font-bold text-gray-950 dark:text-foreground">
                     {t('ui.products.coveredOutletsTitle', {
                       count: viewingOutletsProduct.outlets?.length || 1,
                     })}
                   </h3>
-                  <p className="text-xs text-gray-500 line-clamp-1">{viewingOutletsProduct.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground line-clamp-1">{viewingOutletsProduct.name}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingOutletsProduct(null)}
                 aria-label={t('ui.products.closeOutletsModal')}
-                className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-200/60 hover:text-gray-700 transition"
+                className="rounded-xl p-1.5 text-gray-400 dark:text-muted-foreground hover:bg-gray-200/60 dark:hover:bg-secondary/60 hover:text-gray-700 dark:hover:text-foreground transition"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto p-6 space-y-3">
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-600 dark:text-muted-foreground">
                 {t('ui.products.coveredOutletsDesc')}
               </p>
 
@@ -701,7 +701,7 @@ export default function VendorProductsPage() {
 
                   if (displayOutlets.length === 0) {
                     return (
-                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center text-xs text-gray-500">
+                      <div className="rounded-xl border border-gray-100 dark:border-border bg-gray-50 dark:bg-muted/50 p-4 text-center text-xs text-gray-500 dark:text-muted-foreground">
                         {outletShortName(viewingOutletsProduct.outlet?.name || user?.activeOutletName)}
                       </div>
                     );
@@ -710,20 +710,20 @@ export default function VendorProductsPage() {
                   return displayOutlets.map((outlet, idx) => (
                     <div
                       key={outlet.id || idx}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-200/80 bg-white p-3.5 shadow-sm hover:border-emerald-300 hover:bg-emerald-50/30 transition"
+                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-card p-3.5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-500/30 hover:bg-emerald-50/30 dark:hover:bg-emerald-500/10 transition"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm text-gray-900">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-foreground">
                             {outlet.name}
                           </span>
                         </div>
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                          <MapPin size={13} className="text-gray-400 shrink-0" />
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-muted-foreground">
+                          <MapPin size={13} className="text-gray-400 dark:text-muted-foreground shrink-0" />
                           <span>{outletLocation(outlet.city ?? undefined, outlet.state ?? undefined)}</span>
                         </div>
                       </div>
-                      <span className="shrink-0 font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                      <span className="shrink-0 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-md">
                         {outletIdLabel(outlet.id)}
                       </span>
                     </div>
@@ -732,7 +732,7 @@ export default function VendorProductsPage() {
               </div>
             </div>
 
-            <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-3.5 flex justify-end">
+            <div className="border-t border-gray-100 dark:border-border bg-gray-50/50 dark:bg-muted/50 px-6 py-3.5 flex justify-end">
               <button
                 type="button"
                 onClick={() => setViewingOutletsProduct(null)}
@@ -746,7 +746,7 @@ export default function VendorProductsPage() {
       )}
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, ticketEntryPolicy: editingProduct.ticket_entry_policy ?? 'single_entry', ticketEntryLimit: editingProduct.ticket_entry_limit ?? 1, ticketValidityDays: editingProduct.ticket_validity_days ?? undefined, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), availableStock: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.availableStock : undefined, lowStockThreshold: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.lowStockThreshold : undefined, inventoryConfigured: editingProduct.inventoryConfigured, inventorySetupSingleEntry: (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length <= 1, defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
+      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, ticketEntryPolicy: editingProduct.ticket_entry_policy ?? 'single_entry', ticketEntryLimit: editingProduct.ticket_entry_limit ?? 1, ticketValidityDays: editingProduct.ticket_validity_days ?? undefined, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), availableStock: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.availableStock : undefined, lowStockThreshold: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.lowStockThreshold : undefined, inventoryConfigured: editingProduct.inventoryConfigured, inventorySetupSingleEntry: (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length <= 1, defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
     </div>
   );
 }

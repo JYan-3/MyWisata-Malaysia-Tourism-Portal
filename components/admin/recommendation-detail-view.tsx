@@ -285,7 +285,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
       )}
     </section>
   ) : isPending ? (
-    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+    <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5 text-sm text-amber-950 dark:text-amber-200">
       <h2 className="font-bold">{t("recommendation.detail.assignedElsewhere")}</h2>
       <p className="mt-1 text-xs leading-5">{t("recommendation.detail.assignedElsewhereHint")}</p>
     </section>

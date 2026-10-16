@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/staff-assurance", () => ({ requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -87,6 +88,7 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     const rpc = vi.fn((name: string) => {
+      if (name === 'staff_withdrawal_authorization_version') return Promise.resolve({ data: 'a'.repeat(32), error: null });
       if (name === 'has_staff_permission') return Promise.resolve({ data: true, error: null });
       if (name === 'is_approver') return Promise.resolve({ data: true, error: null });
       if (name === 'get_withdrawal_settlement_proof') return Promise.resolve({

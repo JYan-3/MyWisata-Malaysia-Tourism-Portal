@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
-import { legalNavItems } from "@/components/legal/legal-nav";
+import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 
 // Public, auth-free layout for the Help Center — mirrors app/guest/layout.tsx so
 // anonymous visitors (and search engines) can browse help without the
 // /customer/* role gate.
 export default function HelpLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation("customer");
-  const legalItems = legalNavItems(t);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -35,19 +34,7 @@ export default function HelpLayout({ children }: { children: React.ReactNode }) 
         </div>
       </header>
       <div className="flex-1">{children}</div>
-      <footer className="border-t border-border bg-card">
-        <nav className="mx-auto flex max-w-4xl flex-wrap gap-x-6 gap-y-2 px-4 py-6 text-sm sm:px-6">
-          {legalItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </footer>
+      <CustomerSiteFooter />
     </div>
   );
 }

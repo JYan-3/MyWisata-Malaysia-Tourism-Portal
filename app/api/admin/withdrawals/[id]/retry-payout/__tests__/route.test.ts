@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.authRpc })),
+  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser, getClaims: vi.fn(async () => ({ data: { claims: { sub: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", session_id: "22222222-2222-4222-8222-222222222222", amr: [{ method: "password", timestamp: 100 }] } }, error: null })) }, rpc: mocks.authRpc })),
 }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.from, rpc: mocks.serviceRpc })),
@@ -26,11 +27,11 @@ const withdrawalId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const actorId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const userId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-function request() {
+function request(proofId: string | undefined = '12345678-1234-4234-8234-123456789abc') {
   return new Request('http://localhost/api/admin/withdrawals/id/retry-payout', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.10' },
-    body: JSON.stringify({ note: 'Retry after provider availability was confirmed.', reasonCategory: 'payout_ready' }),
+    body: JSON.stringify({ proofId, note: 'Retry after provider availability was confirmed.', reasonCategory: 'payout_ready' }),
   });
 }
 
@@ -63,17 +64,26 @@ describe('POST /api/admin/withdrawals/:id/retry-payout', () => {
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
+  it.each(['', 'invalid-proof'])('rejects a missing or malformed financial proof: %s', async (proofId) => {
+    const response = await POST(request(proofId), { params: Promise.resolve({ id: withdrawalId }) });
+    expect(response.status).toBe(422);
+    expect(mocks.serviceRpc).not.toHaveBeenCalled();
+    expect(mocks.moderate).not.toHaveBeenCalled();
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
   it('retries provider execution for an approved withdrawal without approving again', async () => {
     const response = await POST(request(), { params: Promise.resolve({ id: withdrawalId }) });
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.authRpc).toHaveBeenCalledWith('is_approver', { uid: actorId });
+    expect(mocks.authRpc).toHaveBeenCalledWith('has_staff_permission', { p_user_id: actorId, p_permission_key: 'admin.withdrawal.approve' });
     expect(mocks.authRpc).not.toHaveBeenCalledWith('approve_wallet_withdrawal', expect.anything());
-    expect(mocks.serviceRpc).toHaveBeenCalledWith('record_withdrawal_payout_retry', expect.objectContaining({
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('authorize_staff_withdrawal_action', expect.objectContaining({
       p_withdrawal_id: withdrawalId,
       p_actor_id: actorId,
-      p_reason_category: 'payout_ready',
+      p_action: 'retry-payout',
+      p_session_id: '22222222-2222-4222-8222-222222222222',
     }));
     expect(mocks.execute).toHaveBeenCalledWith({ withdrawalId, userId, amountRm: 50 });
     expect(mocks.schedule).toHaveBeenCalledWith(

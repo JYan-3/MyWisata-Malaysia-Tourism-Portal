@@ -1,3 +1,5 @@
+import type { AppLocale } from '@/lib/i18n/locale';
+import { emailLocale } from '@/lib/email/copy';
 // P4 — Member 4: AI-drafted vendor approval (welcome) emails. Same
 // provider/key/model/timeout convention as lib/recommendations/invite-draft.ts
 // (Gemini, process.env.LLM_API_KEY, gemini-flash-lite-latest) — a different
@@ -64,6 +66,7 @@ export interface VendorApprovalDraft {
 }
 
 export interface VendorApprovalDraftContext {
+  locale?: AppLocale;
   vendorName: string;
   businessType: string | null;
   description: string | null;
@@ -104,7 +107,7 @@ export async function draftVendorApprovalEmail(context: VendorApprovalDraftConte
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + "\nWrite the subject and body in " + ({en: "English", "zh-CN": "Simplified Chinese", ms: "Bahasa Melayu"}[emailLocale(context.locale)]) + ". Keep the SUBJECT: and BODY: parser labels unchanged." }] },
         contents: [{ role: 'user', parts: [{ text: userText }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
       }),

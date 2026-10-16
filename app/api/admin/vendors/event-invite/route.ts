@@ -1,3 +1,5 @@
+import { recipientEmailLocale } from '@/lib/email/locale';
+import { vendorInviteCopy } from '@/lib/email/copy';
 import { z } from 'zod';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -5,6 +7,7 @@ import { parseBody, apiFail, apiOk } from '@/lib/validation/schemas';
 import { createRecommendationInviteToken } from '@/lib/recommendations/invite-token';
 import { sendCustomVendorEmail } from '@/lib/email/sender';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
+import { normalizeEmail } from '@/lib/validation/postgrest-filter';
 
 // Admin-created event vendor (Phase 4 of the event plan). Same invite link and
 // email path as recommendation invites; the vendor row is created only when the
@@ -23,10 +26,10 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;
   const { businessName, message } = parsed.data;
-  const email = parsed.data.email.toLowerCase();
+  const email = normalizeEmail(parsed.data.email);
   const service = createServiceClient();
 
-  const { data: owner, error: ownerError } = await service.from('users').select('id').ilike('email', email).maybeSingle();
+  const { data: owner, error: ownerError } = await service.from('users').select('id').eq('email', email).maybeSingle();
   if (ownerError) return apiFail('DB_ERROR', ownerError.message, 500);
   if (owner) {
     const { data: ownedVendor, error: vendorError } = await service.from('vendors').select('id').eq('owner_id', owner.id).in('status', ['pending', 'approved']).limit(1).maybeSingle();
@@ -34,11 +37,16 @@ export async function POST(request: Request) {
     if (ownedVendor) return apiFail('OWNER_ALREADY_HAS_VENDOR', 'This email already owns a vendor. Event vendors need their own login.', 409);
   }
 
+  let locale;
+  try { locale = await recipientEmailLocale(service, email); }
+  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
+  const copy = vendorInviteCopy(businessName, locale, true, BRAND_NAME);
+
   const { token, tokenHash } = createRecommendationInviteToken();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
   const claimUrl = `${origin}/vendor-invite?recommendation=${encodeURIComponent(token)}`;
-  const subject = `You're invited to sell at events as ${businessName}`;
-  const body = `${message ? `${message}\n\n` : ''}${businessName} has been invited to join ${BRAND_NAME} as an event partner.\n\nComplete your event vendor sign-up here: ${claimUrl}`;
+  const subject = copy.subject;
+  const body = `${message ? `${message}\n\n` : ''}${copy.introduction}\n\n${copy.action}: ${claimUrl}`;
 
   const { data, error } = await service
     .from('vendor_recommendation_invites')
@@ -49,7 +57,7 @@ export async function POST(request: Request) {
 
   try {
     // Sent synchronously so the raw one-time token lives only in memory and the email.
-    await sendCustomVendorEmail({ to: email, subject, body });
+    await sendCustomVendorEmail({ to: email, subject, body, locale });
   } catch (emailError) {
     console.error('[event-vendor-invite] email delivery failed:', emailError);
     const { error: cancelError } = await service.from('vendor_recommendation_invites').update({ status: 'cancelled' }).eq('id', data.id);

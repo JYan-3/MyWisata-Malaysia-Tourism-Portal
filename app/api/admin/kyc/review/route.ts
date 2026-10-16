@@ -1,8 +1,8 @@
-import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { kycReviewSchema, parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 
 export async function POST(request: Request) {
-  const { db: supabase, user, response } = await requireStaffPermission('admin.kyc.review');
+  const { db: supabase, user, response } = await requireKycReviewer();
   if (response) return response;
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 

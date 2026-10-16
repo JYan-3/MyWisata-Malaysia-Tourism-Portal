@@ -108,7 +108,8 @@ async function answerWithKeywordFallback(
     : { answer: CHAT_STRINGS[language].fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
 }
 
-export async function answerQuestion(question: string): Promise<AnswerResult> {
+/** `useAi: false` (caller over its AI quota) answers from the keyword matcher instead of the LLM. */
+export async function answerQuestion(question: string, useAi = true): Promise<AnswerResult> {
   // Computed once from the raw question, independent of which mode ends up
   // answering it — a keyword-mode or intent-gated reply can still follow a
   // message that contained PII. The actual redaction enforcement lives in
@@ -141,7 +142,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
 
   const service = createServiceClient();
 
-  if (process.env.LLM_API_KEY) {
+  if (useAi && process.env.LLM_API_KEY) {
     try {
       const retrieved = await retrieve(service, question, 3);
       if (retrieved.length === 0) {

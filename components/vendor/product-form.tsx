@@ -214,11 +214,11 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     <form onSubmit={(event) => { event.preventDefault(); submitForm('review'); }} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">{initialData?.id ? t('productForm.editTitle') : t('productForm.addTitle')}</h2>
-        {onClose && <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>}
+        {onClose && <button type="button" onClick={onClose} className="text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-muted-foreground">✕</button>}
       </div>
 
       {serverError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-200 text-sm rounded-lg px-4 py-3">
           {serverError}
         </div>
       )}
@@ -227,35 +227,35 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         label={t('assistant.listingLabel')}
         buttonLabel={t('assistant.suggestListing')}
         busy={suggesting}
-        draft={suggestionDraft && <div><p className="font-semibold">{suggestionDraft.title}</p><p className="mt-1">{suggestionDraft.description}</p><p className="mt-2 text-xs text-gray-500">{t('productForm.tags')}: {suggestionDraft.tags.join(', ')}</p></div>}
+        draft={suggestionDraft && <div><p className="font-semibold">{suggestionDraft.title}</p><p className="mt-1">{suggestionDraft.description}</p><p className="mt-2 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.tags')}: {suggestionDraft.tags.join(', ')}</p></div>}
         onGenerate={() => void suggestListing()}
         onApply={suggestionDraft ? applySuggestion : undefined}
         onDiscard={suggestionDraft ? () => setSuggestionDraft(null) : undefined}
       />
-      {suggestionMessage && <p className="text-xs text-violet-800">{suggestionMessage}</p>}
+      {suggestionMessage && <p className="text-xs text-violet-800 dark:text-violet-200">{suggestionMessage}</p>}
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.nameRequired')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.nameRequired')}</label>
           <Input {...register('name')} placeholder={t('productForm.namePlaceholder')} />
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {errors.name && <p className="text-red-500 text-xs mt-1">{(errors.name as any)?.message}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.description')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.description')}</label>
           <textarea
             {...register('description')}
             rows={3}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full border border-gray-300 dark:border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
             placeholder={t('productForm.descriptionPlaceholder')}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.typeRequired')}</label>
-            <select {...register('productType')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.typeRequired')}</label>
+            <select {...register('productType')} className="w-full border border-gray-300 dark:border-border rounded-lg px-3 py-2 text-sm">
               <option value="product">{t('productForm.types.product')}</option>
               <option value="activity">{t('productForm.types.activity')}</option>
               <option value="experience">{t('productForm.types.experience')}</option>
@@ -265,14 +265,14 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.basePrice')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.basePrice')}</label>
             <Input {...register('basePrice', { valueAsNumber: true })} type="number" step="0.01" />
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {errors.basePrice && <p className="text-red-500 text-xs mt-1">{(errors.basePrice as any)?.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.category')}</label>
-            <select {...register('categoryId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.category')}</label>
+            <select {...register('categoryId')} className="w-full border border-gray-300 dark:border-border rounded-lg px-3 py-2 text-sm">
               <option value="">{t('productForm.selectCategory')}</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
@@ -282,7 +282,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.tags')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.tags')}</label>
           <Input {...register('tags')} placeholder={t('productForm.tagsPlaceholder')} />
           <div className="mt-2 flex flex-wrap gap-2">
             {tags.map((tag) => (
@@ -297,15 +297,15 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
               </button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-gray-400">{t('productForm.tagsHint')}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('productForm.tagsHint')}</p>
         </div>
 
-        <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+        <div className="rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-4">
           <div className="mb-3 flex items-center gap-2">
             <ImagePlus size={17} className="text-primary" />
             <div>
-              <p className="text-sm font-semibold text-gray-900">{t('productForm.media')}</p>
-              <p className="text-xs text-gray-500">{t('productForm.coverRequired')}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('productForm.media')}</p>
+              <p className="text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.coverRequired')}</p>
             </div>
           </div>
           <ProductMediaUploader
@@ -317,13 +317,13 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           />
           <Input {...register('coverUrl')} placeholder={t('productForm.imageUrlPlaceholder')} className="mt-2" />
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {errors.coverUrl && <p className="mt-1 text-xs text-red-600">{(errors.coverUrl as any)?.message}</p>}
+          {errors.coverUrl && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{(errors.coverUrl as any)?.message}</p>}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2"><img src={watch('coverUrl')} alt={t('productForm.coverPreview')} className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500">{watch('coverUrl')}</span></div>}
-          <div className="mt-4 border-t border-gray-200 pt-3">
+          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card p-2"><img src={watch('coverUrl')} alt={t('productForm.coverPreview')} className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500 dark:text-muted-foreground">{watch('coverUrl')}</span></div>}
+          <div className="mt-4 border-t border-gray-200 dark:border-border pt-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('productForm.gallery')}</p>
-              <span className="text-[11px] text-gray-400">{gallery.length}/8 {t('productForm.images')}</span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{t('productForm.gallery')}</p>
+              <span className="text-[11px] text-gray-400 dark:text-muted-foreground">{gallery.length}/8 {t('productForm.images')}</span>
             </div>
             {gallery.length < 8 && (
               <ProductMediaUploader
@@ -335,21 +335,21 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
               />
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {gallery.length > 0 && <div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((media, index) => <div key={media.url} className="group relative overflow-hidden rounded-lg border border-gray-200"><img src={media.url} alt={media.alt || t('productForm.galleryImageAlt', { count: index + 1 })} className="h-16 w-full object-cover" /><button type="button" onClick={() => setValue('gallery', gallery.filter((_, itemIndex) => itemIndex !== index), { shouldDirty: true })} className="absolute right-1 top-1 rounded-md bg-gray-950/70 p-1 text-white opacity-0 transition group-hover:opacity-100" aria-label={t('productForm.removeGalleryImage', { count: index + 1 })}><Trash2 size={12} /></button></div>)}</div>}
+            {gallery.length > 0 && <div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((media, index) => <div key={media.url} className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-border"><img src={media.url} alt={media.alt || t('productForm.galleryImageAlt', { count: index + 1 })} className="h-16 w-full object-cover" /><button type="button" onClick={() => setValue('gallery', gallery.filter((_, itemIndex) => itemIndex !== index), { shouldDirty: true })} className="absolute right-1 top-1 rounded-md bg-gray-950/70 p-1 text-white opacity-0 transition group-hover:opacity-100" aria-label={t('productForm.removeGalleryImage', { count: index + 1 })}><Trash2 size={12} /></button></div>)}</div>}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.outletRequired')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.outletRequired')}</label>
             {initialData?.id ? (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <div className="rounded-lg border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 px-3 py-2 text-sm text-gray-700 dark:text-foreground">
                 {outlets.find((outlet) => outlet.id === initialData.outletId)?.name || t('productForm.loadingOutlet')}
-                <p className="mt-1 text-xs text-gray-400">{t('productForm.outletLocked')}</p>
+                <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('productForm.outletLocked')}</p>
               </div>
             ) : (
               <>
-                <select {...register('outletId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <select {...register('outletId')} className="w-full border border-gray-300 dark:border-border rounded-lg px-3 py-2 text-sm">
                   <option value="">{t('productForm.selectOutlet')}</option>
                   {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
@@ -359,8 +359,8 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             )}
           </div>
           <div className="flex items-center pt-6">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-              <input type="checkbox" {...register('requiresBooking')} className="rounded border-gray-300 text-primary focus:ring-primary/20" />
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-foreground cursor-pointer">
+              <input type="checkbox" {...register('requiresBooking')} className="rounded border-gray-300 dark:border-border text-primary focus:ring-primary/20" />
               {t('productForm.requiresBooking')}
             </label>
           </div>
@@ -369,75 +369,75 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         {requiresBooking && (
           <section className="rounded-xl border border-primary/15 bg-secondary/25 p-4">
             <div>
-              <p className="text-sm font-semibold text-gray-900">{t('productForm.ticketAdmission')}</p>
-              <p className="mt-1 text-xs text-gray-500">{t('productForm.ticketAdmissionHint')}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('productForm.ticketAdmission')}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.ticketAdmissionHint')}</p>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-foreground">
                 {t('productForm.entryPolicy')}
-                <select {...register('ticketEntryPolicy')} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                <select {...register('ticketEntryPolicy')} className="mt-1 w-full rounded-lg border border-gray-300 dark:border-border bg-white dark:bg-card px-3 py-2 text-sm">
                   <option value="single_entry">{t('productForm.singleEntry')}</option>
                   <option value="group_entry">{t('productForm.groupEntry')}</option>
                   <option value="multi_entry">{t('productForm.multiEntry')}</option>
                 </select>
               </label>
               {ticketEntryPolicy !== 'single_entry' && (
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-foreground">
                   {ticketEntryPolicy === 'group_entry' ? t('productForm.entriesIncluded') : t('productForm.visitsIncluded')}
                   <Input {...register('ticketEntryLimit', { valueAsNumber: true })} className="mt-1" type="number" min="2" max="1000" step="1" />
                 </label>
               )}
               {ticketEntryPolicy === 'multi_entry' && (
-                <label className="block text-sm font-medium text-gray-700 sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-foreground sm:col-span-2">
                   {t('productForm.passValidityDays')}
                   <Input {...register('ticketValidityDays', { valueAsNumber: true })} className="mt-1" type="number" min="1" max="365" step="1" />
-                  <span className="mt-1 block text-xs font-normal text-gray-500">{t('productForm.validityHint')}</span>
+                  <span className="mt-1 block text-xs font-normal text-gray-500 dark:text-muted-foreground">{t('productForm.validityHint')}</span>
                 </label>
               )}
             </div>
-            {ticketEntryPolicy === 'single_entry' && <p className="mt-3 text-xs text-gray-600">{t('productForm.singleEntryHint')}</p>}
-            {ticketEntryPolicy === 'group_entry' && <p className="mt-3 text-xs text-gray-600">{t('productForm.groupEntryHint')}</p>}
-            {ticketEntryPolicy === 'multi_entry' && <p className="mt-3 text-xs text-gray-600">{t('productForm.multiEntryHint')}</p>}
+            {ticketEntryPolicy === 'single_entry' && <p className="mt-3 text-xs text-gray-600 dark:text-muted-foreground">{t('productForm.singleEntryHint')}</p>}
+            {ticketEntryPolicy === 'group_entry' && <p className="mt-3 text-xs text-gray-600 dark:text-muted-foreground">{t('productForm.groupEntryHint')}</p>}
+            {ticketEntryPolicy === 'multi_entry' && <p className="mt-3 text-xs text-gray-600 dark:text-muted-foreground">{t('productForm.multiEntryHint')}</p>}
           </section>
         )}
 
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-gray-900">{t('productForm.availability')}</p>
-              <p className="mt-1 text-xs text-gray-500">{t('productForm.availabilityHint')}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('productForm.availability')}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.availabilityHint')}</p>
             </div>
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">{productType}</span>
+            <span className="rounded-full bg-gray-100 dark:bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{productType}</span>
           </div>
           {['product', 'food'].includes(productType) && !requiresBooking && (
             initialData?.id && initialData.inventorySetupSingleEntry === false
-              ? <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900" role="status">{t('productForm.variantStockHint')}</p>
+              ? <p className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-900 dark:text-amber-200" role="status">{t('productForm.variantStockHint')}</p>
               : <div className="grid grid-cols-2 gap-4">
-                  {initialData?.id && initialData.inventoryConfigured === false && <p className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900" role="status">{t('productForm.stockSetupHint')}</p>}
+                  {initialData?.id && initialData.inventoryConfigured === false && <p className="col-span-2 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-900 dark:text-amber-200" role="status">{t('productForm.stockSetupHint')}</p>}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.initialStock')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.initialStock')}</label>
                     <Input {...register('availableStock', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder={initialData?.id && initialData.inventoryConfigured === false ? t('productForm.stockQuantityPlaceholder') : '0'} />
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {errors.availableStock && <p className="mt-1 text-xs text-red-600">{(errors.availableStock as any)?.message}</p>}
+                    {errors.availableStock && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{(errors.availableStock as any)?.message}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.lowStockAlert')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.lowStockAlert')}</label>
                     <Input {...register('lowStockThreshold', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="5" />
                   </div>
                 </div>
           )}
           {['activity', 'experience', 'service'].includes(productType) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.defaultCapacity')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.defaultCapacity')}</label>
               <Input {...register('defaultCapacity', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="1" step="1" placeholder={t('productForm.capacityPlaceholder')} />
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {errors.defaultCapacity && <p className="mt-1 text-xs text-red-600">{(errors.defaultCapacity as any)?.message}</p>}
-              <p className="mt-1 text-xs text-gray-500">{t('productForm.capacityHint')}</p>
+              {errors.defaultCapacity && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{(errors.defaultCapacity as any)?.message}</p>}
+              <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.capacityHint')}</p>
             </div>
           )}
           {productType === 'digital' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.downloadUrl')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.downloadUrl')}</label>
               <ProductMediaUploader
                 vendorId={vendorId}
                 productId={initialData?.id}
@@ -453,14 +453,14 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
               />
               <Input {...register('digitalAssetUrl')} placeholder={t('productForm.downloadUrlPlaceholder')} className="mt-2" />
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {errors.digitalAssetUrl && <p className="mt-1 text-xs text-red-600">{(errors.digitalAssetUrl as any)?.message}</p>}
-              <p className="mt-1 text-xs text-gray-500">{t('productForm.digitalAssetHint')}</p>
+              {errors.digitalAssetUrl && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{(errors.digitalAssetUrl as any)?.message}</p>}
+              <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.digitalAssetHint')}</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-4 sm:flex sm:justify-end sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 border-t border-gray-100 dark:border-border pt-4 sm:flex sm:justify-end sm:gap-3">
         {onClose && (
           <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">{tCommon('actions.cancel')}</Button>
         )}

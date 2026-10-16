@@ -242,7 +242,7 @@ export function RecommendationAiReviewPanel({
             )}
           </section>
 
-          <section aria-label={t("recommendation.aiReview.passedChecks")} className="rounded-lg bg-emerald-50 p-3 text-emerald-800">
+          <section aria-label={t("recommendation.aiReview.passedChecks")} className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 p-3 text-emerald-800 dark:text-emerald-200">
             <p className="font-bold">{t("recommendation.aiReview.passedChecks")}</p>
             <ul className="mt-2 space-y-1">
               {passedChecks.map((check) => <li key={`passed-${check.field}`}>✓ {check.message}</li>)}

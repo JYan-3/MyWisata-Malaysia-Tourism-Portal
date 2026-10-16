@@ -90,11 +90,11 @@ export function VendorRevenueAssistantCard() {
   const hasActions = Boolean(cached && cached.mode !== "no-data" && cached.actions.length > 0);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <div className="flex flex-col gap-2 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-primary" />
-          <h2 className="text-lg font-semibold text-gray-900">{t("ui.revenueAssistant.title")}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t("ui.revenueAssistant.title")}</h2>
         </div>
         <Button size="sm" variant="outline" onClick={generate} disabled={loading}>
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? t("ui.revenueAssistant.generating") : t("ui.revenueAssistant.regenerate")}
@@ -102,23 +102,23 @@ export function VendorRevenueAssistantCard() {
       </div>
 
       <div className="p-5">
-        {error && !cached && <p className="text-sm text-red-600">{error}</p>}
-        {!error && !cached && loading && <p className="text-sm text-gray-500">{t("ui.revenueAssistant.generatingActions")}</p>}
+        {error && !cached && <p className="text-sm text-red-600 dark:text-red-300">{error}</p>}
+        {!error && !cached && loading && <p className="text-sm text-gray-500 dark:text-muted-foreground">{t("ui.revenueAssistant.generatingActions")}</p>}
         {cached && (
           <div>
             {hasActions ? (
               <ul className="flex flex-col gap-2">
                 {cached.actions.map((action, index) => (
-                  <li key={`${action.productId ?? "action"}-${index}`} className="rounded-xl border border-gray-100 p-3">
-                    <p className="text-sm leading-relaxed text-gray-900">{action.message}</p>
+                  <li key={`${action.productId ?? "action"}-${index}`} className="rounded-xl border border-gray-100 dark:border-border p-3">
+                    <p className="text-sm leading-relaxed text-gray-900 dark:text-foreground">{action.message}</p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-500">{t("ui.revenueAssistant.noData")}</p>
+              <p className="text-sm text-gray-500 dark:text-muted-foreground">{t("ui.revenueAssistant.noData")}</p>
             )}
             {hasActions && (
-              <p className="mt-2 text-[0.625rem] text-gray-500">
+              <p className="mt-2 text-[0.625rem] text-gray-500 dark:text-muted-foreground">
                 {cached.mode === "rule-based" ? t("ui.revenueAssistant.ruleBased") : t("ui.revenueAssistant.aiGenerated")}
               </p>
             )}

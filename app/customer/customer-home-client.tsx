@@ -10,7 +10,7 @@ import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
-import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
+import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import dynamic from "next/dynamic";
 
@@ -271,7 +271,25 @@ export function CustomerHomeClient({
 
           <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-enter atlas-delay-2 mt-10 w-full">
             <div className="mb-3 flex items-center justify-between gap-4 sm:mb-1">
-              <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
+                <Link href={destinationHref(activeDestination.state)} className="inline-flex items-center gap-1 text-xs font-semibold text-white/85 transition hover:text-[#f4bd00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd00] sm:text-sm">
+                  {t("ui.home.viewDestination")} <ArrowRight size={14} />
+                </Link>
+                <SaveToggleButton
+                  appearance="pill"
+                  saved={savedStates.has(activeDestination.state)}
+                  aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}
+                  onClick={() => {
+                    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
+                    void toggleSaved(activeDestination.state);
+                  }}
+                  className="px-2.5 py-1 text-[11px] sm:px-3 sm:text-xs"
+                  iconSize={13}
+                >
+                  {savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}
+                </SaveToggleButton>
+              </div>
               <div className="flex items-center gap-3 sm:gap-5">
                 <p aria-live="polite" className="min-w-[54px] text-right text-xs font-bold tracking-[0.08em] text-white/70 sm:text-sm">
                   <span className="text-[#f4bd00]">{String(destinationPage + 1).padStart(2, "0")}</span>

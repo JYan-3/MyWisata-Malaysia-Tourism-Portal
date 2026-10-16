@@ -118,21 +118,21 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
   }
 
   return (
-    <section aria-labelledby="vendor-gallery-heading" aria-busy={saving || loading} className="space-y-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex items-start gap-3 border-b border-gray-100 pb-5">
+    <section aria-labelledby="vendor-gallery-heading" aria-busy={saving || loading} className="space-y-5 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm sm:p-6">
+      <div className="flex items-start gap-3 border-b border-gray-100 dark:border-border pb-5">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary"><Images size={19} /></div>
         <div className="min-w-0 flex-1">
-          <h2 id="vendor-gallery-heading" className="text-base font-bold text-gray-950">{t('ui.profile.galleryTitle')}</h2>
-          <p className="mt-1 text-sm leading-5 text-gray-500">{t('ui.profile.galleryDescription')}</p>
+          <h2 id="vendor-gallery-heading" className="text-base font-bold text-gray-950 dark:text-foreground">{t('ui.profile.galleryTitle')}</h2>
+          <p className="mt-1 text-sm leading-5 text-gray-500 dark:text-muted-foreground">{t('ui.profile.galleryDescription')}</p>
         </div>
         {photos.length > 0 && <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-primary">{photos.length}/3</span>}
       </div>
 
-      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-primary/20 bg-secondary px-4 py-3 text-sm text-primary">{message}</div>}
 
       {loading ? (
-        <p className="text-sm text-gray-500">{t('ui.profile.loading')}</p>
+        <p className="text-sm text-gray-500 dark:text-muted-foreground">{t('ui.profile.loading')}</p>
       ) : (
         <>
           <input
@@ -149,35 +149,35 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
           {files.length > 0 ? (
             <div className="grid grid-cols-3 gap-3">
               {files.map((file, index) => (
-                <figure key={`${file.name}-${file.lastModified}-${index}`} className="min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                <figure key={`${file.name}-${file.lastModified}-${index}`} className="min-w-0 overflow-hidden rounded-xl border border-gray-100 dark:border-border bg-gray-50 dark:bg-muted/50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={previewUrls[index]} alt={t('ui.profile.galleryPreviewAlt', { number: index + 1 })} className="aspect-[4/3] w-full object-cover" />
-                  <figcaption className="truncate px-2.5 py-2 text-xs text-gray-500">{file.name}</figcaption>
+                  <figcaption className="truncate px-2.5 py-2 text-xs text-gray-500 dark:text-muted-foreground">{file.name}</figcaption>
                 </figure>
               ))}
             </div>
           ) : photos.length > 0 ? (
             <div className="grid grid-cols-3 gap-3">
               {photos.map((photo, index) => (
-                <figure key={photo.id || photo.url} className="min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                <figure key={photo.id || photo.url} className="min-w-0 overflow-hidden rounded-xl border border-gray-100 dark:border-border bg-gray-50 dark:bg-muted/50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={vendorImageUrl(photo.url) || photo.url} alt={photo.altText || t('ui.profile.galleryPreviewAlt', { number: index + 1 })} className="aspect-[4/3] w-full object-cover" />
-                  <figcaption className="px-2.5 py-2 text-xs text-gray-500">{t('ui.profile.galleryPreviewAlt', { number: index + 1 })}</figcaption>
+                  <figcaption className="px-2.5 py-2 text-xs text-gray-500 dark:text-muted-foreground">{t('ui.profile.galleryPreviewAlt', { number: index + 1 })}</figcaption>
                 </figure>
               ))}
             </div>
           ) : (
-            <div className="flex min-h-24 items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/70 p-4">
-              <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary"><Images size={20} /></span>
+            <div className="flex min-h-24 items-center gap-3 rounded-xl border border-dashed border-gray-200 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-4">
+              <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-card text-primary"><Images size={20} /></span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-800">{t('ui.profile.galleryEmpty')}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">{t('ui.profile.galleryEmptyDescription')}</p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{t('ui.profile.galleryEmpty')}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-muted-foreground">{t('ui.profile.galleryEmptyDescription')}</p>
               </div>
             </div>
           )}
 
-          <p className="text-xs leading-5 text-gray-500">{files.length ? t('ui.profile.gallerySelectedCount', { count: files.length }) : t('ui.profile.galleryHelp')}</p>
-          {selectionError && <p role="alert" className="text-xs font-medium text-red-700">{selectionError}</p>}
+          <p className="text-xs leading-5 text-gray-500 dark:text-muted-foreground">{files.length ? t('ui.profile.gallerySelectedCount', { count: files.length }) : t('ui.profile.galleryHelp')}</p>
+          {selectionError && <p role="alert" className="text-xs font-medium text-red-700 dark:text-red-200">{selectionError}</p>}
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={() => inputRef.current?.click()} disabled={saving}>
@@ -197,9 +197,9 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
           </div>
 
           {confirmClear && (
-            <div role="alertdialog" aria-labelledby="vendor-gallery-clear-title" aria-describedby="vendor-gallery-clear-description" className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <h3 id="vendor-gallery-clear-title" className="text-sm font-bold text-gray-900">{t('ui.profile.galleryClearTitle')}</h3>
-              <p id="vendor-gallery-clear-description" className="mt-1 text-sm leading-5 text-gray-600">{t('ui.profile.galleryClearDescription')}</p>
+            <div role="alertdialog" aria-labelledby="vendor-gallery-clear-title" aria-describedby="vendor-gallery-clear-description" className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4">
+              <h3 id="vendor-gallery-clear-title" className="text-sm font-bold text-gray-900 dark:text-foreground">{t('ui.profile.galleryClearTitle')}</h3>
+              <p id="vendor-gallery-clear-description" className="mt-1 text-sm leading-5 text-gray-600 dark:text-muted-foreground">{t('ui.profile.galleryClearDescription')}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setConfirmClear(false)} disabled={saving}>{t('ui.profile.galleryCancelClear')}</Button>
                 <Button type="button" variant="destructive" size="sm" onClick={() => void clearGallery()} disabled={saving}>

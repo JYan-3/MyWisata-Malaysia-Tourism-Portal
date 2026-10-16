@@ -8,8 +8,8 @@ import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 
 export function entryLabel(place: Place, t?: (key: string, options?: Record<string, unknown>) => string): { text: string; tone: string } {
   if (place.entryFee === null) return { text: t?.("ui.place.noGate", { ns: "customer" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
-  if (place.entryFee === 0) return { text: t?.("ui.place.freeEntry", { ns: "customer" }) ?? "Free entry", tone: "bg-emerald-100 text-emerald-800" };
-  return { text: t?.("ui.place.entryFee", { price: formatMYRNumber(place.entryFee), ns: "customer" }) ?? `${formatMYR(place.entryFee)} entry`, tone: "bg-amber-100 text-amber-900" };
+  if (place.entryFee === 0) return { text: t?.("ui.place.freeEntry", { ns: "customer" }) ?? "Free entry", tone: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" };
+  return { text: t?.("ui.place.entryFee", { price: formatMYRNumber(place.entryFee), ns: "customer" }) ?? `${formatMYR(place.entryFee)} entry`, tone: "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200" };
 }
 
 /** A region or POI card in a state/region listing — productCount is precomputed by the page, not fetched here. */
@@ -34,7 +34,7 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-slate-950/5" aria-hidden="true" />
         <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-2">
-          <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary backdrop-blur-sm">
+          <span className="rounded-full bg-white/90 dark:bg-card/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary backdrop-blur-sm">
             {place.level}
           </span>
           <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${entry.tone}`}>{entry.text}</span>

@@ -12,3 +12,12 @@ export const KYC_REVIEW_REASON_CODES = [
 
 export type KycReviewReasonCode = (typeof KYC_REVIEW_REASON_CODES)[number];
 export type KycReviewAction = 'reject' | 'request_info';
+export const KYC_SECURITY_KINDS = ['purge_failed', 'purge_stalled', 'purge_missed', 'access_volume', 'monitor_test'] as const;
+export type KycSecurityKind = typeof KYC_SECURITY_KINDS[number];
+export type KycSecurityStatus = {
+  monitor: { enabledAt: string; lastCheckedAt: string | null };
+  latestRun: { startedAt: string; completedAt: string | null; status: 'running' | 'succeeded' | 'failed'; claimed: number; purged: number; failed: number } | null;
+  pendingAlerts: number;
+  emailRecipients: number;
+  incidents: Array<{ kind: KycSecurityKind; count: number; occurredAt: string; resolvedAt: string | null; deliveryQueued: boolean }>;
+};

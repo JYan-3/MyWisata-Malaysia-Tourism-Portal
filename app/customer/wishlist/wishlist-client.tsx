@@ -68,7 +68,7 @@ export function SavedHubClient({ activities, destinations }: { activities: Compu
             <div className="flex items-center gap-2 text-[#ffcc00]"><Bookmark size={17} fill="currentColor" /><span className="text-xs font-bold uppercase tracking-[0.18em]">{tCustomer("ui.wishlist.shortlist")}</span></div>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold sm:text-4xl">{tCustomer("ui.wishlist.title")}</h1>
           </div>
-          <Link href="/customer" className="inline-flex items-center gap-2 self-start rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-[#ffd633] md:self-auto"><MapPin size={14} /> {tCustomer("ui.wishlist.explore")}</Link>
+          <Link href="/customer" className="inline-flex items-center gap-2 self-start rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-primary dark:text-[#010066] transition hover:bg-[#ffd633] md:self-auto"><MapPin size={14} /> {tCustomer("ui.wishlist.explore")}</Link>
         </div>
       </header>
 

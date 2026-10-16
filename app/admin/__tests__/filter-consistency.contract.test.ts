@@ -12,11 +12,13 @@ const FILTER_SURFACES = [
   "app/admin/kyc/page.tsx",
   "app/admin/withdrawals/page.tsx",
   "app/admin/refunds/page.tsx",
+  "app/admin/promotion-campaigns/page.tsx",
   "app/admin/recommendations/page.tsx",
   "app/admin/support/page.tsx",
   "app/admin/chat-reports/page.tsx",
   "app/admin/affiliate/page.tsx",
   "app/admin/reports/payouts/page.tsx",
+  "app/admin/reports/reconciliation/page.tsx",
   "components/admin/staff-conduct-panel.tsx",
 ] as const;
 

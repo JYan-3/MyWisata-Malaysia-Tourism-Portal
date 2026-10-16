@@ -12,7 +12,7 @@ describe("destination Explore redirects", () => {
     const homeSource = read("app/customer/home-client.tsx");
     const designDemoSource = read("app/customer/design-demo/design-demo-client.tsx");
 
-    expect(customerHomeSource).toContain("destinationHref(previewDestination.state)");
+    expect(customerHomeSource).toContain("destinationHref(activeDestination.state)");
     expect(customerHomeSource).not.toContain("/customer/explore?state=");
     expect(homeSource).toContain("destinationHref(destinationState)");
     expect(designDemoSource).toContain("destinationHref(state)");

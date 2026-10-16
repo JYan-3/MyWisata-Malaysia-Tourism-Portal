@@ -43,7 +43,8 @@
     "Orders": "订单",
     "Event Promos": "活动推广",
     "Event Registrations": "报名审核",
-    "Announcements": "公告"
+    "Announcements": "公告",
+    "System Settings": "系统设置"
   },
   "navigationSections": {
     "workspace": "工作区",
@@ -1452,6 +1453,43 @@
       "title": "已验证用户",
       "count_one": "{{count}} 个账户",
       "count_other": "{{count}} 个账户"
+    },
+    "mfa": {
+      "title": "验证你的验证器",
+      "description": "KYC 审核除了登录，还需要验证器验证码。",
+      "start": "绑定或验证验证器",
+      "working": "请稍候…",
+      "scan": "用你自己的验证器 App 扫描二维码，再输入六位验证码。请妥善保密二维码。",
+      "qrAlt": "私人验证器绑定二维码",
+      "code": "六位验证器验证码",
+      "verify": "验证并继续",
+      "cancel": "取消绑定",
+      "setupError": "无法开始验证器验证。请重试或刷新页面。",
+      "verifyError": "验证失败。请输入新的验证码再试。",
+      "cancelError": "无法取消绑定，请重试。",
+      "recovery": "如果遗失验证器，请联系项目管理员，在核实身份后恢复访问。不要向客服发送二维码、密钥或验证码。"
+    },
+    "security": {
+      "title": "KYC 安全状态",
+      "description": "删除运行记录和证件访问告警。通知已入队不代表邮件已送达。",
+      "unavailable": "无法读取安全状态，请刷新重试。",
+      "run": "最近删除任务：{{status}}",
+      "counts": "领取 {{claimed}} · 删除 {{purged}} · 失败 {{failed}}",
+      "checked": "监控最近检查：{{time}}",
+      "notChecked": "尚未检查",
+      "pending": "{{count}} 条安全告警正在等待符合权限的接收者。",
+      "queued": "通知已入队",
+      "notQueued": "等待接收者",
+      "resolved": "已恢复",
+      "status": {
+        "running": "运行中",
+        "succeeded": "成功",
+        "failed": "失败",
+        "none": "尚无运行记录"
+      },
+      "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。",
+      "pending_one": "{{count}} 条安全告警正在等待符合权限的接收者。",
+      "pending_other": "{{count}} 条安全告警正在等待符合权限的接收者。"
     }
   },
   "reconciliation": {
@@ -1486,6 +1524,21 @@
       "affiliate": "联盟",
       "recommendation": "推荐",
       "platformNet": "平台净额"
+    },
+    "filters": {
+      "search": "搜索订单号",
+      "clear": "清除筛选",
+      "unknownStatus": "其他状态",
+      "orderWithoutNumber": "订单号未提供",
+      "noMatches": "没有符合筛选条件的订单。",
+      "scope": "财务筛选同步作用于表格、金额汇总和 CSV；金额仅反映已载入的结算数据。",
+      "count": "显示 {{shown}} / {{total}} 笔已载入订单。",
+      "net": {
+        "all": "全部净额",
+        "positive": "正数",
+        "zero": "零",
+        "negative": "负数"
+      }
     }
   },
   "payouts": {
@@ -2051,6 +2104,53 @@
       "title": "钱包审批人",
       "userLabel": "符合条件的用户"
     },
+    "systemSettings": {
+      "eyebrow": "平台控制",
+      "title": "系统设置",
+      "description": "在事故或计划维护期间，暂时暂停指定的顾客操作。",
+      "loading": "正在读取系统设置…",
+      "retry": "重试",
+      "unsaved": "有未保存的更改",
+      "active": "运行中",
+      "paused": "已暂停",
+      "neverUpdated": "尚无更改记录",
+      "unknownActor": "未知管理员",
+      "updated": "最近由 {{by}} 于 {{date}} 修改",
+      "saved": "系统设置已保存并记录。",
+      "controls": {
+        "title": "平台控制",
+        "description": "保存后会影响新的操作。"
+      },
+      "orders": {
+        "title": "暂停顾客新订单",
+        "description": "阻止新的购物车、活动预订及订单付款结账请求。",
+        "existing": "已创建订单仍可继续确认付款、履约、取消、退款及客服处理。"
+      },
+      "email": {
+        "title": "暂停自定义邮件发送",
+        "description": "暂存队列中的自定义 SMTP 邮件，并暂停平台直接发送的邮件。重新启用后会继续发送待处理邮件。",
+        "authExemption": "Supabase Auth 验证邮件和密码重设邮件不受影响。暂停时已经开始发送的邮件可能完成。"
+      },
+      "reasonLabel": "更改原因",
+      "reasonPlaceholder": "说明事故或维护原因（至少 10 个字符）。",
+      "impact": {
+        "title": "更改影响",
+        "description": "这些控制用于临时事故处理和维护。",
+        "orders": "暂停订单：阻止顾客创建新订单，不会取消已创建订单。",
+        "email": "暂停邮件：邮件保留在待发送队列，恢复后继续发送。",
+        "audit": "每次保存都会记录 Super Admin、时间、修改前后内容及原因。"
+      },
+      "confirm": {
+        "title": "确认更改系统设置？",
+        "pauseDescription": "你将暂停至少一项正在运行的功能。这次更改和原因会写入审计记录。",
+        "resumeDescription": "你将恢复至少一项功能。这次更改和原因会写入审计记录。"
+      },
+      "errors": {
+        "load": "无法读取系统设置。",
+        "save": "无法保存系统设置。",
+        "reason": "请填写至少 10 个字符的原因后再保存。"
+      }
+    },
     "walletSettings": {
       "audit": {
         "category": "更改类别",
@@ -2164,6 +2264,69 @@
     },
     "loading": {
       "adminContent": "正在加载管理内容"
+    },
+    "platformFees": {
+      "eyebrow": "商家",
+      "title": "平台费用",
+      "back": "返回商家",
+      "description": "按商家等级设置平台对每件售出商品收取的费用，以及活动中售出商品的固定费用。",
+      "loading": "正在加载平台费用…",
+      "retry": "重试",
+      "saved": "平台费用已保存，将适用于此后付款的订单。",
+      "perItem": "件",
+      "readOnly": "您可以查看这些费用，只有超级管理员可以修改。",
+      "howItWorks": "商家每晚根据最近 90 天的销售额调整等级。修改仅适用于此后付款的订单，过往订单保留原收费。若订单有联盟或推荐奖励，费用会自动提高以覆盖该奖励。",
+      "tiers": {
+        "title": "商家等级",
+        "description": "每个等级按商品价格的百分比收费，或按每件商品收取固定金额。",
+        "tier": "等级 {{rank}}",
+        "name": "等级名称",
+        "feeType": "费用类型",
+        "percent": "商品价格百分比",
+        "fixed": "每件固定金额",
+        "percentValue": "费用 (%)",
+        "fixedValue": "每件费用 (RM)",
+        "minSales": "所需销售额（最近 90 天）",
+        "minSalesHint": "商家 90 天销售额达到此金额即升至此等级。",
+        "entryTier": "所有商家从此等级开始。",
+        "vendors": "此等级有 {{count}} 个商家",
+        "vendors_one": "此等级有 {{count}} 个商家",
+        "vendors_other": "此等级有 {{count}} 个商家",
+        "preview": "{{qty}} 件 × {{price}} → 费用 {{fee}}（{{label}}）"
+      },
+      "events": {
+        "title": "活动费用",
+        "description": "从活动页面下单的商品按每件固定费用收费，不使用商家等级费用。",
+        "default": "默认活动每件费用",
+        "defaultHint": "留空则活动商品按商家等级收费。",
+        "useTier": "使用等级费用",
+        "useDefault": "使用默认",
+        "none": "暂无进行中的活动。",
+        "campaignFee": "{{title}} 的每件费用"
+      },
+      "reasonLabel": "修改原因",
+      "reasonPlaceholder": "说明修改费用的原因（至少 10 个字符）。",
+      "confirm": {
+        "title": "保存平台费用？",
+        "description": "新费用适用于此后付款的订单，过往订单不会重新计价。"
+      },
+      "errors": {
+        "load": "无法加载平台费用。",
+        "save": "无法保存平台费用。",
+        "invalid": "请为每个等级填写名称和不小于 0 的费用。",
+        "percentTooHigh": "百分比费用必须低于 100%。",
+        "thresholdOrder": "等级 1 从 RM0 开始，每个更高等级所需销售额必须高于前一级。",
+        "reason": "保存前请输入至少 10 个字符的原因。"
+      },
+      "drawer": {
+        "title": "平台费用",
+        "current": "当前等级",
+        "sales": "销售额（最近 90 天）",
+        "pin": "等级分配",
+        "bySales": "自动（按销售额）",
+        "pinTo": "固定为 {{name}}",
+        "error": "无法加载该商家的平台费用。"
+      }
     }
   },
   "actions": {
@@ -2175,6 +2338,14 @@
   "email": {
     "draft": {
       "advisory": "AI 会起草以下消息——发送前请编辑确认。",
+      "recipientLanguage": "收件人语言：{{language}}",
+      "languageUnavailable": "请输入有效收件人邮箱，以检查其已保存的语言。",
+      "languageReview": "请按收件人语言检查主题和正文。更换邮箱会保留你的编辑，需要时请重新生成草稿。没有语言偏好则使用英文。",
+      "languages": {
+        "en": "英文",
+        "zh-CN": "华语",
+        "ms": "马来文"
+      },
       "close": "关闭",
       "recipient": "收件人邮箱",
       "recipientPlaceholder": "vendor@example.com",
@@ -3138,7 +3309,7 @@
       "description": "详细介绍",
       "startsAt": "首日日期",
       "endsAt": "最后一天日期",
-      "operatingHours": "每天营业时间",
+      "operatingHours": "新增地点的默认营业时间",
       "operatingHoursFrom": "每天开始营业",
       "operatingHoursTo": "每天结束营业",
       "timezone": "日期与每天营业时间均为马来西亚时间（UTC+08:00）。",
@@ -3147,10 +3318,41 @@
       "poster": "活动海报",
       "choosePoster": "选择图片",
       "removePoster": "移除海报",
-      "saveChanges": "发布更改",
+      "saveChanges": "保存草稿修改",
       "saveDraft": "发布活动",
       "cancelEdit": "取消编辑",
-      "changesSaved": "更改已保存。"
+      "changesSaved": "更改已保存。",
+      "saveOnly": "保存草稿",
+      "draftSaved": "草稿已保存，尚未发布。",
+      "published": "活动已发布。",
+      "savedRecovery": "已保存的活动仍保留，请从此表单或活动列表继续处理。",
+      "pendingRecovery": "活动已提交，请点击「发布活动」完成发布；此阶段暂不可编辑基础资料。",
+      "unsaved": "有尚未保存的修改",
+      "discardConfirm": "放弃表单中尚未保存的修改吗？",
+      "completeChecklist": "发布前请完成缺少的项目。基础资料填写完整后，即使还没有海报或地点，也可以先保存草稿。",
+      "checklistTitle": "发布前检查",
+      "checkDone": "已完成：{{item}}",
+      "checkMissing": "待完成：{{item}}",
+      "rowNotReady": "发布前请添加海报及尚未结束的有效地点。",
+      "slugHint": "填写 3–120 个小写英文字母、数字或连字符，例如 november-market。页面地址预览：",
+      "defaultsHint": "这些时间仅用于预填新增地点。顾客以各地点已保存的营业时间为准，已有地点不会自动改变。",
+      "previewPoster": "预览活动海报",
+      "checks": {
+        "basics": "基础资料完整，日期及默认时间有效",
+        "poster": "已上传活动海报",
+        "location": "至少一个日期在活动范围内、尚未结束的有效地点",
+        "savedLocations": "正在编辑的地点已保存或取消"
+      },
+      "fieldErrors": {
+        "title": "活动标题需要 3–120 个字符。",
+        "slug": "页面地址需要 3–120 个小写英文字母、数字及单个连字符。",
+        "summary": "简短介绍需要 10–240 个字符。",
+        "description": "详细介绍需要 10–5,000 个字符。",
+        "startsAt": "请选择有效的首日日期。",
+        "endsAt": "最后一天不能早于首日。",
+        "posterUrl": "请选择有效的活动海报。",
+        "operatingHours": "请填写有效的默认开门及关门时间。"
+      }
     },
     "locations": {
       "changeReason": "修改原因",
@@ -3195,7 +3397,7 @@
       "opensAt": "开始营业",
       "closesAt": "结束营业",
       "pin": "地图标记",
-      "pinHint": "将标记拖到确切位置（可选）。",
+      "pinHint": "尚未选择地图位置。请搜索场地或主动放置标记（可选）。",
       "pinSet": "已标记于 {{latitude}}, {{longitude}}",
       "clearPin": "清除标记",
       "addressTba": "地址待公布",
@@ -3226,14 +3428,26 @@
       "applicationsCloseAt": "报名截止（马来西亚时间）",
       "approvalsCloseAt": "审批截止（马来西亚时间）",
       "setupStartsAt": "布展开始（马来西亚时间）",
-      "intakeScheduleHint": "报名截止 → 审批截止 → 布展开始 → 首日开门。关闭报名不会暂停顾客预订。"
+      "intakeScheduleHint": "报名截止 → 审批截止 → 布展开始 → 首日开门。关闭报名不会暂停顾客预订。",
+      "placePin": "放置标记后，请拖动到准确场地",
+      "placeHeading": "1. 场地与地图",
+      "scheduleHeading": "2. 日期与每日营业时间",
+      "intakeHeading": "3. 商家报名与准备安排",
+      "missingFields": "请补充或检查：{{fields}}"
     },
     "list": {
       "title": "活动工作流",
       "description": "当前列表有 {{count}} 个活动",
       "description_one": "当前列表有 {{count}} 个活动",
       "description_other": "当前列表有 {{count}} 个活动",
-      "rejection": "审核备注"
+      "rejection": "审核备注",
+      "search": "搜索活动标题或页面地址",
+      "statusFilter": "审批状态",
+      "scheduleLabel": "运营安排",
+      "dateFrom": "活动范围起日",
+      "dateTo": "活动范围止日",
+      "noMatches": "没有符合筛选条件的活动",
+      "scheduleLine": "营业排期：{{status}}"
     },
     "states": {
       "loading": "正在加载活动…",
@@ -3273,6 +3487,13 @@
       "save": "无法保存活动草稿。",
       "transition": "无法更新此活动。",
       "upload": "无法上传海报。"
+    },
+    "schedule": {
+      "unconfigured": "尚无有效地点",
+      "upcoming": "尚未开始",
+      "operating": "当前营业中",
+      "between_sessions": "营业时段之间",
+      "ended": "已结束"
     }
   },
   "eventRegistrations": {
@@ -3470,5 +3691,128 @@
       "pauseSuccess": "推广已暂停——已对顾客隐藏。",
       "resumeSuccess": "推广已发布——顾客可重新看到。"
     }
+  },
+  "eventOperations": {
+    "pickupOverdue": "取货日期已过，领取结果待核实",
+    "pickupHelp": "未领取不等于顾客缺席。请核对商品和联系记录后结案；待核实金额不代表已批准退款金额。",
+    "refreshPickups": "刷新过期未领取订单",
+    "resolvePickup": "核实取货／退款后结案",
+    "confirmNoShow": "确认顾客未领取（不退款结案）",
+    "noShowNote": "说明已核实的顾客未领取原因及联系证据（20–500 字符）。",
+    "resolveNote": "说明已核实的取货或退款完成证据（5–500 字符）。",
+    "noShowConfirm": "确认顾客未领取且无需退款？这会记录不退款结案，不会把商品标为已领取。款项仍须满足等待期及其他解冻检查。",
+    "resolutions": {
+      "customer_no_show": "已核实顾客未领取，不退款结案",
+      "collected": "已核实取货记录",
+      "refunded": "已确认退款完成"
+    },
+    "title": "待处理活动异常",
+    "summary": "待处理：{{open}} · 未认领：{{unassigned}} · 未设期限：{{undated}} · 逾期：{{overdue}} · 待处理金额：{{amount}}",
+    "deadlineHelp": "期限用于跟进处理。到期不会自动退款或关闭订单。时间均为马来西亚时间。",
+    "dueRequired": "请选择未来的处理期限。",
+    "conflict": "记录已变化或你没有操作权限，请刷新后重新审核。",
+    "expiryJob": "过期预订清理",
+    "refundJob": "活动退款处理",
+    "neverRun": "尚无运行记录",
+    "running": "运行中",
+    "failed": "上次运行失败",
+    "stale": "近期无完成记录",
+    "healthy": "上次运行完成",
+    "empty": "没有待处理活动异常。",
+    "orderWithoutNumber": "订单编号待生成",
+    "paymentException": "已收款，但预订无法履约",
+    "refundAttention": "退款需要跟进",
+    "owner": "负责人",
+    "unassigned": "尚未认领",
+    "undated": "尚未设置期限",
+    "overdue": "已逾期",
+    "reviewRefund": "审核退款",
+    "dueMalaysia": "处理期限（马来西亚时间）",
+    "claim": "认领／更新我的期限",
+    "boundedList": "显示前 100 条待处理记录；汇总包含全部待处理记录。",
+    "collectedRefundNote": "请说明已取货商品获准退款的原因。",
+    "collected": "已取货",
+    "uncollected": "未取货",
+    "shortage": "处理该日期的缺货",
+    "shortageReason": "请说明已确认的缺货原因。",
+    "shortageConfirm": "停止此商品在该日期的新预订，并取消 {{orders}} 个受影响订单（{{units}} 件；已付款 {{amount}}）？已取货及其他订单会受到保护。",
+    "filters": {
+      "search": "搜索异常订单号",
+      "globalScope": "概览包含全部待处理异常；下方筛选作用于异常列表及匹配的待处理金额。",
+      "matching": "匹配 {{count}} 条异常 · 待处理 {{amount}}",
+      "noMatches": "没有符合筛选条件的异常。",
+      "refundConfirmed": "退款完成已确认",
+      "closureRecorded": "已记录异常关闭",
+      "page": "第 {{page}} / {{pages}} 页",
+      "previous": "上一页",
+      "next": "下一页",
+      "labels": {
+        "caseKind": "异常类型",
+        "caseHandling": "处理状态",
+        "caseOwner": "负责人",
+        "caseDeadline": "期限情况"
+      },
+      "caseKind": {
+        "pickup_overdue": "取货日期已过，领取结果待核实",
+        "all": "全部类型",
+        "payment_unfulfillable": "已收款但无法履约",
+        "refund_attention": "退款需处理"
+      },
+      "caseHandling": {
+        "open": "待处理",
+        "needs_review": "待审核",
+        "awaiting_provider": "等待支付平台结果",
+        "refund_failed": "退款失败",
+        "resolved": "已关闭",
+        "all": "全部处理状态"
+      },
+      "caseOwner": {
+        "all": "全部负责人",
+        "unassigned": "未认领",
+        "mine": "我负责的",
+        "others": "其他人负责的"
+      },
+      "caseDeadline": {
+        "all": "全部期限",
+        "overdue": "已逾期",
+        "upcoming": "未到期",
+        "undated": "未设置期限"
+      },
+      "matching_one": "匹配 {{count}} 条异常 · 待处理 {{amount}}",
+      "matching_other": "匹配 {{count}} 条异常 · 待处理 {{amount}}"
+    }
+  },
+  "passkey": {
+    "title": "后台安全验证",
+    "description": "使用已绑定设备，通过脸部识别、指纹或设备 PIN 验证。生物识别资料保留在你的设备上。",
+    "verify": "验证通行密钥",
+    "verifyAndConfirm": "验证并确认",
+    "working": "正在验证…",
+    "grantLabel": "一次性设备绑定码",
+    "deviceLabel": "设备名称",
+    "defaultDevice": "我的设备",
+    "register": "绑定设备",
+    "registered": "设备已绑定。请再验证通行密钥以继续。",
+    "enrollmentRequired": "请向有权限的管理员申请一次性绑定码。如果取消绑定，请申请新的绑定码。",
+    "passwordRequired": "请先使用账号密码登录，再验证设备。",
+    "passwordLogin": "返回密码登录",
+    "manage": "安全与设备",
+    "remove": "移除设备",
+    "recovery": "建议绑定备用设备。若所有设备遗失，请联系有权限的管理员，在核实身份后恢复。",
+    "rateLimited": "尝试次数过多，请稍等几分钟后重试。",
+    "unsupported": "当前浏览器或连接不支持通行密钥，请使用兼容设备和安全连接。",
+    "retryRequired": "设备或提现资料已变化，请刷新页面后重新验证。",
+    "unavailable": "安全验证暂时无法使用，请联系管理员后再继续。",
+    "failed": "验证已取消或失败，请重试。"
+  },
+  "staffMfa": {
+    "eyebrow": "后台账号安全",
+    "title": "验证你的验证器",
+    "description": "进入后台管理功能前，请先输入验证器 App 的动态验证码。"
+  },
+  "security": {
+    "eyebrow": "账户安全",
+    "title": "验证身份验证器",
+    "description": "进入管理后台除了密码，还需要输入身份验证器应用中的验证码。"
   }
 }

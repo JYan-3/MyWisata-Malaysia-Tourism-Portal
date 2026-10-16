@@ -300,7 +300,8 @@ export function ruleBasedBudgetGuardMessages(result: BudgetGuardResult): BudgetG
   return messages;
 }
 
-export async function generateBudgetGuardMessages(result: BudgetGuardResult, lang: ChatLanguage): Promise<BudgetGuardMessagesResult> {
+/** `useAi: false` (caller over its AI quota) skips the model and returns the rule-based messages. */
+export async function generateBudgetGuardMessages(result: BudgetGuardResult, lang: ChatLanguage, useAi = true): Promise<BudgetGuardMessagesResult> {
   if (!result.isOverBudget) {
     return { messages: [], mode: 'within-budget' };
   }
@@ -309,6 +310,7 @@ export async function generateBudgetGuardMessages(result: BudgetGuardResult, lan
   if (!result.overBudgetItems.some((item) => item.alternatives.length > 0)) {
     return { messages: [], mode: 'rule-based' };
   }
+  if (!useAi) return { messages: ruleBasedBudgetGuardMessages(result), mode: 'rule-based' };
 
   try {
     const raw = await callGemini(buildBudgetGuardSystemPrompt(lang), JSON.stringify(result), { temperature: 0.5, maxOutputTokens: 500 });

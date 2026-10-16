@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -295,6 +296,7 @@ export function KycReviewDetailContent({
 }
 
 export function KycReviewDetail({ submissionId }: { submissionId: string }) {
+  const router = useRouter();
   const { t } = useTranslation("admin");
   const { showFeedback } = useActionFeedback();
   const [detail, setDetail] = useState<AdminKycReviewDetail | null>(null);
@@ -308,6 +310,11 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
     try {
       const response = await fetch(`/api/admin/kyc/submissions/${submissionId}`, { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
+      if (body.error?.code === "KYC_MFA_REQUIRED") {
+        setDetail(null);
+        router.replace(`/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}`);
+        return;
+      }
       if (response.status === 404) {
         setNotFound(true);
         setDetail(null);
@@ -323,19 +330,36 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [submissionId, t]);
+  }, [submissionId, t, router]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   async function openDocument(side: "front" | "back") {
     if (!detail) return;
+    const documentWindow = window.open("about:blank", "_blank");
+    if (documentWindow) documentWindow.opener = null;
     try {
-      const response = await fetch(`/api/admin/kyc/documents/${detail.submission.id}/${side}`);
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
-      window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
+      const response = await fetch(`/api/admin/kyc/documents/${detail.submission.id}/${side}`, { cache: "no-store" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        if (body.error?.code === "KYC_MFA_REQUIRED") {
+          documentWindow?.close();
+          setDetail(null);
+          router.replace(`/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}`);
+          return;
+        }
+        throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
+      }
+      const url = URL.createObjectURL(await response.blob());
+      if (documentWindow) documentWindow.location.replace(url);
+      else {
+        URL.revokeObjectURL(url);
+        throw new Error(t("kyc.errors.loadDocument"));
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
+      documentWindow?.close();
       const message = err instanceof Error ? err.message : t("kyc.errors.loadDocument");
       setError(message);
       showFeedback("error", message);
@@ -359,6 +383,11 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
         }),
       });
       const body = await response.json().catch(() => ({}));
+      if (body.error?.code === "KYC_MFA_REQUIRED") {
+        setDetail(null);
+        router.replace(`/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}`);
+        return;
+      }
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.reviewFailed"));
       await load();
       showFeedback(

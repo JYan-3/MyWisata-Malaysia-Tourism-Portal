@@ -89,28 +89,28 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
   return (
     <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">{t('variants.title')}</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('variants.title')}</h3>
         {!readOnly && !adding && <Button variant="outline" size="sm" onClick={() => setAdding(true)}><span aria-hidden="true">+</span>{t('variants.add')}</Button>}
       </div>
 
       {!readOnly && adding && (
-        <div className="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end">
-          <label htmlFor="variant-name" className="grid gap-1 text-xs font-medium text-gray-600">
+        <div className="grid gap-3 rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end">
+          <label htmlFor="variant-name" className="grid gap-1 text-xs font-medium text-gray-600 dark:text-muted-foreground">
             {t('variants.name')}
-            <Input id="variant-name" placeholder={t('variants.namePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} className="h-9 bg-white text-sm" />
+            <Input id="variant-name" placeholder={t('variants.namePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} className="h-9 bg-white dark:bg-card text-sm" />
           </label>
-          <label htmlFor="variant-price-offset" className="grid gap-1 text-xs font-medium text-gray-600">
+          <label htmlFor="variant-price-offset" className="grid gap-1 text-xs font-medium text-gray-600 dark:text-muted-foreground">
             {t('variants.priceOffset')}
-            <Input id="variant-price-offset" placeholder={t('variants.priceOffsetPlaceholder')} type="number" step="0.01" value={newPriceOffset} onChange={e => setNewPriceOffset(e.target.value)} className="h-9 bg-white text-sm" />
+            <Input id="variant-price-offset" placeholder={t('variants.priceOffsetPlaceholder')} type="number" step="0.01" value={newPriceOffset} onChange={e => setNewPriceOffset(e.target.value)} className="h-9 bg-white dark:bg-card text-sm" />
           </label>
           <Button size="sm" onClick={handleAdd}>{tCommon('actions.save')}</Button>
           <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>{tCommon('actions.cancel')}</Button>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-border">
         <table className="min-w-[620px] w-full text-left text-sm" aria-label={t('variants.title')}>
-          <thead className="bg-gray-50 text-gray-500">
+          <thead className="bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">{t('variants.name')}</th>
               <th className="px-4 py-3 text-right font-medium">{t('variants.priceOffset')}</th>
@@ -118,20 +118,20 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
               <th className="px-4 py-3 font-medium"><span className="sr-only">{t('variants.title')}</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-border">
             {variants.map(v => (
-              <tr key={v.id} className="hover:bg-gray-50/50">
+              <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">{v.name}</span>
+                    <span className="font-medium text-gray-900 dark:text-foreground">{v.name}</span>
                     {v.is_default && <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">{t('variants.default')}</span>}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatMYR(Math.abs(v.price_offset))}</td>
+                <td className="px-4 py-3 text-right text-gray-700 dark:text-foreground">{formatMYR(Math.abs(v.price_offset))}</td>
                 {!requiresBooking && (
                   <td className="px-4 py-3 text-right">
-                    {readOnly ? <span className="font-medium text-gray-900">{inventoryFor(v)?.quantity ?? 0}</span> : <button type="button" onClick={() => handleInventoryUpdate(v.id, inventoryFor(v)?.quantity ?? 0)} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10">{inventoryFor(v)?.quantity ?? 0}</button>}
-                    <span className="ml-1 text-xs text-gray-400">({inventoryFor(v)?.reserved ?? 0} {t('variants.reservedShort')})</span>
+                    {readOnly ? <span className="font-medium text-gray-900 dark:text-foreground">{inventoryFor(v)?.quantity ?? 0}</span> : <button type="button" onClick={() => handleInventoryUpdate(v.id, inventoryFor(v)?.quantity ?? 0)} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10">{inventoryFor(v)?.quantity ?? 0}</button>}
+                    <span className="ml-1 text-xs text-gray-400 dark:text-muted-foreground">({inventoryFor(v)?.reserved ?? 0} {t('variants.reservedShort')})</span>
                   </td>
                 )}
                 <td className="space-x-2 px-4 py-3 text-right">

@@ -7,7 +7,7 @@ import {POST} from '../route';
 const orderId='11111111-1111-4111-8111-111111111111';
 const guestId='22222222-2222-4222-8222-222222222222';
 const userId='33333333-3333-4333-8333-333333333333';
-const request=()=>new Request('https://app.example/api/orders/'+orderId+'/refund',{method:'POST',headers:{'content-type':'application/json',origin:'https://app.example'},body:JSON.stringify({reason:'Please cancel this purchase'})});
+const request=(extra:Record<string,unknown>={})=>new Request('https://app.example/api/orders/'+orderId+'/refund',{method:'POST',headers:{'content-type':'application/json',origin:'https://app.example'},body:JSON.stringify({reason:'Please cancel this purchase',...extra})});
 const params={params:Promise.resolve({orderId})};
 beforeEach(()=>{vi.clearAllMocks();mocks.rpc.mockResolvedValue({data:{id:'refund-fixture',status:'pending'},error:null});mocks.from.mockReturnValue({select:()=>({eq:async()=>({data:[],error:null})})});mocks.notify.mockResolvedValue({});});
 describe('refund requests retain the exact authorized buyer',()=>{
@@ -24,4 +24,15 @@ describe('refund requests retain the exact authorized buyer',()=>{
  it('does not request any refund when order authorization fails',async()=>{
   mocks.authorize.mockResolvedValue(null);expect((await POST(request(),params)).status).toBe(404);expect(mocks.rpc).not.toHaveBeenCalled();
  });
+ it.each(['guest','account'])('binds a structured reason to the authorized %s identity',async(kind)=>{
+  const isGuest=kind==='guest';
+  mocks.authorize.mockResolvedValue({order:{id:orderId,status:'paid'},userId:isGuest?null:userId,guestSubjectId:isGuest?guestId:null});
+  expect((await POST(request({reasonCode:'unavailable'}),params)).status).toBe(201);
+  expect(mocks.rpc).toHaveBeenCalledWith('request_order_refund_with_reason',{p_order:orderId,p_user:isGuest?null:userId,p_guest:isGuest?guestId:null,p_reason:'Please cancel this purchase',p_code:'unavailable'});
+ });
+ it('rejects buyer and pickup claims supplied with a refund reason',async()=>{
+  expect((await POST(request({reasonCode:'unavailable',userId:'forged-user',collected:false}),params)).status).toBe(422);
+  expect(mocks.rpc).not.toHaveBeenCalled();
+ });
+
 });

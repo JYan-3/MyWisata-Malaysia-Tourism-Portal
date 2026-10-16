@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { KycSecurityStatus } from "@/lib/kyc/types";
 import { Clock3, FileCheck2, Search, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -17,6 +19,10 @@ function dateLabel(value: string | null | undefined, locale: AppLocale) {
 
 export default function AdminKycPage() {
   const { t, i18n } = useTranslation("admin");
+  const { t: tCommon } = useTranslation("common");
+  const router = useRouter();
+  const [security, setSecurity] = useState<KycSecurityStatus | null>(null);
+  const [securityError, setSecurityError] = useState(false);
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [users, setUsers] = useState<User[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, AdminKycSubmission>>(new Map());
@@ -29,6 +35,13 @@ export default function AdminKycPage() {
     try {
       const response = await fetch("/api/admin/kyc/submissions", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
+      if (body.error?.code === "KYC_MFA_REQUIRED") {
+        setUsers([]);
+        setSubmissions(new Map());
+        setSecurity(null);
+        router.replace("/admin/kyc/mfa?next=%2Fadmin%2Fkyc");
+        return;
+      }
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.loadSubmissions"));
       setUsers((body.data?.customers ?? []).map((customer: Pick<User, "id" | "name" | "email" | "verificationTier">) => ({
         ...customer,
@@ -38,10 +51,17 @@ export default function AdminKycPage() {
       setSubmissions(new Map((body.data?.submissions ?? []).map((submission: AdminKycSubmission) => [submission.userId, submission])));
       setVerifiedCount(body.data?.verifiedCount ?? 0);
       setError(null);
+      try {
+        const statusResponse = await fetch("/api/admin/kyc/security-status", { cache: "no-store" });
+        const statusBody = await statusResponse.json();
+        if (!statusResponse.ok || !statusBody.data) throw new Error();
+        setSecurity(statusBody.data as KycSecurityStatus);
+        setSecurityError(false);
+      } catch { setSecurityError(true); }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("kyc.errors.loadQueue"));
     }
-  }, [t]);
+  }, [router, t]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
@@ -67,6 +87,25 @@ export default function AdminKycPage() {
         description={t("kyc.description")}
       />
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-semibold text-foreground">{t("kyc.security.title")}</h2>
+        <p className="text-sm text-muted-foreground">{t("kyc.security.description")}</p>
+        {securityError && <p role="alert" className="text-sm text-destructive">{t("kyc.security.unavailable")}</p>}
+        {security && <>
+          {security.emailRecipients === 0 && <p role="alert" className="text-sm text-destructive">{t("kyc.security.noEmailRecipients")}</p>}
+          <p className="text-sm">{t("kyc.security.run", { status: t(`kyc.security.status.${security.latestRun?.status ?? "none"}`) })}</p>
+          {security.latestRun && <p className="text-sm text-muted-foreground">{t("kyc.security.counts", { claimed: security.latestRun.claimed, purged: security.latestRun.purged, failed: security.latestRun.failed })} · {new Date(security.latestRun.startedAt).toLocaleString(locale)}</p>}
+          <p className="text-sm text-muted-foreground">{t("kyc.security.checked", { time: security.monitor.lastCheckedAt ? new Date(security.monitor.lastCheckedAt).toLocaleString(locale) : t("kyc.security.notChecked") })}</p>
+          {security.pendingAlerts > 0 && <p role="alert" className="text-sm text-destructive">{t("kyc.security.pending", { count: security.pendingAlerts })}</p>}
+          {security.incidents.length > 0 && <ul className="space-y-2 border-t border-border pt-3">
+            {security.incidents.map((incident, index) => <li key={`${incident.occurredAt}-${index}`} className="text-sm">
+              <p>{tCommon(`notifications.events.kycSecurity.${incident.kind}`, { count: incident.count })}</p>
+              <p className="text-xs text-muted-foreground">{new Date(incident.occurredAt).toLocaleString(locale)} · {t(incident.deliveryQueued ? "kyc.security.queued" : "kyc.security.notQueued")}{incident.resolvedAt ? ` · ${t("kyc.security.resolved")}` : ""}</p>
+            </li>)}
+          </ul>}
+        </>}
+      </section>
 
       <AdminMetricGrid items={[
         { label: t("kyc.metrics.pending"), value: pendingReview.length, detail: t("kyc.metrics.pendingNote") },

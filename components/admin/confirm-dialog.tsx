@@ -14,9 +14,10 @@ type Props = {
   busy?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  confirmControl?: ReactNode;
 };
 
-export function AdminConfirmDialog({ open, title, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm }: Props) {
+export function AdminConfirmDialog({ open, title, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm, confirmControl }: Props) {
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   useEffect(() => {
@@ -34,7 +35,7 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4" role="presentation">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200">
             <AlertTriangle size={19} />
           </div>
           <div className="min-w-0 flex-1">
@@ -51,7 +52,7 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel")}</Button>
-          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>
+          {confirmControl ?? <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>}
         </div>
       </div>
     </div>

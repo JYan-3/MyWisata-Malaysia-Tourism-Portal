@@ -73,16 +73,16 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <p className="text-sm text-gray-400">{t('share.loading')}</p>
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+        <p className="text-sm text-gray-400 dark:text-muted-foreground">{t('share.loading')}</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <p className="text-sm text-rose-600">{error}</p>
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+        <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>
       </div>
     );
   }
@@ -99,21 +99,21 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
         <StatCard icon={ShoppingBag} label={t('share.ordersFromShares')} value={stats.totals.orders} tone="amber" />
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-6 py-4">
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               <Share2 size={14} /> {t('share.performance')}
             </div>
-            <h3 className="text-lg font-bold text-gray-950">{t('share.byListing')}</h3>
+            <h3 className="text-lg font-bold text-gray-950 dark:text-foreground">{t('share.byListing')}</h3>
           </div>
-          <div className="flex gap-1 rounded-lg bg-gray-50 p-1 text-xs font-semibold">
+          <div className="flex gap-1 rounded-lg bg-gray-50 dark:bg-muted/50 p-1 text-xs font-semibold">
             {(['shares', 'clicks', 'orders'] as SortKey[]).map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setSortKey(key)}
-                className={`rounded-md px-3 py-1.5 capitalize ${sortKey === key ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}
+                className={`rounded-md px-3 py-1.5 capitalize ${sortKey === key ? 'bg-white dark:bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}
               >
                 {t(`share.sort.${key}`)}
               </button>
@@ -122,12 +122,12 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
         </div>
 
         {listings.length === 0 ? (
-          <p className="px-6 py-14 text-center text-sm text-gray-400">{t('share.empty')}</p>
+          <p className="px-6 py-14 text-center text-sm text-gray-400 dark:text-muted-foreground">{t('share.empty')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-gray-100">
-                <tr className="text-gray-500">
+              <thead className="border-b border-gray-100 dark:border-border">
+                <tr className="text-gray-500 dark:text-muted-foreground">
                   <th className="px-6 py-4 font-medium">{t('share.listing')}</th>
                   <th className="px-6 py-4 text-right font-medium">{t('share.shares')}</th>
                   <th className="px-6 py-4 font-medium">{t('share.topPlatform')}</th>
@@ -151,7 +151,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
         )}
 
         {!stats.sourceTrackingActive && listings.length > 0 && (
-          <p className="border-t border-gray-100 bg-gray-50 px-6 py-3 text-xs text-gray-500">
+          <p className="border-t border-gray-100 dark:border-border bg-gray-50 dark:bg-muted/50 px-6 py-3 text-xs text-gray-500 dark:text-muted-foreground">
             {t('share.trackingNotice')}
           </p>
         )}
@@ -161,16 +161,16 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
 }
 
 function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Share2; label: string; value: number; tone: 'teal' | 'blue' | 'amber' }) {
-  const toneClass = { teal: 'bg-secondary text-primary', blue: 'bg-secondary text-primary', amber: 'bg-amber-50 text-amber-700' }[tone];
+  const toneClass = { teal: 'bg-secondary text-primary', blue: 'bg-secondary text-primary', amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200' }[tone];
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-full ${toneClass}`}>
           <Icon size={18} />
         </div>
-        <p className="font-medium text-gray-600">{label}</p>
+        <p className="font-medium text-gray-600 dark:text-muted-foreground">{label}</p>
       </div>
-      <p className="text-2xl font-bold tracking-tight text-gray-950">{value.toLocaleString()}</p>
+      <p className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{value.toLocaleString()}</p>
     </div>
   );
 }
@@ -179,42 +179,42 @@ function ListingRow({ listing, expanded, onToggle, translate }: { listing: Listi
   const hasBreakdown = listing.platformBreakdown.length > 0;
   return (
     <>
-      <tr className="hover:bg-gray-50/60">
+      <tr className="hover:bg-gray-50/60 dark:hover:bg-muted/60">
         <td className="px-6 py-4">
           <button
             type="button"
             onClick={hasBreakdown ? onToggle : undefined}
             disabled={!hasBreakdown}
-            className="flex items-center gap-2 text-left font-medium text-gray-900 disabled:cursor-default"
+            className="flex items-center gap-2 text-left font-medium text-gray-900 dark:text-foreground disabled:cursor-default"
           >
             {hasBreakdown ? (
-              expanded ? <ChevronDown size={14} className="shrink-0 text-gray-400" /> : <ChevronRight size={14} className="shrink-0 text-gray-400" />
+              expanded ? <ChevronDown size={14} className="shrink-0 text-gray-400 dark:text-muted-foreground" /> : <ChevronRight size={14} className="shrink-0 text-gray-400 dark:text-muted-foreground" />
             ) : (
               <span className="w-[14px] shrink-0" />
             )}
             {listing.listingName}
           </button>
-          <p className="mt-0.5 pl-[22px] text-xs text-gray-400 capitalize">{listing.listingType}</p>
+          <p className="mt-0.5 pl-[22px] text-xs text-gray-400 dark:text-muted-foreground capitalize">{listing.listingType}</p>
         </td>
-        <td className="px-6 py-4 text-right font-mono text-gray-900">{listing.shares}</td>
-        <td className="px-6 py-4 text-gray-700">{listing.topPlatform ? platformLabel(listing.topPlatform, translate) : '—'}</td>
-        <td className="px-6 py-4 text-right font-mono text-gray-900">{listing.clicks}</td>
-        <td className="px-6 py-4 text-right font-mono text-gray-900">{listing.orders}</td>
+        <td className="px-6 py-4 text-right font-mono text-gray-900 dark:text-foreground">{listing.shares}</td>
+        <td className="px-6 py-4 text-gray-700 dark:text-foreground">{listing.topPlatform ? platformLabel(listing.topPlatform, translate) : '—'}</td>
+        <td className="px-6 py-4 text-right font-mono text-gray-900 dark:text-foreground">{listing.clicks}</td>
+        <td className="px-6 py-4 text-right font-mono text-gray-900 dark:text-foreground">{listing.orders}</td>
       </tr>
       {expanded && hasBreakdown && (
-        <tr className="bg-gray-50/60">
+        <tr className="bg-gray-50/60 dark:bg-muted/60">
           <td colSpan={5} className="px-6 py-4 pl-[52px]">
             <ul className="space-y-1.5">
               {listing.platformBreakdown.map((p) => (
                 <li key={p.platform} className="flex items-center gap-3 text-xs">
-                  <span className="w-28 shrink-0 text-gray-500">{platformLabel(p.platform, translate)}</span>
-                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <span className="w-28 shrink-0 text-gray-500 dark:text-muted-foreground">{platformLabel(p.platform, translate)}</span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-muted">
                     <span
                       className="block h-full rounded-full bg-primary"
                       style={{ width: `${Math.max(6, (p.count / listing.platformBreakdown[0].count) * 100)}%` }}
                     />
                   </span>
-                  <span className="w-6 shrink-0 text-right font-mono text-gray-700">{p.count}</span>
+                  <span className="w-6 shrink-0 text-right font-mono text-gray-700 dark:text-foreground">{p.count}</span>
                 </li>
               ))}
             </ul>

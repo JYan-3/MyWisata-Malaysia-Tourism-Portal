@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { staffAssurance } from '@/lib/auth/staff-assurance';
+import { staffPasskeyEnforcementEnabled } from '@/lib/auth/staff-passkey-config';
+import { staffMfaRequiredForSession } from '@/lib/auth/staff-mfa';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { AuthUser } from '@/types';
 import type { RoleName } from '@/lib/constants';
@@ -74,7 +77,16 @@ export async function GET() {
   let staffRoleNames: string[] = [];
   let staffPermissionKeys: StaffPermissionKey[] = [];
   let staffModules: StaffModule[] = [];
+  let staffVerified = false;
+  let staffMfaRequired = false;
+  const staffPasskeyRequired = staffPasskeyEnforcementEnabled();
   if (roles.some((role) => ['admin', 'approver', 'staff', 'super_admin'].includes(role))) {
+    try { staffMfaRequired = await staffMfaRequiredForSession(supabase, authUser.id); }
+    catch { return NextResponse.json({ error: 'Staff authentication unavailable' }, { status: 503 }); }
+    if (staffPasskeyRequired) {
+      try { staffVerified = (await staffAssurance(supabase)).verified; }
+      catch { return NextResponse.json({ error: 'Staff verification unavailable' }, { status: 503 }); }
+    }
     const { data: staffAccess, error: staffAccessError } = await supabase.rpc('get_my_staff_access');
     if (staffAccessError) return NextResponse.json({ error: 'Staff access unavailable' }, { status: 503 });
     const access = staffAccess && typeof staffAccess === 'object' ? staffAccess as Record<string, unknown> : {};
@@ -152,6 +164,9 @@ export async function GET() {
       staffRoleNames,
       staffPermissionKeys,
       staffModules,
+      staffVerified,
+      staffPasskeyRequired,
+      staffMfaRequired,
     },
   });
 }

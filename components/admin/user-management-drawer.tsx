@@ -42,9 +42,9 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
 };
 
 function statusClass(status: string) {
-  if (status === "active") return "bg-emerald-50 text-emerald-700";
-  if (status === "suspended") return "bg-amber-50 text-amber-700";
-  return "bg-red-50 text-red-700";
+  if (status === "active") return "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-200";
+  if (status === "suspended") return "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200";
+  return "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-200";
 }
 
 export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
@@ -122,7 +122,7 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
           {detail.status === "active" && <><Button variant="outline" size="sm" disabled={busy} onClick={() => setAction("suspend")}><Ban size={14} /> {t(ACTION_LABELS.suspend)}</Button><Button variant="destructive" size="sm" disabled={busy || detail.pendingWithdrawalCount > 0} onClick={() => setAction("soft_delete")}><Trash2 size={14} /> {t(ACTION_LABELS.soft_delete)}</Button></>}
           {detail.status === "suspended" && <Button size="sm" disabled={busy} onClick={() => setAction("unsuspend")}><Unlock size={14} /> {t(ACTION_LABELS.unsuspend)}</Button>}
           {detail.status === "deleted" && <Button size="sm" disabled={busy} onClick={() => setAction("restore")}><RotateCcw size={14} /> {t(ACTION_LABELS.restore)}</Button>}
-        </div>{detail.pendingWithdrawalCount > 0 && detail.status === "active" && <p className="mt-2 text-xs text-amber-700">{t("userManagement.softDeleteDisabled")}</p>}</div>
+        </div>{detail.pendingWithdrawalCount > 0 && detail.status === "active" && <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">{t("userManagement.softDeleteDisabled")}</p>}</div>
         {action && <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><p className="text-sm font-semibold text-foreground">{t(ACTION_LABELS[action])}</p><p className="mt-1 text-xs text-muted-foreground">{t("userManagement.reasonHint")}</p><textarea value={reason} onChange={(event) => { setReason(event.target.value); if (error) setError(null); }} rows={3} maxLength={1000} placeholder={t("userManagement.reasonPlaceholder")} className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" />{error && <p role="alert" className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-sm text-destructive">{error}</p>}<div className="mt-2 flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => { setAction(null); setReason(""); setError(null); }}>{t("userManagement.cancel")}</Button><Button size="sm" onClick={() => { if (reason.trim().length < 10) { setError(t("userManagement.errors.reasonTooShort")); return; } setConfirmOpen(true); }} disabled={busy || reason.trim().length < 10}>{t("userManagement.reviewAction")}</Button></div></div>}
       </div>}
     </aside>

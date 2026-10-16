@@ -67,7 +67,7 @@ describe("customer activity image handling", () => {
 
   it("uses the saved-places navy bookmark style across customer save controls", () => {
     expect(saveToggleSource).toContain('appearance?: "icon" | "pill"');
-    expect(saveToggleSource).toContain("bg-white text-primary");
+    expect(saveToggleSource).toMatch(/bg-white(?: dark:bg-card)? text-primary/);
     expect(cardSource).toContain('appearance="icon"');
     expect(storyMapSource).toContain('appearance="icon"');
     expect(customerHomeSource).toContain('appearance="pill"');

@@ -32,15 +32,15 @@ export default function OutletPieChart({ data, total }: { data: ProductSale[]; t
   ];
 
   return (
-    <div className="flex min-h-[380px] h-full flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="flex min-h-[380px] h-full flex-col rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             {t('charts.product.topProducts')}
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">{t('charts.product.salesByProduct')}</h2>
-          <p className="text-sm text-gray-500">{t('charts.product.revenueDistribution')}</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.product.salesByProduct')}</h2>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t('charts.product.revenueDistribution')}</p>
         </div>
         <div className="rounded-xl bg-secondary p-2 text-primary">
           <ShoppingBag size={20} />
@@ -89,22 +89,22 @@ export default function OutletPieChart({ data, total }: { data: ProductSale[]; t
                   >
                     {rows[activeIndex]?.name}
                   </span>
-                  <span className="text-sm font-bold text-gray-900 leading-tight">
+                  <span className="text-sm font-bold text-gray-900 dark:text-foreground leading-tight">
                     {formatNumber(rows[activeIndex]?.percentage ?? 0, locale)}%
                   </span>
-                  <span className="mt-0.5 text-[10px] text-gray-400">
+                  <span className="mt-0.5 text-[10px] text-gray-400 dark:text-muted-foreground">
                     {formatMYR(rows[activeIndex]?.revenue ?? 0, locale)}
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-muted-foreground">
                     {formatNumber(data.length, locale)} {data.length === 1 ? t('charts.product.product') : t('charts.product.products')}
                   </span>
-                  <span className="mt-0.5 text-sm font-bold text-gray-900 leading-tight">
+                  <span className="mt-0.5 text-sm font-bold text-gray-900 dark:text-foreground leading-tight">
                     {formatMYR(total, locale)}
                   </span>
-                  <span className="mt-0.5 text-[10px] text-gray-400">{t('charts.product.total')}</span>
+                  <span className="mt-0.5 text-[10px] text-gray-400 dark:text-muted-foreground">{t('charts.product.total')}</span>
                 </>
               )}
             </div>
@@ -116,16 +116,16 @@ export default function OutletPieChart({ data, total }: { data: ProductSale[]; t
             {rows.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-gray-50 cursor-default"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-muted/50 cursor-default"
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-700">
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-700 dark:text-foreground">
                   {item.name}
                 </span>
-                <span className="shrink-0 text-xs text-gray-500">{formatNumber(item.percentage, locale)}%</span>
-                <span className="shrink-0 text-xs font-semibold text-gray-900">
+                <span className="shrink-0 text-xs text-gray-500 dark:text-muted-foreground">{formatNumber(item.percentage, locale)}%</span>
+                <span className="shrink-0 text-xs font-semibold text-gray-900 dark:text-foreground">
                   {formatMYR(item.revenue, locale, { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -133,19 +133,19 @@ export default function OutletPieChart({ data, total }: { data: ProductSale[]; t
           </div>
         </>
       ) : (
-        <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+        <div className="flex flex-1 items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">
           {t('charts.product.noPaidSales')}
         </div>
       )}
 
       {/* Footer total */}
-      <div className="mt-4 border-t border-gray-100 pt-4">
-        <p className="text-xs text-gray-500">{t('charts.product.totalPaidRevenue')}</p>
-        <p className="mt-1 text-2xl font-bold text-gray-950">
+      <div className="mt-4 border-t border-gray-100 dark:border-border pt-4">
+        <p className="text-xs text-gray-500 dark:text-muted-foreground">{t('charts.product.totalPaidRevenue')}</p>
+        <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
           {formatMYR(total, locale, { minimumFractionDigits: 2 })}
         </p>
         {data.length > TOP_N && (
-          <p className="mt-1 text-xs text-gray-400">{t('charts.product.topProductsGrouped', { count: TOP_N })}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('charts.product.topProductsGrouped', { count: TOP_N })}</p>
         )}
       </div>
     </div>

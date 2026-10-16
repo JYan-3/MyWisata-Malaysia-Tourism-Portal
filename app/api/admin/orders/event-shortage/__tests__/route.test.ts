@@ -1,0 +1,11 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const m=vi.hoisted(()=>({auth:vi.fn(),rpc:vi.fn(),refund:vi.fn(),service:vi.fn()}));
+vi.mock('@/lib/staff-permissions/server',()=>({requireStaffPermission:m.auth}));
+vi.mock('@/lib/supabase/service',()=>({createServiceClient:m.service}));
+vi.mock('@/lib/refunds/process-queued-event-refunds',()=>({processQueuedEventRefunds:m.refund}));
+import { POST } from '../route';
+const request=(extra={})=>new Request('http://localhost',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({listingId:'33333333-3333-4333-8333-333333333333',pickupDate:'2026-10-10',reason:'Supply unavailable',...extra})});
+beforeEach(()=>{vi.clearAllMocks();m.auth.mockResolvedValue({db:{rpc:m.rpc},response:null});m.rpc.mockResolvedValue({data:{orders:1,version:'a'.repeat(32)},error:null});m.refund.mockResolvedValue({error:null});});
+it('requires organiser permission before reading impact',async()=>{m.auth.mockResolvedValue({response:new Response(null,{status:403})});expect((await POST(request())).status).toBe(403);expect(m.rpc).not.toHaveBeenCalled();});
+it('preview does not process money',async()=>{expect((await POST(request())).status).toBe(200);expect(m.refund).not.toHaveBeenCalled();expect(m.rpc).toHaveBeenCalledWith('resolve_event_shortage',expect.objectContaining({p_version:null}));});
+it('does not refund when the confirmation version changed',async()=>{m.rpc.mockResolvedValue({data:null,error:{message:'event_shortage_changed'}});expect((await POST(request({version:'a'.repeat(32)}))).status).toBe(409);expect(m.refund).not.toHaveBeenCalled();});

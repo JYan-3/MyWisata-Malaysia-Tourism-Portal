@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// These fixtures represent an already verified staff session; this suite focuses
+// on approval-email drafting behavior.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
+
 const getUser = vi.fn();
 const rpc = vi.fn();
 const draftVendorApprovalEmail = vi.fn();
@@ -100,6 +107,7 @@ describe('POST /api/admin/vendors/[id]/approval-email/draft', () => {
       data: { subject: 'Congratulations!', body: 'Welcome aboard.' },
     });
     expect(draftVendorApprovalEmail).toHaveBeenCalledWith({
+      locale: 'en',
       vendorName: 'Rasa Malaysia Kitchen',
       businessType: 'restaurant',
       description: 'A cozy local eatery.',

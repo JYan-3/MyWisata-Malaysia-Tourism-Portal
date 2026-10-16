@@ -64,7 +64,7 @@ const PERMISSION_LABEL_KEYS: Partial<Record<string, string>> = {
 };
 
 export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus) => void }) {
-  const { t, i18n } = useTranslation("admin");
+  const { t } = useTranslation("admin");
   const { prompt } = useAppDialog();
   const [roles, setRoles] = useState<StaffRoleRecord[]>([]);
   const [assignments, setAssignments] = useState<StaffRoleAssignmentRecord[]>([]);
@@ -151,9 +151,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   );
   const selectedAssignmentRole = roles.find((role) => role.id === assignmentRoleId) ?? null;
   const selectedInvitationRole = roles.find((role) => role.id === invitationRoleId && !role.isSystem) ?? null;
-  const invitationLocale = i18n.resolvedLanguage?.toLowerCase().startsWith("zh")
-    ? "zh-CN"
-    : i18n.resolvedLanguage?.toLowerCase().startsWith("ms") ? "ms" : "en";
   const selectedAssignmentPermissions = selectedAssignmentRole?.permissionKeys.map((key) => ({
     key,
     label: permissionLabel(key),
@@ -294,7 +291,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         body: JSON.stringify({
           email: invitationEmail.trim(),
           staffRoleId: selectedInvitationRole.id,
-          locale: invitationLocale,
           reason: invitationReason.trim(),
         }),
       });
@@ -313,7 +309,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     setSaving(true); setError("");
     try {
       const response = await fetch(`/api/admin/access-control/staff-invitations/${invitationId}/resend`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale: invitationLocale }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
       });
       const body = await response.json() as ApiEnvelope<{ id: string }>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
@@ -481,7 +477,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
                 {staffCandidates.length > 0 && <ul className="mt-2 space-y-2 rounded-xl border border-border p-2">{staffCandidates.map((candidate) => <li key={candidate.id}><button type="button" onClick={() => { setSelectedStaff(candidate); setStaffCandidates([]); setAssignmentConfirmOpen(false); }} className="block w-full rounded-lg p-2 text-left text-sm hover:bg-muted/50"><span className="block font-medium">{candidate.name}</span><span className="block text-xs text-muted-foreground">{candidate.email} · {candidate.roles.join(", ")}</span></button></li>)}</ul>}
                 {selectedStaff && <div className="mt-2 rounded-xl border border-primary/25 bg-primary/10 p-3 text-sm"><span className="block text-xs font-semibold uppercase tracking-wide text-primary">{t("accessControl.staffRoles.selectedEmployee")}</span><span className="mt-1 block font-medium">{selectedStaff.name}</span><span className="text-xs text-muted-foreground">{selectedStaff.email} · {selectedStaff.roles.join(", ")}</span></div>}
                 {staffSearchAttempted && !searchingStaff && !selectedStaff && staffCandidates.length === 0 && <p className="mt-2 text-xs text-muted-foreground">{t("accessControl.staffRoles.noStaffResults")}</p>}
-                {alreadyAssigned && <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">{t("accessControl.staffRoles.alreadyAssigned")}</p>}
+                {alreadyAssigned && <p className="mt-2 rounded-lg border border-amber-300/40 dark:border-amber-500/30 bg-amber-50/10 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">{t("accessControl.staffRoles.alreadyAssigned")}</p>}
               </div>
             </li>
 

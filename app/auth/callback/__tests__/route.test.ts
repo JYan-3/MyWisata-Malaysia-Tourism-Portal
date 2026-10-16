@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   exchangeCodeForSession: vi.fn(),
   getUser: vi.fn(),
+  getClaims: vi.fn(),
   from: vi.fn(),
   rpc: vi.fn(),
 }));
@@ -12,6 +13,7 @@ vi.mock("@/lib/supabase/server", () => ({
     auth: {
       exchangeCodeForSession: mocks.exchangeCodeForSession,
       getUser: mocks.getUser,
+      getClaims: mocks.getClaims,
     },
     from: mocks.from,
     rpc: mocks.rpc,
@@ -26,6 +28,7 @@ describe("GET /auth/callback", () => {
     vi.clearAllMocks();
     mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: "customer-1" } }, error: null });
+    mocks.getClaims.mockResolvedValue({ data: { claims: { sub: 'admin-1', aal: 'aal2' } }, error: null });
     mocks.rpc.mockResolvedValue({ data: [{ role_name: "customer" }], error: null });
   });
 
@@ -79,7 +82,15 @@ describe("GET /auth/callback", () => {
 
     const response = await GET(new Request("http://localhost/auth/callback?code=oauth-code&next=%2Fadmin%2Fvendors"));
 
-    expect(response.headers.get("location")).toBe("http://localhost/admin/dashboard");
+    expect(response.headers.get("location")).toBe("http://localhost/auth/staff-verification?next=%2Fadmin%2Fdashboard");
+  });
+
+  it('sends AAL1 staff to native MFA before the admin dashboard', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null });
+    mocks.rpc.mockResolvedValue({ data: [{ role_name: 'admin' }], error: null });
+    mocks.getClaims.mockResolvedValue({ data: { claims: { sub: 'admin-1', aal: 'aal1' } }, error: null });
+    const response = await GET(new Request('http://localhost/auth/callback'));
+    expect(response.headers.get('location')).toBe('http://localhost/auth/staff-mfa?next=%2Fadmin%2Fdashboard');
   });
 
   it.each([
