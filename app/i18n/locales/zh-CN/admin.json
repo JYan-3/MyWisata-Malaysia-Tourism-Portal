@@ -3703,6 +3703,8 @@
     }
   },
   "eventOperations": {
+    "checkout_hold_expired": "结账预留结束后收到付款。已暂停履约，请复核已确认的款项及人工退款申请。",
+    "checkout_eligibility_lost": "购买资格变更后收到付款。已暂停履约，请复核已确认的款项及人工退款申请。",
     "pickupOverdue": "取货日期已过，领取结果待核实",
     "pickupHelp": "未领取不等于顾客缺席。请核对商品和联系记录后结案；待核实金额不代表已批准退款金额。",
     "refreshPickups": "刷新过期未领取订单",
@@ -3716,7 +3718,7 @@
       "collected": "已核实取货记录",
       "refunded": "已确认退款完成"
     },
-    "title": "待处理活动异常",
+    "title": "需要跟进的订单事项",
     "summary": "待处理：{{open}} · 未认领：{{unassigned}} · 未设期限：{{undated}} · 逾期：{{overdue}} · 待处理金额：{{amount}}",
     "deadlineHelp": "期限用于跟进处理。到期不会自动退款或关闭订单。时间均为马来西亚时间。",
     "dueRequired": "请选择未来的处理期限。",
@@ -3728,7 +3730,7 @@
     "failed": "上次运行失败",
     "stale": "近期无完成记录",
     "healthy": "上次运行完成",
-    "empty": "没有待处理活动异常。",
+    "empty": "没有尚未解决的订单事项。",
     "orderWithoutNumber": "订单编号待生成",
     "paymentException": "已收款，但预订无法履约",
     "refundAttention": "退款需要跟进",

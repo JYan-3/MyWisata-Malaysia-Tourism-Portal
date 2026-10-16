@@ -246,11 +246,11 @@ export default function OrderDetailPage() {
     }
   }
 
-  async function handleReviewCart() {
+  async function handleReviewCart(explicitCancel = false) {
     if (!order || order.status !== "PENDING_PAYMENT") return;
     setPaymentResume({ orderId: order.id, state: "checking" });
     try {
-      const response = await fetch(`/api/customer/orders/${encodeURIComponent(order.id)}/payment-session`, {
+      const response = await fetch(`/api/customer/orders/${encodeURIComponent(order.id)}/payment-session${explicitCancel ? '?cancel=1' : ''}`, {
         method: "POST",
         cache: "no-store",
       });
@@ -598,7 +598,7 @@ export default function OrderDetailPage() {
                           type="button"
                           variant="outline"
                           className="mt-3 w-full gap-2 rounded-xl border-amber-300 text-amber-950 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/40"
-                          onClick={handleReviewCart}
+                          onClick={() => void handleReviewCart()}
                         >
                           {tCustomer("ui.orders.reviewCart")}
                         </Button>
@@ -632,6 +632,8 @@ export default function OrderDetailPage() {
                         </Button>
                       </>
                     )}
+                    <p className="mt-3 text-xs">{tCustomer('checkoutSafety.cancelHelp')}</p>
+                    <Button type="button" variant="outline" className="mt-2 w-full" disabled={paymentResumeState === 'checking' || paymentResumeState === 'processing'} onClick={() => void handleReviewCart(true)}>{tCustomer('checkoutSafety.cancelCheckout')}</Button>
                   </section>
                 )}
 

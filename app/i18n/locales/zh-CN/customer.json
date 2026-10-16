@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "请先完成或取消现有未付款订单，再开始另一笔结账。",
+    "reviewExisting": "查看现有未付款订单",
+    "cancelCheckout": "取消这笔未付款结账",
+    "cancelHelp": "仅在尚未付款时取消。取消后请勿使用旧付款链接；取消后收到的款项需要管理员复核。"
+  },
   "navigation": {
     "home": "首页",
     "search": "合作伙伴",

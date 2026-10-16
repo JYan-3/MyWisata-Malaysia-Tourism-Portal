@@ -7,6 +7,8 @@ const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseli
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
   "20261016022142_commerce_risk_exposure.sql",
+  "20261016111059_checkout_subject_commitment_guards.sql",
+  "20261016111120_withdrawal_execution_eligibility.sql",
   "20261016021843_guest_rate_limit_cleanup.sql",
   "20261015062555_platform_operations_settings.sql",
   "20261014194135_staff_passkey_authorization.sql",

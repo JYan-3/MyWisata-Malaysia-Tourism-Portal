@@ -3703,6 +3703,8 @@
     }
   },
   "eventOperations": {
+    "checkout_hold_expired": "Bayaran diterima selepas tempahan pembayaran tamat. Pemenuhan ditangguhkan; semak bayaran yang disahkan dan permohonan bayaran balik manual.",
+    "checkout_eligibility_lost": "Bayaran diterima selepas kelayakan pembelian berubah. Pemenuhan ditangguhkan; semak bayaran yang disahkan dan permohonan bayaran balik manual.",
     "pickupOverdue": "Tarikh pengambilan berlalu — hasil belum disahkan",
     "pickupHelp": "Pesanan belum diambil tidak bermakna pelanggan tidak hadir. Semak barang dan bukti hubungan sebelum menutup kes. Amaun dalam semakan bukan bayaran balik yang diluluskan.",
     "refreshPickups": "Semak pengambilan tertunggak",
@@ -3716,7 +3718,7 @@
       "collected": "Rekod pengambilan disahkan",
       "refunded": "Bayaran balik selesai disahkan"
     },
-    "title": "Isu acara yang memerlukan tindakan",
+    "title": "Kewajipan pesanan yang memerlukan perhatian",
     "summary": "Terbuka: {{open}} · Belum dituntut: {{unassigned}} · Tiada tarikh akhir: {{undated}} · Lewat: {{overdue}} · Baki: {{amount}}",
     "deadlineHelp": "Tarikh akhir untuk susulan petugas. Ia tidak memulangkan wang atau menutup pesanan secara automatik. Masa Malaysia digunakan.",
     "dueRequired": "Pilih tarikh akhir pada masa hadapan.",
@@ -3728,7 +3730,7 @@
     "failed": "Pelaksanaan terakhir gagal",
     "stale": "Tiada pelaksanaan lengkap terkini",
     "healthy": "Pelaksanaan terakhir selesai",
-    "empty": "Tiada isu acara yang belum diselesaikan.",
+    "empty": "Tiada kewajipan pesanan yang belum diselesaikan.",
     "orderWithoutNumber": "Nombor pesanan belum tersedia",
     "paymentException": "Bayaran diterima tetapi tempahan tidak tersedia",
     "refundAttention": "Bayaran balik memerlukan perhatian",

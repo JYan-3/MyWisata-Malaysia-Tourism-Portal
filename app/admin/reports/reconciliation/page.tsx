@@ -228,6 +228,7 @@ export default function ReconciliationPage() {
               <p className="font-semibold">{row.orderNumber ?? t('eventOperations.orderWithoutNumber')} · {formatMYRFromSen(row.outstandingSen)}</p>
               <p className="text-sm">{t(`eventOperations.filters.caseHandling.${row.handling}`)}</p>
               <p className="text-sm">{row.kind === 'payment_unfulfillable' ? t('eventOperations.paymentException') : row.kind === 'pickup_overdue' ? t('eventOperations.pickupOverdue') : t('eventOperations.refundAttention')}</p>
+              {['checkout_eligibility_lost', 'checkout_hold_expired'].includes(row.reasonCode) && <p className="text-sm text-muted-foreground">{t(`eventOperations.${row.reasonCode}`)}</p>}
               <p className="text-sm text-muted-foreground">{t('eventOperations.owner')}: {row.assignedName ?? t('eventOperations.unassigned')}
                 {' · '}{row.dueAt ? new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'short', timeStyle: 'short' }).format(new Date(row.dueAt)) : t('eventOperations.undated')}
                 {row.overdue && <span className="ml-2 text-destructive">{t('eventOperations.overdue')}</span>}

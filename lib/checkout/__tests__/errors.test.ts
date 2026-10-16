@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { getCheckoutErrorCode, getCheckoutErrorMessage } from "../errors";
+import { activeCheckoutOrderId, getCheckoutErrorCode, getCheckoutErrorMessage } from "../errors";
 
 describe("checkout error handling", () => {
+  it('provides pending-order recovery without exposing arbitrary SQL detail', () => {
+    expect(getCheckoutErrorCode('active_checkout_exists')).toBe('ACTIVE_CHECKOUT_EXISTS');
+    expect(getCheckoutErrorMessage('ACTIVE_CHECKOUT_EXISTS')).toContain('cancel');
+    expect(getCheckoutErrorCode('checkout_commitment_unavailable')).toBe('CHECKOUT_COMMITMENT_UNAVAILABLE');
+    const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect(activeCheckoutOrderId(JSON.stringify({order_id:id}))).toBe(id);
+    expect(activeCheckoutOrderId('{"order_id":"javascript:alert(1)"}')).toBeUndefined();
+    expect(activeCheckoutOrderId('private database details')).toBeUndefined();
+  });
   it("maps a platform order pause to a temporary checkout response", () => {
     expect(getCheckoutErrorCode("new_orders_paused")).toBe("NEW_ORDERS_PAUSED");
     expect(getCheckoutErrorMessage("new_orders_paused")).toContain("temporarily unavailable");

@@ -51,6 +51,7 @@ export default function CheckoutPage() {
   const [methodId, setMethodId] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [toyyibPayReturned, setToyyibPayReturned] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
@@ -236,6 +237,9 @@ export default function CheckoutPage() {
       }
       const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; toyyibpayUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
+        const pendingId = typeof prepared.error === 'object' && prepared.error?.code === 'ACTIVE_CHECKOUT_EXISTS' ? prepared.error.activeOrderId : null;
+        setActiveOrderId(pendingId && /^[0-9a-f-]{36}$/i.test(pendingId) ? pendingId : null);
+        if (pendingId) throw new Error(tCustomer('checkoutSafety.activeCheckout'));
         throw new Error(getCheckoutErrorMessage(prepared.error));
       }
       if (isFreeReservation) {
@@ -459,6 +463,7 @@ export default function CheckoutPage() {
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span>{checkoutError}</span>
               </div>
+              {activeOrderId && <Button type="button" variant="outline" className="mt-2" onClick={() => router.push(`/customer/orders/${activeOrderId}`)}>{tCustomer('checkoutSafety.reviewExisting')}</Button>}
               <button
                 type="button"
                 onClick={() => router.push("/customer/cart")}

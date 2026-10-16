@@ -46,7 +46,7 @@ function query(result: unknown) {
 function request(method: 'GET' | 'POST' = 'GET') {
   const handler = method === 'POST' ? POST : GET;
   return handler(
-    new Request(`http://localhost/api/customer/orders/${ORDER_ID}/payment-session`),
+    new Request(`http://localhost/api/customer/orders/${ORDER_ID}/payment-session`, { method, ...(method === 'POST' ? { headers: { origin: 'http://localhost' } } : {}) }),
     { params: Promise.resolve({ orderId: ORDER_ID }) },
   );
 }
@@ -104,6 +104,31 @@ describe('GET /api/customer/orders/[orderId]/payment-session', () => {
       error: null,
     });
     expect(mocks.retrieveStripeSession).toHaveBeenCalledWith(STRIPE_SESSION_ID);
+  });
+
+  it('allows owner-authorized explicit cancellation through the canonical finalizer', async () => {
+    mocks.finalizeCheckout.mockResolvedValue({ data: { status: 'failed' }, error: null });
+    const response = await POST(new Request(`http://localhost/api/customer/orders/${ORDER_ID}/payment-session?cancel=1`, {
+      method: 'POST', headers: { origin: 'http://localhost' },
+    }), { params: Promise.resolve({ orderId: ORDER_ID }) });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { canReviewCart: true } });
+    expect(mocks.finalizeCheckout).toHaveBeenCalledWith('finalize_checkout', expect.objectContaining({ p_checkout_session_id: CHECKOUT_ID, p_outcome: 'cancelled' }));
+    expect(mocks.retrieveStripeSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-origin cancellation and preserves a concurrently paid checkout', async () => {
+    const context = { params: Promise.resolve({ orderId: ORDER_ID }) };
+    const denied = await POST(new Request(`http://localhost/api/customer/orders/${ORDER_ID}/payment-session?cancel=1`, {
+      method: 'POST', headers: { origin: 'https://other.test' },
+    }), context);
+    expect(denied.status).toBe(403);
+    expect(mocks.finalizeCheckout).not.toHaveBeenCalled();
+    mocks.finalizeCheckout.mockResolvedValue({ data: { status: 'paid' }, error: null });
+    const response = await POST(new Request(`http://localhost/api/customer/orders/${ORDER_ID}/payment-session?cancel=1`, {
+      method: 'POST', headers: { origin: 'http://localhost' },
+    }), context);
+    expect(await response.json()).toMatchObject({ data: { canResume: false, reason: 'processing' } });
   });
 
   it('supports a live-mode Stripe Checkout Session ID', async () => {

@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "Selesaikan atau batalkan pesanan belum dibayar yang sedia ada sebelum memulakan pembayaran lain.",
+    "reviewExisting": "Semak pesanan belum dibayar",
+    "cancelCheckout": "Batalkan pembayaran belum dibayar ini",
+    "cancelHelp": "Batalkan hanya jika anda belum membayar. Jangan gunakan pautan pembayaran lama. Bayaran selepas pembatalan memerlukan semakan Admin."
+  },
   "navigation": {
     "home": "Utama",
     "search": "Rakan kongsi",

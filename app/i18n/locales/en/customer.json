@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "Complete or cancel your existing unpaid order before starting another checkout.",
+    "reviewExisting": "Review existing unpaid order",
+    "cancelCheckout": "Cancel this unpaid checkout",
+    "cancelHelp": "Cancel only if you have not paid. Stop using the old payment link. Any payment received after cancellation needs Admin review."
+  },
   "navigation": {
     "home": "Home",
     "search": "Partners",
