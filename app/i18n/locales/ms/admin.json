@@ -1552,7 +1552,9 @@
       "payout_fees_rm": "Yuran pembayaran RM",
       "pending_earnings_amount_rm": "Pendapatan tertunda RM",
       "pending_withdrawal_amount_rm": "Menunggu pengeluaran RM",
-      "reserved_amount_rm": "Dikhaskan RM"
+      "reserved_amount_rm": "Dikhaskan RM",
+      "vendor_clawback_shortfall_month_rm": "Kekurangan tuntutan balik vendor bulan ini RM",
+      "vendor_clawback_open_shortfall_rm": "Kekurangan tuntutan balik vendor belum selesai RM"
     },
     "backToWallet": "Kembali ke dompet",
     "balance": {
@@ -1596,6 +1598,15 @@
     "reportMonth": "Bulan laporan",
     "requestStatus": "Status permintaan",
     "requestStatusDescription": "Paparan ringkas barisan pembayaran bulanan.",
+    "riskExposureTitle": "Pendedahan tuntutan balik vendor yang direkodkan",
+    "riskExposureDescription": "Hanya kekurangan penyelesaian vendor yang direkodkan. Ini bukan jumlah kerugian platform atau afiliasi, dan bukan amaun rizab yang diluluskan.",
+    "riskExposure": {
+      "month": "Kekurangan direkodkan bulan ini",
+      "open": "Kekurangan belum selesai ketika laporan dijana",
+      "count": "{{count}} rekod",
+      "count_one": "{{count}} rekod",
+      "count_other": "{{count}} rekod"
+    },
     "searchPlaceholder": "Cari pengguna atau sumber",
     "snapshot": "Ringkasan bulanan",
     "sourceFilter": "Tapis mengikut sumber pembayaran",

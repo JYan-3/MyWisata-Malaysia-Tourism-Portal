@@ -122,6 +122,7 @@ Shared password for all 28 accounts: **`demo123456`**
 Before enabling the live verification and payout paths, configure and verify these items in the deployment environments. Secret values must stay in Vercel/Supabase settings and must never be committed to this repository.
 
 - **Vercel Cron:** set `CRON_SECRET` in Production and bind `/api/cron/wallet-maintenance` to the checked-in `vercel.json` schedule. Confirm a real run returns escalation, reward-clearance, and report results in server logs; repeat the run to confirm it is safe to retry.
+- **Hostinger Guest limit cleanup:** after the application is deployed, configure one hourly hPanel Cron Job (`0 * * * *`) to run `node scripts/run-event-cron.mjs guest-rate-limits` from the application root, with the application's existing HTTPS `APP_URL` (or `NEXT_PUBLIC_APP_URL`) and server-only `CRON_SECRET` available to the command. Keep secret values in the server environment. The endpoint uses the deployed app's existing Supabase service configuration, deletes at most 1,000 expired limit records per run, and returns aggregate counts. A code redeploy or `vercel.json` change alone does not create this Hostinger job; the hosting operator must configure and verify it once. The vendor clawback exposure section is in `/admin/reports/payouts` and requires Super Admin access.
 
 ### Non-production TNG mock payout lifecycle
 

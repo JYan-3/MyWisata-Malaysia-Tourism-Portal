@@ -4,6 +4,8 @@
 
 **Status:** Research complete
 
+> Historical checkout requirements in this research were superseded by [the Guest and Email-verified purchase plan](../plans/2026-10-02-0046-guest-and-email-verified-purchases.md): Guest purchases are allowed, and registered purchases require verified Email. This note remains relevant to other verification-gated capabilities.
+
 **Scope:** Public first-party documentation and source code, plus a read-only
 inventory of MyWisata. This note does not change the accepted MyWisata tier
 ladder.
