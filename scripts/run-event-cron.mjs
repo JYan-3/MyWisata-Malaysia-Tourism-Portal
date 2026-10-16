@@ -3,6 +3,7 @@
 const routes = {
   expire: '/api/cron/expire-checkout-sessions',
   refunds: '/api/cron/process-event-refunds',
+  'guest-rate-limits': '/api/cron/purge-guest-rate-limits',
 };
 try {
   const route = routes[process.argv[2]];
