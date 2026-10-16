@@ -45,11 +45,29 @@ function setupSupabase({
   return { eq, from, getClaims, maybeSingle, select };
 }
 
-function makeRequest({ cookie, acceptLanguage }: { cookie?: string; acceptLanguage?: string } = {}) {
+type ProxyRequest = {
+  cookie?: string;
+  acceptLanguage?: string;
+  path?: string;
+  method?: string;
+  fetchDestination?: string;
+  extraHeaders?: Record<string, string>;
+};
+
+function makeRequest({
+  cookie,
+  acceptLanguage,
+  path = "/customer",
+  method = "GET",
+  fetchDestination = "document",
+  extraHeaders = {},
+}: ProxyRequest = {}) {
   const headers = new Headers();
+  if (fetchDestination) headers.set("sec-fetch-dest", fetchDestination);
+  for (const [name, value] of Object.entries(extraHeaders)) headers.set(name, value);
   if (cookie) headers.set("cookie", cookie);
   if (acceptLanguage) headers.set("accept-language", acceptLanguage);
-  return new NextRequest(new Request("https://mywisata.example/customer", { headers }));
+  return new NextRequest(new Request(`https://mywisata.example${path}`, { method, headers }));
 }
 
 function localeFromResponse(response: Response) {
@@ -96,6 +114,7 @@ describe("Supabase proxy locale resolution", () => {
     );
 
     expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("ms");
     expect(from).toHaveBeenCalledWith("users");
     expect(select).toHaveBeenCalledWith("preferred_locale");
     expect(eq).toHaveBeenCalledWith("id", "user-123");
@@ -120,6 +139,79 @@ describe("Supabase proxy locale resolution", () => {
     const response = await updateSession(makeRequest({ acceptLanguage: "ms-MY,en;q=0.8" }));
 
     expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("ms");
+  });
+
+  it("does not rewrite an already synchronized locale cookie on document navigation", async () => {
+    setupSupabase();
+
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=ms" }));
+
+    expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+  });
+
+  it.each<{ label: string } & ProxyRequest>([
+    { label: "background API", path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty" },
+    { label: "API opened as a document", path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms" },
+    { label: "locale save API", path: "/api/locale", method: "POST", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty" },
+    { label: "API without a locale cookie", path: "/api/customer/promotion-campaigns", fetchDestination: "empty" },
+    { label: "API with an invalid locale cookie", path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=xx", fetchDestination: "empty" },
+    { label: "RSC refresh", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty", extraHeaders: { rsc: "1" } },
+    { label: "router prefetch", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty", extraHeaders: { "next-router-prefetch": "1", purpose: "prefetch" } },
+    { label: "request without Fetch Metadata", cookie: "NEXT_LOCALE=ms", fetchDestination: "" },
+  ])("does not persist the locale from a $label response", async (request) => {
+    setupSupabase();
+
+    const response = await updateSession(makeRequest({ acceptLanguage: "ms-MY", ...request }));
+
+    expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+  });
+
+  it("keeps account locale precedence for API requests without writing a locale cookie", async () => {
+    setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
+
+    const response = await updateSession(makeRequest({
+      path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", acceptLanguage: "en-US", fetchDestination: "empty",
+    }));
+
+    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+  });
+
+  it("cannot revert a saved locale when an older API response finishes later", async () => {
+    const { getClaims } = setupSupabase();
+    let finishOldRequest!: (value: { data: { claims: null }; error: null }) => void;
+    getClaims.mockImplementationOnce(() => new Promise((resolve) => { finishOldRequest = resolve; }));
+    const pendingOldResponse = updateSession(makeRequest({
+      path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty",
+    }));
+
+    // The explicit locale-save response reaches the browser before the old API response.
+    const browserCookies = new Map([["NEXT_LOCALE", "en"]]);
+    finishOldRequest({ data: { claims: null }, error: null });
+    const oldResponse = await pendingOldResponse;
+    for (const cookie of oldResponse.cookies.getAll()) browserCookies.set(cookie.name, cookie.value);
+
+    expect(localeFromResponse(oldResponse)).toBe("ms");
+    expect(browserCookies.get("NEXT_LOCALE")).toBe("en");
+  });
+
+  it("still renews Supabase auth cookies and headers on background API responses", async () => {
+    setupSupabase({
+      authCookies: [{ name: "sb-project-auth-token", value: "renewed-token", options: { path: "/" } }],
+      authHeaders: { "cache-control": "private, no-store" },
+    });
+
+    const response = await updateSession(makeRequest({
+      path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty",
+    }));
+
+    expect(response.cookies.get("sb-project-auth-token")?.value).toBe("renewed-token");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-middleware-request-cookie")).toContain("sb-project-auth-token=renewed-token");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
   });
 
   it("replaces an invalid locale cookie with the supported browser fallback", async () => {

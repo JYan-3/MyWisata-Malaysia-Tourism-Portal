@@ -50,6 +50,7 @@ export async function GET(_request: Request, { params }: Props) {
   if (eventsError) return apiFail('REVIEW_EVENTS_FAILED', 'Unable to load KYC review history', 500);
 
   const claim = claimData as {
+    reviewVersion?: number;
     assignedTo?: string | null;
     claimedAt?: string | null;
     isAssignedToActor?: boolean;
@@ -57,7 +58,7 @@ export async function GET(_request: Request, { params }: Props) {
   } | null;
   const name = submission.legalIdentity.fullName?.trim() || customerRow.full_name?.trim() || submission.legalIdentity.email || customerRow.email;
   const email = submission.legalIdentity.email || customerRow.email;
-  return apiOk({
+  const result = apiOk({
     submission,
     customer: {
       id: customerRow.id,
@@ -66,6 +67,7 @@ export async function GET(_request: Request, { params }: Props) {
       avatarInitial: name.charAt(0).toUpperCase() || '?',
     },
     assignment: {
+      reviewVersion: claim?.reviewVersion ?? -1,
       assignedTo: claim?.assignedTo ?? submission.assignedTo,
       claimedAt: claim?.claimedAt ?? submission.claimedAt,
       isAssignedToCurrentUser: claim?.isAssignedToActor === true,
@@ -84,4 +86,6 @@ export async function GET(_request: Request, { params }: Props) {
       createdAt: event.created_at,
     })),
   });
+  result.headers.set('Cache-Control', 'private, no-store');
+  return result;
 }

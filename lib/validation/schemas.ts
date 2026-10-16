@@ -27,6 +27,7 @@ export const kycSubmitSchema = z.object({
 
 export const kycReviewSchema = z.object({
   submissionId: uuid,
+  expectedVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   userId: uuid,
   action: z.enum(['approve', 'reject', 'request_info']),
   reasonCode: z.enum(KYC_REVIEW_REASON_CODES).optional(),

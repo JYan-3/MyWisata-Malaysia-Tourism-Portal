@@ -4,7 +4,9 @@ import { resolveAppLocale } from "@/lib/i18n/locale";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Building2, CheckCircle2, Globe, LockKeyhole, Mail } from "lucide-react";
+import { validatePassword } from "@/lib/auth/password-policy";
 import { createClient } from "@/lib/supabase/client";
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -30,6 +32,7 @@ export default function OutletManagerInvitationPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+  const human = useHumanVerification("invitation_auth");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -69,14 +72,19 @@ export default function OutletManagerInvitationPage() {
 
   async function authenticate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!invitation) return;
+    if (!invitation || busy) return;
     setBusy(true); setError(""); setMessage("");
+    if (mode === "register" && !validatePassword(password).ok) {
+      setBusy(false); setError(t("errors.passwordPolicy")); return;
+    }
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setBusy(false); setError(t("humanVerification.required")); return; }
     const result = mode === "sign_in"
-      ? await supabase.auth.signInWithPassword({ email: invitation.email, password })
-      : await supabase.auth.signUp({ email: invitation.email, password, options: { data: { full_name: fullName.trim(), preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) } } });
+      ? await supabase.auth.signInWithPassword({ email: invitation.email, password, options: { captchaToken } })
+      : await supabase.auth.signUp({ email: invitation.email, password, options: { captchaToken, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/outlet-manager-invitations/${params.token}`)}`, data: { full_name: fullName.trim(), preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) } } });
     if (result.error) {
       setBusy(false);
-      setError(result.error.message);
+      setError(result.error.code === "captcha_failed" ? t("humanVerification.invalid") : result.error.message);
       return;
     }
     if (!result.data.session) {
@@ -86,6 +94,21 @@ export default function OutletManagerInvitationPage() {
     }
     setSessionEmail(invitation.email.toLowerCase());
     await accept();
+  }
+
+  async function resendVerification() {
+    if (!invitation || busy) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(t("humanVerification.required")); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup", email: invitation.email,
+        options: { captchaToken, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/outlet-manager-invitations/${params.token}`)}` },
+      });
+      if (resendError) setError(t("errors.generic"));
+      else setMessage(t("signUp.verificationResent"));
+    } finally { setBusy(false); }
   }
 
   const isExpired = invitation?.status !== "pending";
@@ -124,11 +147,13 @@ export default function OutletManagerInvitationPage() {
             </div>
           ) : (
             <form onSubmit={authenticate} className="space-y-3">
+              <HumanVerification {...human} />
               <div className="flex rounded-xl bg-slate-100 p-1 text-sm font-semibold"><button type="button" onClick={() => setMode("sign_in")} className={`flex-1 rounded-lg px-3 py-2 ${mode === "sign_in" ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{t("outletInvitation.haveAccount")}</button><button type="button" onClick={() => setMode("register")} className={`flex-1 rounded-lg px-3 py-2 ${mode === "register" ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{t("outletInvitation.createAccount")}</button></div>
               {mode === "register" && <input required value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder={t("fields.fullName")} aria-label={t("fields.fullName")} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-primary" />}
               <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3"><Mail size={15} className="text-slate-400" /><input readOnly value={invitation?.email || ""} aria-label={t("outletInvitation.emailLabel")} className="h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></div>
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3"><LockKeyhole size={15} className="text-slate-400" /><input required type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("outletInvitation.passwordHint")} aria-label={t("fields.password")} className="h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></div>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3"><LockKeyhole size={15} className="text-slate-400" /><input required type="password" minLength={mode === "register" ? 10 : undefined} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("outletInvitation.passwordHint")} aria-label={t("fields.password")} className="h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></div>
               <Button type="submit" disabled={busy} className="w-full">{busy ? t("outletInvitation.waiting") : mode === "sign_in" ? t("outletInvitation.signInAndAccept") : t("outletInvitation.createAndAccept")}</Button>
+              <Button type="button" variant="outline" onClick={resendVerification} disabled={busy} className="w-full">{t("verification.resendCode")}</Button>
             </form>
           )}
 

@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     exclude: [
       "**/node_modules/**",
+      "**/output/**",
       ".worktrees/**",
       "worktrees/**",
       "tests/e2e/**",

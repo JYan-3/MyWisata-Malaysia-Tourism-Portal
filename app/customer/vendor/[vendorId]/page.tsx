@@ -17,6 +17,7 @@ import type { OperatingHours } from '@/backend/core/types';
 import { formatReviewAuthor } from '@/backend/domains/review-presenter';
 import { getPublicReviewAuthorNames } from '@/backend/domains/catalogue';
 import { VendorReviewsList, type VendorReviewItem } from '@/components/customer/vendor-reviews-list';
+import { LocalizedContent } from '@/components/customer/localized-content';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from '@/lib/customer/entity-media';
@@ -233,18 +234,20 @@ function vendorProductDetailHref(productId: string, vendorId: string, outletId?:
 }
 
 function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vendorId: string; t: TFunction }) {
-  return <Link href={vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined)} className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+  const href = vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined);
+  return <article className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+    <Link href={href} aria-label={t('ui.vendor.viewProductDetails')} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
     <div className="mw-card-media h-48 aspect-auto bg-secondary">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
       <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`)}</span>
-    </div>
+    </div></Link>
     <div className="mw-card-body p-4">
-      <div className="flex items-start justify-between gap-3"><h3 className="mw-card-title min-w-0 flex-1 font-bold text-foreground" title={product.name}>{product.name}</h3><p className="shrink-0 text-right text-sm font-bold text-primary"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">{t('ui.vendor.from')}</span><ReferencePrice amountMYR={product.fromPrice} /></p></div>
-      <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="break-words whitespace-normal text-xs leading-5 text-muted-foreground">{product.description}</p>}</div>
-      <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.locationCount', { count: product.soldAt.length })}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-200"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-muted-foreground/60">({product.reviews})</span></span> : <span className="font-semibold text-primary">{t('ui.vendor.viewProductDetails')} <ArrowRight size={13} className="ml-0.5 inline" /></span>}</div>
+      <div className="flex items-start justify-between gap-3"><LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>{({ text, control }) => <><Link href={href} className="mw-card-title min-w-0 flex-1 rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" title={text}><h3>{text}</h3></Link>{control}</>}</LocalizedContent><p className="shrink-0 text-right text-sm font-bold text-primary"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">{t('ui.vendor.from')}</span><ReferencePrice amountMYR={product.fromPrice} /></p></div>
+      <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="break-words whitespace-normal text-xs leading-5 text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}</div>
+      <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.locationCount', { count: product.soldAt.length })}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-200"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-muted-foreground/60">({product.reviews})</span></span> : <Link href={href} className="font-semibold text-primary">{t('ui.vendor.viewProductDetails')} <ArrowRight size={13} className="ml-0.5 inline" /></Link>}</div>
     </div>
-  </Link>;
+  </article>;
 }
 
 function LocationCard({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction }) {

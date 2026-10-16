@@ -1,5 +1,7 @@
 export type KycOcrReviewStatus = 'matched' | 'mismatch' | 'unreadable' | 'unavailable';
 
-export function requiresManualKycReview(status: KycOcrReviewStatus): boolean {
-  return status === 'unavailable' || status === 'unreadable' || status === 'mismatch';
+/** Phase 1: even consistent OCR requires an authorised human decision. */
+export function requiresManualKycReview(_status: KycOcrReviewStatus): boolean {
+  void _status;
+  return true;
 }

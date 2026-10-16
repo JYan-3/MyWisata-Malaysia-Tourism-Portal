@@ -88,7 +88,7 @@ describe("place page discovery controls", () => {
     expect(cardSource).toContain('t("ui.outletMenu.chooseOptions"');
     expect(cardSource).toContain('t("ui.actions.viewDetails")');
     expect(cardSource).toContain('t("ui.place.explorePlace"');
-    expect(cardSource).toContain("h-48 shrink-0 overflow-hidden bg-secondary sm:h-52");
+    expect(cardSource).toContain("block h-48 shrink-0 overflow-hidden bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:h-52");
     expect(cardSource).toContain("rounded-[1.5rem] border border-border bg-card shadow-sm transition");
     expect(cardSource).toContain("mt-auto flex items-center justify-between");
   });

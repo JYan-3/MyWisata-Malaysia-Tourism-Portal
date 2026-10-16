@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { MyWisataLogo } from "@/components/shared/mywisata-logo";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
 import type { Role, User } from "@/backend/core/types";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
@@ -55,6 +56,7 @@ function LoginContent() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendReady, setResendReady] = useState(true);
+  const human = useHumanVerification(mode === "verify" ? "signup_resend" : mode === "forgot" ? "password_reset" : mode);
 
   function startResendCooldown() {
     setResendReady(false);
@@ -89,26 +91,42 @@ function LoginContent() {
 
   async function pick(user: User) {
     resetFeedback();
+    if (busy) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
+    setBusy(true);
     try {
-      const signedInUser = await switchUser(user.id, user);
+      const signedInUser = await switchUser(user.id, user, captchaToken);
       router.push(postLoginDestination(signedInUser?.role ?? user.role, requestedNext(), signedInUser?.staffVerified, signedInUser?.staffPasskeyRequired, signedInUser?.staffMfaRequired));
       router.refresh();
     } catch {
       setError(GENERIC_ERROR);
-    }
+    } finally { setBusy(false); }
   }
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     resetFeedback();
+    if (busy) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
     setBusy(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
+      options: { captchaToken },
     });
     if (signInError) {
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       setBusy(false);
+      if (signInError.code === "email_not_confirmed") {
+        setMode("verify");
+        setOtp("");
+        setResendReady(true);
+        setMessage(tAuth("signIn.verifyEmailMessage"));
+        return;
+      }
+      if (signInError.code === "captcha_failed") { setError(tAuth("humanVerification.invalid")); return; }
       setError(tAuth("signIn.error"));
       return;
     }
@@ -154,19 +172,23 @@ function LoginContent() {
       setError(tAuth("errors.passwordMismatch"));
       return;
     }
+    if (busy) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
     const next = requestedNext() ?? "/customer";
     setBusy(true);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
+        captchaToken,
         data: { preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     setBusy(false);
     if (signUpError) {
-      setError(GENERIC_ERROR);
+      setError(signUpError.code === "captcha_failed" ? tAuth("humanVerification.invalid") : GENERIC_ERROR);
       return;
     }
     if (data.session && data.user?.email_confirmed_at) {
@@ -202,17 +224,20 @@ function LoginContent() {
   }
 
   async function resendOtp() {
-    if (!resendReady) return;
+    if (!resendReady || busy) return;
     resetFeedback();
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
     setBusy(true);
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
       email: email.trim(),
+      options: { captchaToken, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(requestedNext() ?? "/customer")}` },
     });
     setBusy(false);
     startResendCooldown();
     if (resendError) {
-      setError(GENERIC_ERROR);
+      setError(resendError.code === "captcha_failed" ? tAuth("humanVerification.invalid") : GENERIC_ERROR);
       return;
     }
     setMessage(tAuth("signUp.verificationResent"));
@@ -221,13 +246,17 @@ function LoginContent() {
   async function requestReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     resetFeedback();
+    if (busy) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
     setBusy(true);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      captchaToken,
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
     setBusy(false);
     if (resetError) {
-      setError(GENERIC_ERROR);
+      setError(resetError.code === "captcha_failed" ? tAuth("humanVerification.invalid") : GENERIC_ERROR);
       return;
     }
     setMessage(tAuth("passwordReset.instructionsSent"));
@@ -306,6 +335,8 @@ function LoginContent() {
                 {message}
               </div>
             )}
+
+            <div className="mb-4"><HumanVerification {...human} /></div>
 
             {/* Mode: Verify Email */}
             {mode === "verify" ? (

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LocalizedContent } from "@/components/customer/localized-content";
+import type { PublicTranslationEntity, PublicTranslationField } from "@/lib/content-translations/contract";
 
 type PlaceActivityCardProps = {
   href?: string;
@@ -8,6 +10,7 @@ type PlaceActivityCardProps = {
   imageFallback: ReactNode;
   badge: ReactNode;
   title: string;
+  titleTranslation?: { entityType: PublicTranslationEntity; entityId: string; field: PublicTranslationField; sourceText: string };
   supportingText?: ReactNode;
   price: ReactNode;
   description: ReactNode;
@@ -23,6 +26,7 @@ export function PlaceActivityCard({
   imageFallback,
   badge,
   title,
+  titleTranslation,
   supportingText,
   price,
   description,
@@ -58,13 +62,13 @@ export function PlaceActivityCard({
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            {href ? (
-              <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{title}</h3>
-              </Link>
-            ) : (
-              <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3>
-            )}
+            {titleTranslation ? (
+              <LocalizedContent {...titleTranslation}>
+                {({ text, control }) => <>{href ? <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{text}</h3></Link> : <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{text}</h3>}{control}</>}
+              </LocalizedContent>
+            ) : href ? (
+              <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{title}</h3></Link>
+            ) : <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3>}
             {supportingText && <p className="mt-1 break-words whitespace-normal text-xs font-semibold text-primary">{supportingText}</p>}
           </div>
           <div className="shrink-0 text-right text-sm font-bold text-foreground">{price}</div>

@@ -179,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "Terjemahan mesin",
+      "showOriginal": "Tunjukkan teks asal",
+      "showTranslation": "Tunjukkan terjemahan",
+      "pending": "Terjemahan sedang disediakan"
+    },
     "accessibility": {
       "carousel": "karusel"
     },
@@ -1297,13 +1303,13 @@
       "clickUpload": "Klik untuk memuat naik {{side}} dokumen",
       "fileHint": "JPG, PNG atau WebP · maksimum 5 MB",
       "clickChange": "klik untuk menukar",
-      "consent": "Saya bersetuju MyLawatan boleh menggunakan perkhidmatan AI pihak ketiga untuk membantu membaca dokumen saya. Pentadbir manusia membuat keputusan KYC akhir.",
+      "consent": "Saya bersetuju dengan pemprosesan dokumen persendirian untuk KYC. Bukti tidak dihantar ke perkhidmatan AI luaran. Keputusan akhir dibuat oleh manusia yang diberi kuasa.",
       "submitting": "Menghantar…",
       "startNew": "Mulakan penghantaran baharu",
       "submitForReview": "Hantar untuk semakan",
       "uploadRequired": "Sila muat naik foto dokumen",
       "submissionFailed": "Penghantaran gagal.",
-      "manualReview": "Bacaan dokumen AI tidak tersedia atau tidak muktamad. Dokumen anda telah dihantar untuk semakan manual pentadbir.",
+      "manualReview": "Penyerahan anda beratur untuk semakan manusia. Pra-semak persendirian boleh membantu; ia tidak meluluskan KYC.",
       "submitted": "Dokumen KYC dihantar untuk semakan.",
       "myKad": "MyKad (Kad Pengenalan Malaysia)",
       "passport": "Pasport",
@@ -1315,7 +1321,7 @@
       "passportHint": "Pasport: 1–2 huruf + 6–8 digit, cth. A12345678",
       "invalidFileType": "Setiap dokumen mestilah foto JPG, PNG atau WebP",
       "fileTooLarge": "Fail mestilah di bawah 5 MB (semasa: {{size}} MB)",
-      "consentRequired": "Sila beri persetujuan untuk bacaan dokumen berbantu AI sebelum menghantar.",
+      "consentRequired": "Sila setuju dengan pemprosesan dokumen KYC persendirian sebelum menghantar.",
       "tiers": {
         "emailVerified": "E-mel Disahkan",
         "phoneVerified": "Telefon Disahkan",
@@ -1330,7 +1336,10 @@
         "document_suspected_tampering": "Kami tidak dapat melengkapkan pengesahan dengan penghantaran ini. Hubungi sokongan jika anda memerlukan bantuan.",
         "other": "Kami memerlukan maklumat lanjut untuk melengkapkan pengesahan. Semak nota penyemak di bawah.",
         "default": "Kami tidak dapat melengkapkan pengesahan dengan penghantaran ini. Semak dokumen anda dan hantar yang baharu."
-      }
+      },
+      "previewAlt": "Foto {{side}} yang dipilih",
+      "previewGuidance": "Pastikan foto menunjukkan satu dokumen, keempat-empat penjuru serta nama dan nombor yang jelas. Elakkan silau, jari menutup teks dan kolaj. Pratonton ini tidak mengesahkan identiti anda.",
+      "previewUnavailable": "Pelayar ini tidak dapat memaparkan foto. Anda boleh menggantikannya; pelayan tetap akan menyemak penyerahan anda."
     },
     "recommendations": {
       "vendorNameMin": "Masukkan nama vendor atau perniagaan sekurang-kurangnya 3 aksara.",

@@ -152,12 +152,12 @@ describe('vendor invite phone and claim executable state', () => {
   it('posts only the personal mobile to send OTP and never contacts a live provider', async () => {
     const fetcher = vi.fn(async () => Response.json({ data: { sent: true }, error: null }));
 
-    await requestPhoneOtp(fetcher, '+60123456789');
+    await requestPhoneOtp(fetcher, '+60123456789', 'valid-proof');
 
     expect(fetcher).toHaveBeenCalledWith('/api/phone/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: '+60123456789' }),
+      body: JSON.stringify({ phone: '+60123456789', captchaToken: 'valid-proof' }),
     });
   });
 

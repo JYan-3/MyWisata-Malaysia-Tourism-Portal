@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
 import { Button } from "@/components/ui/button";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -33,6 +34,7 @@ export default function StaffInvitationPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const human = useHumanVerification("invitation_auth");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -65,7 +67,7 @@ export default function StaffInvitationPage() {
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!invitation) return;
+    if (!invitation || busy) return;
     setBusy(true); setError(""); setMessage("");
     if (mode === "register") {
       const validation = validatePassword(password);
@@ -73,18 +75,21 @@ export default function StaffInvitationPage() {
         setBusy(false); setError(t("errors.passwordPolicy")); return;
       }
     }
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setBusy(false); setError(t("humanVerification.required")); return; }
     const result = mode === "sign_in"
-      ? await supabase.auth.signInWithPassword({ email: invitation.email, password })
+      ? await supabase.auth.signInWithPassword({ email: invitation.email, password, options: { captchaToken } })
       : await supabase.auth.signUp({
         email: invitation.email,
         password,
         options: {
+          captchaToken,
           data: { full_name: fullName.trim(), preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) },
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(invitationPath)}`,
         },
       });
     setBusy(false);
-    if (result.error) { setError(result.error.message); return; }
+    if (result.error) { setError(result.error.code === "captcha_failed" ? t("humanVerification.invalid") : result.error.message); return; }
     if (!result.data.session || !result.data.user?.email_confirmed_at) {
       setMessage(t("staffInvitation.verificationSent"));
       return;
@@ -104,15 +109,17 @@ export default function StaffInvitationPage() {
   }
 
   async function resendVerification() {
-    if (!invitation) return;
+    if (!invitation || busy) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(t("humanVerification.required")); return; }
     setBusy(true); setError("");
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
       email: invitation.email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(invitationPath)}` },
+      options: { captchaToken, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(invitationPath)}` },
     });
     setBusy(false);
-    if (resendError) setError(resendError.message);
+    if (resendError) setError(resendError.code === "captcha_failed" ? t("humanVerification.invalid") : resendError.message);
     else setMessage(t("staffInvitation.verificationResent"));
   }
 
@@ -173,6 +180,7 @@ export default function StaffInvitationPage() {
             : matchingSession ? <div><p className="text-sm text-muted-foreground">{t("staffInvitation.signedInAs", { email: sessionEmail })}</p><Button type="button" onClick={acceptInvitation} disabled={busy} className="mt-4 w-full gap-2"><CheckCircle2 size={16} />{busy ? t("staffInvitation.accepting") : t("staffInvitation.accept")}</Button></div>
             : <div className="space-y-3">
               <div className="grid grid-cols-2 rounded-xl bg-secondary p-1 text-sm font-semibold"><button type="button" onClick={() => setMode("register")} className={`rounded-lg px-3 py-2 ${mode === "register" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{t("staffInvitation.createAccount")}</button><button type="button" onClick={() => setMode("sign_in")} className={`rounded-lg px-3 py-2 ${mode === "sign_in" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{t("staffInvitation.haveAccount")}</button></div>
+              <HumanVerification {...human} />
               <form onSubmit={authenticate} className="space-y-3">
                 {mode === "register" && <input required value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder={t("fields.fullName")} aria-label={t("fields.fullName")} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />}
                 <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-3"><Mail size={15} className="text-muted-foreground" /><input readOnly value={invitation?.email ?? ""} aria-label={t("fields.email")} className="h-11 min-w-0 flex-1 bg-transparent text-sm" /></div>

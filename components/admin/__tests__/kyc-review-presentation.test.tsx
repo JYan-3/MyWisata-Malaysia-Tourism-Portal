@@ -136,6 +136,7 @@ describe("KYC review presentation", () => {
         reviewReasonCode: status === "rejected" ? "document_mismatch" : null,
       },
       assignment: {
+        reviewVersion: 7,
         assignedTo: canDecide ? "33333333-3333-4333-8333-333333333333" : "44444444-4444-4444-8444-444444444444",
         claimedAt: "2026-07-15T08:02:00.000Z",
         isAssignedToCurrentUser: canDecide,

@@ -15,6 +15,7 @@ export const e164Schema = z.string().transform((value, context) => {
 
 export const sendOtpSchema = z.object({
   phone: e164Schema,
+  captchaToken: z.string().trim().min(1).max(2048),
 }).strict();
 
 export const verifyOtpSchema = z.object({

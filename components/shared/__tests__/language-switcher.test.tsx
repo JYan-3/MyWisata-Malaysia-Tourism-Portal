@@ -1,6 +1,8 @@
 import React, { act } from "react";
+import { createInstance } from "i18next";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { APP_LOCALES } from "@/lib/i18n/locale";
+import { APP_NAMESPACES, type AppResources } from "@/lib/i18n/resources";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -11,10 +13,17 @@ const mocks = vi.hoisted(() => ({
   useRouter: vi.fn(),
   useTranslation: vi.fn(),
   useActionFeedback: vi.fn(),
+  changeLanguage: vi.fn(),
+  addResourceBundle: vi.fn(),
+  loadLocaleResources: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: mocks.useRouter }));
 vi.mock("react-i18next", () => ({ useTranslation: mocks.useTranslation }));
+vi.mock("@/lib/i18n/resources", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/i18n/resources")>(),
+  loadLocaleResources: mocks.loadLocaleResources,
+}));
 vi.mock("@/components/providers/action-feedback", () => ({ useActionFeedback: mocks.useActionFeedback }));
 vi.mock("@/components/ui/select", async () => {
   const ReactModule = await import("react");
@@ -400,9 +409,14 @@ describe("LanguageSwitcher", () => {
     mocks.refresh.mockReset();
     mocks.push.mockReset();
     mocks.showFeedback.mockReset();
+    mocks.changeLanguage.mockReset();
+    mocks.addResourceBundle.mockReset();
+    mocks.loadLocaleResources.mockReset();
+    mocks.loadLocaleResources.mockResolvedValue(Object.fromEntries(APP_NAMESPACES.map((namespace) => [namespace, {}])));
     mocks.useRouter.mockReturnValue({ refresh: mocks.refresh, push: mocks.push });
     mocks.resolvedLanguage = "en";
-    mocks.useTranslation.mockImplementation(() => ({ t: translate, i18n: { resolvedLanguage: mocks.resolvedLanguage } }));
+    mocks.changeLanguage.mockImplementation(async (locale: string) => { mocks.resolvedLanguage = locale; });
+    mocks.useTranslation.mockImplementation(() => ({ t: translate, i18n: { resolvedLanguage: mocks.resolvedLanguage, changeLanguage: mocks.changeLanguage, addResourceBundle: mocks.addResourceBundle } }));
     mocks.useActionFeedback.mockReturnValue({ showFeedback: mocks.showFeedback });
     vi.stubGlobal("fetch", mocks.fetch);
     container = document.createElement("div");
@@ -444,10 +458,10 @@ describe("LanguageSwitcher", () => {
     expect(select.value).toBe("zh-CN");
   });
 
-  it("disables the real select while the locale request is pending", async () => {
+  it("switches after resource loading while the locale preference save is still pending", async () => {
     const request = deferred<Response>();
     mocks.fetch.mockReturnValue(request.promise);
-    const select = await renderSwitcher();
+    let select = await renderSwitcher();
 
     await act(async () => {
       select.value = "zh-CN";
@@ -455,14 +469,87 @@ describe("LanguageSwitcher", () => {
       await Promise.resolve();
     });
 
+    // The mocked translation hook needs an explicit render to observe languageChanged.
+    select = await renderSwitcher();
     expect(select.disabled).toBe(true);
     expect(select.getAttribute("aria-busy")).toBe("true");
-    expect(select.value).toBe("en");
+    expect(select.value).toBe("zh-CN");
+    expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN");
 
     await act(async () => {
       request.resolve({ status: 200 } as Response);
       await request.promise;
     });
+  });
+
+  it.each(["zh-CN", "ms"] as const)("keeps readable labels until %s resources are ready on the first switch", async (locale) => {
+    const actual = await vi.importActual<typeof import("@/lib/i18n/resources")>("@/lib/i18n/resources");
+    const instance = createInstance();
+    await instance.init({
+      lng: "en",
+      resources: { en: await actual.loadLocaleResources("en") },
+      supportedLngs: [...APP_LOCALES],
+      ns: [...APP_NAMESPACES],
+      defaultNS: "common",
+      fallbackLng: false,
+      fallbackNS: "common",
+    });
+    const resourceRequest = deferred<AppResources>();
+    mocks.loadLocaleResources.mockReturnValue(resourceRequest.promise);
+    mocks.fetch.mockResolvedValue({ status: 200 } as Response);
+    mocks.useTranslation.mockImplementation(() => ({ t: instance.getFixedT(null, "common"), i18n: instance }));
+    const observed: Array<{ language: string; home: string; map: string }> = [];
+    instance.on("languageChanged", (language) => {
+      observed.push({
+        language,
+        home: instance.t("navigation.home", { ns: "customer" }),
+        map: instance.t("ui.promotionCampaigns.views.map", { ns: "customer" }),
+      });
+    });
+    const select = await renderSwitcher();
+
+    await act(async () => {
+      select.value = locale;
+      select.dispatchEvent(new FakeEvent("change", { bubbles: true }));
+    });
+
+    expect(instance.language).toBe("en");
+    expect(instance.t("navigation.home", { ns: "customer" })).toBe("Home");
+    expect(select.value).toBe("en");
+    expect(select.disabled).toBe(true);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resourceRequest.resolve(await actual.loadLocaleResources(locale));
+      await resourceRequest.promise;
+    });
+
+    expect(observed).toHaveLength(1);
+    expect(observed[0].language).toBe(locale);
+    expect(observed[0].home).not.toBe("navigation.home");
+    expect(observed[0].map).not.toBe("ui.promotionCampaigns.views.map");
+    expect(APP_NAMESPACES.every((namespace) => instance.hasResourceBundle(locale, namespace))).toBe(true);
+    expect(instance.resolvedLanguage).toBe(locale);
+    expect(select.value).toBe(locale);
+    expect(select.disabled).toBe(false);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the previous language and does not save when target resources fail to load", async () => {
+    mocks.loadLocaleResources.mockRejectedValue(new Error("Resource chunk unavailable"));
+    const select = await renderSwitcher();
+
+    await act(async () => {
+      select.value = "ms";
+      select.dispatchEvent(new FakeEvent("change", { bubbles: true }));
+    });
+
+    expect(select.value).toBe("en");
+    expect(select.disabled).toBe(false);
+    expect(mocks.changeLanguage).not.toHaveBeenCalledWith("ms");
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(mocks.showFeedback).toHaveBeenCalledWith("error", translations["language.saveError"]);
   });
 
   it("reports success through feedback and aria-live, refreshes, and never pushes", async () => {
@@ -476,12 +563,13 @@ describe("LanguageSwitcher", () => {
     });
 
     const liveRegion = findOne(container, (element) => element.getAttribute("aria-live") === "polite");
-    expect(select.value).toBe("en");
+    expect(select.value).toBe("zh-CN");
     expect(mocks.fetch).toHaveBeenCalledWith("/api/locale", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locale: "zh-CN" }),
     });
+    expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN");
     expect(mocks.showFeedback).toHaveBeenCalledWith("success", "Language preference saved.");
     expect(liveRegion.textContent).toBe("Language preference saved.");
     expect(mocks.refresh).toHaveBeenCalledTimes(1);

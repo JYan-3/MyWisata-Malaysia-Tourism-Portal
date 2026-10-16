@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KycSecurityStatus } from "@/lib/kyc/types";
-import { Clock3, FileCheck2, Search, ShieldCheck } from "lucide-react";
+import { Clock3, FileCheck2, Search, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { AdminKycSubmission, User } from "@/backend/core/types";
+import type { User } from "@/backend/core/types";
+import { KYC_PAGE_SIZES, type KycQueueResult, type KycOperations } from "@/lib/kyc/operations";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { KycReviewQueueRow } from "@/components/admin/kyc-review-queue-row";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -24,61 +27,77 @@ export default function AdminKycPage() {
   const [security, setSecurity] = useState<KycSecurityStatus | null>(null);
   const [securityError, setSecurityError] = useState(false);
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const [users, setUsers] = useState<User[]>([]);
-  const [submissions, setSubmissions] = useState<Map<string, AdminKycSubmission>>(new Map());
-  const [verifiedCount, setVerifiedCount] = useState(0);
+  const [queue, setQueue] = useState<KycQueueResult | null>(null);
+  const [operations, setOperations] = useState<KycOperations | null>(null);
+  const [operationsError, setOperationsError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [nextBusy, setNextBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "info_requested">("all");
+  const [assignment, setAssignment] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [refresh, setRefresh] = useState(0);
 
-  async function load() {
-    try {
-      const response = await fetch("/api/admin/kyc/submissions", { cache: "no-store" });
-      const body = await response.json().catch(() => ({}));
-      if (body.error?.code === "KYC_MFA_REQUIRED") {
-        setUsers([]);
-        setSubmissions(new Map());
-        setSecurity(null);
-        router.replace("/admin/kyc/mfa?next=%2Fadmin%2Fkyc");
-        return;
-      }
-      if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.loadSubmissions"));
-      setUsers((body.data?.customers ?? []).map((customer: Pick<User, "id" | "name" | "email" | "verificationTier">) => ({
-        ...customer,
-        role: "customer" as const,
-        avatarInitial: customer.name.charAt(0).toUpperCase() || "?",
-      })));
-      setSubmissions(new Map((body.data?.submissions ?? []).map((submission: AdminKycSubmission) => [submission.userId, submission])));
-      setVerifiedCount(body.data?.verifiedCount ?? 0);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
       setError(null);
       try {
-        const statusResponse = await fetch("/api/admin/kyc/security-status", { cache: "no-store" });
-        const statusBody = await statusResponse.json();
-        if (!statusResponse.ok || !statusBody.data) throw new Error();
-        setSecurity(statusBody.data as KycSecurityStatus);
-        setSecurityError(false);
-      } catch { setSecurityError(true); }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("kyc.errors.loadQueue"));
+        const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize), status: statusFilter, assignment, search });
+        const response = await fetch(`/api/admin/kyc/submissions?${query}`, { cache: "no-store", signal: controller.signal });
+        const body = await response.json().catch(() => ({}));
+        if (controller.signal.aborted) return;
+        if (body.error?.code === "KYC_MFA_REQUIRED") { router.replace("/admin/kyc/mfa?next=%2Fadmin%2Fkyc"); return; }
+        if (!response.ok || !body.data) throw new Error(t("kyc.errors.loadQueue"));
+        setQueue(body.data as KycQueueResult);
+      } catch {
+        if (!controller.signal.aborted) { setQueue(null); setError(t("kyc.errors.loadQueue")); }
+      } finally { if (!controller.signal.aborted) setLoading(false); }
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [page, pageSize, statusFilter, assignment, search, refresh, router, t]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function readStatus() {
+      const results = await Promise.allSettled([
+        fetch("/api/admin/kyc/security-status", { cache: "no-store", signal: controller.signal }).then(async (response) => {
+          const body = await response.json(); if (!response.ok || !body.data) throw new Error(); return body.data as KycSecurityStatus;
+        }),
+        fetch("/api/admin/kyc/operations", { cache: "no-store", signal: controller.signal }).then(async (response) => {
+          const body = await response.json(); if (!response.ok || !body.data) throw new Error(); return body.data as KycOperations;
+        }),
+      ]);
+      if (controller.signal.aborted) return;
+      if (results[0].status === "fulfilled") { setSecurity(results[0].value); setSecurityError(false); }
+      else setSecurityError(true);
+      if (results[1].status === "fulfilled") { setOperations(results[1].value); setOperationsError(false); }
+      else { setOperations(null); setOperationsError(true); }
     }
+    void readStatus();
+    return () => controller.abort();
+  }, [refresh]);
+
+  async function nextCase() {
+    setNextBusy(true);
+    try {
+      const response = await fetch("/api/admin/kyc/work", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "next" }) });
+      const body = await response.json();
+      if (body.error?.code === "KYC_MFA_REQUIRED") { router.replace("/admin/kyc/mfa?next=%2Fadmin%2Fkyc"); return; }
+      if (!response.ok) throw new Error();
+      if (body.data?.submissionId) router.push(`/admin/kyc/${body.data.submissionId}`);
+      else setError(t("kyc.operations.noNext"));
+    } catch { setError(t("kyc.operations.workFailed")); }
+    finally { setNextBusy(false); }
   }
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, []);
-
-  const queueUsers = users.filter((user) => submissions.has(user.id));
-  const pendingReview = queueUsers.filter((user) => submissions.get(user.id)?.status === "pending");
-  const infoRequested = queueUsers.filter((user) => submissions.get(user.id)?.status === "info_requested");
-  const oldestPendingAt = pendingReview
-    .map((user) => submissions.get(user.id)?.submittedAt)
-    .filter((value): value is string => Boolean(value))
-    .sort()[0];
-  const visibleQueue = queueUsers.filter((user) => {
-    const submission = submissions.get(user.id);
-    const matchesStatus = statusFilter === "all" || submission?.status === statusFilter;
-    const searchText = `${user.name} ${user.email} ${submission?.docType ?? ""}`.toLowerCase();
-    return matchesStatus && (!search.trim() || searchText.includes(search.trim().toLowerCase()));
-  });
+  const visibleQueue = queue?.customers ?? [];
+  const pendingCount = queue?.counts.pending;
+  const infoCount = queue?.counts.infoRequested;
+  const oldestPendingAt = queue?.oldestPendingAt;
+  const actualPage = queue?.page ?? page;
   return (
     <AdminPageShell>
       <AdminPageHeader
@@ -86,6 +105,10 @@ export default function AdminKycPage() {
         title={t("kyc.title")}
         description={t("kyc.description")}
       />
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => void nextCase()} disabled={nextBusy}>{t("kyc.operations.next")}</Button>
+        <Button variant="outline" onClick={() => setRefresh((value) => value + 1)} disabled={loading}>{t("kyc.operations.refresh")}</Button>
+      </div>
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
@@ -108,21 +131,43 @@ export default function AdminKycPage() {
       </section>
 
       <AdminMetricGrid items={[
-        { label: t("kyc.metrics.pending"), value: pendingReview.length, detail: t("kyc.metrics.pendingNote") },
-        { label: t("kyc.metrics.infoRequested"), value: infoRequested.length, detail: t("kyc.metrics.infoRequestedNote") },
-        { label: t("kyc.metrics.verified"), value: verifiedCount, detail: t("kyc.metrics.verifiedNote") },
-        { label: t("kyc.metrics.oldest"), value: oldestPendingAt ? dateLabel(oldestPendingAt, locale) : "—", detail: oldestPendingAt ? t("kyc.metrics.submittedFirst") : t("kyc.metrics.queueClear") },
+        { label: t("kyc.metrics.pending"), value: pendingCount ?? "—", detail: t("kyc.metrics.pendingNote") },
+        { label: t("kyc.metrics.infoRequested"), value: infoCount ?? "—", detail: t("kyc.metrics.infoRequestedNote") },
+        { label: t("kyc.metrics.verified"), value: queue?.verifiedCount ?? "—", detail: t("kyc.metrics.verifiedNote") },
+        { label: t("kyc.metrics.oldest"), value: oldestPendingAt ? dateLabel(oldestPendingAt, locale) : "—", detail: oldestPendingAt ? t("kyc.metrics.submittedFirst") : queue ? t("kyc.metrics.queueClear") : t("kyc.operations.unavailable") },
       ]} />
+
+      {operationsError && <p role="alert" className="text-sm text-destructive">{t("kyc.operations.unavailable")}</p>}
+      {operations && <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-semibold">{t("kyc.operations.title")}</h2>
+        <AdminMetricGrid items={[
+          { label: t("kyc.operations.submitted"), value: operations.submittedToday },
+          { label: t("kyc.operations.decided"), value: operations.decidedToday },
+          { label: t("kyc.operations.assigned"), value: operations.assigned },
+          { label: t("kyc.operations.waitP95"), value: operations.waitingP95Seconds === null ? "—" : `${Math.round(operations.waitingP95Seconds / 60)}` },
+        ]} />
+        <p className="text-sm text-muted-foreground">{t("kyc.operations.intervalMeans", { first: operations.sessions.firstReviewMeanSeconds === null ? "—" : Math.round(operations.sessions.firstReviewMeanSeconds), repeat: operations.sessions.reReviewMeanSeconds === null ? "—" : Math.round(operations.sessions.reReviewMeanSeconds) })}</p>
+        <p className="text-sm text-muted-foreground">{t("kyc.operations.worker", operations.precheck)}</p>
+        {!operations.privateOcrConfigured && <p role="status" className="text-sm text-muted-foreground">{t("kyc.operations.notConfigured")}</p>}
+        <p className="text-sm text-muted-foreground">{t("kyc.operations.sessions", { count: operations.sessions.closed, minutes: Math.round(operations.sessions.recordedSeconds / 60), incomplete: operations.sessions.incomplete })}</p>
+        <p className="text-xs text-muted-foreground">{t("kyc.operations.measurementNote")}</p>
+      </section>}
 
       <AdminFilterBar>
         <label className="relative min-w-[220px] flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("kyc.filters.search")} aria-label={t("kyc.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
+          <Input maxLength={200} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); setLoading(true); }} placeholder={t("kyc.filters.search")} aria-label={t("kyc.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
         </label>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "pending" | "info_requested")} aria-label={t("kyc.filters.status")} className={adminFilterControlClassName}>
+        <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "all" | "pending" | "info_requested"); setPage(1); setLoading(true); }} aria-label={t("kyc.filters.status")} className={adminFilterControlClassName}>
           <option value="all">{t("kyc.filters.allStatuses")}</option>
           <option value="pending">{t("kyc.status.pending")}</option>
-          <option value="info_requested">{t("kyc.filters.infoRequestedCount", { count: infoRequested.length })}</option>
+          <option value="info_requested">{t("kyc.filters.infoRequestedCount", { count: infoCount ?? 0 })}</option>
+        </select>
+        <select aria-label={t("kyc.operations.assignment")} className={adminFilterControlClassName} value={assignment} onChange={(event) => { setAssignment(event.target.value); setPage(1); setLoading(true); }}>
+          <option value="all">{t("kyc.operations.allAssignments")}</option><option value="mine">{t("kyc.operations.mine")}</option><option value="unassigned">{t("kyc.operations.unassigned")}</option>
+        </select>
+        <select aria-label={t("kyc.operations.pageSize")} className={adminFilterControlClassName} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); setLoading(true); }}>
+          {KYC_PAGE_SIZES.map((size) => <option value={size} key={size}>{t("kyc.operations.perPage", { count: size })}</option>)}
         </select>
       </AdminFilterBar>
 
@@ -134,17 +179,17 @@ export default function AdminKycPage() {
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 size={14} /> {t("kyc.queue.oldestFirst")}</div>
         </div>
-        {visibleQueue.length === 0 ? (
+        {loading ? <p role="status" className="p-6 text-sm text-muted-foreground">{t("kyc.detail.loading")}</p> : !queue ? null : visibleQueue.length === 0 ? (
           <EmptyState icon={<FileCheck2 size={28} />} title={t("kyc.empty.title")} description={t("kyc.empty.description")} />
         ) : (
           <div className="divide-y divide-border">
             {visibleQueue.map((user) => {
-              const submission = submissions.get(user.id);
+              const submission = queue?.submissions.find((item) => item.userId === user.id);
               if (!submission) return null;
               return (
                 <KycReviewQueueRow
                   key={user.id}
-                  user={user}
+                  user={{ ...user, role: "customer", avatarInitial: user.name.charAt(0).toUpperCase() || "?" } as User}
                   submission={submission}
                   documentLabel={t(`kyc.documents.${submission.docType}`)}
                   statusLabel={t(`kyc.status.${submission.status === "info_requested" ? "infoRequested" : "pending"}`)}
@@ -156,6 +201,13 @@ export default function AdminKycPage() {
             })}
           </div>
         )}
+        {queue && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
+          <span className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+            <span>{t("kyc.operations.range", { first: queue.total ? (actualPage - 1) * pageSize + 1 : 0, last: Math.min(actualPage * pageSize, queue.total), total: queue.total })}</span>
+            <span>{t("ui.pagination.pageOf", { page: actualPage, total: Math.max(1, queue.totalPages) })}</span>
+          </span>
+          <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={loading || actualPage <= 1} onClick={() => { setPage(actualPage - 1); setLoading(true); }}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={loading || actualPage >= queue.totalPages} onClick={() => { setPage(actualPage + 1); setLoading(true); }}><ChevronRight size={14} /></Button></div>
+        </div>}
       </section>
 
     </AdminPageShell>

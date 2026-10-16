@@ -14,6 +14,7 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = false }: { campaign: PromotionCampaignPublic | null; campaigns?: PromotionCampaignPublic[]; unavailable?: boolean }) {
   const { t, i18n } = useTranslation("customer");
@@ -122,10 +123,10 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
               id="promotion-campaign-spotlight-title"
               className="mt-3 break-words font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl"
             >
-              {displayCampaign.title}
+              <LocalizedContent entityType="promotion_campaign" entityId={displayCampaign.id} field="title" sourceText={displayCampaign.title} />
             </h2>
             <p className="mt-4 max-w-2xl break-words text-base leading-7 text-muted-foreground">
-              {displayCampaign.summary}
+              <LocalizedContent entityType="promotion_campaign" entityId={displayCampaign.id} field="summary" sourceText={displayCampaign.summary} />
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
               <span className="inline-flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">

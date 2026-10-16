@@ -83,11 +83,12 @@ export function groupTripItemsByDay(trip: Pick<Trip, "start_date" | "end_date">,
 
 function tripTimeToMinutes(time: string | null): number | null {
   if (time === null) return null;
-  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(time);
   if (!match) return Number.NaN;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
-  if (hours > 23 || minutes > 59) return Number.NaN;
+  const seconds = match[3] === undefined ? 0 : Number(match[3]);
+  if (hours > 23 || minutes > 59 || seconds > 59) return Number.NaN;
   return hours * 60 + minutes;
 }
 

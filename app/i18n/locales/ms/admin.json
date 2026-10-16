@@ -1347,7 +1347,11 @@
       "snapshotPhone": "Telefon",
       "submittedAt": "Dihantar pada",
       "waitingDescription": "Pelanggan mesti menghantar maklumat yang diminta sebelum keputusan lain boleh dibuat.",
-      "waitingTitle": "Menunggu pelanggan"
+      "waitingTitle": "Menunggu pelanggan",
+      "previewAlt": "Dokumen {{side}} untuk perbandingan identiti",
+      "closePreview": "Tutup pratonton dokumen",
+      "openPdf": "Buka PDF dalam pelayar",
+      "pdfNote": "Penyerahan terdahulu ini mengandungi PDF. Bukanya melalui paparan dokumen yang dilindungi."
     },
     "documents": {
       "driving_license": "Lesen memandu / MyPolis",
@@ -1489,6 +1493,54 @@
       "noEmailRecipients": "Tiada penyemak yang layak mempunyai alamat e-mel sebenar. Tetapkan penerima sebelum bergantung pada amaran e-mel.",
       "pending_one": "{{count}} amaran keselamatan menunggu penerima yang layak.",
       "pending_other": "{{count}} amaran keselamatan menunggu penerima yang layak."
+    },
+    "operations": {
+      "title": "Operasi KYC · hari ini (waktu Malaysia)",
+      "next": "Kes seterusnya",
+      "refresh": "Muat semula barisan",
+      "noNext": "Tiada kes belum ditugaskan tersedia. Semak kes anda atau muat semula kemudian.",
+      "workFailed": "Tugasan ini tidak dapat dikemas kini. Muat semula dan cuba lagi.",
+      "unavailable": "Data operasi tidak tersedia",
+      "submitted": "Dihantar hari ini",
+      "decided": "Keputusan hari ini",
+      "assigned": "Kes tertunda ditugaskan",
+      "waitP95": "Persentil ke-95 masa menunggu (minit)",
+      "worker": "Pra-semak: {{queued}} beratur · {{processing}} diproses · {{failed}} perlu perhatian · {{completedToday}} selesai hari ini",
+      "notConfigured": "Pekerja OCR persendirian belum dikonfigurasi sepenuhnya. Semakan manusia masih tersedia.",
+      "sessions_one": "{{count}} sela rakaman selesai · {{minutes}} minit direkod · {{incomplete}} sela tidak lengkap dikecualikan",
+      "sessions_other": "{{count}} sela rakaman selesai · {{minutes}} minit direkod · {{incomplete}} sela tidak lengkap dikecualikan",
+      "measurementNote": "Sela rakaman bukan masa kerja berkesan atau masa pengendalian kes. Sela terganggu/tidak ditutup dikecualikan, tetapi masa melahu mungkin termasuk. Kapasiti dan kadar penerimaan salah memerlukan ukuran yang ditentukur; tiada anggaran dipaparkan.",
+      "assignment": "Tugasan",
+      "allAssignments": "Semua tugasan",
+      "mine": "Ditugaskan kepada saya",
+      "unassigned": "Belum ditugaskan",
+      "pageSize": "Baris setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
+      "range": "{{first}}–{{last}} daripada {{total}} kes sepadan",
+      "precheck": "Pra-semak persendirian",
+      "precheckNote": "Pra-semak membantu penyemak manusia. Ia tidak mengesahkan ketulenan atau pemegang, meluluskan KYC, atau membuktikan penipuan.",
+      "precheckStatus": {
+        "none": "Tiada pra-semak direkodkan",
+        "queued": "Dalam barisan",
+        "processing": "Sedang diproses",
+        "succeeded": "Pra-semak selesai",
+        "failed": "Pra-semak tidak tersedia — semakan manusia",
+        "cancelled": "Pra-semak dihentikan — bukti atau kes berubah"
+      },
+      "precheckOutcome": {
+        "precheck_passed": "Lulus pra-semak — keputusan manusia diperlukan",
+        "manual_review": "Semakan manusia diperlukan",
+        "resubmit_suggested": "Pertimbangkan meminta maklumat — keputusan manusia diperlukan"
+      },
+      "start": "Mula merakam sela",
+      "pause": "Jeda rakaman",
+      "release": "Lepaskan ke barisan",
+      "recording": "Sela ini sedang dirakam. Meninggalkan tetingkap menjedanya; mulakan semula secara manual.",
+      "notRecording": "Rakaman sela dijeda. Mulakan semasa menyemak; ia tidak menjejaskan keputusan.",
+      "recordingInterrupted": "Jeda rakaman tidak dapat disahkan. Sela yang tidak ditutup dikecualikan daripada statistik masa.",
+      "continueNext": "Buka kes seterusnya selepas menyimpan keputusan",
+      "intervalMeans": "Purata sela direkod: semakan pertama {{first}} saat · semakan semula {{repeat}} saat (bukan masa pengendalian kes)"
     }
   },
   "reconciliation": {

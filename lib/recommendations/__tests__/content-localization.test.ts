@@ -31,4 +31,15 @@ describe('recommendation content localization', () => {
     expect(prompt.user).toContain('[URL]');
     expect(prompt.user).not.toContain('vendor.example');
   });
+
+  it('builds prompts for review fields and the English target locale', () => {
+    const prompt = buildTranslationPrompt({
+      field: 'body',
+      sourceText: '这段评论很好',
+      locale: 'en',
+    });
+
+    expect(prompt.user).toContain('this body into English');
+    expect(prompt.system).toContain('plain text');
+  });
 });

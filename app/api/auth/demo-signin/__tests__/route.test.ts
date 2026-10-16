@@ -7,7 +7,7 @@ import { POST } from '../route';
 
 function request() {
   return new Request('http://localhost/api/auth/demo-signin', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'customer@demo.local' }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'customer@demo.local', captchaToken: 'valid-proof' }),
   });
 }
 
@@ -31,6 +31,6 @@ describe('POST /api/auth/demo-signin runtime gate', () => {
     signInWithPassword.mockResolvedValue({ error: null });
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect(signInWithPassword).toHaveBeenCalledWith({ email: 'customer@demo.local', password: 'demo123456' });
+    expect(signInWithPassword).toHaveBeenCalledWith({ email: 'customer@demo.local', password: 'demo123456', options: { captchaToken: 'valid-proof' } });
   });
 });

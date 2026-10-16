@@ -1,21 +1,26 @@
 import 'server-only';
+import { isIP } from 'node:net';
 
 import { hashICWithHmac, normalizeIC } from './hash';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { requiresManualKycReview } from './ocr-policy';
 export { requiresManualKycReview } from './ocr-policy';
 
 export type KycOcrStatus = 'matched' | 'mismatch' | 'unreadable' | 'unavailable';
 
 export type KycOcrInput = {
   documentType: 'national_id' | 'passport' | 'driving_license';
-  enteredDocumentNumber: string;
+  enteredDocumentNumber?: string;
+  expectedDocumentNumberHmac?: string;
+  expectedHolderName?: string | null;
   front: { mimeType: string; bytes: Uint8Array };
   back: { mimeType: string; bytes: Uint8Array };
   hmacKey: string;
 };
 
+export type KycOcrFailureCode = 'configuration' | 'service_auth' | 'service_rejected' | 'service_unavailable' | 'network' | 'timeout' | 'invalid_response' | 'evidence_missing' | 'evidence_invalid';
+
 export type KycOcrResult = {
+  failureCode?: KycOcrFailureCode;
+  retryable?: boolean;
   status: KycOcrStatus;
   holderName: string | null;
   documentNumberHmac: string | null;
@@ -26,10 +31,6 @@ export type KycOcrResult = {
   providerModel: string;
 };
 
-type GeminiResponse = {
-  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-};
-
 type ExtractedOcr = {
   holderName?: unknown;
   documentNumber?: unknown;
@@ -38,11 +39,11 @@ type ExtractedOcr = {
   unreadable?: unknown;
 };
 
-const DEFAULT_MODEL = 'gemini-3.1-flash-lite';
+const DEFAULT_MODEL = 'private-ocr-v1';
 
-function unavailable(providerModel: string): KycOcrResult {
+function unavailable(providerModel: string, failureCode: KycOcrFailureCode = 'configuration', retryable = false): KycOcrResult {
   return {
-    status: 'unavailable', holderName: null, documentNumberHmac: null, documentNumberLast4: null,
+    status: 'unavailable', failureCode, retryable, holderName: null, documentNumberHmac: null, documentNumberLast4: null,
     expiryDate: null, confidence: null, mismatchFields: [], providerModel,
   };
 }
@@ -60,44 +61,71 @@ function nullableConfidence(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
 }
 
-function extractJson(text: string): ExtractedOcr | null {
-  const withoutFence = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '');
-  try {
-    const parsed = JSON.parse(withoutFence);
-    return parsed && typeof parsed === 'object' ? parsed as ExtractedOcr : null;
-  } catch {
-    return null;
-  }
+function imagePart(image: { mimeType: string; bytes: Uint8Array }) {
+  return { mimeType: image.mimeType, data: Buffer.from(image.bytes).toString('base64') };
 }
 
-function imagePart(image: { mimeType: string; bytes: Uint8Array }) {
-  return { inlineData: { mimeType: image.mimeType, data: Buffer.from(image.bytes).toString('base64') } };
+/** Literal private addresses avoid public DNS and redirect-based evidence exfiltration. */
+export function privateKycOcrConfiguration() {
+  try {
+    const endpoint = new URL(process.env.KYC_PRIVATE_OCR_URL ?? '');
+    const host = endpoint.hostname.replace(/^\[|\]$/g, '');
+    const octets = host.split('.').map(Number);
+    const loopback = (isIP(host) === 4 && octets[0] === 127) || host === '::1';
+    const privateAddress = isIP(host) === 4 && (octets[0] === 10
+      || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+      || (octets[0] === 192 && octets[1] === 168));
+    const privateV6 = isIP(host) === 6 && /^(fc|fd)/i.test(host);
+    const token = process.env.KYC_PRIVATE_OCR_TOKEN ?? '';
+    const timeoutMs = Number(process.env.KYC_PRIVATE_OCR_TIMEOUT_MS);
+    if ((!loopback && !privateAddress && !privateV6) || endpoint.username || endpoint.password
+      || endpoint.hash || endpoint.search || (!loopback && endpoint.protocol !== 'https:')
+      || !['http:', 'https:'].includes(endpoint.protocol) || token.length < 16
+      || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) return null;
+    return { url: endpoint.href, token, timeoutMs };
+  } catch { return null; }
+}
+
+async function readPrivateResult(response: Response): Promise<ExtractedOcr | null> {
+  if (!response.body || Number(response.headers.get('content-length')) > 16384) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 16384) { await reader.cancel(); return null; }
+      chunks.push(value);
+    }
+    const data: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    return data && typeof data === 'object' && !Array.isArray(data) ? data as ExtractedOcr : null;
+  } catch { return null; }
+  finally { reader.releaseLock(); }
 }
 
 export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
-  const providerModel = process.env.GEMINI_OCR_MODEL ?? DEFAULT_MODEL;
-  const key = process.env.GOOGLE_AI_KEY;
-  // Operator opt-in is required after confirming paid-provider data processing.
-  if (process.env.KYC_EXTERNAL_OCR_ENABLED !== 'true' || !key) return unavailable(providerModel);
-
+  const providerModel = DEFAULT_MODEL;
+  const configuration = privateKycOcrConfiguration();
+  // Legacy external opt-in and GOOGLE_AI_KEY deliberately have no authority here.
+  if (!configuration) return unavailable(providerModel);
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${providerModel}:generateContent?key=${encodeURIComponent(key)}`, {
+    const response = await fetch(configuration.url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      signal: AbortSignal.timeout(20_000),
+      redirect: 'error',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${configuration.token}` },
+      signal: AbortSignal.timeout(configuration.timeoutMs),
       body: JSON.stringify({
-        generationConfig: { temperature: 0, responseMimeType: 'application/json' },
-        contents: [{ role: 'user', parts: [
-          { text: `Read these FRONT and BACK images of a ${input.documentType}. Return JSON only: {"holderName":string|null,"documentNumber":string|null,"expiryDate":"YYYY-MM-DD"|null,"confidence":number,"unreadable":boolean}. This is OCR assistance only, never an approval decision. Use unreadable=true when a required field cannot be read reliably.` },
-          imagePart(input.front), imagePart(input.back),
-        ] }],
+        documentType: input.documentType, front: imagePart(input.front), back: imagePart(input.back),
       }),
     });
-    if (!response.ok) return unavailable(providerModel);
-
-    const body = await response.json() as GeminiResponse;
-    const extracted = extractJson(body.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
-    if (!extracted) return unavailable(providerModel);
+    if (!response.ok) {
+      const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+      return unavailable(providerModel, retryable ? 'service_unavailable' : [401, 403].includes(response.status) ? 'service_auth' : 'service_rejected', retryable);
+    }
+    const extracted = await readPrivateResult(response);
+    if (!extracted || (typeof extracted.unreadable !== 'boolean' && typeof extracted.documentNumber !== 'string')) return unavailable(providerModel, 'invalid_response');
 
     const holderName = nullableText(extracted.holderName);
     const documentNumber = nullableText(extracted.documentNumber, 40);
@@ -107,20 +135,25 @@ export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
     }
 
     const extractedHmac = await hashICWithHmac(documentNumber, input.hmacKey);
-    const enteredHmac = await hashICWithHmac(input.enteredDocumentNumber, input.hmacKey);
-    const isMatch = extractedHmac.value === enteredHmac.value;
+    const expectedHmac = input.expectedDocumentNumberHmac
+      ?? (input.enteredDocumentNumber ? (await hashICWithHmac(input.enteredDocumentNumber, input.hmacKey)).value : null);
+    if (!expectedHmac || !/^[a-f0-9]{64}$/.test(expectedHmac)) return unavailable(providerModel);
+    const mismatchFields = extractedHmac.value === expectedHmac ? [] : ['document_number'];
+    const name = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase();
+    if (input.expectedHolderName && (!holderName || name(holderName) !== name(input.expectedHolderName))) mismatchFields.push('holder_name');
     const compact = normalizeIC(documentNumber);
     return {
-      status: isMatch ? 'matched' : 'mismatch',
+      status: mismatchFields.length === 0 ? 'matched' : 'mismatch',
       holderName,
       documentNumberHmac: extractedHmac.value,
       documentNumberLast4: compact.slice(-4) || null,
       expiryDate: nullableDate(extracted.expiryDate),
       confidence,
-      mismatchFields: isMatch ? [] : ['document_number'],
+      mismatchFields,
       providerModel,
     };
-  } catch {
-    return unavailable(providerModel);
+  } catch (error) {
+    const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name);
+    return unavailable(providerModel, timeout ? 'timeout' : 'network', true);
   }
 }
