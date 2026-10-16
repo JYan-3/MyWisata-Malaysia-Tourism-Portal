@@ -3455,7 +3455,9 @@
       "affiliate": "Affiliate",
       "vendor": "Vendor",
       "payment": "Payments",
-      "general": "General"
+      "general": "General",
+      "events": "Events",
+      "vendorEvents": "Vendor events"
     }
   },
   "legal": {
@@ -3545,7 +3547,7 @@
       },
       "collect": {
         "heading": "What we collect for KYC",
-        "body": "When you choose to verify, we collect a government-issued identity document (such as an IC or passport) — an image of the front and back — and the identity number printed on it. We use an automated text scan (OCR) to read the document and speed up review."
+        "body": "When you choose to verify, we collect images of the front and back of a government-issued identity document (such as an IC or passport), and the identity number printed on it. We use an automated text scan (OCR) to read the document and speed up review."
       },
       "storage": {
         "heading": "Where it is stored",
@@ -3565,7 +3567,7 @@
       },
       "consent": {
         "heading": "Withdrawing consent",
-        "body": "Verification is optional. If you do not want us to hold your identity documents, do not start KYC — you can still use the rest of the platform except withdrawals. You can also close your account, which is a soft close as described in the Privacy Policy."
+        "body": "Verification is optional. If you do not want us to hold your identity documents, do not start KYC. You can still use the rest of the platform except withdrawals. You can also close your account, which is a soft close as described in the Privacy Policy."
       }
     },
     "about": {
@@ -3577,7 +3579,7 @@
       },
       "prototype": {
         "heading": "A student prototype",
-        "body": "This is an academic project rather than a commercial service. Some features — including certain payment methods — are simulated for demonstration, and it is not intended for real-money travel bookings."
+        "body": "This is an academic project rather than a commercial service. Some features, including certain payment methods, are simulated for demonstration, and it is not intended for real-money travel bookings."
       },
       "contact": {
         "heading": "Getting help",
