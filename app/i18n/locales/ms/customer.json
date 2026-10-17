@@ -329,6 +329,28 @@
       "cancel": "Batal",
       "close": "Tutup"
     },
+    "property": {
+      "roomTypes_one": "{{count}} jenis bilik",
+      "roomTypes_other": "{{count}} jenis bilik",
+      "seeRooms": "Lihat bilik",
+      "bookError": "Tempahan tidak dapat dimulakan. Sila cuba lagi.",
+      "roomFallback": "Bilik selesa dengan kemudahan asas.",
+      "onlyLeft": "Tinggal {{count}} sahaja",
+      "perNight": "/ semalam",
+      "totalFor": "{{count}} malam × {{rooms}} bilik: RM {{price}}",
+      "soldOut": "Tidak tersedia",
+      "book": "Tempah",
+      "sections": "Bahagian hotel",
+      "rooms": "Bilik",
+      "policies": "Polisi hotel",
+      "checkIn": "Daftar masuk",
+      "checkOut": "Daftar keluar",
+      "roomCount": "Bilik",
+      "adults": "Dewasa",
+      "search": "Cari",
+      "nightsSummary": "{{count}} malam",
+      "times": "Daftar masuk dari {{checkIn}} · Daftar keluar sebelum {{checkOut}}"
+    },
     "labels": {
       "hiddenGem": "Permata Tersembunyi",
       "sponsored": "Ditaja",

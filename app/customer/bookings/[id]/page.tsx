@@ -18,6 +18,7 @@ import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/cust
 import type { Booking, Outlet } from "@/backend/core/types";
 import { hasDifferentBookingTime } from "@/lib/customer/booking-details";
 import { formatBookingDate, formatBookingTime } from "@/lib/customer/itinerary-calendar";
+import { formatStayRange } from "@/lib/customer/booking-view";
 
 export default function CustomerBookingDetailsPage() {
   const { t: tCustomer } = useTranslation("customer");
@@ -113,7 +114,7 @@ export default function CustomerBookingDetailsPage() {
           <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-7">
             <div className="rounded-2xl border border-border bg-secondary/50 p-4">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"><CalendarDays size={14} className="text-primary" /> {tCustomer("ui.labels.date")}</p>
-              <p className="mt-3 text-sm font-bold text-foreground">{formatBookingDate(booking.slotStartsAt)}</p>
+              <p className="mt-3 text-sm font-bold text-foreground">{booking.slotStartsAt && (booking.nights ?? 1) > 1 ? `${formatStayRange(booking.slotStartsAt, booking.nights!)} · ${tCustomer("ui.property.nightsSummary", { count: booking.nights })}` : formatBookingDate(booking.slotStartsAt)}</p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/50 p-4">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"><Clock3 size={14} className="text-primary" /> {tCustomer("ui.labels.time")}</p>

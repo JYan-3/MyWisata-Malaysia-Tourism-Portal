@@ -6,7 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
-import { buildPublicOutletProfile, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
+import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
@@ -20,6 +20,7 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ vendorId: string; outletId: string }>;
+  searchParams?: Promise<{ checkin?: string; checkout?: string; rooms?: string; adults?: string }>;
 }
 
 async function getPublicOutletPage(outletId: string, vendorId: string) {
@@ -27,7 +28,7 @@ async function getPublicOutletPage(outletId: string, vendorId: string) {
   const [{ data: outlet }, { data: page }, { data: outlets }, { data: media }] = await Promise.all([
     db
       .from("outlets")
-      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,vendors(id,name,logo_url)")
+      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,check_in_time,check_out_time,stay_policies,vendors(id,name,logo_url)")
       .eq("id", outletId)
       .eq("vendor_id", vendorId)
       .eq("status", "active")
@@ -70,8 +71,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function VendorOutletPage({ params }: Props) {
+export default async function VendorOutletPage({ params, searchParams }: Props) {
   const { outletId, vendorId } = await params;
+  const search = (await searchParams) ?? {};
   const { outlet, page, outlets, gallery, logoUrl } = await getPublicOutletPage(outletId, vendorId);
   if (!outlet) notFound();
   const { t } = await getServerTranslation("customer");
@@ -138,7 +140,7 @@ export default async function VendorOutletPage({ params }: Props) {
   const featuredIds = publicDocument.featuredIds.filter((id) => sellableSet.has(id));
   const [{ data: products }, { data: offers }, { data: slots }, { data: reviewMetrics }] = sellableIds.length
     ? await Promise.all([
-        db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,categories(name),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
+        db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,categories(name,slug),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
         db.from("outlet_offers").select("product_id,price").eq("outlet_id", outletId).eq("status", "active").in("product_id", sellableIds),
         db.from("booking_slots").select("id,product_id,starts_at,status").in("product_id", sellableIds).eq("outlet_id", outletId).eq("status", "available").gt("starts_at", new Date().toISOString()).order("starts_at"),
         db.from("product_review_metrics").select("product_id,rating,reviews").in("product_id", sellableIds),
@@ -148,6 +150,19 @@ export default async function VendorOutletPage({ params }: Props) {
   const firstSlotByProduct = new Map<string, string>();
   for (const slot of slots || []) if (!firstSlotByProduct.has(slot.product_id)) firstSlotByProduct.set(slot.product_id, slot.id);
   const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
+  const STAY_SLUG = "accommodation";
+  const stayIds = (products || []).filter((p) => p.categories?.[0]?.slug === STAY_SLUG).map((p) => p.id);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  const stay = resolveStaySearch(search, today);
+  const nightDays = Array.from({ length: stay.nights }, (_, k) => addDays(stay.checkIn, k));
+  const nightSlots = stayIds.length
+    ? (await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,status,price_override").in("product_id", stayIds).eq("outlet_id", outletId).in("starts_at", nightDays.map(stayNightStartsAt))).data || []
+    : [];
+  const stayByProduct = new Map(stayIds.map((id) => {
+    const nights = nightDays.map((day) => nightSlots.find((s) => s.product_id === id && Date.parse(s.starts_at) === Date.parse(stayNightStartsAt(day))));
+    const left = Math.min(...nights.map((s) => (s && s.status === "available" ? Math.max(Number(s.capacity) - Number(s.booked), 0) : 0)));
+    return [id, { left, checkInSlotId: nights[0]?.id ?? null, overrides: nights.map((s) => (s?.price_override == null ? null : Number(s.price_override))) }];
+  }));
   const menuProducts = selectFullOutletMenu(
     (products || []).map((product) => {
       const variants = product.product_variants || [];
@@ -162,6 +177,13 @@ export default async function VendorOutletPage({ params }: Props) {
         description: product.description,
         base_price: getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset),
         category: product.categories?.[0]?.name ?? null,
+        ...(stayByProduct.has(product.id) && {
+          stay: {
+            total: stayByProduct.get(product.id)!.overrides.reduce<number>((sum, o) => sum + (o ?? getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset)), 0),
+            left: stayByProduct.get(product.id)!.left,
+            checkInSlotId: stayByProduct.get(product.id)!.checkInSlotId,
+          },
+        }),
         product_type: product.product_type,
         requires_booking: product.requires_booking,
         cover_url: productImageUrl(product.cover_url),
@@ -176,6 +198,18 @@ export default async function VendorOutletPage({ params }: Props) {
     }),
     featuredIds
   );
+
+  const stayOutlet = {
+    ...publicOutlet,
+    ...(stayIds.length && {
+      stay: {
+        ...stay,
+        checkInTime: outlet.check_in_time?.slice(0, 5) ?? null,
+        checkOutTime: outlet.check_out_time?.slice(0, 5) ?? null,
+        policies: outlet.stay_policies ?? null,
+      },
+    }),
+  };
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -217,7 +251,7 @@ export default async function VendorOutletPage({ params }: Props) {
           <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
         </div>
       </div>}
-      <OutletPageRenderer document={publicDocument} outlet={publicOutlet} products={menuProducts} mode="public" />
+      <OutletPageRenderer document={publicDocument} outlet={stayOutlet} products={menuProducts} mode="public" />
     </main>
   );
 }

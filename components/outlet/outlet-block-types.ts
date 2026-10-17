@@ -15,6 +15,16 @@ export interface OutletRendererOutlet {
   wheelchair_accessible?: boolean | null;
   pet_friendly?: boolean | null;
   logoUrl?: string | null;
+  stay?: {
+    checkIn: string;
+    checkOut: string;
+    nights: number;
+    rooms: number;
+    adults: number;
+    checkInTime: string | null;
+    checkOutTime: string | null;
+    policies: string | null;
+  };
 }
 
 export interface OutletRendererProduct {
@@ -34,6 +44,13 @@ export interface OutletRendererProduct {
   rating?: number;
   reviews?: number;
   featured?: boolean;
+  stay?: {
+    /** Per-room price for every night of the searched stay. */
+    total: number;
+    /** Rooms free on the fullest night; 0 when any night is unavailable. */
+    left: number;
+    checkInSlotId: string | null;
+  };
 }
 
 export interface OutletPageRendererProps {

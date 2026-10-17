@@ -10,8 +10,8 @@ import type { Activity, CartItem, OrderStatus, PriceRule, Voucher } from "./type
  * The outlet is part of the identity: the same variant sold at two outlets has
  * two prices and two stock pools, so it must stay two lines.
  */
-export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId" | "outletId">): string {
-  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}|${item.outletId ?? ""}`;
+export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId" | "outletId" | "nights">): string {
+  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}|${item.outletId ?? ""}${(item.nights ?? 1) > 1 ? `|${item.nights}` : ""}`;
 }
 
 /** The database only accepts cart lines backed by a variant or booking slot. */

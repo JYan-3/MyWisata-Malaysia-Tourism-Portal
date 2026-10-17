@@ -1,5 +1,6 @@
 "use client";
 
+import { formatStayRange } from "@/lib/customer/booking-view";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -467,7 +468,7 @@ export default function CartPage() {
                 {confirmedSlot && (
                   <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                     <CalendarClock size={11} />
-                    {new Date(confirmedSlot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {activity.categorySlug === "accommodation" ? `${formatStayRange(confirmedSlot.startsAt, item.nights ?? 1)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : new Date(confirmedSlot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     {availability.status === "unavailable"
                       ? ` · ${confirmedSlot.status === "expired" ? tCustomer("ui.cart.slotExpired") : tCustomer("ui.cart.slotUnavailable")}`
                       : availability.seatsLeft !== undefined && ` · ${tCustomer("ui.cart.seatsLeft", { count: availability.seatsLeft })}`}

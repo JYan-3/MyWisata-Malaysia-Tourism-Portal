@@ -211,6 +211,11 @@ export interface ComputedActivity extends Activity {
   distanceKm?: number;
 }
 
+export interface DiscoveryPropertySummary {
+  roomTypeCount: number;
+  fromPrice: number;
+}
+
 export type SponsoredPlacement = {
   id: string;
   productId: string;
@@ -224,6 +229,7 @@ export type SponsoredPlacement = {
 
 export type DiscoveryResult = ComputedActivity & {
   sponsorship: { placementId: string; label: "Sponsored" } | null;
+  property?: DiscoveryPropertySummary;
 };
 
 export interface ProductReview {
@@ -334,6 +340,8 @@ export interface CartItem {
    */
   outletId?: string;
   qty: number;
+  /** Stay length in nights; only accommodation lines carry more than 1. */
+  nights?: number;
   priceOverride?: number;
 }
 
@@ -362,6 +370,7 @@ export interface OrderItem {
   imageUrl?: string; // snapshot
   variantLabel: string; // snapshot
   slotStartsAt?: string; // snapshot
+  nights?: number; // stay length; only accommodation lines carry more than 1
   unitPrice: number; // snapshot
   qty: number;
   outletId: string;
@@ -388,6 +397,7 @@ export interface Booking {
   activityName: string;
   outletId: string;
   slotStartsAt?: string;
+  nights?: number;
   qty: number;
   status: "confirmed" | "checked_in" | "no_show" | "cancelled" | "in_use";
   qrCode: string; // booking id retained as a compatibility payload; customer UI renders a real QR

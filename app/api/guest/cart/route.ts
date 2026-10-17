@@ -5,10 +5,10 @@ import { cartItemKey } from "@/backend/core/helpers";
 import { mapCartItem } from "@/backend/domains/commerce";
 import { guestPrivateResponse, isSameOriginMutation, readGuestJson, reserveGuestRateLimit, resolveGuestSession } from "@/lib/checkout/guest-session";
 
-const itemSchema = z.object({ activityId: uuid, variantId: z.union([uuid, z.literal("")]), slotId: uuid.optional(), outletId: uuid.optional(), qty: z.number().int().min(1).max(99), priceOverride: z.number().optional() }).strict();
+const itemSchema = z.object({ activityId: uuid, variantId: z.union([uuid, z.literal("")]), slotId: uuid.optional(), outletId: uuid.optional(), qty: z.number().int().min(1).max(99), nights: z.number().int().min(1).max(30).optional(), priceOverride: z.number().optional() }).strict();
 const addSchema = z.object({ item: itemSchema }).strict();
 const updateSchema = z.object({ key: z.string().min(1).max(300), quantity: z.number().int().min(0).max(99) }).strict();
-const SELECT = "id,variant_id,slot_id,outlet_id,quantity,unit_price,product_variants(product_id),booking_slots(product_id)";
+const SELECT = "id,variant_id,slot_id,outlet_id,quantity,nights,unit_price,product_variants(product_id),booking_slots(product_id)";
 
 async function cartContext(request: Request, create = false) {
   const guest = await resolveGuestSession(request);
@@ -69,6 +69,7 @@ async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
         const { data } = await ctx.db.from("booking_slots").select("id,outlet_id").eq("id", item.slotId).eq("product_id", product.id).maybeSingle();
         if (!data || data.outlet_id !== (item.outletId ?? product.outlet_id)) return apiFail("VALIDATION_FAILED", "Slot unavailable", 422);
       }
+      if (item.nights && item.nights > 1 && !product.requires_booking) return apiFail("VALIDATION_FAILED", "Nights only apply to stays", 422);
       if (product.requires_booking && !item.slotId) return apiFail("VALIDATION_FAILED", "Choose a booking slot", 422);
       if (item.outletId && product.outlet_id !== item.outletId) {
         const { data } = await ctx.db.from("outlet_offers").select("id,price").eq("product_id", product.id).eq("outlet_id", item.outletId).eq("status", "active").maybeSingle();
@@ -78,7 +79,7 @@ async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
       const existing = current.find((row) => cartItemKey(mapCartItem(row as unknown as Parameters<typeof mapCartItem>[0])) === cartItemKey({ ...item, outletId: item.outletId ?? product.outlet_id ?? undefined }));
       const quantity = existing ? Math.min(99, Number(existing.quantity) + item.qty) : item.qty;
       if (!existing && current.length >= 100) return apiFail("CART_LIMIT", "Your cart is full", 422);
-      const values = { variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? product.outlet_id, quantity, unit_price: authoritativePrice + variantOffset, last_added_at: new Date().toISOString() };
+      const values = { variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? product.outlet_id, quantity, nights: item.nights ?? 1, unit_price: authoritativePrice + variantOffset, last_added_at: new Date().toISOString() };
       ({ error } = existing ? await ctx.db.from("cart_items").update(values).eq("id", existing.id).eq("cart_id", ctx.cartId) : await ctx.db.from("cart_items").insert({ cart_id: ctx.cartId, ...values }));
     }
     if (error) return apiFail("GUEST_CART_UNAVAILABLE", "Unable to update cart", 503);

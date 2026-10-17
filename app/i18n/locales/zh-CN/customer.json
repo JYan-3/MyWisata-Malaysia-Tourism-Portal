@@ -329,6 +329,28 @@
       "cancel": "取消",
       "close": "关闭"
     },
+    "property": {
+      "roomTypes_other": "{{count}} 种房型",
+      "seeRooms": "查看房型",
+      "bookError": "无法开始预订，请重试。",
+      "roomFallback": "舒适客房，配备基本设施。",
+      "onlyLeft": "仅剩 {{count}} 间",
+      "perNight": "/ 每晚",
+      "totalFor": "{{count}} 晚 × {{rooms}} 间：RM {{price}}",
+      "soldOut": "暂无房间",
+      "book": "预订",
+      "sections": "酒店栏目",
+      "rooms": "客房",
+      "policies": "酒店政策",
+      "checkIn": "入住",
+      "checkOut": "退房",
+      "roomCount": "房间数",
+      "adults": "成人",
+      "search": "搜索",
+      "nightsSummary": "{{count}} 晚",
+      "times": "{{checkIn}} 起入住 · {{checkOut}} 前退房",
+      "roomTypes_one": "{{count}} 种房型"
+    },
     "labels": {
       "hiddenGem": "隐藏宝藏",
       "sponsored": "赞助",

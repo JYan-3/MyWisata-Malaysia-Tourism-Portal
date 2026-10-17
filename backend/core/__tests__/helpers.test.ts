@@ -156,3 +156,12 @@ describe("order state machine", () => {
     expect(canTransition("CANCELLED", "PAID")).toBe(false);
   });
 });
+
+describe("cartItemKey nights", () => {
+  it("distinguishes stay lengths and defaults to 1 night", async () => {
+    const { cartItemKey } = await import("../helpers");
+    const base = { activityId: "a", variantId: "v", slotId: "s", outletId: "o" };
+    expect(cartItemKey(base)).toBe("a|v|s|o");
+    expect(cartItemKey({ ...base, nights: 3 })).not.toBe(cartItemKey({ ...base, nights: 2 }));
+  });
+});

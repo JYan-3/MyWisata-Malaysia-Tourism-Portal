@@ -78,3 +78,10 @@ export function getBookingViewStats(
     { label: 'This month', value: thisMonth },
   ];
 }
+
+/** "24 Oct → 27 Oct" in Malaysia time for a stay that starts at the check-in night's slot. */
+export function formatStayRange(startsAt: string, nights: number, locale = "en-MY") {
+  const fmt = (ms: number) => new Date(ms).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "Asia/Kuala_Lumpur" });
+  const start = Date.parse(startsAt);
+  return `${fmt(start)} → ${fmt(start + nights * 86_400_000)}`;
+}

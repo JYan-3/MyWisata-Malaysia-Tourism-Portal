@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import type { OutletPageRendererProps } from '@/components/outlet/outlet-block-types';
 import { Accessibility, ArrowUpRight, Clock3, MapPin, Navigation, PawPrint, Phone } from 'lucide-react';
 import { OutletBlockRenderer, OutletHeroRenderer, formatHours } from '@/components/outlet/outlet-block-renderer';
-import { OutletMenu } from '@/components/outlet/outlet-menu';
+import { OutletMenu, StaySection } from '@/components/outlet/outlet-menu';
 import { readingOrder } from '@/lib/vendor/outlet-grid';
 import { MediaGallery } from '@/components/customer/media-gallery';
 
@@ -48,7 +48,8 @@ function PublicOutletTemplate({ document, outlet, products = [] }: Pick<OutletPa
       {publicBlocks.length > 0 && <div className="space-y-6">
         {publicBlocks.map((block) => <OutletBlockRenderer key={block.id} block={block} outlet={outlet} products={products} gallery={document.gallery} featuredIds={document.featuredIds} w={block.w} h={block.h} mode="public" />)}
       </div>}
-      <div className="mt-6"><OutletMenu outlet={outlet} products={products} /></div>
+      {outlet.stay && <div className="mt-6"><StaySection outlet={outlet} products={products.filter((p) => p.stay)} /></div>}
+      <div className="mt-6"><OutletMenu outlet={outlet} products={outlet.stay ? products.filter((p) => !p.stay) : products} /></div>
     </div>
   </div>;
 }

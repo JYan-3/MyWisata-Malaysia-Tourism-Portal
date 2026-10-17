@@ -5,8 +5,9 @@ import { formatMYRNumber } from "@/lib/i18n/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, Clock3, ImageOff, MapPin, ShoppingBag, Star, Ticket, Utensils } from "lucide-react";
+import { BedDouble, Check, Clock3, ImageOff, MapPin, ShoppingBag, Star, Ticket, Utensils } from "lucide-react";
 import { useCart } from "@/components/providers/cart";
+import { cartItemKey } from "@/backend/core/helpers";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
@@ -189,5 +190,94 @@ export function OutletMenu({ outlet, products }: { outlet: OutletRendererOutlet;
         </div>
       )}
     </section>
+  );
+}
+
+function StayRoomCard({ outlet, product }: { outlet: OutletRendererOutlet; product: OutletRendererProduct }) {
+  const { t } = useTranslation("customer");
+  const router = useRouter();
+  const gate = useCustomerCapabilityGate();
+  const { addItem, setSelectedKeys } = useCart();
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const stay = outlet.stay!;
+  const room = product.stay!;
+  const soldOut = room.left < stay.rooms || !room.checkInSlotId;
+
+  async function book() {
+    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
+    setWorking(true);
+    setError(null);
+    try {
+      const line = { activityId: product.id, variantId: product.variant_id ?? "", slotId: room.checkInSlotId!, outletId: outlet.id, nights: stay.nights };
+      await addItem({ ...line, qty: stay.rooms, priceOverride: room.total });
+      setSelectedKeys([cartItemKey(line)]);
+      router.push("/customer/checkout");
+    } catch {
+      setError(t("ui.property.bookError"));
+      setWorking(false);
+    }
+  }
+
+  return (
+    <article className="grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:grid-cols-[12rem_1fr_auto] sm:p-5">
+      <div className="aspect-[4/3] overflow-hidden rounded-xl bg-secondary">
+        {product.cover_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={productImageUrl(product.cover_url) || ""} alt={product.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-primary"><BedDouble size={28} aria-hidden="true" /></div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <h3 className="break-words text-lg font-bold text-foreground">{product.name}</h3>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{product.description || t("ui.property.roomFallback")}</p>
+        {!soldOut && room.left <= 3 && <p className="mt-2 text-xs font-bold text-amber-700">{t("ui.property.onlyLeft", { count: room.left })}</p>}
+      </div>
+      <div className="flex flex-col items-start justify-between gap-3 sm:items-end sm:text-right">
+        <div>
+          <p className="font-[family-name:var(--font-mono)] text-xl font-bold text-primary">{t("ui.outletMenu.price", { price: formatMYRNumber(Number(product.base_price)) })}</p>
+          <p className="text-xs text-muted-foreground">{t("ui.property.perNight")}</p>
+          <p className="mt-1 text-xs font-semibold text-foreground">{t("ui.property.totalFor", { count: stay.nights, rooms: stay.rooms, price: formatMYRNumber(room.total * stay.rooms) })}</p>
+        </div>
+        {error && <p role="alert" className="text-xs font-semibold text-red-700">{error}</p>}
+        <button type="button" onClick={() => void book()} disabled={soldOut || working} className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          {soldOut ? t("ui.property.soldOut") : working ? t("ui.outletMenu.adding") : t("ui.property.book")}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+export function StaySection({ outlet, products }: { outlet: OutletRendererOutlet; products: OutletRendererProduct[] }) {
+  const { t } = useTranslation("customer");
+  const stay = outlet.stay!;
+  const field = "mt-1 block rounded-lg border border-border bg-background px-3 py-2 text-sm";
+  return (
+    <>
+      <nav aria-label={t("ui.property.sections")} className="sticky top-0 z-20 -mx-4 mb-6 flex gap-5 border-b border-border bg-background/95 px-4 py-3 text-sm font-semibold backdrop-blur sm:-mx-6 sm:px-6">
+        <a href="#rooms" className="text-primary hover:underline">{t("ui.property.rooms")}</a>
+        <a href="#policies" className="text-primary hover:underline">{t("ui.property.policies")}</a>
+      </nav>
+      <section id="rooms" className="scroll-mt-16">
+        <form method="get" className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm">
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkIn")}<input type="date" name="checkin" defaultValue={stay.checkIn} required className={field} /></label>
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkOut")}<input type="date" name="checkout" defaultValue={stay.checkOut} required className={field} /></label>
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.roomCount")}<input type="number" name="rooms" min={1} max={10} defaultValue={stay.rooms} className={`${field} w-20`} /></label>
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.adults")}<input type="number" name="adults" min={1} max={20} defaultValue={stay.adults} className={`${field} w-20`} /></label>
+          <button type="submit" className="min-h-10 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primary/90">{t("ui.property.search")}</button>
+          <p className="basis-full text-xs text-muted-foreground">{t("ui.property.nightsSummary", { count: stay.nights })}</p>
+        </form>
+        <h2 className="mb-4 text-2xl font-bold tracking-tight text-foreground">{t("ui.property.rooms")}</h2>
+        <div className="space-y-4">{products.map((product) => <StayRoomCard key={product.id} outlet={outlet} product={product} />)}</div>
+      </section>
+      <section id="policies" className="mt-10 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+        <h2 className="text-xl font-bold text-foreground">{t("ui.property.policies")}</h2>
+        {(stay.checkInTime || stay.checkOutTime) && (
+          <p className="mt-2 text-sm text-muted-foreground">{t("ui.property.times", { checkIn: stay.checkInTime ?? "—", checkOut: stay.checkOutTime ?? "—" })}</p>
+        )}
+        {stay.policies && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{stay.policies}</p>}
+      </section>
+    </>
   );
 }

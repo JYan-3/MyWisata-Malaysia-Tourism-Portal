@@ -71,3 +71,44 @@ export function rankDiscoveryResults(input: {
 
   return [...sponsored, ...organic];
 }
+
+/**
+ * Accommodation is discovered as a property, while the rows underneath it
+ * remain room types. Keep the ranked room that first introduced a property so
+ * sponsored placement and click attribution still point at a real product.
+ */
+export function groupAccommodationByProperty(results: DiscoveryResult[]): DiscoveryResult[] {
+  const roomsByProperty = new Map<string, DiscoveryResult[]>();
+
+  for (const result of results) {
+    if (result.categorySlug !== "accommodation") continue;
+    const propertyId = result.outlet.id || result.outletId;
+    if (!propertyId) continue;
+    const rooms = roomsByProperty.get(propertyId) ?? [];
+    rooms.push(result);
+    roomsByProperty.set(propertyId, rooms);
+  }
+
+  const emitted = new Set<string>();
+  return results.flatMap((result) => {
+    if (result.categorySlug !== "accommodation") return [result];
+
+    const propertyId = result.outlet.id || result.outletId;
+    const rooms = propertyId ? roomsByProperty.get(propertyId) : undefined;
+    if (!propertyId || !rooms || emitted.has(propertyId)) return [];
+    emitted.add(propertyId);
+
+    const fromPrice = rooms.reduce((minimum, room) => Math.min(minimum, Number(room.price)), Number.POSITIVE_INFINITY);
+    const safeFromPrice = Number.isFinite(fromPrice) ? fromPrice : Number(result.price);
+    return [{
+      ...result,
+      name: result.outlet.name || result.name,
+      image: result.outlet.coverUrl || result.image,
+      price: safeFromPrice,
+      property: {
+        roomTypeCount: rooms.length,
+        fromPrice: safeFromPrice,
+      },
+    }];
+  });
+}

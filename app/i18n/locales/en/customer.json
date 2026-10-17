@@ -329,6 +329,28 @@
       "cancel": "Cancel",
       "close": "Close"
     },
+    "property": {
+      "roomTypes_one": "{{count}} room type",
+      "roomTypes_other": "{{count}} room types",
+      "seeRooms": "See rooms",
+      "bookError": "Could not start your booking. Please try again.",
+      "roomFallback": "Comfortable room with essential amenities.",
+      "onlyLeft": "Only {{count}} left",
+      "perNight": "/ per night",
+      "totalFor": "{{count}} night(s) × {{rooms}} room(s): RM {{price}}",
+      "soldOut": "Not available",
+      "book": "Book",
+      "sections": "Hotel sections",
+      "rooms": "Rooms",
+      "policies": "Hotel policies",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "roomCount": "Rooms",
+      "adults": "Adults",
+      "search": "Search",
+      "nightsSummary": "{{count}} night(s)",
+      "times": "Check-in from {{checkIn}} · Check-out by {{checkOut}}"
+    },
     "labels": {
       "hiddenGem": "Hidden Gem",
       "sponsored": "Sponsored",

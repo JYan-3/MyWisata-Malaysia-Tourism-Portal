@@ -17,6 +17,7 @@ type CartRow = {
   slot_id: string | null;
   outlet_id: string | null;
   quantity: number;
+  nights: number | null;
   product_variants: Relation<{ id: string; product_id: string; name: string }>;
   booking_slots: Relation<{ id: string; product_id: string; outlet_id: string; starts_at: string; price_override: number | null }>;
 };
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
   const { data: rows, error: rowsError } = await db
     .from('cart_items')
-    .select('id,variant_id,slot_id,outlet_id,quantity,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
+    .select('id,variant_id,slot_id,outlet_id,quantity,nights,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
     .eq('cart_id', cart.id)
     .order('created_at');
   if (rowsError) return privateCheckoutJson({ error: { code: 'CART_LOOKUP_FAILED', message: 'Unable to load cart items.' } }, { status: 500 });
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     const productId = variant?.product_id ?? slot?.product_id;
     // Must stay byte-identical to cartItemKey() in components/providers/cart.tsx —
     // the client sends those keys and a mismatch silently selects nothing.
-    const key = `${productId}|${row.variant_id ?? ''}|${row.slot_id ?? ''}|${row.outlet_id ?? ''}`;
+    const key = `${productId}|${row.variant_id ?? ''}|${row.slot_id ?? ''}|${row.outlet_id ?? ''}${(row.nights ?? 1) > 1 ? `|${row.nights}` : ''}`;
     return !body.selectedKeys?.length || body.selectedKeys.includes(key);
   });
   if (!selectedRows.length) return privateCheckoutJson({ error: 'Select at least one cart item' }, { status: 400 });
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
     return productId ? [productId] : [];
   }))];
   const { data: productRows, error: productRowsError } = await db.from('products')
-    .select('id,outlet_id,vendor_id,name,cover_url,base_price,requires_booking,categories(slug)')
+    .select('id,outlet_id,vendor_id,name,cover_url,base_price,requires_booking,category_id,categories(slug)')
     .in('id', productIds);
   if (productRowsError) return privateCheckoutJson({
     error: {
@@ -151,6 +152,26 @@ export async function POST(request: Request) {
   }
   const outletOfferMap = new Map(outletOffers.map((offer) => [`${offer.product_id}|${offer.outlet_id}`, Number(offer.price)]));
 
+  const ACCOMMODATION = '11111111-0000-0000-0000-000000000008';
+  // Multi-night stays: fetch each night's price_override so the total matches the SQL authority.
+  const stayOverrides = new Map<string, number[]>();
+  for (const row of selectedRows) {
+    const slot = relation(row.booking_slots);
+    const nights = row.nights ?? 1;
+    if (!slot || nights < 2) continue;
+    const product = productMap.get(slot.product_id) as { category_id?: string } | undefined;
+    if (product?.category_id !== ACCOMMODATION) continue;
+    const start = new Date(slot.starts_at).getTime();
+    const starts = Array.from({ length: nights }, (_, k) => new Date(start + k * 24 * 3600 * 1000).toISOString());
+    const { data, error } = await db.from('booking_slots')
+      .select('starts_at,price_override')
+      .eq('product_id', slot.product_id).eq('outlet_id', slot.outlet_id).in('starts_at', starts);
+    if (error) return privateCheckoutJson({
+      error: { code: 'PRODUCT_LOOKUP_FAILED', message: 'We could not verify cart items right now. Please try again shortly.' },
+    }, { status: 503 });
+    stayOverrides.set(row.id, (data ?? []).flatMap((night: { price_override: number | null }) => night.price_override === null ? [] : [Number(night.price_override)]));
+  }
+
   const candidateLines = selectedRows.map((row) => {
     const variant = relation(row.product_variants);
     const slot = relation(row.booking_slots);
@@ -171,7 +192,14 @@ export async function POST(request: Request) {
     if (isSharedProduct && row.outlet_id && offerPrice === undefined) return null;
     const basePrice = offerPrice ?? Number(product.base_price);
     if (!Number.isFinite(basePrice) || basePrice < 0) return null;
-    const linePrice = slot?.price_override !== null && slot?.price_override !== undefined
+    const nights = row.nights ?? 1;
+    const isStay = Boolean(product.requires_booking) && (product as { category_id?: string }).category_id === ACCOMMODATION;
+    if (!isStay && nights !== 1) return null;
+    const overrides = stayOverrides.get(row.id) ?? (slot?.price_override !== null && slot?.price_override !== undefined ? [Number(slot.price_override)] : []);
+    const stayNightly = isStay ? basePrice + (activity.variants.find((v) => v.id === variant?.id)?.priceDelta ?? 0) : 0;
+    const linePrice = isStay
+      ? Number((stayNightly * (nights - overrides.length) + overrides.reduce((sum, value) => sum + value, 0)).toFixed(2))
+      : slot?.price_override !== null && slot?.price_override !== undefined
       ? Number(slot.price_override)
       : unitPrice({ ...activity, price: basePrice }, variant?.id ?? '', row.quantity, new Date(), productIds);
     if (!Number.isFinite(linePrice) || linePrice < 0) return null;
@@ -181,6 +209,7 @@ export async function POST(request: Request) {
         variantId: row.variant_id ?? '',
         slotId: row.slot_id ?? undefined,
         qty: row.quantity,
+        nights,
         outletId: row.outlet_id ?? undefined,
         // cartTotals must use the same outlet-resolved price sent to the DB RPC.
         priceOverride: linePrice,
@@ -198,6 +227,7 @@ export async function POST(request: Request) {
         slot_starts_at: slot?.starts_at ?? null,
         unit_price: linePrice,
         quantity: row.quantity,
+        nights,
         line_total: Number((linePrice * row.quantity).toFixed(2)),
         requires_booking: product.requires_booking,
       },

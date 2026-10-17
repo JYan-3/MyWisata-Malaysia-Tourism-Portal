@@ -13,6 +13,8 @@ type UserEmailEventInput = {
   reference: string;
   amountRm: number;
   occurredAt?: string;
+  /** Order checkout emails go to the contact email saved on this order, not the account email. */
+  orderId?: string;
 };
 
 export type VendorEmailEventInput = VendorEmailInput & {
@@ -147,7 +149,11 @@ export async function enqueueUserTransactionEmail(input: UserEmailEventInput): P
     .single();
 
   if (error || !user) throw new Error(`Cannot find email recipient for user ${input.userId}`);
-  const toEmail = String((user as { email?: string | null }).email ?? '').trim();
+  let toEmail = String((user as { email?: string | null }).email ?? '').trim();
+  if (input.orderId) {
+    const { data: order } = await db.from('orders').select('contact_email').eq('id', input.orderId).eq('user_id', input.userId).maybeSingle();
+    toEmail = String(order?.contact_email ?? '').trim() || toEmail;
+  }
   if (!toEmail) throw new Error(`User ${input.userId} has no email address`);
 
   await enqueueEmail({

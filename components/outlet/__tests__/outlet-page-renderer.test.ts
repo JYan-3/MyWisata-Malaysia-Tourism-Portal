@@ -18,7 +18,8 @@ describe("public outlet page template", () => {
 
   it("does not let product blocks create duplicate public content", () => {
     expect(rendererSource).toContain("block.type !== 'product_grid'");
-    expect(rendererSource).toContain("<OutletMenu outlet={outlet} products={products} />");
+    expect(rendererSource).toContain("<OutletMenu outlet={outlet} products={outlet.stay ? products.filter((p) => !p.stay) : products} />");
+    expect(rendererSource).toContain("<StaySection outlet={outlet} products={products.filter((p) => p.stay)} />");
   });
 
   it("puts the useful outlet summary before the optional gallery", () => {

@@ -15,12 +15,13 @@ type CartItemRow = {
   slot_id: string | null;
   outlet_id: string | null;
   quantity: number;
+  nights?: number | null;
   unit_price: number;
   product_variants: { product_id: string } | { product_id: string }[] | null;
   booking_slots: { product_id: string } | { product_id: string }[] | null;
 };
 
-const CART_ITEM_SELECT = "id,variant_id,slot_id,outlet_id,quantity,unit_price,product_variants(product_id),booking_slots(product_id)";
+const CART_ITEM_SELECT = "id,variant_id,slot_id,outlet_id,quantity,nights,unit_price,product_variants(product_id),booking_slots(product_id)";
 
 function relation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -52,7 +53,7 @@ async function getCartRows(userId: string): Promise<CartItemRow[]> {
 
 export function mapCartItem(row: CartItemRow): CartItem {
   const productId = relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id;
-  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, priceOverride: row.unit_price > 0 ? Number(row.unit_price) : undefined };
+  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, nights: row.nights ?? 1, priceOverride: row.unit_price > 0 ? Number(row.unit_price) : undefined };
 }
 
 export async function getCart(userId: string): Promise<CartItem[]> {
@@ -68,7 +69,8 @@ export async function addToCart(userId: string, item: CartItem): Promise<CartIte
   const existing = rows.find((row) =>
     row.variant_id === item.variantId
     && row.slot_id === (item.slotId ?? null)
-    && row.outlet_id === (item.outletId ?? null),
+    && row.outlet_id === (item.outletId ?? null)
+    && (row.nights ?? 1) === (item.nights ?? 1),
   );
   if (existing) {
     const { error } = await supabase
@@ -80,7 +82,7 @@ export async function addToCart(userId: string, item: CartItem): Promise<CartIte
       .eq("id", existing.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? null, quantity: item.qty, unit_price: item.priceOverride ?? 0 });
+    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? null, quantity: item.qty, nights: item.nights ?? 1, unit_price: item.priceOverride ?? 0 });
     if (error) throw error;
   }
   return getCart(userId);
@@ -124,6 +126,7 @@ type OrderItemRow = {
   image_url: string | null;
   variant_name: string | null;
   slot_starts_at: string | null;
+  nights?: number | null;
   unit_price: number;
   quantity: number;
   /** null for event reservations, which are collected at an event location. */
@@ -138,6 +141,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
     imageUrl: row.image_url ?? row.products?.cover_url ?? undefined,
     variantLabel: row.variant_name ?? (row.slot_starts_at ? "" : "Standard"),
     slotStartsAt: row.slot_starts_at ?? undefined,
+    nights: row.nights ?? 1,
     unitPrice: Number(row.unit_price),
     qty: row.quantity,
     outletId: row.outlet_id ?? "",
@@ -161,7 +165,7 @@ type OrderRow = {
 };
 
 export const ORDER_SELECT =
-  "id,user_id,contact_email,contact_name,contact_phone,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id,products(cover_url))";
+  "id,user_id,contact_email,contact_name,contact_phone,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,unit_price,quantity,outlet_id,products(cover_url))";
 
 export function mapOrder(row: OrderRow): Order {
   return {
@@ -245,7 +249,7 @@ type TicketPassRow = {
 type BookingRow = {
   id: string;
   status: Booking["status"];
-  order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; quantity: number };
+  order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; nights?: number | null; quantity: number };
   ticket_passes?: TicketPassRow | TicketPassRow[] | null;
 };
 
@@ -278,6 +282,7 @@ export function mapBooking(row: BookingRow): Booking | null {
     activityName: row.order_items.product_name,
     outletId: row.order_items.outlet_id,
     slotStartsAt: row.order_items.slot_starts_at ?? undefined,
+    nights: row.order_items.nights ?? 1,
     qty: row.order_items.quantity,
     status: row.status,
     qrCode: row.id,
@@ -290,8 +295,8 @@ export function mapBooking(row: BookingRow): Booking | null {
   };
 }
 
-export const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
-const SETTLED_BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity,orders!inner(status)),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
+export const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,nights,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
+const SETTLED_BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,nights,quantity,orders!inner(status)),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);

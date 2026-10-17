@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
 import type { BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 import { formatMYRFromSen } from "@/lib/i18n/format";
+import { formatStayRange } from "@/lib/customer/booking-view";
 import { useReferenceCurrency } from "@/components/providers/reference-currency";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -380,7 +381,7 @@ export default function CheckoutPage() {
                       {slot && (
                         <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
                           <CalendarClock size={13} className="text-primary" />
-                          <span>{new Date(slot.startsAt).toLocaleString("en-MY", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                          <span>{(item.nights ?? 1) > 1 || activity?.categorySlug === "accommodation" ? `${formatStayRange(slot.startsAt, item.nights ?? 1)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : new Date(slot.startsAt).toLocaleString("en-MY", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                         </p>
                       )}
                       <div className="mt-2 flex items-center gap-2">

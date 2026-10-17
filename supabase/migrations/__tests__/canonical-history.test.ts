@@ -257,6 +257,9 @@ const approvedForwardMigrations = [
   "20261014120000_close_anonymous_chat_and_promotion_reads.sql",
   "20261014130000_trip_item_outlet.sql",
   "20261015001000_staff_roles_require_aal2.sql",
+  "20261017134700_accommodation_cleanup_and_stay_fields.sql",
+  "20261017140000_stay_night_slots.sql",
+  "20261017143000_accommodation_checkout_nights.sql",
 ];
 
 function migrationFiles() {
