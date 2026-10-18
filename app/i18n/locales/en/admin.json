@@ -926,7 +926,8 @@
     "entity": {
       "listing": "Listing",
       "outlet": "Outlet",
-      "voucher": "Voucher"
+      "voucher": "Voucher",
+      "hotelProfile": "Hotel profile"
     },
     "errors": {
       "actionFailed": "Review action failed",
@@ -967,6 +968,25 @@
       "changeReason": "What needs to be changed? (at least 10 characters)",
       "batchRejectReason": "Reason for rejecting all selected items (at least 10 characters):",
       "batchChangeReason": "What needs to be changed for all selected items? (at least 10 characters)"
+    },
+    "hotelDiff": {
+      "title": "Proposed changes (current → new). The hotel stays live until you approve.",
+      "noChanges": "No visible changes.",
+      "photoCount_one": "{{count}} photo submitted",
+      "photoCount_other": "{{count}} photos submitted",
+      "fields": {
+        "name": "Hotel name",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "phone": "Phone",
+        "about": "About this hotel",
+        "amenities": "Amenities",
+        "checkIn": "Check-in time",
+        "checkOut": "Check-out time",
+        "policies": "Policies",
+        "photos": "Photos"
+      }
     }
   },
   "chatbot": {
@@ -3729,5 +3749,38 @@
     "eyebrow": "Account security",
     "title": "Verify your authenticator",
     "description": "Admin access needs a code from your authenticator app as well as your password."
+  },
+  "hotelAmenities": {
+    "eyebrow": "Hotels",
+    "title": "Hotel amenities",
+    "description": "The checklist hotels tick in their hotel profile. Turning an amenity off hides it from new profiles and hotel pages.",
+    "loading": "Loading amenities…",
+    "empty": "No amenities yet",
+    "manage": "Hotel amenities",
+    "form": {
+      "code": "Code",
+      "labelEn": "English label",
+      "labelMs": "Malay label",
+      "labelZh": "Chinese label",
+      "icon": "Icon",
+      "add": "Add amenity",
+      "codeHint": "Code: 2–40 lowercase letters, numbers or underscores. It cannot be changed later."
+    },
+    "table": {
+      "code": "Code",
+      "labels": "Labels (EN · MS · ZH)",
+      "status": "Status"
+    },
+    "actions": {
+      "activate": "Turn on",
+      "deactivate": "Turn off"
+    },
+    "success": {
+      "added": "Amenity added"
+    },
+    "errors": {
+      "add": "Could not add the amenity",
+      "update": "Could not update the amenity"
+    }
   }
 }

@@ -1,4 +1,35 @@
 {
+  "hotelProfile": {
+    "eyebrow": "Hotel profile",
+    "description": "Your hotel page uses a fixed layout. Edit its content here; changes go live after admin review, and your hotel stays live meanwhile.",
+    "loading": "Loading hotel profile…",
+    "close": "Close hotel profile",
+    "status": {
+      "live": "Showing your live hotel profile.",
+      "pending": "Waiting for review. Your hotel stays live with its current details until an admin approves these changes.",
+      "rejected": "Your last changes were not approved: {{note}}"
+    },
+    "fields": {
+      "about": "About this hotel",
+      "amenities": "Amenities",
+      "checkIn": "Check-in time",
+      "checkOut": "Check-out time",
+      "policies": "Hotel policies",
+      "photos": "Photos"
+    },
+    "photoHint": "JPG, PNG or WebP up to 2 MB. The first photo is the main one.",
+    "photoAlt": "Hotel photo {{index}}",
+    "movePhotoUp": "Move photo up",
+    "removePhoto": "Remove photo",
+    "addPhoto": "Add photo",
+    "submit": "Submit for review",
+    "submitting": "Submitting…",
+    "submitted": "Submitted for review. Your hotel stays live meanwhile.",
+    "errors": {
+      "submit": "Could not submit the hotel profile",
+      "upload": "Could not upload the photo"
+    }
+  },
   "shell": {
     "portal": "Vendor Portal",
     "brand": "Malaysia Tourism",
@@ -1967,6 +1998,7 @@
     "uploadedPreview": "Uploaded product media preview"
   },
   "outletForm": {
+    "hotelPendingReview": "Submitted for review. Your hotel stays live with its current details until an admin approves the changes.",
     "foodServiceModes": "Food service options",
     "foodServiceModesHint": "Customers choose one of the enabled options when checking out.",
     "foodServiceModeRequired": "Enable at least one food service option.",

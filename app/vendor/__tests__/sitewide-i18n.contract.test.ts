@@ -95,6 +95,7 @@ const priorTaskFiles = new Set([
   'components/vendor/vendor-invite-wizard-state.ts',
   'components/vendor/vendor-invite-wizard.tsx',
   'components/vendor/vendor-settlement-panel.tsx',
+  'components/vendor/hotel-profile-editor.tsx',
   'components/shared/action-feedback.tsx',
   'components/shared/affiliate-qr-code.tsx',
   'components/shared/appearance-control.tsx',

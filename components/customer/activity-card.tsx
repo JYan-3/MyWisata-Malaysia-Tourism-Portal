@@ -30,10 +30,11 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const { savedIds, toggleSaved } = useWishlist();
+  const { savedIds, toggleSaved, savedOutletIds, toggleSavedOutlet } = useWishlist();
   const gate = useCustomerCapabilityGate();
-  const saved = savedIds.has(activity.id);
   const isProperty = Boolean(activity.property);
+  // A hotel card saves the whole hotel (D10); every other card saves the product.
+  const saved = isProperty ? savedOutletIds.has(activity.outlet.id) : savedIds.has(activity.id);
   const cardName = isProperty ? activity.outlet.name : activity.name;
   const imageSrc = (isProperty ? activity.outlet.coverUrl || activity.image : activity.image)?.trim();
   const activityHref = isProperty ? getOutletShopHref(activity.outlet.id) : buildActivityPath(activity.id, returnTo, outletId, source);
@@ -58,7 +59,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
     if (saving) return;
     if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
     setSaving(true);
-    await toggleSaved(activity.id);
+    await (isProperty ? toggleSavedOutlet(activity.outlet.id) : toggleSaved(activity.id));
     setSaving(false);
   }
 
@@ -107,7 +108,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
                     <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
                     <span>{activity.outlet.city} · {categoryLabel}</span>
                   </p>
-                  {activity.outlet.hours && (
+                  {!isStayCard && activity.outlet.hours && (
                     <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85">
                       <Clock3 size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
                       <span>{activity.outlet.hours}</span>
@@ -151,12 +152,12 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
           onClick={handleSave}
           disabled={saving}
           saved={saved}
-          aria-label={saved ? t("ui.activity.removeSaved", { name: activity.name }) : t("ui.activity.save", { name: activity.name })}
+          aria-label={saved ? t("ui.activity.removeSaved", { name: cardName }) : t("ui.activity.save", { name: cardName })}
           title={saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
           className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center disabled:cursor-wait disabled:opacity-70"
         />
         <div className="absolute right-3 top-12 z-20">
-          <ShareButton compact shareType="product" contentId={activity.id} title={activity.name} />
+          <ShareButton compact shareType={isProperty ? "outlet" : "product"} contentId={isProperty ? activity.outlet.id : activity.id} title={cardName} />
         </div>
       </div>
       <div className={`mw-card-body ${detailsRevealOnHover ? "mw-card-body-compact" : ""} space-y-2 p-4`}>

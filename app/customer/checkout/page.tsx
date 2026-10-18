@@ -170,7 +170,6 @@ export default function CheckoutPage() {
   const stayOnly = selectedItems.length > 0 && selectedItems.every(isStayItem);
   const stayOutletId = stayOnly ? selectedItems[0]!.outletId ?? activities.find((a) => a.id === selectedItems[0]!.activityId)?.outletId : undefined;
   const showPhone = stayOnly || selectedMethod.paymentProvider === "toyyibpay";
-  const myTime = (iso: string) => new Date(iso).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kuala_Lumpur" });
   const myDate = (ms: number) => new Date(ms).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
 
   if (toyyibPayReturned) {
@@ -394,12 +393,10 @@ export default function CheckoutPage() {
                           <div>
                             <p className="font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.property.checkIn")}</p>
                             <p className="font-semibold text-foreground">{myDate(Date.parse(slot.startsAt))}</p>
-                            <p className="text-muted-foreground">{tCustomer("ui.property.checkInFrom", { time: myTime(slot.startsAt) })}</p>
                           </div>
                           <div>
                             <p className="font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.property.checkOut")}</p>
                             <p className="font-semibold text-foreground">{myDate(Date.parse(slot.endsAt ?? slot.startsAt) + ((item.nights ?? 1) - 1) * 86_400_000)}</p>
-                            {slot.endsAt && <p className="text-muted-foreground">{tCustomer("ui.property.checkOutBy", { time: myTime(slot.endsAt) })}</p>}
                           </div>
                         </div>
                       ) : slot && (

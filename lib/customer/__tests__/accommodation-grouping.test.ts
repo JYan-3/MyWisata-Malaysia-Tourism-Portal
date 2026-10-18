@@ -26,3 +26,21 @@ describe("groupAccommodationByProperty", () => {
     expect(out).toHaveLength(2);
   });
 });
+
+describe("groupRankedByProperty", () => {
+  it("turns ranked rooms of one hotel into one item, keeping rank order and reasons", async () => {
+    const { groupRankedByProperty } = await import("@/lib/customer/discovery-ranking");
+    const tour = room("t", "x", 40, "activity");
+    const items = [
+      { activity: room("a", "h1", 300), reasons: ["near you"] },
+      { activity: tour, reasons: ["popular"] },
+      { activity: room("b", "h1", 180), reasons: ["cheap"] },
+      { activity: room("c", "h2", 90), reasons: [] },
+    ];
+    const out = groupRankedByProperty(items);
+    expect(out.map((item) => item.activity.id)).toEqual(["a", "t", "c"]);
+    expect(out[0].reasons).toEqual(["near you"]);
+    expect(out[0].activity.property).toEqual({ roomTypeCount: 2, fromPrice: 180 });
+    expect(out[1].activity).toBe(tour);
+  });
+});

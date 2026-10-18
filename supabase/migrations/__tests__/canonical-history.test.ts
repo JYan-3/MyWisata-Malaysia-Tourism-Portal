@@ -260,6 +260,9 @@ const approvedForwardMigrations = [
   "20261017134700_accommodation_cleanup_and_stay_fields.sql",
   "20261017140000_stay_night_slots.sql",
   "20261017143000_accommodation_checkout_nights.sql",
+  "20261018160000_hotel_profiles_and_saved_outlets.sql",
+  "20261018161000_pelangi_hotel_pilot_data.sql",
+  "20261018162000_apply_hotel_profile_submission.sql",
 ];
 
 function migrationFiles() {

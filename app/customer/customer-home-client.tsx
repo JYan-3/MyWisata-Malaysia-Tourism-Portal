@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
 import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
@@ -173,9 +174,9 @@ export function CustomerHomeClient({
     rail.scrollBy({ left: direction === "next" ? distance : -distance, behavior: "smooth" });
   }
 
-  const highlightItems = popular.slice(0, 4);
+  const highlightItems = groupAccommodationByProperty(popular).slice(0, 4);
   const highlightIds = new Set(highlightItems.map((activity) => activity.id));
-  const forYouItems = recommended.filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
+  const forYouItems = groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
   const quickSearches = [
     { label: t("ui.home.penangFoodSearch"), query: "Penang" },
     { label: t("ui.home.langkawiIslandSearch"), query: "Langkawi" },

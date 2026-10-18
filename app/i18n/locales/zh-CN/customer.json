@@ -867,7 +867,8 @@
       "noExperiences": "还没有保存体验",
       "saveExperiences": "保存您想预订的体验。",
       "empty": "还没有保存任何内容",
-      "saveBoth": "保存地点和体验，建立您的旅行收藏。"
+      "saveBoth": "保存地点和体验，建立您的旅行收藏。",
+      "savedHotels": "收藏的酒店"
     },
     "activity": {
       "notFound": "找不到该体验",
@@ -2758,6 +2759,26 @@
         "pending": "待领取",
         "collected": "已领取"
       }
+    },
+    "hotel": {
+      "about": "关于酒店",
+      "amenities": "设施",
+      "location": "位置",
+      "roomDetails": "房间详情",
+      "selectThisRoom": "选择这个房间",
+      "bed": "床型",
+      "sleeps": "最多入住",
+      "sleepsCount_one": "可住 {{count}} 人",
+      "sleepsCount_other": "可住 {{count}} 人",
+      "size": "房间面积",
+      "view": "景观",
+      "nonSmoking": "禁烟",
+      "roomAmenities": "房内设施",
+      "photoAlt": "{{room}} 照片 {{index}}",
+      "totalFor_one": "{{count}} 晚 · {{rooms}} 间总价：",
+      "totalFor_other": "{{count}} 晚 · {{rooms}} 间总价：",
+      "reviewCount_one": "（{{count}} 条评价）",
+      "reviewCount_other": "（{{count}} 条评价）"
     }
   },
   "strictMigration": {

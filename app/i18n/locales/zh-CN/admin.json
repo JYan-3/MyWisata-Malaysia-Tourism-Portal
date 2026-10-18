@@ -926,7 +926,8 @@
     "entity": {
       "listing": "商品",
       "outlet": "门店",
-      "voucher": "优惠券"
+      "voucher": "优惠券",
+      "hotelProfile": "酒店资料"
     },
     "errors": {
       "actionFailed": "审核操作失败",
@@ -967,6 +968,25 @@
       "changeReason": "请输入需要修改的内容（至少 10 个字符）：",
       "batchRejectReason": "请输入拒绝所有已选项目的原因（至少 10 个字符）：",
       "batchChangeReason": "请输入所有已选项目需要修改的内容（至少 10 个字符）："
+    },
+    "hotelDiff": {
+      "title": "提议的修改（目前 → 新）。批准之前，酒店会继续上线显示。",
+      "noChanges": "没有可见的修改。",
+      "photoCount_one": "提交了 {{count}} 张照片",
+      "photoCount_other": "提交了 {{count}} 张照片",
+      "fields": {
+        "name": "酒店名称",
+        "address": "地址",
+        "city": "城市",
+        "state": "州属",
+        "phone": "电话",
+        "about": "关于酒店",
+        "amenities": "设施",
+        "checkIn": "入住时间",
+        "checkOut": "退房时间",
+        "policies": "政策",
+        "photos": "照片"
+      }
     }
   },
   "chatbot": {
@@ -3729,5 +3749,38 @@
     "eyebrow": "账户安全",
     "title": "验证身份验证器",
     "description": "进入管理后台除了密码，还需要输入身份验证器应用中的验证码。"
+  },
+  "hotelAmenities": {
+    "eyebrow": "酒店",
+    "title": "酒店设施",
+    "description": "酒店在酒店资料里勾选的设施清单。关闭的设施不会出现在新的资料和酒店页上。",
+    "loading": "正在加载设施…",
+    "empty": "还没有设施",
+    "manage": "酒店设施",
+    "form": {
+      "code": "代码",
+      "labelEn": "英文名称",
+      "labelMs": "马来文名称",
+      "labelZh": "中文名称",
+      "icon": "图标",
+      "add": "新增设施",
+      "codeHint": "代码：2–40 个小写字母、数字或下划线，之后不能修改。"
+    },
+    "table": {
+      "code": "代码",
+      "labels": "名称（英 · 马 · 中）",
+      "status": "状态"
+    },
+    "actions": {
+      "activate": "开启",
+      "deactivate": "关闭"
+    },
+    "success": {
+      "added": "已新增设施"
+    },
+    "errors": {
+      "add": "无法新增设施",
+      "update": "无法更新设施"
+    }
   }
 }

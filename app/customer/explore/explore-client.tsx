@@ -271,7 +271,7 @@ export function ExploreClient({
       {tab === "destinations" && (
         <div>
           {/* Malaysia map + state cards via existing StoryMap */}
-          <StoryMap activities={activities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
+          <StoryMap activities={displayActivities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
 
           {/* Destination cards grid */}
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

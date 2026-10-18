@@ -867,7 +867,8 @@
       "noExperiences": "No saved experiences yet",
       "saveExperiences": "Save experiences you want to book.",
       "empty": "Nothing saved yet",
-      "saveBoth": "Save places and experiences to build your shortlist."
+      "saveBoth": "Save places and experiences to build your shortlist.",
+      "savedHotels": "Saved hotels"
     },
     "activity": {
       "notFound": "Experience not found",
@@ -2758,6 +2759,26 @@
         "pending": "Ready to collect",
         "collected": "Collected"
       }
+    },
+    "hotel": {
+      "about": "About this hotel",
+      "amenities": "Amenities",
+      "location": "Location",
+      "roomDetails": "Room details",
+      "selectThisRoom": "Select this room",
+      "bed": "Bed",
+      "sleeps": "Max guests",
+      "sleepsCount_one": "Sleeps {{count}}",
+      "sleepsCount_other": "Sleeps {{count}}",
+      "size": "Room size",
+      "view": "View",
+      "nonSmoking": "Non-smoking",
+      "roomAmenities": "In the room",
+      "photoAlt": "{{room}} photo {{index}}",
+      "totalFor_one": "Total for {{count}} night · {{rooms}} room(s):",
+      "totalFor_other": "Total for {{count}} nights · {{rooms}} room(s):",
+      "reviewCount_one": "({{count}} review)",
+      "reviewCount_other": "({{count}} reviews)"
     }
   },
   "strictMigration": {

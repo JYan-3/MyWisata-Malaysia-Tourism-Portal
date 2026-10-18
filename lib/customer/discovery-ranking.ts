@@ -1,5 +1,6 @@
 import type {
   ComputedActivity,
+  DiscoveryPropertySummary,
   DiscoveryResult,
   SponsoredPlacement,
 } from "@/backend/core/types";
@@ -77,8 +78,8 @@ export function rankDiscoveryResults(input: {
  * remain room types. Keep the ranked room that first introduced a property so
  * sponsored placement and click attribution still point at a real product.
  */
-export function groupAccommodationByProperty(results: DiscoveryResult[]): DiscoveryResult[] {
-  const roomsByProperty = new Map<string, DiscoveryResult[]>();
+export function groupAccommodationByProperty<T extends ComputedActivity & { property?: DiscoveryPropertySummary }>(results: T[]): T[] {
+  const roomsByProperty = new Map<string, T[]>();
 
   for (const result of results) {
     if (result.categorySlug !== "accommodation") continue;
@@ -110,5 +111,14 @@ export function groupAccommodationByProperty(results: DiscoveryResult[]): Discov
         fromPrice: safeFromPrice,
       },
     }];
+  });
+}
+
+/** Same grouping for ranked items that carry extra data (e.g. For You's reasons): the best-ranked room keeps its slot. */
+export function groupRankedByProperty<T extends { activity: ComputedActivity & { property?: DiscoveryPropertySummary } }>(items: T[]): T[] {
+  const grouped = new Map(groupAccommodationByProperty(items.map((item) => item.activity)).map((activity) => [activity.id, activity]));
+  return items.flatMap((item) => {
+    const activity = grouped.get(item.activity.id);
+    return activity ? [{ ...item, activity }] : [];
   });
 }

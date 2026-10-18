@@ -1,4 +1,5 @@
 import type { GalleryItem, OutletPageBlock, OutletPageDocument } from '@/lib/vendor/outlet-page-schema';
+import type { RoomDetails } from '@/lib/customer/room-details';
 
 export interface OutletRendererOutlet {
   id: string;
@@ -24,6 +25,11 @@ export interface OutletRendererOutlet {
     checkInTime: string | null;
     checkOutTime: string | null;
     policies: string | null;
+    about: string | null;
+    amenities: { code: string; label: string; icon: string }[];
+    /** Review-weighted average of the hotel's room ratings; 0 when there are no reviews. */
+    rating: number;
+    reviews: number;
   };
 }
 
@@ -50,6 +56,10 @@ export interface OutletRendererProduct {
     /** Rooms free on the fullest night; 0 when any night is unavailable. */
     left: number;
     checkInSlotId: string | null;
+    /** Room-type details for the hotel page popup; empty when the room has no data. */
+    details: RoomDetails;
+    /** Cover photo first, then extra room photos. */
+    photos: string[];
   };
 }
 

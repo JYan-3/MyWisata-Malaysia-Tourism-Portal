@@ -15,7 +15,7 @@ Tech Stack:
 
 Before making any code changes:
 
-1. Inventory the real documentation available under `Docs/`.
+1. Inventory the real documentation available under `docs/`.
 2. Read the relevant existing ADRs, research, audits, and plans. Do not assume a
    named document exists; report a missing referenced document once and continue
    with the available repository evidence.
@@ -110,6 +110,9 @@ Always:
 
 - Follow the existing architecture.
 - Reuse existing code.
+- Reuse existing UI components (buttons, inputs, cards, back links, and other
+  shared primitives) instead of building new look-alikes. Consistency first.
+  See `docs/coding-standards.md` → "Reuse existing UI components".
 - Use existing design tokens.
 - Keep changes minimal.
 - Preserve existing coding style.
@@ -209,24 +212,44 @@ risk under the rules above.
 
 ## Documentation
 
-The repository's documentation root is `Docs/`. Inventory it before relying on a
+The repository's documentation root is `docs/`. Inventory it before relying on a
 specific filename. Relevant maintained material currently lives in:
 
-- `Docs/adr/` — architecture and security decisions
-- `Docs/audits/` — completed audits
-- `Docs/research/` — implementation research
-- `Docs/plans/` — approved, active, and deferred implementation plans
+- `docs/adr/` — architecture and security decisions
+- `docs/audits/` — completed audits
+- `docs/research/` — implementation research
+- `docs/plans/` — approved, active, and deferred implementation plans
 
 Do not fabricate or duplicate missing `requirements.md`, `architecture.md`,
 `auth.md`, `database.md`, `testing.md`, `coding-standards.md`, or
 `ai-guidelines.md` files. Use the existing evidence and note genuine documentation
 gaps in the implementation plan when relevant.
 
+For quick routing, the maintained documents currently include:
+
+- Requirements: `docs/requirements.md`
+- Architecture: `docs/architecture.md`
+- Database: `docs/database.md`
+- Testing: `docs/testing.md`
+- Coding Standards: `docs/coding-standards.md`
+- Prompt Rules: `docs/ai-guidelines.md`
+- Full QA audit: `docs/qa-audit.md`
+
+There is currently no maintained `docs/auth.md`; use the existing authentication
+ADRs, research, and implementation evidence instead of inventing that file.
+
+Full QA audit rule:
+
+Only when the user explicitly asks to "run a full testing", "run a full QA
+audit", or requests release-readiness testing, read and follow
+`docs/qa-audit.md`. Do not load that document for ordinary feature work or
+routine test runs.
+
 ---
 
 ## Plans
 
-All plans live in `Docs/plans/`.
+All plans live in `docs/plans/`.
 
 Never write plans to `~/.claude/plans/` — that directory is global and mixes
 plans from other projects. It is scratch only.
@@ -254,7 +277,19 @@ contains both:
 3. Phases — ordered lowest-risk first, with files to modify
 4. Verification — how to prove each phase works
 
-Deferred plans stay in `Docs/plans/` with their status marked at the top.
+Deferred plans stay in `docs/plans/` with their status marked at the top.
+
+---
+
+## Sample UI
+
+When asked to show a sample UI, mockup, or UI option:
+
+1. Output a single self-contained HTML file (inline CSS/JS, images embedded as
+   data URIs).
+2. Open it directly in the user's default browser with `open <file>.html`.
+   Never use the in-app browser/preview pane for samples.
+3. Do not add sample files to the repo unless asked; keep them in the scratchpad.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

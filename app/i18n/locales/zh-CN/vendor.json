@@ -1,4 +1,35 @@
 {
+  "hotelProfile": {
+    "eyebrow": "酒店资料",
+    "description": "酒店页使用固定版面，请在这里编辑内容。修改经管理员审核后才会上线，审核期间酒店照常显示。",
+    "loading": "正在加载酒店资料…",
+    "close": "关闭酒店资料",
+    "status": {
+      "live": "正在显示目前上线的酒店资料。",
+      "pending": "等待审核中。在管理员批准修改之前，酒店会继续以目前的资料显示。",
+      "rejected": "上次的修改未获批准：{{note}}"
+    },
+    "fields": {
+      "about": "关于酒店",
+      "amenities": "设施",
+      "checkIn": "入住时间",
+      "checkOut": "退房时间",
+      "policies": "酒店政策",
+      "photos": "照片"
+    },
+    "photoHint": "JPG、PNG 或 WebP，最大 2 MB。第一张是主照片。",
+    "photoAlt": "酒店照片 {{index}}",
+    "movePhotoUp": "照片上移",
+    "removePhoto": "删除照片",
+    "addPhoto": "添加照片",
+    "submit": "提交审核",
+    "submitting": "提交中…",
+    "submitted": "已提交审核，期间酒店照常显示。",
+    "errors": {
+      "submit": "无法提交酒店资料",
+      "upload": "无法上传照片"
+    }
+  },
   "shell": {
     "portal": "商家门户",
     "brand": "马来西亚旅游",
@@ -1967,6 +1998,7 @@
     "uploadedPreview": "已上传商品媒体预览"
   },
   "outletForm": {
+    "hotelPendingReview": "已提交审核。在管理员批准修改之前，您的酒店会继续以目前的资料显示。",
     "foodServiceModes": "餐食服务方式",
     "foodServiceModesHint": "顾客结账时会从已启用的方式中选择一种。",
     "foodServiceModeRequired": "至少启用一种餐食服务方式。",

@@ -8,6 +8,9 @@ type WishlistContextValue = {
   savedIds: ReadonlySet<string>;
   loading: boolean;
   toggleSaved: (productId: string) => Promise<boolean>;
+  /** Saved hotels (whole outlets), separate from saved products. */
+  savedOutletIds: ReadonlySet<string>;
+  toggleSavedOutlet: (outletId: string) => Promise<boolean>;
 };
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
@@ -17,6 +20,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const currentUserId = currentUser?.id;
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [savedOutletIds, setSavedOutletIds] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -25,13 +29,24 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       // Reset private client state as the auth identity transitions to guest.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedIds(new Set());
+      setSavedOutletIds(new Set());
       setLoading(false);
       return () => { cancelled = true; };
     }
 
     // Reset the previous identity's data before hydrating the active customer.
     setSavedIds(new Set());
+    setSavedOutletIds(new Set());
     setLoading(true);
+    fetch("/api/saved-outlets")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { data?: { outletIds?: string[] } };
+        if (!cancelled) setSavedOutletIds(new Set(body.data?.outletIds ?? []));
+      })
+      .catch(() => {
+        // Saved hotels are an enhancement, like saved products.
+      });
     fetch("/api/wishlist")
       .then(async (response) => {
         if (!response.ok) return;
@@ -79,7 +94,35 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
   }, [savedIds]);
 
-  const value = useMemo(() => ({ savedIds, loading, toggleSaved }), [savedIds, loading, toggleSaved]);
+  const toggleSavedOutlet = useCallback(async (outletId: string) => {
+    const wasSaved = savedOutletIds.has(outletId);
+    const nextSaved = !wasSaved;
+    const apply = (saved: boolean) => setSavedOutletIds((current) => {
+      const next = new Set(current);
+      if (saved) next.add(outletId);
+      else next.delete(outletId);
+      return next;
+    });
+    apply(nextSaved);
+
+    try {
+      const response = await fetch("/api/saved-outlets", {
+        method: nextSaved ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outletId }),
+      });
+      if (!response.ok) throw new Error("Saved hotel update failed");
+      return nextSaved;
+    } catch {
+      apply(wasSaved);
+      return wasSaved;
+    }
+  }, [savedOutletIds]);
+
+  const value = useMemo(
+    () => ({ savedIds, loading, toggleSaved, savedOutletIds, toggleSavedOutlet }),
+    [savedIds, loading, toggleSaved, savedOutletIds, toggleSavedOutlet],
+  );
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
 }
 

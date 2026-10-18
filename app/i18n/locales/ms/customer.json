@@ -867,7 +867,8 @@
       "noExperiences": "Belum ada pengalaman disimpan",
       "saveExperiences": "Simpan pengalaman yang ingin anda tempah.",
       "empty": "Belum ada apa-apa yang disimpan",
-      "saveBoth": "Simpan tempat dan pengalaman untuk membina senarai pilihan anda."
+      "saveBoth": "Simpan tempat dan pengalaman untuk membina senarai pilihan anda.",
+      "savedHotels": "Hotel disimpan"
     },
     "activity": {
       "notFound": "Pengalaman tidak ditemui",
@@ -2758,6 +2759,26 @@
         "pending": "Sedia untuk diambil",
         "collected": "Telah diambil"
       }
+    },
+    "hotel": {
+      "about": "Tentang hotel ini",
+      "amenities": "Kemudahan",
+      "location": "Lokasi",
+      "roomDetails": "Butiran bilik",
+      "selectThisRoom": "Pilih bilik ini",
+      "bed": "Katil",
+      "sleeps": "Tetamu maksimum",
+      "sleepsCount_one": "Muat {{count}} orang",
+      "sleepsCount_other": "Muat {{count}} orang",
+      "size": "Saiz bilik",
+      "view": "Pemandangan",
+      "nonSmoking": "Bebas rokok",
+      "roomAmenities": "Dalam bilik",
+      "photoAlt": "Foto {{room}} {{index}}",
+      "totalFor_one": "Jumlah untuk {{count}} malam · {{rooms}} bilik:",
+      "totalFor_other": "Jumlah untuk {{count}} malam · {{rooms}} bilik:",
+      "reviewCount_one": "({{count}} ulasan)",
+      "reviewCount_other": "({{count}} ulasan)"
     }
   },
   "strictMigration": {

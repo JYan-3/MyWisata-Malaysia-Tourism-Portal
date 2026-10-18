@@ -1,4 +1,35 @@
 {
+  "hotelProfile": {
+    "eyebrow": "Profil hotel",
+    "description": "Halaman hotel anda menggunakan susun atur tetap. Sunting kandungannya di sini; perubahan disiarkan selepas semakan admin, dan hotel anda kekal dipaparkan sementara itu.",
+    "loading": "Memuatkan profil hotel…",
+    "close": "Tutup profil hotel",
+    "status": {
+      "live": "Memaparkan profil hotel semasa anda.",
+      "pending": "Menunggu semakan. Hotel anda kekal dipaparkan dengan butiran semasa sehingga admin meluluskan perubahan ini.",
+      "rejected": "Perubahan terakhir anda tidak diluluskan: {{note}}"
+    },
+    "fields": {
+      "about": "Tentang hotel ini",
+      "amenities": "Kemudahan",
+      "checkIn": "Masa daftar masuk",
+      "checkOut": "Masa daftar keluar",
+      "policies": "Polisi hotel",
+      "photos": "Foto"
+    },
+    "photoHint": "JPG, PNG atau WebP sehingga 2 MB. Foto pertama ialah foto utama.",
+    "photoAlt": "Foto hotel {{index}}",
+    "movePhotoUp": "Alih foto ke atas",
+    "removePhoto": "Buang foto",
+    "addPhoto": "Tambah foto",
+    "submit": "Hantar untuk semakan",
+    "submitting": "Menghantar…",
+    "submitted": "Dihantar untuk semakan. Hotel anda kekal dipaparkan sementara itu.",
+    "errors": {
+      "submit": "Profil hotel tidak dapat dihantar",
+      "upload": "Foto tidak dapat dimuat naik"
+    }
+  },
   "shell": {
     "portal": "Portal Vendor",
     "brand": "Pelancongan Malaysia",
@@ -1967,6 +1998,7 @@
     "uploadedPreview": "Pratonton media produk yang dimuat naik"
   },
   "outletForm": {
+    "hotelPendingReview": "Dihantar untuk semakan. Hotel anda kekal dipaparkan dengan butiran semasa sehingga admin meluluskan perubahan.",
     "foodServiceModes": "Pilihan perkhidmatan makanan",
     "foodServiceModesHint": "Pelanggan memilih satu pilihan yang diaktifkan semasa pembayaran.",
     "foodServiceModeRequired": "Aktifkan sekurang-kurangnya satu pilihan perkhidmatan makanan.",
