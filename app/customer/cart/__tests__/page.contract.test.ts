@@ -66,4 +66,11 @@ describe("cart voucher outlet validation", () => {
   it("uses the resolved seat count before allowing a booking quantity increase", () => {
     expect(source).toMatch(/disabled=\{\(stockLimit !== undefined && item\.qty >= stockLimit\) \|\| \(item\.slotId && availability\.status !== "available"\) \|\| \(availability\.seatsLeft !== undefined && item\.qty >= availability\.seatsLeft\)\}/);
   });
+
+  it("requires accommodation guest details before a cart line can be selected for checkout", () => {
+    expect(source).toContain('activity.categorySlug === "accommodation" && !item.stayDetails');
+    expect(source).toContain("StayGuestDetailsDialog");
+    expect(source).toContain("updateStayDetails(index, details)");
+    localeSources.forEach((localeSource) => expect(localeSource).toContain('"completeStayDetails"'));
+  });
 });

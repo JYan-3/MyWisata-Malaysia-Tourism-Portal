@@ -8,7 +8,6 @@ export type CheckoutRequest = {
   paymentMethod: string;
   paymentProvider?: string | null;
   foodServiceModes?: { outletId: string; mode: "dine_in" | "takeaway" }[];
-  stayDetails?: StayBookingDetails;
 };
 
 export type NormalizedCheckoutRequest = {
@@ -18,7 +17,6 @@ export type NormalizedCheckoutRequest = {
   paymentMethod: string;
   paymentProvider: string | null;
   foodServiceModes: { outletId: string; mode: "dine_in" | "takeaway" }[];
-  stayDetails?: StayBookingDetails;
 };
 
 export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedCheckoutRequest {
@@ -35,11 +33,14 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
     foodServiceModes: [...(input.foodServiceModes ?? [])]
       .map(({ outletId, mode }) => ({ outletId: outletId.trim().toLowerCase(), mode }))
       .sort((a, b) => a.outletId.localeCompare(b.outletId)),
-    ...(input.stayDetails ? { stayDetails: input.stayDetails } : {}),
   };
 }
 
-export function buildCheckoutRequestHash(input: NormalizedCheckoutRequest & { subject?: unknown; contact?: unknown }): string {
+export function buildCheckoutRequestHash(input: NormalizedCheckoutRequest & {
+  subject?: unknown;
+  contact?: unknown;
+  stayLineDetails?: { cartItemId: string; stayDetails: StayBookingDetails }[];
+}): string {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 

@@ -8,7 +8,8 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options?.count !== undefined ? `${key}:${options.count}` : key), i18n: { language: "en" } }),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-vi.mock("@/components/providers/cart", () => ({ useCart: () => ({ addItem: vi.fn(), setSelectedKeys: vi.fn() }) }));
+vi.mock("@/components/providers/cart", () => ({ useCart: () => ({ addItem: vi.fn(), selectedKeys: new Set<string>(), setSelectedKeys: vi.fn() }) }));
+vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ alert: vi.fn() }) }));
 vi.mock("@/components/providers/wishlist", () => ({ useWishlist: () => ({ savedOutletIds: new Set<string>(), toggleSavedOutlet: vi.fn() }) }));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({ useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn() }) }));
 vi.mock("@/components/providers/reference-currency", () => ({ useReferenceCurrency: () => ({ currency: "MYR", snapshot: null, convert: (v: number) => v }) }));
@@ -107,6 +108,14 @@ describe("hotel page", () => {
     expect(markup).toContain("A lovely stay");
     expect(markup).toContain("The room was quiet and the staff were kind.");
     expect(markup).toContain("ui.reviews.verifiedPurchase");
+  });
+
+  it("captures guest details before adding and does not redirect directly to checkout", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/outlet/hotel-page.tsx"), "utf8");
+    expect(source).toContain("StayGuestDetailsDialog");
+    expect(source).toContain("setGuestDialogOpen(true)");
+    expect(source).toContain("await alert(t(\"ui.property.stayAdded\"))");
+    expect(source).not.toContain("router.push(`/customer/checkout");
   });
 });
 

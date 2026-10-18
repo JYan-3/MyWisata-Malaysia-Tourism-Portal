@@ -1,5 +1,5 @@
 import { round2 } from "./money";
-import type { Activity, CartItem, OrderStatus, PriceRule, Voucher } from "./types";
+import type { Activity, CartItem, OrderStatus, PriceRule, StayBookingDetails, Voucher } from "./types";
 
 /**
  * Canonical identity of a cart line. Defined once here because the client, the
@@ -10,8 +10,31 @@ import type { Activity, CartItem, OrderStatus, PriceRule, Voucher } from "./type
  * The outlet is part of the identity: the same variant sold at two outlets has
  * two prices and two stock pools, so it must stay two lines.
  */
-export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId" | "outletId" | "nights">): string {
+type CartItemIdentity = Pick<CartItem, "activityId" | "variantId" | "slotId" | "outletId" | "nights"> &
+  Partial<Pick<CartItem, "cartItemId" | "stayDetails" | "qty">>;
+
+export function cartItemTupleKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId" | "outletId" | "nights">): string {
   return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}|${item.outletId ?? ""}${(item.nights ?? 1) > 1 ? `|${item.nights}` : ""}`;
+}
+
+export function cartItemKey(item: CartItemIdentity): string {
+  return item.cartItemId ? `cart-item:${item.cartItemId}` : cartItemTupleKey(item);
+}
+
+function sameStayDetails(a: StayBookingDetails | null | undefined, b: StayBookingDetails | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return a.primaryGuestName === b.primaryGuestName
+    && (a.additionalGuestNames ?? []).length === (b.additionalGuestNames ?? []).length
+    && (a.additionalGuestNames ?? []).every((name, index) => name === (b.additionalGuestNames ?? [])[index])
+    && a.adults === b.adults
+    && a.estimatedArrival === b.estimatedArrival
+    && (a.specialRequest ?? null) === (b.specialRequest ?? null);
+}
+
+/** Whether an existing cart line may absorb another quantity of the same selection. */
+export function canMergeCartItemLines(existing: CartItemIdentity, incoming: CartItemIdentity): boolean {
+  return cartItemTupleKey(existing) === cartItemTupleKey(incoming)
+    && sameStayDetails(existing.stayDetails, incoming.stayDetails);
 }
 
 /** The database only accepts cart lines backed by a variant or booking slot. */

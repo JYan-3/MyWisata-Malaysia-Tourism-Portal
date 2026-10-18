@@ -45,6 +45,25 @@ discover and explain existing implementations first.
 
 ---
 
+## Communication and Decisions
+
+- For repository questions, inspect the relevant routes, components, APIs,
+  database flow, tests, and documentation before giving a conclusion. Do not
+  answer from a partial scan when the user asks for a check or explanation.
+- Lead with a clear conclusion based on what was verified. Then briefly state
+  what already exists, what can be reused, and what is genuinely missing.
+- List only the unresolved decisions or uncertainties that could materially
+  change the behavior, scope, data model, or user experience.
+- If the user's intent is unclear, state the most likely interpretation and ask
+  a focused clarifying question before implementing. Do not silently make a
+  consequential product or architecture decision. When useful, recommend a
+  default and clearly label it as a recommendation, not as the user's decision.
+- Do not ask for confirmation when the request and applicable project
+  instructions already make the decision clear; proceed within the authorized
+  scope.
+
+---
+
 ## Mandatory Reuse Gate
 
 This gate applies to every feature, UI change, refactor, and bug fix. Requests
@@ -282,6 +301,12 @@ Deferred plans stay in `docs/plans/` with their status marked at the top.
 ---
 
 ## Sample UI
+
+For UI/UX questions, the user prefers a visual HTML example over a text-only
+description when a mockup would make the proposal easier to understand. Offer or
+create a self-contained HTML sample when useful; label unresolved assumptions
+and do not treat a sample as approval to change the application. Keep using the
+sample rules below.
 
 When asked to show a sample UI, mockup, or UI option:
 

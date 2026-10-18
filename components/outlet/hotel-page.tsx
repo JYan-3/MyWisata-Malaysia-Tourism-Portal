@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
 import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
-import type { ProductReview } from "@/backend/core/types";
+import type { ProductReview, StayBookingDetails } from "@/backend/core/types";
 import { RoomDetailsDialog } from "@/components/outlet/room-details-dialog";
+import { StayGuestDetailsDialog } from "@/components/customer/stay-guest-details-dialog";
 import { MediaGallery } from "@/components/customer/media-gallery";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Badge } from "@/components/ui/badge";
@@ -15,36 +15,35 @@ import { Input } from "@/components/ui/input";
 import { useCart } from "@/components/providers/cart";
 import { useWishlist } from "@/components/providers/wishlist";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
-import { cartItemKey } from "@/backend/core/helpers";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: OutletRendererProduct }) {
   const { t } = useTranslation("customer");
-  const router = useRouter();
   const gate = useCustomerCapabilityGate();
-  const { addItem, setSelectedKeys } = useCart();
-  const [working, setWorking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { addItem, selectedKeys, setSelectedKeys } = useCart();
+  const { alert } = useAppDialog();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [guestDialogOpen, setGuestDialogOpen] = useState(false);
+  const [guestDialogKey, setGuestDialogKey] = useState(0);
   const stay = outlet.stay!;
   const offer = room.stay!;
   const soldOut = offer.left < stay.rooms || !offer.checkInSlotId;
   const photo = offer.photos[0];
 
-  async function book() {
+  function openGuestDetails() {
     if (soldOut || !gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
-    setWorking(true);
-    setError(null);
-    try {
-      const line = { activityId: room.id, variantId: room.variant_id ?? "", slotId: offer.checkInSlotId!, outletId: outlet.id, nights: stay.nights };
-      await addItem({ ...line, qty: stay.rooms, priceOverride: offer.total });
-      setSelectedKeys([cartItemKey(line)]);
-      router.push(`/customer/checkout?adults=${stay.adults}`);
-    } catch {
-      setError(t("ui.property.bookError"));
-      setWorking(false);
-    }
+    setGuestDialogKey((key) => key + 1);
+    setGuestDialogOpen(true);
+  }
+
+  async function addStayToCart(guestDetails: StayBookingDetails) {
+    const line = { activityId: room.id, variantId: room.variant_id ?? "", slotId: offer.checkInSlotId!, outletId: outlet.id, nights: stay.nights };
+    const key = await addItem({ ...line, qty: stay.rooms, priceOverride: offer.total, stayDetails: guestDetails });
+    setSelectedKeys([...selectedKeys, key]);
+    setGuestDialogOpen(false);
+    await alert(t("ui.property.stayAdded"));
   }
 
   return (
@@ -78,12 +77,12 @@ function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: Outlet
             {t("ui.hotel.totalFor", { count: stay.nights, rooms: stay.rooms })} <ReferencePrice amountMYR={offer.total * stay.rooms} />
           </p>
         </div>
-        {error && <p role="alert" className="text-xs font-semibold text-destructive">{error}</p>}
-        <Button type="button" onClick={() => void book()} disabled={soldOut || working}>
-          {soldOut ? t("ui.property.soldOut") : working ? t("ui.outletMenu.adding") : t("ui.property.book")}
+        <Button type="button" onClick={openGuestDetails} disabled={soldOut}>
+          {soldOut ? t("ui.property.soldOut") : t("ui.property.book")}
         </Button>
       </div>
-      <RoomDetailsDialog room={room} open={detailsOpen} onOpenChange={setDetailsOpen} onSelect={() => { setDetailsOpen(false); void book(); }} />
+      <RoomDetailsDialog room={room} open={detailsOpen} onOpenChange={setDetailsOpen} onSelect={() => { setDetailsOpen(false); openGuestDetails(); }} />
+      <StayGuestDetailsDialog key={guestDialogKey} open={guestDialogOpen} onOpenChange={setGuestDialogOpen} adults={stay.adults} onSave={addStayToCart} />
     </article>
   );
 }

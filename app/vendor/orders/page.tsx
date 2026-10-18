@@ -25,6 +25,7 @@ import { exportToCsv, type CsvColumn } from "@/lib/export-csv";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { formatMYR } from "@/lib/i18n/format";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
+import type { StayBookingDetails } from "@/backend/core/types";
 import CenteredDetailModal from "@/components/ui/centered-detail-modal";
 import {
   getBatchFulfilmentActions,
@@ -44,10 +45,13 @@ interface OrderItemData {
   fulfil_status: string;
   food_fulfilment_mode?: "dine_in" | "takeaway" | null;
   food_qr_scanned_at?: string | null;
+  stay_details?: StayBookingDetails | null;
+  nights?: number | null;
   created_at: string;
   outlets?: { id?: string; name?: string; city?: string; state?: string };
   products?:
-    { cover_url?: string | null } | Array<{ cover_url?: string | null }>;
+    | { cover_url?: string | null; categories?: { slug?: string } | { slug?: string }[] | null }
+    | Array<{ cover_url?: string | null; categories?: { slug?: string } | { slug?: string }[] | null }>;
 }
 interface VendorOrderData {
   id: string;
@@ -134,6 +138,11 @@ function imageFor(item: OrderItemData) {
     ? item.products[0]
     : item.products;
   return productImageUrl(product?.cover_url) || undefined;
+}
+function categorySlugFor(item: OrderItemData) {
+  const product = Array.isArray(item.products) ? item.products[0] : item.products;
+  const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+  return category?.slug;
 }
 
 export default function VendorOrdersPage() {
@@ -1190,6 +1199,18 @@ export default function VendorOrdersPage() {
                           )}
                           {item.food_fulfilment_mode === "dine_in" && item.food_qr_scanned_at && (
                             <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">{t("ui.orders.dineInArrivalConfirmed")}</p>
+                          )}
+                          {categorySlugFor(item) === "accommodation" && item.stay_details && (
+                            <div className="mt-3 rounded-lg border border-border bg-secondary/30 p-3 text-xs text-foreground">
+                              <p className="font-semibold">{t("ui.orders.stayDetails")}</p>
+                              <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                                <div><dt className="text-muted-foreground">{t("ui.orders.primaryGuest")}</dt><dd className="font-medium">{item.stay_details.primaryGuestName}</dd></div>
+                                <div><dt className="text-muted-foreground">{t("ui.orders.adults")}</dt><dd className="font-medium">{item.stay_details.adults}</dd></div>
+                                <div><dt className="text-muted-foreground">{t("ui.orders.estimatedArrival")}</dt><dd className="font-medium">{t(`ui.orders.arrivalLabels.${item.stay_details.estimatedArrival}`)}</dd></div>
+                                {item.stay_details.additionalGuestNames?.length ? <div><dt className="text-muted-foreground">{t("ui.orders.additionalGuests")}</dt><dd className="font-medium">{item.stay_details.additionalGuestNames.join(", ")}</dd></div> : null}
+                                {item.stay_details.specialRequest ? <div className="sm:col-span-2"><dt className="text-muted-foreground">{t("ui.orders.specialRequest")}</dt><dd className="whitespace-pre-wrap font-medium">{item.stay_details.specialRequest}</dd></div> : null}
+                              </dl>
+                            </div>
                           )}
                         </div>
                       </div>

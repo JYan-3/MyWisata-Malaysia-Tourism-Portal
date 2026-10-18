@@ -1,42 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { checkoutPrepareSchema } from "../schemas";
+import * as schemas from "../schemas";
 
 const baseCheckout = {
   paymentMethod: "stripe_card",
   idempotencyKey: "123e4567-e89b-12d3-a456-426614174000",
 };
 
-describe("hotel stay checkout details", () => {
-  it("accepts bounded guest preferences in the checkout request", () => {
-    const parsed = checkoutPrepareSchema.safeParse({
-      ...baseCheckout,
-      stayDetails: {
-        adults: 2,
-        estimatedArrival: "18:00-21:00",
-        secondGuestName: "Sam Lee",
-        specialRequest: "A quiet room, if available.",
-      },
-    });
+const stayDetailsSchema = (schemas as unknown as {
+  stayBookingDetailsSchema?: { safeParse: (value: unknown) => { success: boolean } };
+}).stayBookingDetailsSchema;
 
-    expect(parsed.success).toBe(true);
+describe("accommodation guest details", () => {
+  it("accepts one primary guest and optional additional guests up to the adult count", () => {
+    expect(stayDetailsSchema?.safeParse({
+      primaryGuestName: "Nur Aisyah",
+      additionalGuestNames: ["Sam Lee"],
+      adults: 2,
+      estimatedArrival: "18:00-21:00",
+      specialRequest: "A quiet room, if available.",
+    }).success).toBe(true);
+
+    expect(stayDetailsSchema?.safeParse({
+      primaryGuestName: "Nur Aisyah",
+      adults: 1,
+      estimatedArrival: "unknown",
+    }).success).toBe(true);
   });
 
-  it("rejects invalid guest counts, arrival options and unexpected fields", () => {
-    const invalidAdults = checkoutPrepareSchema.safeParse({
-      ...baseCheckout,
-      stayDetails: { adults: 0, estimatedArrival: "unknown" },
-    });
-    const invalidArrival = checkoutPrepareSchema.safeParse({
-      ...baseCheckout,
-      stayDetails: { adults: 2, estimatedArrival: "whenever" },
-    });
-    const extraField = checkoutPrepareSchema.safeParse({
-      ...baseCheckout,
-      stayDetails: { adults: 2, estimatedArrival: "unknown", userId: "another-user" },
-    });
+  it("rejects a missing or blank primary guest, too many additional guests, and invalid preferences", () => {
+    expect(stayDetailsSchema?.safeParse({ adults: 1, estimatedArrival: "unknown" }).success).toBe(false);
+    expect(stayDetailsSchema?.safeParse({ primaryGuestName: "  ", adults: 1, estimatedArrival: "unknown" }).success).toBe(false);
+    expect(stayDetailsSchema?.safeParse({
+      primaryGuestName: "Nur Aisyah",
+      additionalGuestNames: ["Sam Lee", "Alex Tan"],
+      adults: 2,
+      estimatedArrival: "unknown",
+    }).success).toBe(false);
+    expect(stayDetailsSchema?.safeParse({
+      primaryGuestName: "Nur Aisyah",
+      adults: 1,
+      estimatedArrival: "whenever",
+    }).success).toBe(false);
+    expect(stayDetailsSchema?.safeParse({
+      primaryGuestName: "Nur Aisyah",
+      adults: 1,
+      estimatedArrival: "unknown",
+      passportNumber: "must-not-be-collected",
+    }).success).toBe(false);
+  });
 
-    expect(invalidAdults.success).toBe(false);
-    expect(invalidArrival.success).toBe(false);
-    expect(extraField.success).toBe(false);
+  it("does not accept guest details from the shared checkout request", () => {
+    expect(schemas.checkoutPrepareSchema.safeParse({
+      ...baseCheckout,
+      stayDetails: {
+        adults: 1,
+        estimatedArrival: "unknown",
+      },
+    }).success).toBe(false);
   });
 });

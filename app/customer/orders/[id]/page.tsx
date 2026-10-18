@@ -139,6 +139,8 @@ export default function OrderDetailPage() {
   const [requestingRefund, setRequestingRefund] = useState(false);
 
   const locale = i18n.resolvedLanguage || i18n.language || "en";
+  const hasLegacyStayDetails = order && order.stayDetails && order.items.some((item) => item.categorySlug === "accommodation");
+  const hasStayDetails = Boolean(hasLegacyStayDetails || order?.items.some((item) => item.categorySlug === "accommodation" && item.stayDetails));
 
   function paymentMethodLabel(method: string) {
     switch (method.toLowerCase()) {
@@ -452,20 +454,37 @@ export default function OrderDetailPage() {
                 </div>
               </section>
 
-              {order.stayDetails && order.items.some((item) => item.categorySlug === "accommodation") && (
+              {hasStayDetails && (
                 <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="stay-order-details-heading">
                   <h2 id="stay-order-details-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
                     {tCustomer("ui.property.stayDetails")}
                   </h2>
-                  <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.nameOnId")}</dt><dd className="mt-1 font-semibold text-foreground">{order.contact?.name || "—"}</dd></div>
-                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.email")}</dt><dd className="mt-1 break-all font-semibold text-foreground">{order.contact?.email || "—"}</dd></div>
-                    {order.contact?.phone && <div><dt className="text-muted-foreground">{tCustomer("ui.property.phone")}</dt><dd className="mt-1 font-semibold text-foreground">{order.contact.phone}</dd></div>}
-                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.adults")}</dt><dd className="mt-1 font-semibold text-foreground">{order.stayDetails.adults}</dd></div>
-                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.estimatedArrival")}</dt><dd className="mt-1 font-semibold text-foreground">{tCustomer(`ui.property.arrivalLabels.${order.stayDetails.estimatedArrival}`)}</dd></div>
-                    {order.stayDetails.secondGuestName && <div><dt className="text-muted-foreground">{tCustomer("ui.property.secondGuestName")}</dt><dd className="mt-1 font-semibold text-foreground">{order.stayDetails.secondGuestName}</dd></div>}
-                    {order.stayDetails.specialRequest && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("ui.property.specialRequest")}</dt><dd className="mt-1 whitespace-pre-wrap text-foreground">{order.stayDetails.specialRequest}</dd></div>}
-                  </dl>
+                  <div className="mt-4 space-y-4">
+                    {order.items.filter((item) => item.categorySlug === "accommodation").map((item, index) => {
+                      const details = item.stayDetails ?? order.stayDetails;
+                      if (!details) return null;
+                      return (
+                        <div key={`${item.activityId}-${index}`} className="rounded-xl bg-secondary/30 p-4">
+                          <p className="font-semibold text-foreground">{item.activityName}</p>
+                          <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+                            <div><dt className="text-muted-foreground">{tCustomer("ui.property.nameOnId")}</dt><dd className="mt-1 font-semibold text-foreground">{"primaryGuestName" in details ? details.primaryGuestName : order.contact?.name || "—"}</dd></div>
+                            {"primaryGuestName" in details ? (
+                              details.additionalGuestNames?.map((name, guestIndex) => <div key={`${name}-${guestIndex}`}><dt className="text-muted-foreground">{tCustomer("ui.property.additionalGuestName", { number: guestIndex + 1 })}</dt><dd className="mt-1 font-semibold text-foreground">{name}</dd></div>)
+                            ) : (
+                              <>
+                                <div><dt className="text-muted-foreground">{tCustomer("ui.property.email")}</dt><dd className="mt-1 break-all font-semibold text-foreground">{order.contact?.email || "—"}</dd></div>
+                                {order.contact?.phone && <div><dt className="text-muted-foreground">{tCustomer("ui.property.phone")}</dt><dd className="mt-1 font-semibold text-foreground">{order.contact.phone}</dd></div>}
+                                {details.secondGuestName && <div><dt className="text-muted-foreground">{tCustomer("ui.property.secondGuestName")}</dt><dd className="mt-1 font-semibold text-foreground">{details.secondGuestName}</dd></div>}
+                              </>
+                            )}
+                            <div><dt className="text-muted-foreground">{tCustomer("ui.property.adults")}</dt><dd className="mt-1 font-semibold text-foreground">{details.adults}</dd></div>
+                            <div><dt className="text-muted-foreground">{tCustomer("ui.property.estimatedArrival")}</dt><dd className="mt-1 font-semibold text-foreground">{tCustomer(`ui.property.arrivalLabels.${details.estimatedArrival}`)}</dd></div>
+                            {details.specialRequest && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("ui.property.specialRequest")}</dt><dd className="mt-1 whitespace-pre-wrap text-foreground">{details.specialRequest}</dd></div>}
+                          </dl>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </section>
               )}
 

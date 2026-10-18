@@ -71,16 +71,10 @@ describe("checkout idempotency request", () => {
     expect(buildCheckoutRequestHash(first)).not.toBe(buildCheckoutRequestHash(changed));
   });
 
-  it("includes the stay guest preferences in the retry hash", () => {
-    const base = { selectedKeys: ["stay"], paymentMethod: "stripe_card" };
-    const first = normalizeCheckoutRequest({
-      ...base,
-      stayDetails: { adults: 2, estimatedArrival: "unknown", secondGuestName: null, specialRequest: null },
-    });
-    const changed = normalizeCheckoutRequest({
-      ...base,
-      stayDetails: { adults: 2, estimatedArrival: "after-21:00", secondGuestName: null, specialRequest: null },
-    });
+  it("includes server-read stay details in the retry hash without adding them to checkout input", () => {
+    const base = normalizeCheckoutRequest({ selectedKeys: ["cart-item:stay"], paymentMethod: "stripe_card" });
+    const first = { ...base, stayLineDetails: [{ cartItemId: "stay", stayDetails: { primaryGuestName: "Nur", adults: 2, estimatedArrival: "unknown" as const } }] };
+    const changed = { ...base, stayLineDetails: [{ cartItemId: "stay", stayDetails: { primaryGuestName: "Nur", adults: 2, estimatedArrival: "after-21:00" as const } }] };
 
     expect(buildCheckoutRequestHash(first)).not.toBe(buildCheckoutRequestHash(changed));
   });

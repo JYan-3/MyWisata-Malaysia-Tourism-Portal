@@ -926,6 +926,18 @@
       "foodServiceMode": "{{service}}: {{mode}}",
       "foodService": "Food service",
       "dineInArrivalConfirmed": "Customer arrival confirmed by QR scan.",
+      "stayDetails": "Guest details",
+      "primaryGuest": "Primary guest",
+      "additionalGuests": "Additional guests",
+      "adults": "Adults",
+      "estimatedArrival": "Estimated arrival",
+      "specialRequest": "Special request",
+      "arrivalLabels": {
+        "unknown": "Not specified",
+        "15:00-18:00": "3:00 PM–6:00 PM",
+        "18:00-21:00": "6:00 PM–9:00 PM",
+        "after-21:00": "After 9:00 PM"
+      },
       "title": "Orders",
       "description": "See what needs attention first, then open the details in the center.",
       "allOrders": "All orders",

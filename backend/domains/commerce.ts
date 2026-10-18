@@ -1,16 +1,18 @@
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
-import { assertCartItemHasBackingRecord, cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
+import { assertCartItemHasBackingRecord, canMergeCartItemLines, cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
-import type { Booking, CartItem, Order, OrderItem, StayBookingDetails, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
+import type { Booking, CartItem, LegacyStayBookingDetails, Order, OrderItem, StayBookingDetails, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
 import { buildCustomerHistoryQuery, type CustomerHistoryFilters } from "@/lib/wallet/customer-transaction-filters";
+import { stayBookingDetailsSchema } from "@/lib/validation/schemas";
 
 
 // ─── Supabase cart ──────────────────────────────────────────────────────────
 type CartItemRow = {
   id: string;
+  stay_details?: StayBookingDetails | null;
   variant_id: string | null;
   slot_id: string | null;
   outlet_id: string | null;
@@ -21,7 +23,7 @@ type CartItemRow = {
   booking_slots: { product_id: string } | { product_id: string }[] | null;
 };
 
-const CART_ITEM_SELECT = "id,variant_id,slot_id,outlet_id,quantity,nights,unit_price,product_variants(product_id),booking_slots(product_id)";
+const CART_ITEM_SELECT = "id,variant_id,slot_id,outlet_id,quantity,nights,unit_price,stay_details,product_variants(product_id),booking_slots(product_id)";
 
 function relation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -53,25 +55,27 @@ async function getCartRows(userId: string): Promise<CartItemRow[]> {
 
 export function mapCartItem(row: CartItemRow): CartItem {
   const productId = relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id;
-  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, nights: row.nights ?? 1, priceOverride: row.unit_price > 0 ? Number(row.unit_price) : undefined };
+  return { cartItemId: row.id, activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, nights: row.nights ?? 1, priceOverride: row.unit_price > 0 ? Number(row.unit_price) : undefined, stayDetails: row.stay_details ?? null };
 }
 
 export async function getCart(userId: string): Promise<CartItem[]> {
   return (await getCartRows(userId)).map(mapCartItem).filter((item) => item.activityId);
 }
 
-export async function addToCart(userId: string, item: CartItem): Promise<CartItem[]> {
+export async function addToCart(userId: string, item: CartItem): Promise<{ items: CartItem[]; cartItemId: string }> {
   assertCartItemHasBackingRecord(item);
+  const parsedDetails = item.stayDetails ? stayBookingDetailsSchema.parse(item.stayDetails) : null;
+  const { data: product, error: productError } = await supabase.from("products").select("id,categories(slug)").eq("id", item.activityId).maybeSingle();
+  if (productError) throw productError;
+  if (!product) throw new Error("cart_product_unavailable");
+  const category = relation(product.categories as { slug: string } | { slug: string }[] | null)?.slug;
+  if ((category === "accommodation") !== Boolean(parsedDetails)) throw new Error("stay_guest_details_required");
+  const validatedItem = { ...item, stayDetails: parsedDetails };
   const cart = await getOrCreateCart(userId);
   const rows = await getCartRows(userId);
   // The outlet is part of the line's identity: the same variant bought from two
   // outlets must stay two lines (different price and stock).
-  const existing = rows.find((row) =>
-    row.variant_id === item.variantId
-    && row.slot_id === (item.slotId ?? null)
-    && row.outlet_id === (item.outletId ?? null)
-    && (row.nights ?? 1) === (item.nights ?? 1),
-  );
+  const existing = rows.find((row) => canMergeCartItemLines(mapCartItem(row), validatedItem));
   if (existing) {
     const { error } = await supabase
       .from("cart_items")
@@ -82,25 +86,48 @@ export async function addToCart(userId: string, item: CartItem): Promise<CartIte
       .eq("id", existing.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? null, quantity: item.qty, nights: item.nights ?? 1, unit_price: item.priceOverride ?? 0 });
+    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? null, quantity: item.qty, nights: item.nights ?? 1, unit_price: item.priceOverride ?? 0, stay_details: parsedDetails });
     if (error) throw error;
   }
+  const items = await getCart(userId);
+  const savedLine = items.find((candidate) => canMergeCartItemLines(candidate, validatedItem));
+  if (!savedLine?.cartItemId) throw new Error("cart_line_not_saved");
+  return { items, cartItemId: savedLine.cartItemId };
+}
+
+export async function updateCartStayDetails(userId: string, cartItemId: string, input: StayBookingDetails): Promise<CartItem[]> {
+  const details = stayBookingDetailsSchema.parse(input);
+  const cart = await getOrCreateCart(userId);
+  const { data: row, error: rowError } = await supabase.from("cart_items")
+    .select("id,variant_id,slot_id,product_variants(product_id),booking_slots(product_id)")
+    .eq("cart_id", cart.id).eq("id", cartItemId).maybeSingle();
+  if (rowError) throw rowError;
+  if (!row) throw new Error("cart_item_not_found");
+  const productId = relation(row.product_variants as { product_id: string } | { product_id: string }[] | null)?.product_id
+    ?? relation(row.booking_slots as { product_id: string } | { product_id: string }[] | null)?.product_id;
+  if (!productId) throw new Error("cart_item_not_found");
+  const { data: product, error: productError } = await supabase.from("products").select("id,categories(slug)").eq("id", productId).maybeSingle();
+  if (productError) throw productError;
+  if (relation(product?.categories as { slug: string } | { slug: string }[] | null)?.slug !== "accommodation") {
+    throw new Error("stay_details_not_allowed");
+  }
+  const { data: updated, error: updateError } = await supabase.from("cart_items").update({ stay_details: details }).eq("cart_id", cart.id).eq("id", cartItemId).select("id").maybeSingle();
+  if (updateError) throw updateError;
+  if (!updated) throw new Error("cart_item_not_found");
   return getCart(userId);
 }
 
-export async function updateCartQty(userId: string, index: number, qty: number): Promise<CartItem[]> {
-  const rows = await getCartRows(userId);
-  const row = rows[index];
-  if (!row) return rows.map(mapCartItem);
+export async function updateCartQty(userId: string, cartItemId: string, qty: number): Promise<CartItem[]> {
+  const cart = await getOrCreateCart(userId);
   const { error } = qty <= 0
-    ? await supabase.from("cart_items").delete().eq("id", row.id)
-    : await supabase.from("cart_items").update({ quantity: qty }).eq("id", row.id);
+    ? await supabase.from("cart_items").delete().eq("id", cartItemId).eq("cart_id", cart.id)
+    : await supabase.from("cart_items").update({ quantity: qty }).eq("id", cartItemId).eq("cart_id", cart.id);
   if (error) throw error;
   return getCart(userId);
 }
 
-export async function removeFromCart(userId: string, index: number): Promise<CartItem[]> {
-  return updateCartQty(userId, index, 0);
+export async function removeFromCart(userId: string, cartItemId: string): Promise<CartItem[]> {
+  return updateCartQty(userId, cartItemId, 0);
 }
 
 export async function clearCart(userId: string): Promise<void> {
@@ -129,6 +156,7 @@ type OrderItemRow = {
   nights?: number | null;
   unit_price: number;
   quantity: number;
+  stay_details?: StayBookingDetails | null;
   /** null for event reservations, which are collected at an event location. */
   outlet_id: string | null;
   products?: { cover_url: string | null; categories?: { slug: string } | null } | null;
@@ -142,6 +170,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
     variantLabel: row.variant_name ?? (row.slot_starts_at ? "" : "Standard"),
     slotStartsAt: row.slot_starts_at ?? undefined,
     nights: row.nights ?? 1,
+    stayDetails: row.stay_details ?? undefined,
     categorySlug: row.products?.categories?.slug,
     unitPrice: Number(row.unit_price),
     qty: row.quantity,
@@ -155,7 +184,7 @@ type OrderRow = {
   contact_email?: string | null;
   contact_name?: string | null;
   contact_phone?: string | null;
-  stay_details?: StayBookingDetails | null;
+  stay_details?: LegacyStayBookingDetails | null;
   status: string;
   subtotal: number;
   discount_amount: number;
@@ -167,7 +196,7 @@ type OrderRow = {
 };
 
 export const ORDER_SELECT =
-  "id,user_id,contact_email,contact_name,contact_phone,stay_details,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
+  "id,user_id,contact_email,contact_name,contact_phone,stay_details,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,stay_details,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
 
 export function mapOrder(row: OrderRow): Order {
   return {

@@ -926,6 +926,18 @@
       "foodServiceMode": "{{service}}：{{mode}}",
       "foodService": "餐食方式",
       "dineInArrivalConfirmed": "顾客已通过二维码确认到店。",
+      "stayDetails": "入住人资料",
+      "primaryGuest": "主要入住人",
+      "additionalGuests": "其他入住人",
+      "adults": "成人数",
+      "estimatedArrival": "预计抵达时间",
+      "specialRequest": "特别要求",
+      "arrivalLabels": {
+        "unknown": "未填写",
+        "15:00-18:00": "下午 3:00–6:00",
+        "18:00-21:00": "晚上 6:00–9:00",
+        "after-21:00": "晚上 9:00 后"
+      },
       "title": "订单",
       "description": "先查看需要处理的事项，再在中央打开详情。",
       "allOrders": "全部订单",

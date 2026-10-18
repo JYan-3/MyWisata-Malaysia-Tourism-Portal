@@ -180,16 +180,15 @@ describe('ToyyibPay checkout presentation', () => {
     document.body.removeChild(container);
   });
 
-  it('collects hotel guest details before payment and sends them with the order request', async () => {
-    (globalThis.window as unknown as { location: { search: string; href: string } }).location.search = '?adults=3';
+  it('uses the shared contact and payment flow for accommodation items without a hotel-only checkout branch', async () => {
     Object.assign(mocks.currentUser, { email: 'guest@example.com', name: 'Aisyah Tan', phone: '+60177143951' });
     const activity = {
       id: 'product-1', name: 'Deluxe Room', image: '', outletId: 'outlet-1', categorySlug: 'accommodation',
       variants: [{ id: 'variant-1', label: 'Standard' }], requiresBooking: true,
     };
     mocks.cart.mockReturnValue({
-      selectedItems: [{ activityId: 'product-1', variantId: 'variant-1', slotId: 'slot-1', outletId: 'outlet-1', qty: 1, nights: 2 }],
-      selectedKeys: new Set(['product-1|variant-1|slot-1|outlet-1|2']),
+      selectedItems: [{ cartItemId: 'stay-line-1', activityId: 'product-1', variantId: 'variant-1', slotId: 'slot-1', outletId: 'outlet-1', qty: 1, nights: 2, stayDetails: { primaryGuestName: 'Nur Aisyah', adults: 3, estimatedArrival: 'unknown' } }],
+      selectedKeys: new Set(['cart-item:stay-line-1']),
       activities: [activity],
       totals: () => ({ subtotal: 100, discount: 0, total: 100 }),
     });
@@ -199,22 +198,20 @@ describe('ToyyibPay checkout presentation', () => {
     const root = createRoot(container as unknown as Element);
     await act(async () => { root.render(<CheckoutPage />); await settle(); });
 
-    expect(container.textContent).toContain('Your Selection');
-    expect(container.textContent).toContain('Estimated arrival time');
-    expect(container.textContent).not.toContain('Payment method');
-    const continueButton = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Continue to Payment'));
-    await act(async () => { continueButton.dispatchEvent(new TestEvent('click', { bubbles: true })); await settle(); });
-
     expect(container.textContent).toContain('Payment method');
+    expect(container.textContent).not.toContain('Your Selection');
+    expect(container.textContent).not.toContain('Estimated arrival time');
+    expect(container.textContent).not.toContain('Continue to Payment');
     const payButton = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Continue to Stripe'));
     await act(async () => { payButton.dispatchEvent(new TestEvent('click', { bubbles: true })); await settle(); });
 
     const prepareCall = mocks.fetch.mock.calls.find(([input]) => String(input) === '/api/checkout/prepare');
     expect(prepareCall).toBeTruthy();
-    expect(JSON.parse(String(prepareCall?.[1]?.body))).toMatchObject({
-      stayDetails: { adults: 3, estimatedArrival: 'unknown', secondGuestName: null, specialRequest: null },
+    const requestBody = JSON.parse(String(prepareCall?.[1]?.body));
+    expect(requestBody).toMatchObject({
       contact: { email: 'guest@example.com', name: 'Aisyah Tan', phone: '+60177143951' },
     });
+    expect(requestBody).not.toHaveProperty('stayDetails');
 
     act(() => root.unmount());
     document.body.removeChild(container);

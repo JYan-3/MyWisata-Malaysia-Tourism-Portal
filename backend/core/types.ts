@@ -330,6 +330,8 @@ export interface PlaceCommentsPage {
 export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED";
 
 export interface CartItem {
+  /** Persisted cart_items.id; absent only before the line has been saved. */
+  cartItemId?: string;
   activityId: string;
   variantId: string;
   slotId?: string;
@@ -343,6 +345,8 @@ export interface CartItem {
   /** Stay length in nights; only accommodation lines carry more than 1. */
   nights?: number;
   priceOverride?: number;
+  /** Required for newly added accommodation lines; null for legacy rows. */
+  stayDetails?: StayBookingDetails | null;
 }
 
 export interface Voucher {
@@ -372,6 +376,7 @@ export interface OrderItem {
   slotStartsAt?: string; // snapshot
   nights?: number; // stay length; only accommodation lines carry more than 1
   categorySlug?: string;
+  stayDetails?: StayBookingDetails;
   unitPrice: number; // snapshot
   qty: number;
   outletId: string;
@@ -379,8 +384,17 @@ export interface OrderItem {
 
 export type StayArrivalWindow = "unknown" | "15:00-18:00" | "18:00-21:00" | "after-21:00";
 
-/** Guest-provided preferences for one accommodation booking; stored on its order only. */
+/** Guest-provided details for one accommodation cart/order line. */
 export interface StayBookingDetails {
+  primaryGuestName: string;
+  additionalGuestNames?: string[];
+  adults: number;
+  estimatedArrival: StayArrivalWindow;
+  specialRequest?: string | null;
+}
+
+/** Read-only shape kept for historical orders created before line-level details. */
+export interface LegacyStayBookingDetails {
   adults: number;
   estimatedArrival: StayArrivalWindow;
   secondGuestName?: string | null;
@@ -391,7 +405,7 @@ export interface Order {
   id: string;
   userId: string | null;
   contact?: { email: string | null; name: string | null; phone: string | null };
-  stayDetails?: StayBookingDetails;
+  stayDetails?: LegacyStayBookingDetails;
   items: OrderItem[];
   subtotal: number;
   discount: number;

@@ -3,12 +3,13 @@ import { resolveCheckoutSubject, resolveCheckoutContact } from '@/lib/checkout/s
 import { parseBody, checkoutPrepareSchema } from '@/lib/validation/schemas';
 import { buildCheckoutRequestHash, normalizeCheckoutRequest } from '@/lib/checkout/idempotency';
 import { getCachedActivities } from '@/lib/cache/catalogue-cache';
-import { cartTotals, unitPrice } from '@/backend/core/helpers';
-import type { CartItem, Voucher } from '@/backend/core/types';
+import { cartItemKey, cartItemTupleKey, cartTotals, unitPrice } from '@/backend/core/helpers';
+import type { CartItem, StayBookingDetails, Voucher } from '@/backend/core/types';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import { planCheckoutPayment, startCheckoutPayment } from '@/lib/checkout/start-payment';
 import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
 import { normalizeVoucherCode } from '@/lib/validation/postgrest-filter';
+import { stayBookingDetailsSchema } from '@/lib/validation/schemas';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -18,6 +19,7 @@ type CartRow = {
   outlet_id: string | null;
   quantity: number;
   nights: number | null;
+  stay_details: StayBookingDetails | null;
   product_variants: Relation<{ id: string; product_id: string; name: string }>;
   booking_slots: Relation<{ id: string; product_id: string; outlet_id: string; starts_at: string; price_override: number | null }>;
 };
@@ -43,15 +45,13 @@ export async function POST(request: Request) {
   const planned = planCheckoutPayment(normalized.paymentMethod, normalized.paymentProvider ?? undefined, user);
   if (!planned.ok) return planned.response;
   const { walletSplit } = planned.plan;
-  const requestHash = buildCheckoutRequestHash({ ...normalized, subject, contact });
-
   const { data: cart, error: cartError } = await db.from('carts').select('id').eq(subject.kind === 'account' ? 'user_id' : 'guest_subject_id', subject.kind === 'account' ? subject.userId : subject.guestSubjectId).maybeSingle();
   if (cartError) return privateCheckoutJson({ error: { code: 'CART_LOOKUP_FAILED', message: 'Unable to load cart.' } }, { status: 500 });
   if (!cart) return privateCheckoutJson({ error: 'Cart is empty' }, { status: 400 });
 
   const { data: rows, error: rowsError } = await db
     .from('cart_items')
-    .select('id,variant_id,slot_id,outlet_id,quantity,nights,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
+    .select('id,variant_id,slot_id,outlet_id,quantity,nights,stay_details,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
     .eq('cart_id', cart.id)
     .order('created_at');
   if (rowsError) return privateCheckoutJson({ error: { code: 'CART_LOOKUP_FAILED', message: 'Unable to load cart items.' } }, { status: 500 });
@@ -70,8 +70,10 @@ export async function POST(request: Request) {
     const productId = variant?.product_id ?? slot?.product_id;
     // Must stay byte-identical to cartItemKey() in components/providers/cart.tsx —
     // the client sends those keys and a mismatch silently selects nothing.
-    const key = `${productId}|${row.variant_id ?? ''}|${row.slot_id ?? ''}|${row.outlet_id ?? ''}${(row.nights ?? 1) > 1 ? `|${row.nights}` : ''}`;
-    return !body.selectedKeys?.length || body.selectedKeys.includes(key);
+    const lineIdentity = { cartItemId: row.id, activityId: productId ?? '', variantId: row.variant_id ?? '', slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, nights: row.nights ?? 1 };
+    const savedKey = cartItemKey(lineIdentity);
+    const legacyTupleKey = cartItemTupleKey(lineIdentity);
+    return !body.selectedKeys?.length || body.selectedKeys.includes(savedKey) || body.selectedKeys.includes(legacyTupleKey);
   });
   if (!selectedRows.length) return privateCheckoutJson({ error: 'Select at least one cart item' }, { status: 400 });
 
@@ -121,6 +123,24 @@ export async function POST(request: Request) {
     },
   }, { status: 503 });
   const productMap = new Map((productRows ?? []).map((row) => [row.id, row]));
+  const ACCOMMODATION = '11111111-0000-0000-0000-000000000008';
+
+  for (const row of selectedRows) {
+    const variant = relation(row.product_variants);
+    const slot = relation(row.booking_slots);
+    const productId = variant?.product_id ?? slot?.product_id ?? '';
+    const product = productMap.get(productId) as { category_id?: string; requires_booking?: boolean } | undefined;
+    const isStay = Boolean(product?.requires_booking) && product?.category_id === ACCOMMODATION;
+    if (isStay && !stayBookingDetailsSchema.safeParse(row.stay_details).success) {
+      return privateCheckoutJson({ error: { code: 'STAY_DETAILS_REQUIRED', message: 'Complete the guest details for every accommodation item in your cart before checkout.' } }, { status: 422 });
+    }
+    if (!isStay && row.stay_details !== null) {
+      return privateCheckoutJson({ error: { code: 'CART_ITEM_UNAVAILABLE', message: 'One or more cart items are no longer available. Refresh your cart and try again.' } }, { status: 409 });
+    }
+  }
+  const stayLineDetails = selectedRows.flatMap((row) => row.stay_details ? [{ cartItemId: row.id, stayDetails: row.stay_details }] : [])
+    .sort((a, b) => a.cartItemId.localeCompare(b.cartItemId));
+  const requestHash = buildCheckoutRequestHash({ ...normalized, stayLineDetails, subject, contact });
 
   const sharedOutletProductIds = [...new Set(selectedRows.flatMap((row) => {
     const variant = relation(row.product_variants);
@@ -152,7 +172,6 @@ export async function POST(request: Request) {
   }
   const outletOfferMap = new Map(outletOffers.map((offer) => [`${offer.product_id}|${offer.outlet_id}`, Number(offer.price)]));
 
-  const ACCOMMODATION = '11111111-0000-0000-0000-000000000008';
   // Multi-night stays: fetch each night's price_override so the total matches the SQL authority.
   const stayOverrides = new Map<string, number[]>();
   for (const row of selectedRows) {
@@ -205,6 +224,7 @@ export async function POST(request: Request) {
     if (!Number.isFinite(linePrice) || linePrice < 0) return null;
     return {
       cartItem: {
+        cartItemId: row.id,
         activityId: productId,
         variantId: row.variant_id ?? '',
         slotId: row.slot_id ?? undefined,
@@ -213,6 +233,7 @@ export async function POST(request: Request) {
         outletId: row.outlet_id ?? undefined,
         // cartTotals must use the same outlet-resolved price sent to the DB RPC.
         priceOverride: linePrice,
+        stayDetails: isStay ? row.stay_details : null,
       } satisfies CartItem,
       line: {
         cart_item_id: row.id,
@@ -230,6 +251,7 @@ export async function POST(request: Request) {
         nights,
         line_total: Number((linePrice * row.quantity).toFixed(2)),
         requires_booking: product.requires_booking,
+        stay_details: isStay ? row.stay_details : null,
       },
     };
   });
@@ -241,11 +263,6 @@ export async function POST(request: Request) {
   }, { status: 409 });
   const pricedLines = candidateLines.filter((line) => line !== null);
   const lines = pricedLines.map(({ line }) => line);
-  const isSingleAccommodationLine = lines.length === 1
-    && (productMap.get(lines[0]!.product_id) as { category_id?: string } | undefined)?.category_id === ACCOMMODATION;
-  if (normalized.stayDetails && !isSingleAccommodationLine) {
-    return privateCheckoutJson({ error: { code: 'STAY_DETAILS_REQUIRE_SINGLE_ACCOMMODATION', message: 'Stay details are only available for one hotel room booking at a time.' } }, { status: 422 });
-  }
   const totals = cartTotals(pricedLines.map(({ cartItem }) => cartItem), activities, voucher);
   if (voucher && totals.voucherError) return privateCheckoutJson({ error: totals.voucherError }, { status: 422 });
 
@@ -292,8 +309,7 @@ export async function POST(request: Request) {
   const rpcArgs = selectedFoodOutlets.length > 0
     ? { ...checkoutArgs, p_claim_id: normalized.claimId, p_food_service_modes: selectedModes.map(({ outletId, mode }) => ({ outlet_id: outletId, mode })) }
     : checkoutArgs;
-  const checkoutContact = { ...contact, stay_details: normalized.stayDetails ?? {} };
-  const { data: prepared, error: prepareError } = await db.rpc(subject.kind === 'guest' ? `guest_${checkoutFunction}` : `account_${checkoutFunction}`, { ...rpcArgs, ...(subject.kind === 'guest' ? { p_guest_subject_id: subject.guestSubjectId, p_contact: checkoutContact } : { p_contact: checkoutContact }) });
+  const { data: prepared, error: prepareError } = await db.rpc(subject.kind === 'guest' ? `guest_${checkoutFunction}` : `account_${checkoutFunction}`, { ...rpcArgs, ...(subject.kind === 'guest' ? { p_guest_subject_id: subject.guestSubjectId, p_contact: contact } : { p_contact: contact }) });
   if (prepareError) {
     const rawMessage = prepareError.message ?? "checkout_failed";
     const code = getCheckoutErrorCode(rawMessage);

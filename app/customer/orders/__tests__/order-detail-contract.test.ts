@@ -23,9 +23,12 @@ describe("customer order detail actions", () => {
   });
 
   it("shows the guest preferences stored on an accommodation order", () => {
+    expect(pageSource).toContain("item.stayDetails ?? order.stayDetails");
+    expect(pageSource).toContain("details.primaryGuestName");
+    expect(pageSource).toContain("details.additionalGuestNames");
+    expect(pageSource).toContain("ui.property.arrivalLabels.${details.estimatedArrival}");
+    expect(pageSource).toContain("details.specialRequest");
     expect(pageSource).toContain("order.stayDetails && order.items.some((item) => item.categorySlug === \"accommodation\")");
-    expect(pageSource).toContain("ui.property.arrivalLabels.${order.stayDetails.estimatedArrival}");
-    expect(pageSource).toContain("order.stayDetails.specialRequest");
   });
 
   it("does not render an empty or invented variant label for a booking item", () => {
