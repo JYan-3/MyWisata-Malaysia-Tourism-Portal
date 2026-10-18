@@ -131,7 +131,7 @@ type OrderItemRow = {
   quantity: number;
   /** null for event reservations, which are collected at an event location. */
   outlet_id: string | null;
-  products?: { cover_url: string | null } | null;
+  products?: { cover_url: string | null; categories?: { slug: string } | null } | null;
 };
 
 function mapOrderItem(row: OrderItemRow): OrderItem {
@@ -142,6 +142,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
     variantLabel: row.variant_name ?? (row.slot_starts_at ? "" : "Standard"),
     slotStartsAt: row.slot_starts_at ?? undefined,
     nights: row.nights ?? 1,
+    categorySlug: row.products?.categories?.slug,
     unitPrice: Number(row.unit_price),
     qty: row.quantity,
     outletId: row.outlet_id ?? "",
@@ -165,7 +166,7 @@ type OrderRow = {
 };
 
 export const ORDER_SELECT =
-  "id,user_id,contact_email,contact_name,contact_phone,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,unit_price,quantity,outlet_id,products(cover_url))";
+  "id,user_id,contact_email,contact_name,contact_phone,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
 
 export function mapOrder(row: OrderRow): Order {
   return {
@@ -249,7 +250,7 @@ type TicketPassRow = {
 type BookingRow = {
   id: string;
   status: Booking["status"];
-  order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; nights?: number | null; quantity: number };
+  order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; nights?: number | null; quantity: number; products?: { categories?: { slug: string } | null } | null };
   ticket_passes?: TicketPassRow | TicketPassRow[] | null;
 };
 
@@ -283,6 +284,7 @@ export function mapBooking(row: BookingRow): Booking | null {
     outletId: row.order_items.outlet_id,
     slotStartsAt: row.order_items.slot_starts_at ?? undefined,
     nights: row.order_items.nights ?? 1,
+    categorySlug: row.order_items.products?.categories?.slug,
     qty: row.order_items.quantity,
     status: row.status,
     qrCode: row.id,
@@ -295,8 +297,8 @@ export function mapBooking(row: BookingRow): Booking | null {
   };
 }
 
-export const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,nights,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
-const SETTLED_BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,nights,quantity,orders!inner(status)),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
+export const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,nights,quantity,products(categories(slug))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
+const SETTLED_BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,nights,quantity,products(categories(slug)),orders!inner(status)),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);

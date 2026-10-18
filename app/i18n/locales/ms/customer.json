@@ -349,7 +349,20 @@
       "adults": "Dewasa",
       "search": "Cari",
       "nightsSummary": "{{count}} malam",
-      "times": "Daftar masuk dari {{checkIn}} · Daftar keluar sebelum {{checkOut}}"
+      "times": "Daftar masuk dari {{checkIn}} · Daftar keluar sebelum {{checkOut}}",
+      "stepRoom": "Bilik anda",
+      "stepDetails": "Butiran tetamu dan bayaran",
+      "changeRoom": "Tukar bilik",
+      "guestDetails": "Butiran tetamu",
+      "contactDetails": "Butiran hubungan",
+      "prefilledHint": "Kami telah mengisi butiran ini daripada profil anda. Pastikan ia sepadan dengan ID yang akan ditunjukkan semasa daftar masuk. Perubahan hanya untuk tempahan ini.",
+      "nameOnId": "Nama penuh (seperti dalam IC atau pasport)",
+      "email": "E-mel untuk pas tempahan anda",
+      "phone": "Nombor telefon bimbit",
+      "checkInFrom": "Dari {{time}}",
+      "checkOutBy": "Sebelum {{time}}",
+      "roomsCount_one": "{{count}} bilik",
+      "roomsCount_other": "{{count}} bilik"
     },
     "labels": {
       "hiddenGem": "Permata Tersembunyi",

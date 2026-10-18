@@ -64,7 +64,7 @@ describe("independent verification page presentation", () => {
       it(`${name} offers a profile return link without next when verified=${verified}`, () => {
         setAccount({ ...unverified, phoneVerified: verified, kycStatus: verified ? "approved" : "unverified" });
         const markup = renderPage(Page);
-        expect(markup).toMatch(/<a\b[^>]*href="\/customer\/profile"[^>]*>[\s\S]*?ui\.profile\.backToProfile[\s\S]*?<\/a>/);
+        expect(markup).toMatch(/<a\b[^>]*href="\/customer\/profile"[^>]*>[\s\S]*?actions\.back[\s\S]*?<\/a>/);
       });
     }
 

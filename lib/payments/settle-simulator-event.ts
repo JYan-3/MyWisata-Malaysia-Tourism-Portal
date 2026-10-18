@@ -100,6 +100,7 @@ export async function settleSimulatorEvent(
         eventKey: `simulator-checkout:${payload.eventId}`,
         reference: payload.providerPaymentId,
         amountRm: payload.amountSen / 100,
+        orderId: result.order_id,
       });
     } catch (emailError) {
       console.error('[payment-simulator] checkout email enqueue failed', emailError);

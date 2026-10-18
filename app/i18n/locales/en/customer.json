@@ -349,7 +349,20 @@
       "adults": "Adults",
       "search": "Search",
       "nightsSummary": "{{count}} night(s)",
-      "times": "Check-in from {{checkIn}} · Check-out by {{checkOut}}"
+      "times": "Check-in from {{checkIn}} · Check-out by {{checkOut}}",
+      "stepRoom": "Your room",
+      "stepDetails": "Guest details and payment",
+      "changeRoom": "Change room",
+      "guestDetails": "Guest details",
+      "contactDetails": "Contact details",
+      "prefilledHint": "We filled this in from your profile. Check it matches the ID you will show at check-in. Changes apply to this booking only.",
+      "nameOnId": "Full name (as on IC or passport)",
+      "email": "Email for your booking pass",
+      "phone": "Mobile number",
+      "checkInFrom": "From {{time}}",
+      "checkOutBy": "By {{time}}",
+      "roomsCount_one": "{{count}} room",
+      "roomsCount_other": "{{count}} rooms"
     },
     "labels": {
       "hiddenGem": "Hidden Gem",

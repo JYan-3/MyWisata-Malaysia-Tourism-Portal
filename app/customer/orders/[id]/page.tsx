@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { getOutlets } from "@/backend/domains/catalogue";
+import { formatStayRange } from "@/lib/customer/booking-view";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
@@ -310,12 +312,12 @@ export default function OrderDetailPage() {
           icon={<ReceiptText size={14} />}
           actions={
             <>
-              <Link href="/customer/orders">
+              <BackLink fallbackHref="/customer/orders">
                 <Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-secondary">
                   <ArrowLeft size={14} className="mr-1.5" />
-                  {tCustomer("ui.orders.backToOrders")}
+                  {tCustomer("actions.back", { ns: "common" })}
                 </Button>
-              </Link>
+              </BackLink>
               <Link href="/customer">
                 <Button className="rounded-full bg-primary px-5 hover:bg-primary/90">
                   {tCustomer("ui.actions.continueExploring")}
@@ -430,7 +432,7 @@ export default function OrderDetailPage() {
                           {item.slotStartsAt && (
                             <p className="mt-1 flex items-center gap-1.5 text-xs text-primary font-medium">
                               <Clock3 size={13} className="shrink-0" />
-                              <span>{dateTimeLabel(item.slotStartsAt, locale)}</span>
+                              <span>{item.categorySlug === "accommodation" ? `${formatStayRange(item.slotStartsAt, item.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : dateTimeLabel(item.slotStartsAt, locale)}</span>
                             </p>
                           )}
                         </div>
@@ -489,7 +491,7 @@ export default function OrderDetailPage() {
                         {b.slotStartsAt && (
                           <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
                             <CalendarDays size={15} className="shrink-0 text-primary" aria-hidden="true" />
-                            <span>{dateTimeLabel(b.slotStartsAt, locale)}</span>
+                            <span>{b.categorySlug === "accommodation" ? `${formatStayRange(b.slotStartsAt, b.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: b.nights ?? 1 })}` : dateTimeLabel(b.slotStartsAt, locale)}</span>
                           </p>
                         )}
                         <div className="mt-3 flex min-w-0 flex-col gap-1 border-t border-border pt-3">
@@ -764,7 +766,7 @@ export default function OrderDetailPage() {
                     {item.variantLabel && <p className="text-gray-500 dark:text-muted-foreground text-[11px]">{item.variantLabel}</p>}
                     {item.slotStartsAt && (
                       <p className="text-gray-500 dark:text-muted-foreground text-[11px] font-medium">
-                        {tCustomer("ui.orders.slot", { time: dateTimeLabel(item.slotStartsAt, locale) })}
+                        {tCustomer("ui.orders.slot", { time: item.categorySlug === "accommodation" ? `${formatStayRange(item.slotStartsAt, item.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : dateTimeLabel(item.slotStartsAt, locale) })}
                       </p>
                     )}
                   </td>

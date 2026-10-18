@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { ArrowLeft, CalendarDays, Clock3, MapPin, Printer, ReceiptText, Users } from "lucide-react";
 import { useParams } from "next/navigation";
 import { getBookingForUser, getBookingsForOrder } from "@/backend/domains/commerce";
@@ -91,9 +92,9 @@ export default function CustomerBookingDetailsPage() {
   return (
     <main className="min-h-full bg-background">
       <CustomerPageShell wide className="pb-0 sm:pb-0">
-        <Link href="/customer/activity?tab=itinerary" className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("ui.actions.backToCalendar")}
-        </Link>
+        <BackLink fallbackHref="/customer/activity?tab=itinerary" className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("actions.back", { ns: "common" })}
+        </BackLink>
       </CustomerPageShell>
 
       <CustomerPageTitle

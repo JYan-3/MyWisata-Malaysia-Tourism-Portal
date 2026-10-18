@@ -17,6 +17,11 @@ describe("customer order detail actions", () => {
     expect(pageSource).not.toContain("defaultValue");
   });
 
+  it("shows the checkout date for one-night accommodation items", () => {
+    expect(pageSource).toContain('item.categorySlug === "accommodation"');
+    expect(pageSource).toContain('b.categorySlug === "accommodation"');
+  });
+
   it("does not render an empty or invented variant label for a booking item", () => {
     expect(pageSource).toContain('item.variantLabel ? ` ${item.variantLabel}` : ""');
     expect(pageSource).toContain("item.variantLabel && <p");

@@ -70,6 +70,9 @@ describe('settleSimulatorEvent', () => {
     });
     expect(result).toMatchObject({ kind: 'payment', status: 'paid', idempotent: false });
     expect(mocks.enqueueUserTransactionEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueUserTransactionEmail).toHaveBeenCalledWith(expect.objectContaining({
+      orderId: '1d4057cf-c821-4b05-a454-61dbdc42d32c',
+    }));
     expect(mocks.emitOrderVendorEvent).toHaveBeenCalledTimes(1);
   });
 

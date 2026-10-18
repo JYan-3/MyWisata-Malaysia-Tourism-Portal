@@ -349,7 +349,20 @@
       "search": "搜索",
       "nightsSummary": "{{count}} 晚",
       "times": "{{checkIn}} 起入住 · {{checkOut}} 前退房",
-      "roomTypes_one": "{{count}} 种房型"
+      "roomTypes_one": "{{count}} 种房型",
+      "stepRoom": "您的房间",
+      "stepDetails": "入住人信息与付款",
+      "changeRoom": "更换房间",
+      "guestDetails": "入住人信息",
+      "contactDetails": "联系资料",
+      "prefilledHint": "我们已根据您的个人资料填写，请确认与入住时出示的证件一致。修改只适用于本次预订。",
+      "nameOnId": "全名（与身份证或护照一致）",
+      "email": "接收预订凭证的邮箱",
+      "phone": "手机号码",
+      "checkInFrom": "{{time}} 起",
+      "checkOutBy": "{{time}} 前",
+      "roomsCount_one": "{{count}} 间",
+      "roomsCount_other": "{{count}} 间"
     },
     "labels": {
       "hiddenGem": "隐藏宝藏",

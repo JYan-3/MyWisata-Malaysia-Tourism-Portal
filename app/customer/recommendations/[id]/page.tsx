@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -57,7 +58,7 @@ export default function CustomerRecommendationDetailPage() {
   return <>
     <CustomerPageTitle eyebrow={t("ui.recommendations.community")} title={detail?.name ?? t("ui.recommendations.title")} description={t("ui.recommendations.description")} icon={<Star size={14} className="text-accent" />} />
     <CustomerPageShell wide className="pt-0 sm:pt-0">
-      <div className="mb-5 flex items-center justify-between gap-3"><Link href="/customer/recommendations" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} />{t("ui.recommendations.myRecommendations")}</Link>{detail && <StatusBadge status={detail.status} />}</div>
+      <div className="mb-5 flex items-center justify-between gap-3"><BackLink fallbackHref="/customer/recommendations" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} />{t("actions.back", { ns: "common" })}</BackLink>{detail && <StatusBadge status={detail.status} />}</div>
       {loading ? <CustomerPanel><p className="text-sm text-muted-foreground">{t("ui.states.loading")}</p></CustomerPanel> : error || !detail ? <CustomerPanel><p role="alert" className="text-sm text-destructive">{error}</p><Button className="mt-3" variant="outline" onClick={() => void loadDetail()}>{t("ui.actions.retry")}</Button></CustomerPanel> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <CustomerPanel><h2 className="font-bold text-foreground">{detail.name}</h2><p className="mt-2 text-sm text-muted-foreground">{[detail.category, detail.state].filter(Boolean).join(" · ")}</p>{detail.description && <p className="mt-4 text-sm text-foreground">{detail.description}</p>}{detail.whyRecommend && <div className="mt-4 rounded-xl bg-muted/40 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.recommendations.why")}</p><p className="mt-1 text-sm">{detail.whyRecommend}</p></div>}</CustomerPanel>

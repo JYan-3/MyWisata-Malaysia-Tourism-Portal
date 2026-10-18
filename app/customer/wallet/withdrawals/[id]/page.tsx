@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, CheckCircle2, Printer, ReceiptText, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -92,7 +92,7 @@ export default function WithdrawalReceiptPage() {
 
   return <><CustomerPageTitle eyebrow={tCustomer("accountGroups.account")} title={tCustomer("strictMigration.walletReceipt.title")} description={receipt?.reference ?? tCustomer("strictMigration.walletReceipt.eyebrow")} icon={<ReceiptText size={14} />} /><CustomerPageShell className="max-w-2xl pt-0 sm:pt-0 print:px-0">
     <div className="mb-6 flex items-center justify-between print:hidden">
-      <Link href="/customer/wallet" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={16} /> {tCustomer("strictMigration.walletReceipt.backToWallet")}</Link>
+      <BackLink fallbackHref="/customer/wallet" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={16} /> {tCustomer("actions.back", { ns: "common" })}</BackLink>
       {receipt && <Button variant="outline" size="sm" onClick={() => window.print()}><Printer size={15} className="mr-2" /> {tCustomer("ui.actions.printReceipt")}</Button>}
     </div>
     {loading ? <div className="rounded-2xl border border-border bg-card p-10 text-center text-muted-foreground">{tCustomer("ui.states.loadingReceipt")}</div> : error ? <div role="alert" className="rounded-2xl border border-destructive/30 bg-card p-10 text-center text-destructive"><p>{error}</p><p className="mt-2 text-sm">{tCustomer("ui.states.loadingError")}</p></div> : receipt && <section className="rounded-2xl border border-border bg-card p-6 sm:p-8">

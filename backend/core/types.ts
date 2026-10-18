@@ -371,6 +371,7 @@ export interface OrderItem {
   variantLabel: string; // snapshot
   slotStartsAt?: string; // snapshot
   nights?: number; // stay length; only accommodation lines carry more than 1
+  categorySlug?: string;
   unitPrice: number; // snapshot
   qty: number;
   outletId: string;
@@ -398,6 +399,7 @@ export interface Booking {
   outletId: string;
   slotStartsAt?: string;
   nights?: number;
+  categorySlug?: string;
   qty: number;
   status: "confirmed" | "checked_in" | "no_show" | "cancelled" | "in_use";
   qrCode: string; // booking id retained as a compatibility payload; customer UI renders a real QR

@@ -98,6 +98,7 @@ const priorTaskFiles = new Set([
   'components/shared/action-feedback.tsx',
   'components/shared/affiliate-qr-code.tsx',
   'components/shared/appearance-control.tsx',
+  'components/shared/back-link.tsx',
   'components/shared/chat-widget/chat-widget-inbox.tsx',
   'components/shared/chat-widget/chat-widget-vendor-thread.tsx',
   'components/shared/chatbot-widget.tsx',

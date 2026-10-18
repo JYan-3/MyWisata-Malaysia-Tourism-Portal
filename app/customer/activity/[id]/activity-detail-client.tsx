@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckCircle, Clock3, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
@@ -182,9 +183,9 @@ export function ActivityDetailClient({
     // only the reviews list scrolls internally; mobile keeps normal page scroll.
     <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
       <div className="mb-4">
-        <Link href={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <ArrowLeft size={16} aria-hidden="true" /> {t("ui.actions.backToResults")}
-        </Link>
+        <BackLink fallbackHref={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <ArrowLeft size={16} aria-hidden="true" /> {t("actions.back", { ns: "common" })}
+        </BackLink>
       </div>
 
       <div className="grid items-start gap-6 lg:h-full lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">

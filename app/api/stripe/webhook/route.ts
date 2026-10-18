@@ -74,6 +74,7 @@ export async function POST(req: Request) {
             eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
             reference: session.id,
             amountRm: session.amount_total / 100,
+            orderId: orderId ?? undefined,
             occurredAt: new Date(event.created * 1000).toISOString(),
           });
         } catch (emailError) {

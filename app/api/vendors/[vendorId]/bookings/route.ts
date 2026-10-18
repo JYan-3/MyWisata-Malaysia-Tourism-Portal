@@ -32,7 +32,7 @@ export async function GET(request: Request, { params }: Props) {
   // booking slot whose outlet was later rehomed, while the order item still
   // retains the vendor/outlet that sold the reservation. Scope through the
   // embedded order item so legacy and current bookings remain visible.
-  let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(orders(contact_name,contact_email),product_name,quantity,line_total,slot_starts_at,product_id,vendor_id,outlet_id,products(name,cover_url),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' })
+  let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(orders(contact_name,contact_email),product_name,quantity,nights,line_total,slot_starts_at,product_id,vendor_id,outlet_id,products(name,cover_url,categories(slug)),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' })
     .eq('order_items.vendor_id', vendorId)
     .in('order_items.outlet_id', outletIds);
   if (linkedBookingId) query = query.eq('id', linkedBookingId);
