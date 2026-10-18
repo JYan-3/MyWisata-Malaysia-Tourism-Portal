@@ -12,7 +12,17 @@ import {
   getPublicOutletEmptyState,
   selectPublicOutletProductIds,
   selectPublicOutletPreviewProducts,
+  relationOne,
 } from '@/lib/customer/outlet-shop';
+
+describe('PostgREST relation shape normalization', () => {
+  it('reads a many-to-one relation returned as an object or as a singleton array', () => {
+    const category = { name: 'Accommodation', slug: 'accommodation' };
+    expect(relationOne(category)).toEqual(category);
+    expect(relationOne([category])).toEqual(category);
+    expect(relationOne(null)).toBeNull();
+  });
+});
 
 describe('professional outlet product cards', () => {
   it('builds outlet-specific commerce labels for the default card', () => {

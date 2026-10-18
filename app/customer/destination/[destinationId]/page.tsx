@@ -9,6 +9,7 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ReferencePrice } from "@/components/shared/reference-price";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -258,7 +259,7 @@ export default async function DestinationPage({ params }: Props) {
                 return (
                   <Link
                     key={outlet.id}
-                    href={vendor ? `/customer/vendor/${vendor.id}` : `/customer/outlet/${outlet.id}`}
+                    href={getOutletShopHref(outlet.id)}
                     className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
                   >
                     {vendor?.logo_url ? (

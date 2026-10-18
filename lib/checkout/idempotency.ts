@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { StayBookingDetails } from "@/backend/core/types";
 
 export type CheckoutRequest = {
   selectedKeys?: string[];
@@ -7,6 +8,7 @@ export type CheckoutRequest = {
   paymentMethod: string;
   paymentProvider?: string | null;
   foodServiceModes?: { outletId: string; mode: "dine_in" | "takeaway" }[];
+  stayDetails?: StayBookingDetails;
 };
 
 export type NormalizedCheckoutRequest = {
@@ -16,6 +18,7 @@ export type NormalizedCheckoutRequest = {
   paymentMethod: string;
   paymentProvider: string | null;
   foodServiceModes: { outletId: string; mode: "dine_in" | "takeaway" }[];
+  stayDetails?: StayBookingDetails;
 };
 
 export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedCheckoutRequest {
@@ -32,6 +35,7 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
     foodServiceModes: [...(input.foodServiceModes ?? [])]
       .map(({ outletId, mode }) => ({ outletId: outletId.trim().toLowerCase(), mode }))
       .sort((a, b) => a.outletId.localeCompare(b.outletId)),
+    ...(input.stayDetails ? { stayDetails: input.stayDetails } : {}),
   };
 }
 

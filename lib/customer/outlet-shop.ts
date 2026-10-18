@@ -117,6 +117,11 @@ function clean(value?: string | null) {
   return value?.trim() || '';
 }
 
+/** PostgREST joins may be typed as arrays while a many-to-one relation is returned as an object. */
+export function relationOne<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
 export function getOutletAvailableStock(variants: readonly OutletInventoryVariant[], outletId: string): number {
   return variants
     .filter((variant) => variant.is_active !== false)

@@ -6,7 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
-import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
+import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, relationOne, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
@@ -16,6 +16,9 @@ import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { readRoomDetails } from "@/lib/customer/room-details";
+import { getPublicReviewAuthorNames } from "@/backend/domains/catalogue";
+import { toProductReview } from "@/backend/domains/review-presenter";
+import type { ProductReview } from "@/backend/core/types";
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +155,23 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
   for (const slot of slots || []) if (!firstSlotByProduct.has(slot.product_id)) firstSlotByProduct.set(slot.product_id, slot.id);
   const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
   const STAY_SLUG = "accommodation";
-  const stayIds = (products || []).filter((p) => p.categories?.[0]?.slug === STAY_SLUG).map((p) => p.id);
+  const stayIds = (products || []).filter((p) => relationOne(p.categories)?.slug === STAY_SLUG).map((p) => p.id);
+  const { data: hotelReviewRows } = stayIds.length
+    ? await db.from("reviews").select("id,rating,title,body,created_at,user_id,product_id").in("product_id", stayIds).eq("outlet_id", outletId).eq("is_visible", true).order("created_at", { ascending: false }).limit(6)
+    : { data: [] };
+  let hotelReviews: ProductReview[] = [];
+  if (hotelReviewRows?.length) {
+    try {
+      const authorNames = await getPublicReviewAuthorNames(db, hotelReviewRows.map((row) => row.user_id ?? ""));
+      hotelReviews = hotelReviewRows.map((row) => toProductReview({
+        ...row,
+        users: { full_name: row.user_id ? authorNames.get(row.user_id) ?? null : null },
+      }));
+    } catch {
+      // Public review text is optional; preserve the hotel page if reviewer names are unavailable.
+      hotelReviews = hotelReviewRows.map((row) => toProductReview({ ...row, users: null }));
+    }
+  }
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
   const stay = resolveStaySearch(search, today);
   const nightDays = Array.from({ length: stay.nights }, (_, k) => addDays(stay.checkIn, k));
@@ -187,7 +206,7 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
         name: product.name,
         description: product.description,
         base_price: getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset),
-        category: product.categories?.[0]?.name ?? null,
+        category: relationOne(product.categories)?.name ?? null,
         ...(stayByProduct.has(product.id) && {
           stay: {
             total: stayByProduct.get(product.id)!.overrides.reduce<number>((sum, o) => sum + (o ?? getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset)), 0),
@@ -246,7 +265,7 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
   return (
     <main className="min-h-screen bg-background text-foreground">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+      {!stayIds.length && <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{vendor ? <a href={`/customer/vendor/${vendorId}`} className="hover:text-primary hover:underline">{vendor.name}</a> : t("ui.labels.mywisataOutlet")}</p>
@@ -262,8 +281,8 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
           <OutletChatButton outletId={outlet.id} />
         </div>
         </div>
-      </div>
-      {outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
+      </div>}
+      {!stayIds.length && outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
         <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("ui.outlet.exploreOutlet")}</p>
@@ -272,7 +291,7 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
           <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
         </div>
       </div>}
-      <OutletPageRenderer document={publicDocument} outlet={stayOutlet} products={menuProducts} mode="public" />
+      <OutletPageRenderer document={publicDocument} outlet={stayOutlet} products={menuProducts} reviews={hotelReviews} mode="public" />
     </main>
   );
 }

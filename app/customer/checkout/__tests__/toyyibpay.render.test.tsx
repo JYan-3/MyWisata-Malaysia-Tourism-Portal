@@ -40,6 +40,34 @@ vi.mock('react-i18next', () => ({
       'ui.checkout.paymentMethod': 'Payment method',
       'ui.checkout.title': 'Checkout',
       'ui.checkout.nothing': 'Nothing to check out',
+      'ui.property.continueToPayment': 'Continue to Payment',
+      'ui.property.yourSelection': 'Your Selection',
+      'ui.property.yourDetails': 'Your Details',
+      'ui.property.payment': 'Payment',
+      'ui.property.guestDetails': 'Guest details',
+      'ui.property.nameOnId': 'Full name',
+      'ui.property.email': 'Email',
+      'ui.property.phone': 'Phone',
+      'ui.property.guestDetailsRequired': 'Guest contact details are required.',
+      'ui.property.prefilledHint': 'Profile details are prefilled.',
+      'ui.property.estimatedArrival': 'Estimated arrival time',
+      'ui.property.arrivalUnknown': 'Not sure yet',
+      'ui.property.arrivalAfternoon': '3:00 PM–6:00 PM',
+      'ui.property.arrivalEvening': '6:00 PM–9:00 PM',
+      'ui.property.arrivalLate': 'After 9:00 PM',
+      'ui.property.secondGuestName': 'Second guest name',
+      'ui.property.specialRequest': 'Special request',
+      'ui.property.editDetails': 'Edit Details',
+      'ui.property.adults': 'Adults',
+      'ui.property.arrivalLabels.unknown': 'Not specified',
+      'ui.property.arrivalLabels.15:00-18:00': '3:00 PM–6:00 PM',
+      'ui.property.arrivalLabels.18:00-21:00': '6:00 PM–9:00 PM',
+      'ui.property.arrivalLabels.after-21:00': 'After 9:00 PM',
+      'ui.property.checkIn': 'Check-in',
+      'ui.property.checkOut': 'Check-out',
+      'ui.property.nightsSummary': '{{count}} nights',
+      'ui.property.roomsCount': '{{count}} rooms',
+      'ui.checkout.continueStripe': 'Continue to Stripe',
     } as Record<string, string>)[key] ?? key,
   }),
 }));
@@ -47,13 +75,27 @@ vi.mock('@/components/providers/auth', () => ({
   useAuth: () => ({ currentUser: mocks.currentUser, capabilities: mocks.capabilities }),
 }));
 vi.mock('@/components/providers/cart', () => ({ useCart: () => mocks.cart() }));
+vi.mock('@/components/profile/international-phone-input', () => ({
+  InternationalPhoneInput: ({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) => (
+    <input id={id} type="tel" value={value} onChange={(event) => onChange(event.target.value)} />
+  ),
+}));
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ value, onValueChange, children }: { value: string; onValueChange: (value: string) => void; children: React.ReactNode }) => (
+    <select value={value} onChange={(event) => onValueChange(event.target.value)}>{children}</select>
+  ),
+  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => <option value={value}>{children}</option>,
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectValue: () => null,
+}));
 vi.mock('@/components/customer/use-customer-capability-gate', () => ({
   useCustomerCapabilityGate: () => Object.assign(mocks.gate, { handleResponse: mocks.handleResponse }),
 }));
 vi.mock('@/backend/domains/catalogue', () => ({
   getActivities: vi.fn(async () => [{
     id: 'product-1', name: 'Rainforest Walk', image: '', outletId: 'outlet-1',
-    variants: [{ id: 'variant-1', label: 'Standard' }], requiresBooking: false,
+    categorySlug: 'accommodation', variants: [{ id: 'variant-1', label: 'Standard' }], requiresBooking: true,
   }]),
   getOutlets: vi.fn(async () => [{ id: 'outlet-1', name: 'Eco Tours' }]),
   getBookingSlots: vi.fn(async () => []),
@@ -133,6 +175,46 @@ describe('ToyyibPay checkout presentation', () => {
     });
     expect((globalThis.window as unknown as { location: { href: string } }).location.href)
       .toBe('https://dev.toyyibpay.com/A1b2C3d4');
+
+    act(() => root.unmount());
+    document.body.removeChild(container);
+  });
+
+  it('collects hotel guest details before payment and sends them with the order request', async () => {
+    (globalThis.window as unknown as { location: { search: string; href: string } }).location.search = '?adults=3';
+    Object.assign(mocks.currentUser, { email: 'guest@example.com', name: 'Aisyah Tan', phone: '+60177143951' });
+    const activity = {
+      id: 'product-1', name: 'Deluxe Room', image: '', outletId: 'outlet-1', categorySlug: 'accommodation',
+      variants: [{ id: 'variant-1', label: 'Standard' }], requiresBooking: true,
+    };
+    mocks.cart.mockReturnValue({
+      selectedItems: [{ activityId: 'product-1', variantId: 'variant-1', slotId: 'slot-1', outletId: 'outlet-1', qty: 1, nights: 2 }],
+      selectedKeys: new Set(['product-1|variant-1|slot-1|outlet-1|2']),
+      activities: [activity],
+      totals: () => ({ subtotal: 100, discount: 0, total: 100 }),
+    });
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container as unknown as Element);
+    await act(async () => { root.render(<CheckoutPage />); await settle(); });
+
+    expect(container.textContent).toContain('Your Selection');
+    expect(container.textContent).toContain('Estimated arrival time');
+    expect(container.textContent).not.toContain('Payment method');
+    const continueButton = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Continue to Payment'));
+    await act(async () => { continueButton.dispatchEvent(new TestEvent('click', { bubbles: true })); await settle(); });
+
+    expect(container.textContent).toContain('Payment method');
+    const payButton = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Continue to Stripe'));
+    await act(async () => { payButton.dispatchEvent(new TestEvent('click', { bubbles: true })); await settle(); });
+
+    const prepareCall = mocks.fetch.mock.calls.find(([input]) => String(input) === '/api/checkout/prepare');
+    expect(prepareCall).toBeTruthy();
+    expect(JSON.parse(String(prepareCall?.[1]?.body))).toMatchObject({
+      stayDetails: { adults: 3, estimatedArrival: 'unknown', secondGuestName: null, specialRequest: null },
+      contact: { email: 'guest@example.com', name: 'Aisyah Tan', phone: '+60177143951' },
+    });
 
     act(() => root.unmount());
     document.body.removeChild(container);

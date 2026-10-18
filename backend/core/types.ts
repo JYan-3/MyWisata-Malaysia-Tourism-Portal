@@ -377,10 +377,21 @@ export interface OrderItem {
   outletId: string;
 }
 
+export type StayArrivalWindow = "unknown" | "15:00-18:00" | "18:00-21:00" | "after-21:00";
+
+/** Guest-provided preferences for one accommodation booking; stored on its order only. */
+export interface StayBookingDetails {
+  adults: number;
+  estimatedArrival: StayArrivalWindow;
+  secondGuestName?: string | null;
+  specialRequest?: string | null;
+}
+
 export interface Order {
   id: string;
   userId: string | null;
   contact?: { email: string | null; name: string | null; phone: string | null };
+  stayDetails?: StayBookingDetails;
   items: OrderItem[];
   subtotal: number;
   discount: number;

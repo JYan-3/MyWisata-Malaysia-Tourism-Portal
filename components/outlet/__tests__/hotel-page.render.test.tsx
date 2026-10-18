@@ -83,6 +83,31 @@ describe("hotel page", () => {
     expect(source).not.toContain("ui.outletMenu.price");
     expect(source).not.toMatch(/<(button|input)\b/);
   });
+
+  it("renders the complete hotel search bar and real guest reviews", () => {
+    const markup = renderToStaticMarkup(<HotelPage
+      outlet={outlet}
+      rooms={[full]}
+      gallery={[]}
+      reviews={[{
+        id: "review-1",
+        rating: 5,
+        title: "A lovely stay",
+        body: "The room was quiet and the staff were kind.",
+        createdAt: "2026-09-12T10:00:00.000Z",
+        authorName: "Aisyah R.",
+        verifiedPurchase: true,
+      }]}
+    />);
+
+    expect(markup).toContain("name=\"checkin\"");
+    expect(markup).toContain("name=\"checkout\"");
+    expect(markup).toContain("name=\"rooms\"");
+    expect(markup).toContain("name=\"adults\"");
+    expect(markup).toContain("A lovely stay");
+    expect(markup).toContain("The room was quiet and the staff were kind.");
+    expect(markup).toContain("ui.reviews.verifiedPurchase");
+  });
 });
 
 describe("hotel page header", () => {

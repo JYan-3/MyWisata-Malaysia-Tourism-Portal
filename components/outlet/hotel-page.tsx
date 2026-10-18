@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Navigation, Star, Users } from "lucide-react";
+import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
 import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
+import type { ProductReview } from "@/backend/core/types";
 import { RoomDetailsDialog } from "@/components/outlet/room-details-dialog";
 import { MediaGallery } from "@/components/customer/media-gallery";
 import { ReferencePrice } from "@/components/shared/reference-price";
@@ -39,7 +40,7 @@ function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: Outlet
       const line = { activityId: room.id, variantId: room.variant_id ?? "", slotId: offer.checkInSlotId!, outletId: outlet.id, nights: stay.nights };
       await addItem({ ...line, qty: stay.rooms, priceOverride: offer.total });
       setSelectedKeys([cartItemKey(line)]);
-      router.push("/customer/checkout");
+      router.push(`/customer/checkout?adults=${stay.adults}`);
     } catch {
       setError(t("ui.property.bookError"));
       setWorking(false);
@@ -88,21 +89,36 @@ function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: Outlet
 }
 
 /** Fixed hotel layout (D1): every accommodation outlet looks the same; only its profile content differs. */
-export function HotelPage({ outlet, rooms, gallery }: { outlet: OutletRendererOutlet; rooms: OutletRendererProduct[]; gallery: GalleryItem[] }) {
+export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: OutletRendererOutlet; rooms: OutletRendererProduct[]; gallery: GalleryItem[]; reviews?: ProductReview[] }) {
   const { t } = useTranslation("customer");
   const gate = useCustomerCapabilityGate();
   const { savedOutletIds, toggleSavedOutlet } = useWishlist();
+  const [roomCount, setRoomCount] = useState(outlet.stay!.rooms);
+  const [adultCount, setAdultCount] = useState(outlet.stay!.adults);
   const saved = savedOutletIds.has(outlet.id);
   const stay = outlet.stay!;
   const address = outlet.address || [outlet.city, outlet.state].filter(Boolean).join(", ");
   const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([outlet.name, outlet.address, outlet.city, outlet.state].filter(Boolean).join(", "))}`;
+  const lowestRoomPrice = rooms.length ? Math.min(...rooms.map((room) => Number(room.base_price)).filter(Number.isFinite)) : null;
+  const hasOverview = Boolean(stay.about || stay.amenities.length || stay.checkInTime || stay.checkOutTime);
+  const hasReviews = stay.reviews > 0 || reviews.length > 0;
   const sections = [
     ["rooms", t("ui.property.rooms")],
-    ...(stay.about ? [["about", t("ui.hotel.about")]] : []),
-    ...(stay.amenities.length ? [["amenities", t("ui.hotel.amenities")]] : []),
-    ["policies", t("ui.property.policies")],
-    ["location", t("ui.hotel.location")],
+    ...(hasOverview ? [["overview", t("ui.hotel.overview")]] : []),
+    ...(hasReviews ? [["reviews", t("ui.hotel.reviews")]] : []),
+    ...(stay.policies || stay.checkInTime || stay.checkOutTime ? [["policies", t("ui.property.policies")]] : []),
+    ...(address ? [["location", t("ui.hotel.location")]] : []),
   ];
+
+  function changeRoomCount(delta: number) {
+    const next = Math.min(10, Math.max(1, roomCount + delta));
+    setRoomCount(next);
+    setAdultCount((current) => Math.max(current, next));
+  }
+
+  function changeAdultCount(delta: number) {
+    setAdultCount((current) => Math.min(20, Math.max(roomCount, current + delta)));
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 sm:pb-16 lg:px-8">
@@ -119,13 +135,40 @@ export function HotelPage({ outlet, rooms, gallery }: { outlet: OutletRendererOu
           {saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
         </SaveToggleButton>
       </header>
-      <form method="get" className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkIn")}<Input type="date" name="checkin" defaultValue={stay.checkIn} required className="mt-1" /></label>
-        <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkOut")}<Input type="date" name="checkout" defaultValue={stay.checkOut} required className="mt-1" /></label>
-        <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.roomCount")}<Input type="number" name="rooms" min={1} max={10} defaultValue={stay.rooms} className="mt-1 w-20" /></label>
-        <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.adults")}<Input type="number" name="adults" min={1} max={20} defaultValue={stay.adults} className="mt-1 w-20" /></label>
-        <Button type="submit">{t("ui.property.search")}</Button>
-        <p className="basis-full text-xs text-muted-foreground">{t("ui.property.nightsSummary", { count: stay.nights })}</p>
+      <form method="get" aria-label={t("ui.hotel.yourStay")} className="mb-6 grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm lg:grid-cols-[minmax(12rem,1.1fr)_minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto] lg:items-end">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.hotel.property")}</p>
+          <p className="mt-1 truncate font-semibold text-foreground">{outlet.name}</p>
+          <p className="truncate text-sm text-muted-foreground">{address}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkIn")}<Input type="date" name="checkin" defaultValue={stay.checkIn} required className="mt-1" /></label>
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkOut")}<Input type="date" name="checkout" defaultValue={stay.checkOut} required className="mt-1" /></label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground">{t("ui.hotel.roomsAndGuests")}</p>
+            <div className="mt-1 flex min-h-9 items-center gap-2 rounded-md border border-input px-2">
+              <Button type="button" size="icon" variant="outline" aria-label={t("ui.hotel.fewerRooms")} disabled={roomCount <= 1} onClick={() => changeRoomCount(-1)}><Minus size={14} aria-hidden="true" /></Button>
+              <span className="min-w-14 text-center text-sm font-medium text-foreground">{t("ui.property.roomsCount", { count: roomCount })}</span>
+              <Button type="button" size="icon" variant="outline" aria-label={t("ui.hotel.moreRooms")} disabled={roomCount >= 10} onClick={() => changeRoomCount(1)}><Plus size={14} aria-hidden="true" /></Button>
+              <Input type="hidden" name="rooms" value={roomCount} />
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground">{t("ui.hotel.adults")}</p>
+            <div className="mt-1 flex min-h-9 items-center gap-2 rounded-md border border-input px-2">
+              <Button type="button" size="icon" variant="outline" aria-label={t("ui.hotel.fewerAdults")} disabled={adultCount <= roomCount} onClick={() => changeAdultCount(-1)}><Minus size={14} aria-hidden="true" /></Button>
+              <span className="min-w-14 text-center text-sm font-medium text-foreground">{t("ui.hotel.adultsCount", { count: adultCount })}</span>
+              <Button type="button" size="icon" variant="outline" aria-label={t("ui.hotel.moreAdults")} disabled={adultCount >= 20} onClick={() => changeAdultCount(1)}><Plus size={14} aria-hidden="true" /></Button>
+              <Input type="hidden" name="adults" value={adultCount} />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
+          <Button type="submit">{t("ui.property.search")}</Button>
+          <p className="text-xs text-muted-foreground">{t("ui.property.nightsSummary", { count: stay.nights })}</p>
+        </div>
       </form>
 
       {gallery.length > 0 && (
@@ -134,8 +177,9 @@ export function HotelPage({ outlet, rooms, gallery }: { outlet: OutletRendererOu
         </div>
       )}
 
-      <nav aria-label={t("ui.property.sections")} className="sticky top-0 z-20 -mx-4 mb-6 flex gap-5 overflow-x-auto border-b border-border bg-background/95 px-4 py-3 text-sm font-semibold backdrop-blur sm:-mx-6 sm:px-6">
+      <nav aria-label={t("ui.property.sections")} className="sticky top-0 z-20 -mx-4 mb-6 flex items-center gap-5 overflow-x-auto border-b border-border bg-background/95 px-4 py-3 text-sm font-semibold backdrop-blur sm:-mx-6 sm:px-6">
         {sections.map(([id, label]) => <a key={id} href={`#${id}`} className="whitespace-nowrap text-primary hover:underline">{label}</a>)}
+        {lowestRoomPrice !== null && Number.isFinite(lowestRoomPrice) && <div className="ml-auto hidden shrink-0 items-center gap-3 sm:flex"><span><span className="mr-1 text-xs font-normal text-muted-foreground">{t("ui.hotel.from")}</span><ReferencePrice amountMYR={lowestRoomPrice} className="font-semibold text-foreground" /></span><Button asChild size="sm"><a href="#rooms">{t("ui.hotel.selectRoom")}</a></Button></div>}
       </nav>
 
       <section id="rooms" className="scroll-mt-16">
@@ -143,37 +187,43 @@ export function HotelPage({ outlet, rooms, gallery }: { outlet: OutletRendererOu
         <div className="space-y-4">{rooms.map((room) => <RoomCard key={room.id} outlet={outlet} room={room} />)}</div>
       </section>
 
-      {stay.about && (
-        <section id="about" className="mt-10 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
-          <h2 className="text-xl font-bold text-foreground">{t("ui.hotel.about")}</h2>
-          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{stay.about}</p>
+      {hasOverview && (
+        <section id="overview" className="mt-10 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+          <h2 className="text-xl font-bold text-foreground">{t("ui.hotel.overview")}</h2>
+          {stay.about && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{stay.about}</p>}
+          {(stay.checkInTime || stay.checkOutTime) && <p className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">{stay.checkInTime && <span><strong className="text-foreground">{t("ui.property.checkIn")}:</strong> {stay.checkInTime}</span>}{stay.checkOutTime && <span><strong className="text-foreground">{t("ui.property.checkOut")}:</strong> {stay.checkOutTime}</span>}</p>}
+          {stay.amenities.length > 0 && <div className="mt-4"><h3 className="text-sm font-semibold text-foreground">{t("ui.hotel.amenities")}</h3><div className="mt-2 flex flex-wrap gap-2">{stay.amenities.map((amenity) => <Badge key={amenity.code} variant="secondary" className="gap-1"><Check size={12} aria-hidden="true" />{amenity.label}</Badge>)}</div></div>}
         </section>
       )}
 
-      {stay.amenities.length > 0 && (
-        <section id="amenities" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
-          <h2 className="text-xl font-bold text-foreground">{t("ui.hotel.amenities")}</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {stay.amenities.map((amenity) => <Badge key={amenity.code} variant="secondary" className="gap-1"><Check size={12} aria-hidden="true" />{amenity.label}</Badge>)}
+      {hasReviews && (
+        <section id="reviews" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div><h2 className="text-xl font-bold text-foreground">{t("ui.hotel.reviews")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("ui.hotel.reviewCount", { count: stay.reviews })}</p></div>
+            {stay.rating > 0 && <p className="inline-flex items-center gap-1 font-semibold text-foreground"><Star size={15} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{stay.rating.toFixed(1)} / 5</p>}
           </div>
+          {reviews.length > 0 ? <div className="mt-4 grid gap-3 md:grid-cols-2">{reviews.map((review) => <article key={review.id} className="rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between gap-3"><p className="font-semibold text-foreground">{review.authorName}</p><span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground"><Star size={13} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{review.rating.toFixed(1)}</span></div>
+            {review.title && <h3 className="mt-2 font-semibold text-foreground">{review.title}</h3>}
+            {review.body && <p className="mt-1 text-sm leading-6 text-muted-foreground">{review.body}</p>}
+            {review.verifiedPurchase && <p className="mt-3 text-xs font-semibold text-primary">{t("ui.reviews.verifiedPurchase")}</p>}
+          </article>)}</div> : <p className="mt-4 text-sm text-muted-foreground">{t("ui.hotel.noWrittenReviews")}</p>}
         </section>
       )}
 
-      <section id="policies" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+      {(stay.policies || stay.checkInTime || stay.checkOutTime) && <section id="policies" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
         <h2 className="text-xl font-bold text-foreground">{t("ui.property.policies")}</h2>
-        {(stay.checkInTime || stay.checkOutTime) && (
-          <p className="mt-2 text-sm text-muted-foreground">{t("ui.property.times", { checkIn: stay.checkInTime ?? "—", checkOut: stay.checkOutTime ?? "—" })}</p>
-        )}
+        {(stay.checkInTime || stay.checkOutTime) && <p className="mt-2 text-sm text-muted-foreground">{t("ui.property.times", { checkIn: stay.checkInTime ?? "—", checkOut: stay.checkOutTime ?? "—" })}</p>}
         {stay.policies && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{stay.policies}</p>}
-      </section>
+      </section>}
 
-      <section id="location" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+      {address && <section id="location" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
         <h2 className="text-xl font-bold text-foreground">{t("ui.hotel.location")}</h2>
         {address && <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground"><MapPin size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{address}</p>}
         <Button asChild variant="outline" className="mt-3">
           <a href={mapHref} target="_blank" rel="noreferrer"><Navigation size={15} aria-hidden="true" />{t("ui.actions.getDirections")}<ArrowUpRight size={15} aria-hidden="true" /></a>
         </Button>
-      </section>
+      </section>}
     </div>
   );
 }

@@ -241,6 +241,11 @@ export async function POST(request: Request) {
   }, { status: 409 });
   const pricedLines = candidateLines.filter((line) => line !== null);
   const lines = pricedLines.map(({ line }) => line);
+  const isSingleAccommodationLine = lines.length === 1
+    && (productMap.get(lines[0]!.product_id) as { category_id?: string } | undefined)?.category_id === ACCOMMODATION;
+  if (normalized.stayDetails && !isSingleAccommodationLine) {
+    return privateCheckoutJson({ error: { code: 'STAY_DETAILS_REQUIRE_SINGLE_ACCOMMODATION', message: 'Stay details are only available for one hotel room booking at a time.' } }, { status: 422 });
+  }
   const totals = cartTotals(pricedLines.map(({ cartItem }) => cartItem), activities, voucher);
   if (voucher && totals.voucherError) return privateCheckoutJson({ error: totals.voucherError }, { status: 422 });
 
@@ -287,7 +292,8 @@ export async function POST(request: Request) {
   const rpcArgs = selectedFoodOutlets.length > 0
     ? { ...checkoutArgs, p_claim_id: normalized.claimId, p_food_service_modes: selectedModes.map(({ outletId, mode }) => ({ outlet_id: outletId, mode })) }
     : checkoutArgs;
-  const { data: prepared, error: prepareError } = await db.rpc(subject.kind === 'guest' ? `guest_${checkoutFunction}` : `account_${checkoutFunction}`, { ...rpcArgs, ...(subject.kind === 'guest' ? { p_guest_subject_id: subject.guestSubjectId, p_contact: contact } : { p_contact: contact }) });
+  const checkoutContact = { ...contact, stay_details: normalized.stayDetails ?? {} };
+  const { data: prepared, error: prepareError } = await db.rpc(subject.kind === 'guest' ? `guest_${checkoutFunction}` : `account_${checkoutFunction}`, { ...rpcArgs, ...(subject.kind === 'guest' ? { p_guest_subject_id: subject.guestSubjectId, p_contact: checkoutContact } : { p_contact: checkoutContact }) });
   if (prepareError) {
     const rawMessage = prepareError.message ?? "checkout_failed";
     const code = getCheckoutErrorCode(rawMessage);

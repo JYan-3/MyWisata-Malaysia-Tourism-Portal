@@ -13,10 +13,12 @@ import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
-import type { BookingSlot, Outlet, Voucher } from "@/backend/core/types";
+import type { BookingSlot, Outlet, StayArrivalWindow, StayBookingDetails, Voucher } from "@/backend/core/types";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 import { formatStayRange } from "@/lib/customer/booking-view";
 import { useReferenceCurrency } from "@/components/providers/reference-currency";
@@ -24,6 +26,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { PAYMENT_CHOICES as METHODS, TOYYIBPAY_SANDBOX } from "@/lib/checkout/payment-choices";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import { parseInternationalPhone } from "@/lib/phone/international";
 
 // Affiliate attribution remains fire-and-forget and never blocks checkout.
 function attributeCheckout(orderId: string) {
@@ -64,6 +67,11 @@ export default function CheckoutPage() {
   const [typedEmail, setContactEmail] = useState<string | null>(null);
   const [typedName, setContactName] = useState<string | null>(null);
   const [typedPhone, setContactPhone] = useState<string | null>(null);
+  const [stayStep, setStayStep] = useState<"details" | "payment">("details");
+  const [stayAdults, setStayAdults] = useState(2);
+  const [estimatedArrival, setEstimatedArrival] = useState<StayArrivalWindow>("unknown");
+  const [secondGuestName, setSecondGuestName] = useState("");
+  const [specialRequest, setSpecialRequest] = useState("");
   const contactEmail = typedEmail ?? currentUser?.email ?? "";
   const contactName = typedName ?? currentUser?.name ?? "";
   const contactPhone = typedPhone ?? currentUser?.phone ?? "";
@@ -168,9 +176,21 @@ export default function CheckoutPage() {
   const isStayItem = (item: (typeof selectedItems)[number]) =>
     Boolean(item.slotId) && activities.find((candidate) => candidate.id === item.activityId)?.categorySlug === "accommodation";
   const stayOnly = selectedItems.length > 0 && selectedItems.every(isStayItem);
+  const singleStayBooking = stayOnly && selectedItems.length === 1;
+  const singleStayItem = singleStayBooking ? selectedItems[0] : undefined;
+  const singleStayActivity = singleStayItem ? activities.find((candidate) => candidate.id === singleStayItem.activityId) : undefined;
+  const singleStaySlot = singleStayItem?.slotId ? slotsById.get(singleStayItem.slotId) : undefined;
+  const singleStayOutlet = singleStayItem ? outlets.find((candidate) => candidate.id === (singleStayItem.outletId ?? singleStayActivity?.outletId)) : undefined;
   const stayOutletId = stayOnly ? selectedItems[0]!.outletId ?? activities.find((a) => a.id === selectedItems[0]!.activityId)?.outletId : undefined;
   const showPhone = stayOnly || selectedMethod.paymentProvider === "toyyibpay";
   const myDate = (ms: number) => new Date(ms).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
+
+  useEffect(() => {
+    const adults = Number(new URLSearchParams(window.location.search).get("adults"));
+    // The room search lives in the URL; read it after hydration to keep server/client markup identical.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (Number.isInteger(adults) && adults >= 1 && adults <= 20) setStayAdults(adults);
+  }, []);
 
   if (toyyibPayReturned) {
     return (
@@ -237,6 +257,14 @@ export default function CheckoutPage() {
           voucherCode: currentUser ? voucherCode : null,
           claimId: currentUser ? claimId : null,
           contact: { email: contactEmail.trim() || (currentUser?.email ?? ""), name: contactName.trim() || null, phone: contactPhone || null },
+          ...(singleStayBooking ? {
+            stayDetails: {
+              adults: stayAdults,
+              estimatedArrival,
+              secondGuestName: secondGuestName.trim() || null,
+              specialRequest: specialRequest.trim() || null,
+            } satisfies StayBookingDetails,
+          } : {}),
           foodServiceModes: foodOutletGroups.map(({ outletId }) => ({ outletId, mode: foodModeByOutlet[outletId]! })),
           paymentMethod,
           paymentProvider,
@@ -296,6 +324,15 @@ export default function CheckoutPage() {
     }
   }
 
+  function continueToStayPayment() {
+    setCheckoutError(null);
+    if (!contactName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim()) || !parseInternationalPhone(contactPhone).ok) {
+      setCheckoutError(tCustomer("ui.property.guestDetailsRequired"));
+      return;
+    }
+    setStayStep("payment");
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <BackLink fallbackHref={stayOutletId ? getOutletShopHref(stayOutletId) : "/customer/cart"} sameOriginOnly className="mb-4 inline-flex items-center text-sm font-semibold text-primary hover:underline">
@@ -305,25 +342,74 @@ export default function CheckoutPage() {
         <h1 className="text-3xl font-bold text-foreground font-[family-name:var(--font-display)]">
           {tCustomer("ui.checkout.title")}
         </h1>
-        <nav aria-label={tCustomer("ui.checkout.progress")} className="mt-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-          <Link href={stayOutletId ? getOutletShopHref(stayOutletId) : "/customer/cart"} className="text-primary hover:underline">{stayOutletId ? `✓ ${tCustomer("ui.property.stepRoom")}` : tCustomer("ui.cart.title")}</Link>
-          <span aria-hidden="true">→</span>
-          <span className="text-foreground" aria-current="step">{stayOnly ? tCustomer("ui.property.stepDetails") : tCustomer("ui.checkout.title")}</span>
-          <span aria-hidden="true">→</span>
-          <span>{tCustomer("ui.checkout.confirmation")}</span>
-        </nav>
+        {singleStayBooking ? (
+          <nav aria-label={tCustomer("ui.checkout.progress")} className="mt-4 grid grid-cols-3 gap-2 text-xs font-semibold sm:max-w-2xl">
+            <Link href={stayOutletId ? getOutletShopHref(stayOutletId) : "/customer/cart"} className="border-t-2 border-primary pt-2 text-primary">✓ {tCustomer("ui.property.yourSelection")}</Link>
+            <button type="button" onClick={() => setStayStep("details")} className={`border-t-2 pt-2 text-left ${stayStep === "details" ? "border-primary text-foreground" : "border-primary/40 text-primary"}`} aria-current={stayStep === "details" ? "step" : undefined}>{stayStep === "payment" ? "✓ " : ""}{tCustomer("ui.property.yourDetails")}</button>
+            <span className={`border-t-2 pt-2 ${stayStep === "payment" ? "border-primary text-foreground" : "border-border text-muted-foreground"}`} aria-current={stayStep === "payment" ? "step" : undefined}>{tCustomer("ui.property.payment")}</span>
+          </nav>
+        ) : (
+          <nav aria-label={tCustomer("ui.checkout.progress")} className="mt-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <Link href={stayOutletId ? getOutletShopHref(stayOutletId) : "/customer/cart"} className="text-primary hover:underline">{stayOutletId ? `✓ ${tCustomer("ui.property.stepRoom")}` : tCustomer("ui.cart.title")}</Link>
+            <span aria-hidden="true">→</span>
+            <span className="text-foreground" aria-current="step">{stayOnly ? tCustomer("ui.property.stepDetails") : tCustomer("ui.checkout.title")}</span>
+            <span aria-hidden="true">→</span>
+            <span>{tCustomer("ui.checkout.confirmation")}</span>
+          </nav>
+        )}
       </div>
 
-      <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
+      {!singleStayBooking && <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-semibold">{!currentUser ? tCustomer("guestCheckout.title") : stayOnly ? tCustomer("ui.property.guestDetails") : tCustomer("ui.property.contactDetails")}</h2>
         <p className="text-sm text-muted-foreground">{currentUser ? tCustomer("ui.property.prefilledHint") : tCustomer("guestCheckout.hint")}</p>
         <label className="block text-sm">{stayOnly ? tCustomer("ui.property.email") : tCustomer("guestCheckout.email")}<Input type="email" autoComplete="email" required value={contactEmail} onChange={event => setContactEmail(event.target.value)} /></label>
         <label className="block text-sm">{stayOnly ? tCustomer("ui.property.nameOnId") : tCustomer("guestCheckout.name")}<Input autoComplete="name" value={contactName} onChange={event => setContactName(event.target.value)} /></label>
         {showPhone && <label className="block text-sm">{stayOnly ? tCustomer("ui.property.phone") : tCustomer("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>}
-      </section>
+      </section>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Main Column */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {singleStayBooking && stayStep === "details" && (
+            <section className="space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="stay-guest-details-heading">
+              <div>
+                <h2 id="stay-guest-details-heading" className="text-xl font-bold text-foreground">{tCustomer("ui.property.guestDetails")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{currentUser ? tCustomer("ui.property.prefilledHint") : tCustomer("guestCheckout.hint")}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium text-foreground">{tCustomer("ui.property.nameOnId")}<Input autoComplete="name" required value={contactName} onChange={event => setContactName(event.target.value)} className="mt-1" /></label>
+                <label className="text-sm font-medium text-foreground">{tCustomer("ui.property.email")}<Input type="email" autoComplete="email" required value={contactEmail} onChange={event => setContactEmail(event.target.value)} className="mt-1" /></label>
+                <label className="text-sm font-medium text-foreground sm:col-span-2">{tCustomer("ui.property.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>
+                <label className="text-sm font-medium text-foreground sm:col-span-2">
+                  {tCustomer("ui.property.estimatedArrival")}
+                  <Select value={estimatedArrival} onValueChange={(value) => setEstimatedArrival(value as StayArrivalWindow)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">{tCustomer("ui.property.arrivalUnknown")}</SelectItem>
+                      <SelectItem value="15:00-18:00">{tCustomer("ui.property.arrivalAfternoon")}</SelectItem>
+                      <SelectItem value="18:00-21:00">{tCustomer("ui.property.arrivalEvening")}</SelectItem>
+                      <SelectItem value="after-21:00">{tCustomer("ui.property.arrivalLate")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="text-sm font-medium text-foreground sm:col-span-2">{tCustomer("ui.property.secondGuestName")}<Input autoComplete="off" value={secondGuestName} onChange={event => setSecondGuestName(event.target.value)} className="mt-1" /></label>
+                <label className="text-sm font-medium text-foreground sm:col-span-2">{tCustomer("ui.property.specialRequest")}<Textarea maxLength={500} value={specialRequest} onChange={event => setSpecialRequest(event.target.value)} className="mt-1" /></label>
+              </div>
+            </section>
+          )}
+          {singleStayBooking && stayStep === "payment" && (
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="stay-guest-summary-heading">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div><h2 id="stay-guest-summary-heading" className="font-bold text-foreground">{tCustomer("ui.property.guestDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{contactName} · {contactEmail} · {contactPhone}</p></div>
+                <Button type="button" variant="outline" size="sm" onClick={() => setStayStep("details")}>{tCustomer("ui.property.editDetails")}</Button>
+              </div>
+              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <p><span className="text-muted-foreground">{tCustomer("ui.property.adults")}:</span> <span className="font-semibold text-foreground">{stayAdults}</span></p>
+                <p><span className="text-muted-foreground">{tCustomer("ui.property.estimatedArrival")}:</span> <span className="font-semibold text-foreground">{tCustomer(`ui.property.arrivalLabels.${estimatedArrival}`)}</span></p>
+                {secondGuestName.trim() && <p className="sm:col-span-2"><span className="text-muted-foreground">{tCustomer("ui.property.secondGuestName")}:</span> <span className="font-semibold text-foreground">{secondGuestName.trim()}</span></p>}
+                {specialRequest.trim() && <p className="sm:col-span-2"><span className="text-muted-foreground">{tCustomer("ui.property.specialRequest")}:</span> {specialRequest.trim()}</p>}
+              </div>
+            </section>
+          )}
           {foodOutletGroups.length > 0 && (
             <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 shadow-sm sm:p-6" aria-labelledby="food-service-mode-heading">
               <h2 id="food-service-mode-heading" className="text-base font-bold text-foreground">{tCustomer("ui.checkout.foodServiceModeTitle")}</h2>
@@ -357,7 +443,7 @@ export default function CheckoutPage() {
             </section>
           )}
           {/* Reservation Items Card */}
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          {(!singleStayBooking || stayStep === "payment") && <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
               <Ticket size={18} className="text-primary" />
               <span>{tCustomer("ui.checkout.itemsToReserve", "Items in Reservation")} ({selectedItems.length})</span>
@@ -420,10 +506,10 @@ export default function CheckoutPage() {
                 );
               })}
             </div>
-          </section>
+          </section>}
 
           {/* Payment or Free Reservation Card */}
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          {(!singleStayBooking || stayStep === "payment") && <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             {isFreeReservation ? (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                 <div className="flex items-start gap-3">
@@ -473,7 +559,7 @@ export default function CheckoutPage() {
                 </p>
               </>
             )}
-          </section>
+          </section>}
 
           {checkoutError && (
             <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
@@ -504,6 +590,14 @@ export default function CheckoutPage() {
             <h2 className="text-base font-bold text-foreground">
               {tCustomer("ui.checkout.orderSummary", "Order Summary")}
             </h2>
+            {singleStayBooking && singleStayItem && (
+              <div className="rounded-xl bg-secondary/40 p-4 text-sm">
+                <p className="font-bold text-foreground">{singleStayOutlet?.name ?? tCustomer("ui.hotel.property")}</p>
+                <p className="mt-1 font-medium text-foreground">{singleStayActivity?.name ?? tCustomer("ui.states.loading")}</p>
+                {singleStaySlot && <p className="mt-2 flex items-center gap-1.5 text-muted-foreground"><CalendarClock size={14} className="shrink-0 text-primary" />{formatStayRange(singleStaySlot.startsAt, singleStayItem.nights ?? 1)}</p>}
+                <p className="mt-1 text-muted-foreground">{tCustomer("ui.property.nightsSummary", { count: singleStayItem.nights ?? 1 })} · {tCustomer("ui.property.roomsCount", { count: singleStayItem.qty })} · {tCustomer("ui.hotel.adultsCount", { count: stayAdults })}</p>
+              </div>
+            )}
             <div className="space-y-2 border-b border-border pb-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
@@ -530,8 +624,10 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || foodModeMissing} onClick={() => void handlePay()}>
-              {paying
+            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || foodModeMissing} onClick={() => singleStayBooking && stayStep === "details" ? continueToStayPayment() : void handlePay()}>
+              {singleStayBooking && stayStep === "details"
+                ? tCustomer("ui.property.continueToPayment")
+                : paying
                 ? tCustomer("ui.states.preparingPayment")
                 : isFreeReservation
                 ? tCustomer("ui.checkout.reserveFreeSpot")

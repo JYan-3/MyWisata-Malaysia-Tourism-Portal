@@ -4,7 +4,7 @@ import { assertCartItemHasBackingRecord, cartItemKey, cartTotals, unitPrice } fr
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
-import type { Booking, CartItem, Order, OrderItem, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
+import type { Booking, CartItem, Order, OrderItem, StayBookingDetails, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
 import { buildCustomerHistoryQuery, type CustomerHistoryFilters } from "@/lib/wallet/customer-transaction-filters";
 
 
@@ -155,6 +155,7 @@ type OrderRow = {
   contact_email?: string | null;
   contact_name?: string | null;
   contact_phone?: string | null;
+  stay_details?: StayBookingDetails | null;
   status: string;
   subtotal: number;
   discount_amount: number;
@@ -166,13 +167,14 @@ type OrderRow = {
 };
 
 export const ORDER_SELECT =
-  "id,user_id,contact_email,contact_name,contact_phone,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
+  "id,user_id,contact_email,contact_name,contact_phone,stay_details,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
 
 export function mapOrder(row: OrderRow): Order {
   return {
     id: row.id,
     userId: row.user_id,
     contact: { email: row.contact_email ?? null, name: row.contact_name ?? null, phone: row.contact_phone ?? null },
+    stayDetails: row.stay_details && Object.keys(row.stay_details).length > 0 ? row.stay_details : undefined,
     items: (row.order_items ?? []).map(mapOrderItem),
     subtotal: Number(row.subtotal),
     discount: Number(row.discount_amount),

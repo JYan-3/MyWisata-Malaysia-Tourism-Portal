@@ -1,5 +1,6 @@
 import type { GalleryItem, OutletPageBlock, OutletPageDocument } from '@/lib/vendor/outlet-page-schema';
 import type { RoomDetails } from '@/lib/customer/room-details';
+import type { ProductReview } from '@/backend/core/types';
 
 export interface OutletRendererOutlet {
   id: string;
@@ -67,6 +68,7 @@ export interface OutletPageRendererProps {
   document: OutletPageDocument;
   outlet: OutletRendererOutlet;
   products?: OutletRendererProduct[];
+  reviews?: ProductReview[];
   mode?: 'editor' | 'public';
   selectedBlockId?: string | null;
   onSelect?: (blockId: string) => void;

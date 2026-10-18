@@ -452,6 +452,23 @@ export default function OrderDetailPage() {
                 </div>
               </section>
 
+              {order.stayDetails && order.items.some((item) => item.categorySlug === "accommodation") && (
+                <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="stay-order-details-heading">
+                  <h2 id="stay-order-details-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
+                    {tCustomer("ui.property.stayDetails")}
+                  </h2>
+                  <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.nameOnId")}</dt><dd className="mt-1 font-semibold text-foreground">{order.contact?.name || "—"}</dd></div>
+                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.email")}</dt><dd className="mt-1 break-all font-semibold text-foreground">{order.contact?.email || "—"}</dd></div>
+                    {order.contact?.phone && <div><dt className="text-muted-foreground">{tCustomer("ui.property.phone")}</dt><dd className="mt-1 font-semibold text-foreground">{order.contact.phone}</dd></div>}
+                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.adults")}</dt><dd className="mt-1 font-semibold text-foreground">{order.stayDetails.adults}</dd></div>
+                    <div><dt className="text-muted-foreground">{tCustomer("ui.property.estimatedArrival")}</dt><dd className="mt-1 font-semibold text-foreground">{tCustomer(`ui.property.arrivalLabels.${order.stayDetails.estimatedArrival}`)}</dd></div>
+                    {order.stayDetails.secondGuestName && <div><dt className="text-muted-foreground">{tCustomer("ui.property.secondGuestName")}</dt><dd className="mt-1 font-semibold text-foreground">{order.stayDetails.secondGuestName}</dd></div>}
+                    {order.stayDetails.specialRequest && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("ui.property.specialRequest")}</dt><dd className="mt-1 whitespace-pre-wrap text-foreground">{order.stayDetails.specialRequest}</dd></div>}
+                  </dl>
+                </section>
+              )}
+
               {/* Digital Entry Pass / QR Codes if Bookings exist */}
               {bookings.length > 0 && isPaid && (
                 <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
