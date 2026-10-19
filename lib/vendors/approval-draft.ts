@@ -1,3 +1,5 @@
+import type { AppLocale } from '@/lib/i18n/locale';
+import { emailLocale } from '@/lib/email/copy';
 // P4 — Member 4: AI-drafted vendor approval (welcome) emails. Same
 // provider/key/model/timeout convention as lib/recommendations/invite-draft.ts
 // (Gemini, process.env.LLM_API_KEY, gemini-flash-lite-latest) — a different
@@ -15,8 +17,6 @@
 // time), for the same reason: nothing should depend on the model getting a
 // link right.
 
-import type { AppLocale } from '@/lib/i18n/locale';
-import { emailLocale } from '@/lib/email/copy';
 import { redactPII } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';

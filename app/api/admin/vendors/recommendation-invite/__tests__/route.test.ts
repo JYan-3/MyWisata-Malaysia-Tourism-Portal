@@ -146,6 +146,12 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
     expect(body.data).not.toHaveProperty('claimUrl');
   });
 
+  it('uses the recipient preference for the fixed invitation and server-appended action', async () => {
+    mocks.recipientLocale='zh-CN';
+    expect((await POST(request())).status).toBe(201);
+    expect(mocks.sendCustomVendorEmail).toHaveBeenCalledWith(expect.objectContaining({locale:'zh-CN',subject:expect.stringContaining('商家入驻'),body:expect.stringContaining('在此完成商家注册')}));
+  });
+
   it('sends a custom email before marking the recommendation invited', async () => {
     const response = await POST(customRequest());
 

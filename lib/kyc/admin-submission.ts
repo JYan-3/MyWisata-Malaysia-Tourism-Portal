@@ -1,7 +1,7 @@
 import type { AdminKycSubmission, AdminKycSubmissionDetail } from '@/backend/core/types';
 
 export const ADMIN_KYC_SUBMISSION_SELECT = 'id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side),kyc_ocr_results(status,holder_name,document_number_last4,expiry_date,confidence,mismatch_fields,processed_at)';
-export const ADMIN_KYC_SUBMISSION_DETAIL_SELECT = `assigned_to,claimed_at,legal_name_snapshot,email_snapshot,phone_snapshot,identity_snapshot_captured_at,${ADMIN_KYC_SUBMISSION_SELECT}`;
+export const ADMIN_KYC_SUBMISSION_DETAIL_SELECT = `kyc_prescreening_jobs(status,outcome,updated_at),assigned_to,claimed_at,legal_name_snapshot,email_snapshot,phone_snapshot,identity_snapshot_captured_at,${ADMIN_KYC_SUBMISSION_SELECT}`;
 
 export type AdminKycSubmissionRow = {
   id: string;
@@ -56,6 +56,7 @@ export function mapAdminKycSubmission(row: AdminKycSubmissionRow): AdminKycSubmi
 }
 
 export type AdminKycSubmissionDetailRow = AdminKycSubmissionRow & {
+  kyc_prescreening_jobs?: { status: string; outcome: string | null; updated_at: string }[] | null;
   assigned_to: string | null;
   claimed_at: string | null;
   legal_name_snapshot: string | null;
@@ -65,8 +66,10 @@ export type AdminKycSubmissionDetailRow = AdminKycSubmissionRow & {
 };
 
 export function mapAdminKycSubmissionDetail(row: AdminKycSubmissionDetailRow): AdminKycSubmissionDetail {
+  const precheck = row.kyc_prescreening_jobs?.toSorted((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
   return {
     ...mapAdminKycSubmission(row),
+    precheck: precheck ? { status: precheck.status, outcome: precheck.outcome, updatedAt: precheck.updated_at } : null,
     assignedTo: row.assigned_to ?? null,
     claimedAt: row.claimed_at ?? null,
     legalIdentity: {

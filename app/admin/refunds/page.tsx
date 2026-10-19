@@ -71,7 +71,7 @@ function providerLabel(
   if (provider === "stripe")
     return t("refunds.providers.stripeSandbox", { ns: "admin" });
   if (provider === "platform_wallet")
-    return t("refunds.providers.mywisataWallet", { ns: "admin" });
+    return t("refunds.providers.mylawatanWallet", { ns: "admin" });
   return provider ?? t("refunds.providers.unknown", { ns: "admin" });
 }
 
@@ -116,12 +116,10 @@ export default function AdminRefundsPage() {
   }, [t]);
 
   useEffect(() => {
+    // Initial loading is already active; this effect starts the request and the later result updates the view.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
-  useEffect(() => {
-    setPage(1);
-  }, [search, status, pageSize]);
-
   const filteredRefunds = useMemo(() => {
     const query = search.trim().toLowerCase();
     return refunds.filter((refund) => {
@@ -311,14 +309,20 @@ export default function AdminRefundsPage() {
             />
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setPage(1);
+                setSearch(event.target.value);
+              }}
               placeholder={t("refunds.filters.searchOrderOrProvider")}
               className={`${adminFilterControlClassName} w-full pl-9`}
             />
           </div>
           <select
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => {
+              setPage(1);
+              setStatus(event.target.value);
+            }}
             className={adminFilterControlClassName}
           >
             <option value="">{t("refunds.filters.allStatuses")}</option>
@@ -330,11 +334,12 @@ export default function AdminRefundsPage() {
           </select>
           <select
             value={pageSize}
-            onChange={(event) =>
+            onChange={(event) => {
+              setPage(1);
               setPageSize(
                 Number(event.target.value) as (typeof PAGE_SIZES)[number],
-              )
-            }
+              );
+            }}
             className={adminFilterControlClassName}
           >
             {PAGE_SIZES.map((size) => (

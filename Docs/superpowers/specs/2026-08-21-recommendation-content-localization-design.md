@@ -8,7 +8,7 @@
 
 `vendor_recommendations.vendor_name`, `vendors.name`, `outlets.name`, and `products.name` store one source-language value. The UI locale files can translate system-owned labels, but cannot translate an arbitrary recommendation or business name. Replacing the source field with AI output would break search, deduplication, vendor identity, and brand names.
 
-A recommendation currently collects a Google Maps place or dropped pin (`google_place_id`, formatted address, latitude, and longitude), not a MyWisata `places` record. Google identifies the real-world business location; it must not be mistaken for the platform's curated state, region, or POI hierarchy.
+A recommendation currently collects a Google Maps place or dropped pin (`google_place_id`, formatted address, latitude, and longitude), not a MyLawatan `places` record. Google identifies the real-world business location; it must not be mistaken for the platform's curated state, region, or POI hierarchy.
 
 ## Decisions
 
@@ -17,8 +17,8 @@ A recommendation currently collects a Google Maps place or dropped pin (`google_
 - Brand and registered names default to the source value. A draft may provide a local display form or transliteration, but it must be approved by an administrator or the claimed vendor before customers see it.
 - System labels and canonical state names continue using static i18n resources; they do not enter the AI translation pipeline. For example, English `Penang` resolves to Chinese `槟城` and Malay `Pulau Pinang` before public content is rendered.
 - Geographic hierarchy is translated independently from commercial content. A `place` is platform-maintained geography/editorial content; it can have approved translations for its POI name, tagline, and introduction. A vendor, outlet, or product is only linked to that place by IDs and never supplies, inherits, or overwrites the place translation.
-- A recommender selects a Google location, never an internal Area. The system may derive a candidate MyWisata Place from the address and coordinates, but a Super Admin must confirm or clear that candidate before it becomes the recommendation's internal geographic association.
-- Google `place_id` and MyWisata `places.id` are separate identifiers. The former is external location evidence; the latter is curated platform geography.
+- A recommender selects a Google location, never an internal Area. The system may derive a candidate MyLawatan Place from the address and coordinates, but a Super Admin must confirm or clear that candidate before it becomes the recommendation's internal geographic association.
+- Google `place_id` and MyLawatan `places.id` are separate identifiers. The former is external location evidence; the latter is curated platform geography.
 - Translation generation starts only after an administrator has approved a recommendation. This prevents spending AI calls on spam, duplicates, rejected submissions, and private contact data.
 - The first delivery uses an administrator-triggered “Generate translations” action after approval. It can later be invoked by a scheduler without changing the data model.
 
@@ -63,7 +63,7 @@ vendor_recommendations (
 ## Workflow
 
 1. A customer submits a recommendation in English. The existing recommendation RPC stores only the original value and returns normally; submission is never delayed by an AI call.
-2. The server derives a non-authoritative internal Place candidate from the Google address and coordinates. It does not turn a Google `place_id` into a MyWisata Place ID.
+2. The server derives a non-authoritative internal Place candidate from the Google address and coordinates. It does not turn a Google `place_id` into a MyLawatan Place ID.
 3. A Super Admin verifies the business and confirms, changes, or clears the suggested Area/POI. The recommendation may remain geographically unresolved.
 4. After approval, the Super Admin requests Chinese and Malay drafts from the existing server-side AI provider abstraction.
 5. The translation prompt receives only a bounded, PII-redacted field value, source language, target locale, content type, and a rule to retain registered/brand names unless a natural local display form is clear. It never receives the recommender identity, phone, email, website, images, or storage paths.

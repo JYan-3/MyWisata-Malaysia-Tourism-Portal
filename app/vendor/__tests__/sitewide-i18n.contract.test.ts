@@ -101,7 +101,6 @@ const priorTaskFiles = new Set([
   'components/shared/appearance-control.tsx',
   'components/shared/auth-page-shell.tsx',
   'components/shared/back-link.tsx',
-  'components/shared/mywisata-logo.tsx',
   'components/shared/chat-widget/chat-widget-inbox.tsx',
   'components/shared/chat-widget/chat-widget-vendor-thread.tsx',
   'components/shared/chatbot-widget.tsx',

@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, ChevronRight, Loader2, MessageCircle, Trash2 } from "lucide-react";
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
+import { useOtpResend } from "@/components/shared/use-otp-resend";
+import { phoneOtpFeedbackKey } from "@/lib/phone/otp-feedback";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
@@ -38,6 +41,9 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   const { selectChat } = useSupportChat();
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
+  const { t: tAuth } = useTranslation("auth");
+  const human = useHumanVerification("phone_send");
+  const resend = useOtpResend();
   const router = useRouter();
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
@@ -58,7 +64,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/profile/me", { cache: "no-store" });
@@ -70,10 +76,10 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       setError(null);
     } catch { setError(tCommon("errors.generic")); }
     finally { setLoading(false); }
-  }
+  }, [tCommon]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void loadProfile(); }, []);
+  useEffect(() => { void loadProfile(); }, [loadProfile]);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   async function savePersonal() {
@@ -97,16 +103,20 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   }
 
   async function sendPhoneOtp() {
+    if (busy || resend.seconds > 0) return;
     const parsedPhone = parseInternationalPhone(phone);
     if (!parsedPhone.ok) { setError(tCustomer("ui.profileWizard.invalidPhone")); return; }
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
     setPhone(parsedPhone.e164);
     setBusy(true); setError(null);
     try {
-      const response = await fetch("/api/phone/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: parsedPhone.e164 }) });
-      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.sendOtp"));
+      const response = await fetch("/api/phone/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: parsedPhone.e164, captchaToken }) });
+      if (!response.ok) { setError(tAuth(await phoneOtpFeedbackKey(response, "send"))); return; }
+      resend.start();
       setPhoneCode("");
       setPhonePhase("verify");
-    } catch { setError(tCustomer("ui.profileWizard.sendOtp")); }
+    } catch { setError(tAuth("humanVerification.unavailable")); }
     finally { setBusy(false); }
   }
 
@@ -117,7 +127,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
     setBusy(true); setError(null);
     try {
       const response = await fetch("/api/phone/verify-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: parsedPhone.e164, code: phoneCode.trim() }) });
-      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.verifyOtp"));
+      if (!response.ok) { setError(tAuth(await phoneOtpFeedbackKey(response, "verify"))); return; }
       await loadProfile(); await refreshUser(); setEditing(null); setPhonePhase("enter"); setPhoneCode("");
     } catch { setError(tCustomer("ui.profileWizard.verifyOtp")); }
     finally { setBusy(false); }
@@ -198,7 +208,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.contact")} description={tCustomer("ui.profileWizard.description")}>
-        <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.email")}</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.profileSections.emailChangeHint")}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.phone")}</p>{editing === "contact" ? <div className="mt-2 space-y-3">{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy}>{tCustomer("ui.profileWizard.sendOtp")}</Button></> : <><p className="font-medium text-green-600">{tCustomer("ui.profileSections.otpSent")}</p><p className="text-muted-foreground">{tCustomer("ui.profileSections.otpInstruction")}</p><div className="flex gap-2">{Array.from({ length: 6 }, (_, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; }} value={phoneCode[index] ?? ""} onChange={(event) => updateOtpDigit(index, event.target.value)} onKeyDown={(event) => handleOtpKeyDown(index, event)} inputMode="numeric" maxLength={1} aria-label={tCustomer("ui.profileSections.otpDigit", { number: index + 1 })} className="h-12 w-11 rounded-xl border border-border bg-background text-center text-lg font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />)}</div><div className="flex items-center gap-3"><Button onClick={verifyPhone} disabled={busy || phoneCode.length !== 6}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileSections.verifyOtp")}</Button><button type="button" onClick={() => void sendPhoneOtp()} disabled={busy} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">{tCustomer("ui.profileSections.resendOtp")}</button></div></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || tCustomer("ui.profileSections.notSet")}</span><StatusBadge label={summary.phoneVerified ? tCustomer("ui.profileSections.verified") : tCustomer("ui.profileSections.unverified")} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" onClick={() => setEditing("contact")}>{tCustomer("ui.profileSections.changePhone")}</Button>}</div>
+        <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.email")}</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.profileSections.emailChangeHint")}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.phone")}</p>{editing === "contact" ? <div className="mt-2 space-y-3"><HumanVerification {...human} />{resend.seconds > 0 && <p role="status" className="text-xs text-muted-foreground">{tAuth("humanVerification.resendIn", { seconds: resend.seconds })}</p>}{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy || resend.seconds > 0}>{tCustomer("ui.profileWizard.sendOtp")}</Button></> : <><p className="font-medium text-green-600">{tCustomer("ui.profileSections.otpSent")}</p><p className="text-muted-foreground">{tCustomer("ui.profileSections.otpInstruction")}</p><div className="flex gap-2">{Array.from({ length: 6 }, (_, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; }} value={phoneCode[index] ?? ""} onChange={(event) => updateOtpDigit(index, event.target.value)} onKeyDown={(event) => handleOtpKeyDown(index, event)} inputMode="numeric" maxLength={1} aria-label={tCustomer("ui.profileSections.otpDigit", { number: index + 1 })} className="h-12 w-11 rounded-xl border border-border bg-background text-center text-lg font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />)}</div><div className="flex items-center gap-3"><Button onClick={verifyPhone} disabled={busy || phoneCode.length !== 6}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileSections.verifyOtp")}</Button><button type="button" onClick={() => void sendPhoneOtp()} disabled={busy || resend.seconds > 0} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">{tCustomer("ui.profileSections.resendOtp")}</button></div></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || tCustomer("ui.profileSections.notSet")}</span><StatusBadge label={summary.phoneVerified ? tCustomer("ui.profileSections.verified") : tCustomer("ui.profileSections.unverified")} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" onClick={() => setEditing("contact")}>{tCustomer("ui.profileSections.changePhone")}</Button>}</div>
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.identityVerification")} description={tCustomer("ui.kyc.description")}>

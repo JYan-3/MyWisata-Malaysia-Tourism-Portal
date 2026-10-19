@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowRightLeft, Bell, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import dynamic from "next/dynamic";
@@ -53,6 +53,8 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 }
 
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
   const gate = useCustomerCapabilityGate();
   const { count } = useCart();
@@ -60,7 +62,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { savedStates } = useSavedDestinations();
   const savedCount = savedIds.size + savedStates.size;
   const [tripCount, setTripCount] = useState(0);
-  const pathname = usePathname();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const partnerMenuRef = useRef<HTMLDivElement>(null);
@@ -173,9 +174,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     if (currentUser) {
       const { error } = await supabase.auth.signOut();
       if (error) return;
-      window.location.assign("/login");
+      router.replace("/login");
     } else {
-      window.location.assign(`/login?next=${encodeURIComponent(pathname)}`);
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
   }
 
@@ -207,7 +208,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-16">
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
-                src="/branding/mywisata-logo-transparent.png?v=2"
+                src="/branding/mylawatan-logo-transparent.png?v=2"
                 alt={LOGO_BRAND_NAME}
                 width={758}
                 height={306}
@@ -359,7 +360,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-secondary ${active ? "bg-secondary" : ""}`}
                             >
                               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
-                                <item.icon size={16} />
+                                <item.icon size={16} fill={item.href === "/customer/saved" && savedCount > 0 ? "currentColor" : undefined} />
                               </span>
                               <span className="min-w-0 flex-1">
                                 <span className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
@@ -414,6 +415,20 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               )}
             </Link>
           ))}
+          <Link
+            href="/customer/saved"
+            aria-current={isCustomerNavActive(pathname, "/customer/saved") ? "page" : undefined}
+            className="relative flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+            style={{ color: isCustomerNavActive(pathname, "/customer/saved") ? "var(--primary)" : "var(--muted-foreground)" }}
+          >
+            <Bookmark size={13} aria-hidden="true" fill={savedCount > 0 ? "currentColor" : "none"} />
+            {tCustomer("accountItems.saved.label")}
+            {savedCount > 0 && (
+              <span className="min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">
+                {savedCount > 99 ? "99+" : savedCount}
+              </span>
+            )}
+          </Link>
         </div>
       </nav>
 

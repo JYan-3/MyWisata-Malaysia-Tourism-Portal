@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Activity } from "@/backend/core/types";
 import { POST } from "../prepare/route";
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -121,7 +122,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
         return { select: vi.fn() };
       }),
       rpc: mockRpc,
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof createClient>>);
 
     const activitiesData = [
       {
@@ -135,10 +136,9 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
         rating: 5,
         reviews: 10,
         duration: "2 hours",
-        meetingPoint: "Merdeka Square",
         requiresBooking: true,
-        variants: [{ id: variantId, label: "Standard", price: 0 }],
-      } as any,
+        variants: [{ id: variantId, label: "Standard", priceDelta: 0 }],
+      } satisfies Activity,
     ];
     vi.mocked(getActivities).mockResolvedValue(activitiesData);
     vi.mocked(getCachedActivities).mockResolvedValue(activitiesData);
@@ -180,7 +180,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
   it("rejects non-phone-verified customers from reserving free slots", async () => {
     setupMocks();
     vi.mocked(customerCapabilityFailure).mockReturnValue(
-      Response.json({ error: { code: "PHONE_REQUIRED", message: "Phone verification required" } }, { status: 403 }) as any,
+      Response.json({ error: { code: "PHONE_REQUIRED", message: "Phone verification required" } }, { status: 403 }),
     );
 
     const req = new Request("http://localhost:3000/api/checkout/prepare", {

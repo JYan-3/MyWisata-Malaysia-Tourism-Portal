@@ -3,7 +3,7 @@ import { buildBookingQrPayload, buildSignedTicketQrPayload } from "@/lib/custome
 
 describe("booking QR payload", () => {
   it("normalizes the origin and encodes the real booking detail URL", () => {
-    expect(buildBookingQrPayload("booking/123", "https://mywisata.test/")).toBe("https://mywisata.test/customer/bookings/booking%2F123");
+    expect(buildBookingQrPayload("booking/123", "https://mylawatan.test/")).toBe("https://mylawatan.test/customer/bookings/booking%2F123");
   });
 
   it("uses a stable local origin fallback", () => {
@@ -11,8 +11,8 @@ describe("booking QR payload", () => {
   });
 
   it("appends signed ticket token when provided", () => {
-    expect(buildSignedTicketQrPayload("booking-123", "v1.abc.def", "https://mywisata.test/")).toBe(
-      "https://mywisata.test/customer/bookings/booking-123?t=v1.abc.def",
+    expect(buildSignedTicketQrPayload("booking-123", "v1.abc.def", "https://mylawatan.test/")).toBe(
+      "https://mylawatan.test/customer/bookings/booking-123?t=v1.abc.def",
     );
   });
 });

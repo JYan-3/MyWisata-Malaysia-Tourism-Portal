@@ -92,7 +92,7 @@ test('redacts complete and chunk-split webhook secrets before writing listener o
 test('synchronizes the local secret with owner-only file permissions', async () => {
   assert.equal(existsSync(launcherPath), true);
   const { syncLocalWebhookSecret } = await import(pathToFileURL(launcherPath).href);
-  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'mywisata-stripe-dev-'));
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'mylawatan-stripe-dev-'));
   const envPath = path.join(temporaryDirectory, '.env.local');
   const secret = `${secretPrefix}localonly`;
 
@@ -134,7 +134,7 @@ test('detects an already-running matching listener without matching unrelated St
 
 test('uses an owner-specific lock and permits recovery from a stale lock', async () => {
   const { acquireLauncherLock } = await import(pathToFileURL(launcherPath).href);
-  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'mywisata-stripe-lock-'));
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'mylawatan-stripe-lock-'));
   const lockPath = path.join(temporaryDirectory, 'dev-stripe.lock');
   const first = acquireLauncherLock({ lockPath, pid: 101, isProcessAlive: (value) => value === 101 });
 

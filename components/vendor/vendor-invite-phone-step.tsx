@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
+import { useOtpResend } from "@/components/shared/use-otp-resend";
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InternationalPhoneInput } from '@/components/profile/international-phone-input';
 import {
@@ -94,6 +96,8 @@ export function VendorInvitePhoneStep({
   onSubmit,
 }: VendorInvitePhoneStepProps) {
   const { t } = useTranslation('vendor');
+  const { t: tAuth } = useTranslation('auth');
+  const human = useHumanVerification('phone_send');
   const [personalMobile, setPersonalMobile] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [phonePhase, setPhonePhase] = useState<PhoneVerificationPhase>(
@@ -101,15 +105,10 @@ export function VendorInvitePhoneStep({
   );
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [resendSeconds, setResendSeconds] = useState(0);
+  const { seconds: resendSeconds, start: startResend } = useOtpResend();
   const [useForOutlet, setUseForOutlet] = useState(false);
   const previousOutletContactRef = useRef(draft.contactPhone);
 
-  useEffect(() => {
-    if (resendSeconds <= 0) return;
-    const timer = window.setInterval(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1_000);
-    return () => window.clearInterval(timer);
-  }, [resendSeconds]);
 
   const resolvedPhonePhase = resolvePhoneVerificationPhase(
     preview.account.phoneVerified,
@@ -133,17 +132,19 @@ export function VendorInvitePhoneStep({
 
   async function sendOtp() {
     if (mobileVerified || phoneBusy || resendSeconds > 0) return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setPhoneError(tAuth('humanVerification.required')); return; }
     setPhoneBusy(true);
     setPhoneError(null);
     try {
-      const result = await requestPhoneOtp(fetch, personalMobile);
+      const result = await requestPhoneOtp(fetch, personalMobile, captchaToken);
       if (!result.ok) {
         setPhoneError(phoneOtpError(t, 'send', result.code, result.status));
         return;
       }
       setOtpDigits(['', '', '', '', '', '']);
       setPhonePhase('code');
-      setResendSeconds(60);
+      startResend();
     } catch {
       setPhoneError(phoneOtpError(t, 'send', '', 503));
     } finally {
@@ -226,6 +227,7 @@ export function VendorInvitePhoneStep({
         {phoneError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{phoneError}</p>}
         {claimError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{claimError}</p>}
 
+        <HumanVerification {...human} />
         <div className="flex items-center justify-between gap-4">
           <button type="button" onClick={onBack} disabled={phoneBusy} className="text-sm font-semibold text-primary hover:underline disabled:opacity-50">{t('invite.actions.back')}</button>
           {resolvedPhonePhase === 'enter' && <button type="button" onClick={() => void sendOtp()} disabled={phoneBusy || !personalMobile} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{t('invite.phone.sendOtp')}</button>}

@@ -14,7 +14,7 @@ This change makes the invitation a token-protected public entry point, shows the
 - Send new invitation links to the top-level public route `/vendor-invite?recommendation=<token>`. Do not weaken or restructure the authenticated `/vendor` portal layout.
 - Keep the existing Vendor claim form fields fixed. Do not add description, recommendation reason, or photo inputs.
 - Show a separate Recommendation details summary above the form.
-- Do not reveal the recommender's name, email, or other identity information. Use the copy: `A MyWisata member recommended this business.`
+- Do not reveal the recommender's name, email, or other identity information. Use the copy: `A MyLawatan member recommended this business.`
 - Display: `Pre-filled from a customer recommendation. Please review and edit any details that are incorrect.`
 - Allow an unauthenticated recipient to open the invitation page, view safe evidence, and edit safe pre-filled fields.
 - Before authentication, mask private recommendation contact details. Reveal and pre-fill complete contact values only after the signed-in account email matches the invitation email.
@@ -110,7 +110,7 @@ The preview operation is read-only. The claim operation remains the sole write b
 The page provides stable, user-facing states:
 
 - Invalid token: `This invitation link is invalid.`
-- Expired token: `This vendor invitation has expired. Request a new invitation from MyWisata.`
+- Expired token: `This vendor invitation has expired. Request a new invitation from MyLawatan.`
 - Cancelled token: `This vendor invitation was cancelled.`
 - Already claimed: `This vendor invitation has already been claimed.`
 - Email mismatch: `Sign in with the email address that received this invitation.`

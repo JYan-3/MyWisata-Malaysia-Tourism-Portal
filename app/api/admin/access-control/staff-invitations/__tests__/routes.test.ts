@@ -37,7 +37,7 @@ const PREPARED = {
 };
 
 function request(path: string, body: Record<string, unknown>) {
-  return new Request(`https://mywisata.test${path}`, {
+  return new Request(`https://mylawatan.test${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -58,7 +58,7 @@ function listQuery(data: unknown[]) {
 describe("staff invitation administration routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXT_PUBLIC_SITE_URL = "https://mywisata.test";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://mylawatan.test";
     mocks.requireGovernance.mockResolvedValue({
       db: { rpc: mocks.rpc, from: mocks.serviceFrom },
       user: { id: "11111111-1111-4111-8111-111111111111" },

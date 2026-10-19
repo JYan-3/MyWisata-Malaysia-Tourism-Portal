@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Search } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
+import { staffVerificationDestination } from "@/lib/auth/staff-route-boundaries";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
@@ -36,7 +38,8 @@ const EMPTY_PENDING_COUNTS: PendingCounts = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, staffModules = [], loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
+  const { currentUser, staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
+  const staffAccessReady = !staffMfaRequired && (!staffPasskeyRequired || staffVerified);
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   const commandShortcutLabel = useCommandShortcutLabel();
@@ -82,7 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   useEffect(() => {
-    if (!currentUser || currentUser.role === "approver") return;
+    if (!staffAccessReady || !currentUser || currentUser.role === "approver") return;
     if (currentUser.role === "staff") return;
     let cancelled = false;
     async function poll() {
@@ -111,10 +114,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [currentUser]);
+  }, [currentUser, staffAccessReady]);
 
   useEffect(() => {
-    if (!currentUser || currentUser.role === "staff") return;
+    if (!staffAccessReady || !currentUser || currentUser.role === "staff") return;
     let cancelled = false;
     async function pollPendingCounts() {
       try {
@@ -147,10 +150,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [currentUser]);
+  }, [currentUser, staffAccessReady]);
 
   useEffect(() => {
-    if (currentUser?.role !== "super_admin") return;
+    if (!staffAccessReady || currentUser?.role !== "super_admin") return;
 
     let cancelled = false;
     async function pollRecommendationUnread() {
@@ -183,9 +186,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [currentUser?.role]);
+  }, [currentUser?.role, staffAccessReady]);
 
-  if (loading || !currentUser || outsideAssignedWork) {
+  if (loading || !currentUser || !staffAccessReady || outsideAssignedWork) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -261,6 +264,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact className="w-28" />
             <AppearanceControl />
+            {staffPasskeyRequired && <Link href={staffVerificationDestination(pathname)} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-foreground">{tAdmin("passkey.manage")}</Link>}
             <button
               type="button"
               onClick={() => void signOut()}

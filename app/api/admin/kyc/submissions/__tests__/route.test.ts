@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -21,6 +21,14 @@ vi.mock('@/lib/supabase/service', () => ({
 import { GET } from '../route';
 
 describe('GET /api/admin/kyc/submissions', () => {
+  // Exercise the existing KYC boundary against the explicit pre-rollout local mode.
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYWISATA_LOCAL_LEGACY_STAFF_AUTH', 'true');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+  });
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({
@@ -32,7 +40,7 @@ describe('GET /api/admin/kyc/submissions', () => {
   it('denies AAL1 before loading any queue data', async () => {
     mocks.rpc.mockResolvedValue({ data: true, error: null });
     mocks.getClaims.mockResolvedValueOnce({ data: { claims: { sub: '11111111-1111-4111-8111-111111111111', aal: 'aal1' } }, error: null });
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/admin/kyc/submissions'));
     expect(response.status).toBe(403);
     expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
@@ -40,7 +48,7 @@ describe('GET /api/admin/kyc/submissions', () => {
   it('rejects callers without the KYC review capability before loading the queue', async () => {
     mocks.rpc.mockResolvedValue({ data: false, error: null });
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/admin/kyc/submissions'));
 
     expect(response.status).toBe(403);
     expect(mocks.rpc).toHaveBeenCalledWith('has_staff_permission', {
@@ -51,52 +59,12 @@ describe('GET /api/admin/kyc/submissions', () => {
   });
 
   it('returns customer-safe queue identities without requiring a browser users query', async () => {
-    mocks.rpc.mockResolvedValue({ data: true, error: null });
-    const submission = {
-      id: '22222222-2222-4222-8222-222222222222',
-      user_id: '33333333-3333-4333-8333-333333333333',
-      document_type: 'national_id',
-      status: 'pending',
-      queue_position: 1,
-      created_at: '2026-08-24T00:00:00.000Z',
-      reviewed_at: null,
-      reviewer_id: null,
-      review_reason_code: null,
-      review_reason_detail: null,
-      kyc_submission_documents: [{ side: 'front' }, { side: 'back' }],
-      kyc_ocr_results: [],
-    };
-    const kycQuery = {
-      select: vi.fn(),
-      in: vi.fn(),
-      order: vi.fn().mockResolvedValue({ data: [submission], error: null }),
-    };
-    kycQuery.select.mockReturnValue(kycQuery);
-    kycQuery.in.mockReturnValue(kycQuery);
-    const usersSelect = vi.fn((
-      _columns: string,
-      options?: { count?: string; head?: boolean },
-    ) => options?.head
-      ? { eq: vi.fn().mockResolvedValue({ count: 4, error: null }) }
-      : {
-          in: vi.fn().mockResolvedValue({
-            data: [{
-              id: '33333333-3333-4333-8333-333333333333',
-              email: 'customer@example.com',
-              full_name: 'Customer Aina',
-              tier: 'profile_complete',
-            }],
-            error: null,
-          }),
-        });
-    const from = vi.fn((table: string) => {
-      if (table === 'kyc_submissions') return kycQuery;
-      if (table === 'users') return { select: usersSelect };
-      throw new Error(`Unexpected table ${table}`);
-    });
-    mocks.createServiceClient.mockReturnValue({ from });
+    mocks.rpc.mockImplementation(async (name: string) => name === 'has_staff_permission'
+      ? { data: true, error: null }
+      : { data: { customers: [{ id: '33333333-3333-4333-8333-333333333333', name: 'Customer Aina', email: 'customer@example.com', verificationTier: 'profile_complete' }],
+          submissions: [], verifiedCount: 4, total: 0, page: 1, pageSize: 10, totalPages: 0, counts: { pending: 0, infoRequested: 0 }, oldestPendingAt: null }, error: null });
 
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/admin/kyc/submissions'));
     const body = await response.json();
 
     expect(response.status).toBe(200);

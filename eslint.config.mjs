@@ -10,6 +10,7 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
+    "output/**",
     "build/**",
     ".worktrees/**",
     "public/maplibre/**",
@@ -19,12 +20,18 @@ const eslintConfig = defineConfig([
   ]),
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+      }],
       "react-hooks/incompatible-library": "warn",
       "react-hooks/set-state-in-effect": "warn",
       "react/no-unescaped-entities": "warn",
       "react-hooks/exhaustive-deps": "warn",
-      "react-hooks/refs": "warn"
+      "react-hooks/refs": "warn",
     }
   }
 ]);

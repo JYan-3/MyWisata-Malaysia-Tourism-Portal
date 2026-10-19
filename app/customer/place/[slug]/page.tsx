@@ -13,6 +13,7 @@ import {
   getPlaceInformationalActivities,
   getRegionsWithPois,
   getPlaceProducts,
+  getPlaceProductsForPlaces,
   getNearbyOutlets,
 } from "@/backend/domains/places";
 import { getVendors } from "@/backend/domains/catalogue";
@@ -23,6 +24,7 @@ import { PlaceActivitySection } from "@/components/customer/place-activity-secti
 import { PlaceAccessSection } from "@/components/customer/place-access-section";
 import { PlaceInformationalActivitySection } from "@/components/customer/place-informational-activity-section";
 import { PlaceCommunitySection } from "@/components/customer/place-community-section";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
@@ -90,12 +92,11 @@ export default async function PlacePage({ params }: Props) {
       ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" }
       : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200" };
 
-  // Product-option counts for every card this page is about to render — one
-  // batch of parallel lookups instead of each PlaceCard fetching its own.
+  // Load all visible POI product counts together instead of rescanning the
+  // entire catalogue once per PlaceCard.
   const poisShown = place.level === "state" ? regionGroups.flatMap((group) => group.pois) : place.level === "region" ? children : [];
-  const productCounts = new Map(
-    await Promise.all(poisShown.map(async (poi) => [poi.id, (await getPlaceProducts(poi.id)).length] as const)),
-  );
+  const productsByPlace = await getPlaceProductsForPlaces(poisShown.map((poi) => poi.id));
+  const productCounts = new Map(poisShown.map((poi) => [poi.id, productsByPlace.get(poi.id)?.length ?? 0] as const));
 
   // Flattened for PlaceList — region is a filter now, not a grouping axis.
   const regionByPoi: Record<string, string> = {};
@@ -137,9 +138,9 @@ export default async function PlacePage({ params }: Props) {
               {t("ui.place.operatedBy", { name: operator.name })}
             </span>}
           </div>
-          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl">{place.name}</h1>
-          {place.tagline && <p className="mt-2 max-w-2xl text-base font-semibold text-white/90 sm:text-lg">{place.tagline}</p>}
-          {place.intro && <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75 sm:text-base">{place.intro}</p>}
+          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl"><LocalizedContent entityType="place" entityId={place.id} field="name" sourceText={place.name} /></h1>
+          {place.tagline && <p className="mt-2 max-w-2xl text-base font-semibold text-white/90 sm:text-lg"><LocalizedContent entityType="place" entityId={place.id} field="tagline" sourceText={place.tagline} /></p>}
+          {place.intro && <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75 sm:text-base"><LocalizedContent entityType="place" entityId={place.id} field="intro" sourceText={place.intro} /></p>}
         </div>
       </header>
 

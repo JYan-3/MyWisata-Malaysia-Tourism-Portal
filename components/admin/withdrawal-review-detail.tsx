@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { StaffPasskey } from "@/components/admin/staff-passkey";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -76,6 +77,7 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [assistantReview, setAssistantReview] = useState<AssistantReview | null>(null);
   const [reviewingReason, setReviewingReason] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   const loadDetail = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -167,12 +169,12 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
     });
   }
 
-  async function confirmAction() {
+  async function confirmAction(proofId?: string | null) {
     if (!pendingConfirmation) return;
     const { action: nextAction, reason: pendingReason, reasonCategory: pendingCategory } = pendingConfirmation;
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/${nextAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(nextAction === "approve" ? { note: pendingReason, reasonCategory: pendingCategory } : nextAction === "reject" ? { reason: pendingReason, reasonCategory: pendingCategory, moderationCredential: pendingConfirmation.moderationCredential, advisoryAccepted: pendingConfirmation.advisoryAccepted ?? false } : { reason: pendingReason, reasonCategory: pendingCategory }) });
+      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/${nextAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...(nextAction === "approve" ? { note: pendingReason, reasonCategory: pendingCategory } : nextAction === "reject" ? { reason: pendingReason, reasonCategory: pendingCategory, moderationCredential: pendingConfirmation.moderationCredential, advisoryAccepted: pendingConfirmation.advisoryAccepted ?? false } : { reason: pendingReason, reasonCategory: pendingCategory }), ...(proofId ? { proofId } : {}) }) });
       const body = await response.json() as { error?: { code?: string; message?: string } };
       if (!response.ok) throw new Error(body.error?.message ?? t("withdrawals.errors.actionFailed"));
       showFeedback("success", nextAction === "fraud-override" ? t("withdrawals.feedback.riskOverrideRecorded") : t("withdrawals.feedback.actionCompleted"));
@@ -275,6 +277,6 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       <p className="text-xs text-muted-foreground">{t("withdrawals.timeline.auditNote")}</p>
     </aside>
 
-    <AdminConfirmDialog open={pendingConfirmation != null} title={t("withdrawals.confirmation.title")} description={t(selectedDecision ? DECISION_COPY[selectedDecision].consequenceKey : "withdrawals.decision.description")} confirmLabel={t("withdrawals.confirmation.confirm")} confirmVariant={selectedDecision === "reject" ? "destructive" : "default"} busy={loading} onCancel={() => setPendingConfirmation(null)} onConfirm={() => void confirmAction()} />
+    <AdminConfirmDialog open={pendingConfirmation != null} title={t("withdrawals.confirmation.title")} description={t(selectedDecision ? DECISION_COPY[selectedDecision].consequenceKey : "withdrawals.decision.description")} confirmLabel={t("withdrawals.confirmation.confirm")} confirmVariant={selectedDecision === "reject" ? "destructive" : "default"} busy={loading || passkeyBusy} onCancel={() => setPendingConfirmation(null)} onConfirm={() => void confirmAction()} confirmControl={pendingConfirmation && (pendingConfirmation.action === "approve" || pendingConfirmation.action === "fraud-override") ? <StaffPasskey operation={pendingConfirmation.action} withdrawalId={withdrawalId} expectedVersion={detail.authorizationVersion} payload={pendingConfirmation.action === "approve" ? { note: pendingConfirmation.reason, reasonCategory: pendingConfirmation.reasonCategory } : { reason: pendingConfirmation.reason, reasonCategory: pendingConfirmation.reasonCategory }} disabled={loading} onBusyChange={setPasskeyBusy} onVerified={proofId => confirmAction(proofId)} /> : undefined} />
   </div>;
 }

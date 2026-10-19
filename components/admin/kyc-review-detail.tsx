@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckSquare,
-  ExternalLink,
   FileWarning,
   MessageSquare,
   ShieldCheck,
@@ -37,6 +36,9 @@ type KycReviewDetailContentProps = {
   error: string | null;
   onOpenDocument: (side: "front" | "back") => void;
   onDecision: (decision: KycReviewDecision) => void;
+  documentPreview?: { side: "front" | "back"; url: string; pdf?: boolean } | null;
+  documentLoading?: boolean;
+  onCloseDocument?: () => void;
 };
 
 function statusKey(status: AdminKycSubmission["status"]) {
@@ -49,6 +51,9 @@ export function KycReviewDetailContent({
   error,
   onOpenDocument,
   onDecision,
+  documentPreview,
+  documentLoading,
+  onCloseDocument,
 }: KycReviewDetailContentProps) {
   const { t, i18n } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
@@ -138,22 +143,25 @@ export function KycReviewDetailContent({
             <div className="mt-4 flex flex-wrap gap-2">
               {submission.documents.map(({ side }) => (
                 <Button key={side} variant="outline" size="sm" disabled={busy} onClick={() => onOpenDocument(side)}>
-                  <ExternalLink size={14} />
                   {t("kyc.detail.openDocument", { side: t(`kyc.detail.${side}`) })}
                 </Button>
               ))}
             </div>
+            {documentLoading && <p role="status" className="mt-4 text-sm text-muted-foreground">{t("kyc.detail.loading")}</p>}
+            {documentPreview && <div className="mt-4 space-y-3">
+              {documentPreview.pdf ? <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">{t("kyc.detail.pdfNote")}</p>
+                <Button asChild variant="outline" size="sm"><a href={documentPreview.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{t("kyc.detail.openPdf")}</a></Button>
+              </div> : <>
+                {/* Authenticated bytes only; never send private evidence to an optimizer. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={documentPreview.url} alt={t("kyc.detail.previewAlt", { side: t(`kyc.detail.${documentPreview.side}`) })} className="max-h-[60vh] w-full rounded-lg border border-border object-contain" />
+              </>}
+              <Button variant="outline" size="sm" onClick={onCloseDocument}>{t("kyc.detail.closePreview")}</Button>
+            </div>}
           </section>
 
-          <section className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-semibold text-foreground">{t("kyc.detail.identitySnapshot")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.identitySnapshotDescription")}</p>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-muted-foreground">{t("kyc.detail.legalName")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.fullName ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotEmail")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.email ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotPhone")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.phone ?? "—"}</dd></div>
-            </dl>
-          </section>
+
 
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold text-foreground">{t("kyc.detail.automatedChecks")}</h2>
@@ -181,6 +189,21 @@ export function KycReviewDetailContent({
         </div>
 
         <aside className="space-y-4">
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-semibold text-foreground">{t("kyc.detail.identitySnapshot")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.identitySnapshotDescription")}</p>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+              <div><dt className="text-muted-foreground">{t("kyc.detail.legalName")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.fullName ?? "—"}</dd></div>
+              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotEmail")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.email ?? "—"}</dd></div>
+              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotPhone")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.phone ?? "—"}</dd></div>
+            </dl>
+          </section>
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-semibold text-foreground">{t("kyc.operations.precheck")}</h2>
+            <p className="mt-2 text-sm">{t(`kyc.operations.precheckStatus.${submission.precheck?.status ?? "none"}`)}</p>
+            {submission.precheck?.outcome && <p className="mt-2 text-sm">{t(`kyc.operations.precheckOutcome.${submission.precheck.outcome}`)}</p>}
+            <p className="mt-2 text-xs text-muted-foreground">{t("kyc.operations.precheckNote")}</p>
+          </section>
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold text-foreground">{t("kyc.detail.submission")}</h2>
             <dl className="mt-4 space-y-3 text-sm">
@@ -304,17 +327,52 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [continueNext, setContinueNext] = useState(false);
+  const workSequence = useRef(0);
+
+  const [documentPreview, setDocumentPreview] = useState<{ side: "front" | "back"; url: string; pdf?: boolean; submissionId: string } | null>(null);
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const documentResource = useRef<{ url: string | null; request: AbortController | null; epoch: number }>({ url: null, request: null, epoch: 0 });
+  const disposeDocument = useCallback(() => {
+    const resource = documentResource.current;
+    resource.epoch += 1;
+    resource.request?.abort();
+    resource.request = null;
+    if (resource.url) URL.revokeObjectURL(resource.url);
+    resource.url = null;
+  }, []);
+  const clearDocument = useCallback(() => {
+    disposeDocument();
+    setDocumentPreview(null);
+    setDocumentLoading(false);
+  }, [disposeDocument]);
+  const handlePermissionFailure = useCallback((status: number, code?: string) => {
+    if (status !== 401 && status !== 403 && code !== "KYC_MFA_REQUIRED") return false;
+    clearDocument();
+    setDetail(null);
+    setRecording(false);
+    router.replace(code === "KYC_MFA_REQUIRED" ? `/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}` : "/admin/kyc");
+    return true;
+  }, [clearDocument, router, submissionId]);
+  useEffect(() => {
+    const hide = () => { if (document.visibilityState !== "visible") clearDocument(); };
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", clearDocument);
+    return () => {
+      disposeDocument();
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", clearDocument);
+    };
+  }, [submissionId, clearDocument, disposeDocument]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/kyc/submissions/${submissionId}`, { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
-      if (body.error?.code === "KYC_MFA_REQUIRED") {
-        setDetail(null);
-        router.replace(`/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}`);
-        return;
-      }
+      if (handlePermissionFailure(response.status, body?.error?.code)) return;
       if (response.status === 404) {
         setNotFound(true);
         setDetail(null);
@@ -330,44 +388,54 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [submissionId, t, router]);
+  }, [submissionId, t, handlePermissionFailure]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   async function openDocument(side: "front" | "back") {
-    if (!detail) return;
-    const documentWindow = window.open("about:blank", "_blank");
-    if (documentWindow) documentWindow.opener = null;
+    if (!detail || detail.submission.id !== submissionId) return;
+    clearDocument();
+    const resource = documentResource.current;
+    const epoch = resource.epoch;
+    const controller = new AbortController();
+    resource.request = controller;
+    setDocumentLoading(true);
     try {
-      const response = await fetch(`/api/admin/kyc/documents/${detail.submission.id}/${side}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/kyc/documents/${submissionId}/${side}`, { cache: "no-store", signal: controller.signal });
+      if (epoch !== resource.epoch) return;
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        if (body.error?.code === "KYC_MFA_REQUIRED") {
-          documentWindow?.close();
-          setDetail(null);
-          router.replace(`/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}`);
-          return;
-        }
-        throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
-      }
-      const url = URL.createObjectURL(await response.blob());
-      if (documentWindow) documentWindow.location.replace(url);
-      else {
-        URL.revokeObjectURL(url);
+        if (handlePermissionFailure(response.status, body?.error?.code)) return;
         throw new Error(t("kyc.errors.loadDocument"));
       }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (err) {
-      documentWindow?.close();
-      const message = err instanceof Error ? err.message : t("kyc.errors.loadDocument");
-      setError(message);
-      showFeedback("error", message);
+      if (response.headers.get("content-type")?.split(";")[0] === "application/pdf") {
+        await response.body?.cancel();
+        if (epoch !== resource.epoch || controller.signal.aborted) return;
+        // Legacy PDFs retain a browser viewer via a fresh authenticated request.
+        // The URL is this guarded API, never a Storage or signed URL.
+        setDocumentPreview({ side, url: `/api/admin/kyc/documents/${submissionId}/${side}`, pdf: true, submissionId });
+        return;
+      }
+      const blob = await response.blob();
+      if (epoch !== resource.epoch || controller.signal.aborted) return;
+      if (!["image/jpeg", "image/png", "image/webp"].includes(blob.type) || blob.size > 5 * 1024 * 1024) throw new Error(t("kyc.errors.loadDocument"));
+      const url = URL.createObjectURL(blob);
+      resource.url = url;
+      setDocumentPreview({ side, url, submissionId });
+    } catch {
+      if (epoch !== resource.epoch || controller.signal.aborted) return;
+      clearDocument();
+      setError(t("kyc.errors.loadDocument"));
+      showFeedback("error", t("kyc.errors.loadDocument"));
+    } finally {
+      if (epoch === resource.epoch) setDocumentLoading(false);
     }
   }
 
   async function review(decision: KycReviewDecision) {
     if (!detail || busy || detail.submission.status !== "pending") return;
+    clearDocument();
     setBusy(true);
     setError(null);
     try {
@@ -377,19 +445,18 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
         body: JSON.stringify({
           submissionId: detail.submission.id,
           userId: detail.customer.id,
+          expectedVersion: detail.assignment.reviewVersion,
           action: decision.action,
           ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),
           ...(decision.reasonDetail ? { reasonDetail: decision.reasonDetail } : {}),
         }),
       });
       const body = await response.json().catch(() => ({}));
-      if (body.error?.code === "KYC_MFA_REQUIRED") {
-        setDetail(null);
-        router.replace(`/admin/kyc/mfa?next=${encodeURIComponent(`/admin/kyc/${submissionId}`)}`);
-        return;
-      }
+      if (handlePermissionFailure(response.status, body?.error?.code)) return;
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.reviewFailed"));
+      setRecording(false);
       await load();
+      if (continueNext) await work("next");
       showFeedback(
         "success",
         decision.action === "approve"
@@ -406,6 +473,52 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
       setBusy(false);
     }
   }
+
+  async function work(action: "next" | "release" | "start" | "pause") {
+    if (action === "next" || action === "release") clearDocument();
+    setBusy(true);
+    const sequence = ++workSequence.current;
+    try {
+      const response = await fetch("/api/admin/kyc/work", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...(action === "next" ? {} : { submissionId, expectedVersion: detail?.assignment.reviewVersion, ...(action === "pause" ? { sessionId } : {}) }) }) });
+      const body = await response.json().catch(() => ({}));
+      if (handlePermissionFailure(response.status, body?.error?.code)) return;
+      if (!response.ok) throw new Error(t("kyc.operations.workFailed"));
+      if (action === "next") router.push(body.data?.submissionId ? `/admin/kyc/${body.data.submissionId}` : "/admin/kyc");
+      else if (action === "release") router.push("/admin/kyc");
+      else if (sequence === workSequence.current) { setSessionId(body.data.sessionId ?? null); setRecording(action === "start"); }
+    } catch { setError(t("kyc.operations.workFailed")); }
+    finally { setBusy(false); }
+  }
+
+  useEffect(() => {
+    if (!recording || !sessionId) return;
+    const pause = () => {
+      ++workSequence.current;
+      setRecording(false);
+      void fetch("/api/admin/kyc/work", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pause", submissionId, sessionId, expectedVersion: detail?.assignment.reviewVersion }) }).then(async (response) => {
+          if (response.status === 401 || response.status === 403) {
+            const body = await response.json().catch(() => ({}));
+            handlePermissionFailure(response.status, body?.error?.code);
+            return;
+          }
+          if (!response.ok) setError(t("kyc.operations.recordingInterrupted"));
+        }).catch(() => setError(t("kyc.operations.recordingInterrupted")));
+    };
+    const hide = () => { if (document.visibilityState !== "visible") pause(); };
+    window.addEventListener("blur", pause);
+    window.addEventListener("pagehide", pause);
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      window.removeEventListener("blur", pause); window.removeEventListener("pagehide", pause);
+      document.removeEventListener("visibilitychange", hide);
+      // Closing/navigation may fail to reach the server. Unclosed intervals are
+      // explicitly excluded from completed timing statistics.
+      void fetch("/api/admin/kyc/work", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pause", submissionId, sessionId, expectedVersion: detail?.assignment.reviewVersion }) }).catch(() => undefined);
+    };
+  }, [recording, sessionId, submissionId, detail?.assignment.reviewVersion, t, handlePermissionFailure]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">{t("kyc.detail.loading")}</p>;
@@ -430,12 +543,28 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
   }
 
   return (
-    <KycReviewDetailContent
+    <>
+      <section className="mb-5 space-y-3 rounded-2xl border border-border bg-card p-4">
+        <div className="flex flex-wrap gap-2">
+          {detail.assignment.isAssignedToCurrentUser && detail.submission.status === "pending" && <>
+            <Button variant="outline" disabled={busy} onClick={() => void work(recording ? "pause" : "start")}>{t(recording ? "kyc.operations.pause" : "kyc.operations.start")}</Button>
+          </>}
+          {detail.assignment.canDecide && detail.submission.status === "pending" && <Button variant="outline" disabled={busy} onClick={() => void work("release")}>{t("kyc.operations.release")}</Button>}
+          {detail.submission.status !== "pending" && <Button disabled={busy} onClick={() => void work("next")}>{t("kyc.operations.next")}</Button>}
+        </div>
+        <p role="status" className="text-xs text-muted-foreground">{t(recording ? "kyc.operations.recording" : "kyc.operations.notRecording")}</p>
+        {detail.assignment.canDecide && detail.submission.status === "pending" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={continueNext} onChange={(event) => setContinueNext(event.target.checked)} />{t("kyc.operations.continueNext")}</label>}
+      </section>
+      <KycReviewDetailContent
       detail={detail}
+      documentPreview={documentPreview?.submissionId === submissionId ? documentPreview : null}
+      documentLoading={documentLoading}
+      onCloseDocument={clearDocument}
       busy={busy}
       error={error}
       onOpenDocument={(side) => { void openDocument(side); }}
       onDecision={(decision) => { void review(decision); }}
-    />
+      />
+    </>
   );
 }

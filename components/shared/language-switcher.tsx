@@ -7,6 +7,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { cn } from "@/components/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
+import { APP_NAMESPACES, loadLocaleResources } from "@/lib/i18n/resources";
 
 export const LANGUAGE_OPTIONS = [
   { locale: "en", label: "English" },
@@ -42,12 +43,18 @@ export function LanguageSwitcher({ compact = false, className }: { compact?: boo
 
     setSaving(true);
     try {
+      const resources = await loadLocaleResources(value);
+      for (const namespace of APP_NAMESPACES) {
+        i18n.addResourceBundle(value, namespace, resources[namespace], true, true);
+      }
+      await i18n.changeLanguage(value);
       await saveLocalePreference(value);
       const message = t("language.saved");
       setStatus(message);
       showFeedback("success", message);
       router.refresh();
     } catch {
+      await i18n.changeLanguage(resolvedLocale);
       const message = t("language.saveError");
       setStatus(message);
       showFeedback("error", message);

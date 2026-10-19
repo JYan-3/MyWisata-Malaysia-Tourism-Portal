@@ -299,7 +299,7 @@ export async function getTripItems(tripId: string, db: SupabaseClient): Promise<
   return (data ?? []).map((row: DbTripItem) => toTripItem(row));
 }
 
-async function getOwnedTripItem(db: SupabaseClient, itemId: string, ownerId: string) {
+async function getOwnedTripItem(db: SupabaseClient, itemId: string) {
   const trips = await getTrips(db);
   const tripIds = trips.map((trip) => trip.id);
   if (!tripIds.length) return null;
@@ -314,8 +314,7 @@ export async function updateTripItem(
   updates: { sequence?: number; scheduled_date?: string | null; scheduled_time?: string | null },
   db: SupabaseClient,
 ): Promise<void> {
-  const ownerId = await requireOwner(db);
-  const item = await getOwnedTripItem(db, itemId, ownerId);
+  const item = await getOwnedTripItem(db, itemId);
   if (!item) throw new Error("Trip not found");
   const currentItems = await getTripItems(item.trip_id, db);
   const proposedItems = currentItems.map((entry) => entry.id === itemId ? {
@@ -360,8 +359,7 @@ export async function updateTripItemLocation(
   updates: { label: string; lat: number; lng: number },
   db: SupabaseClient,
 ): Promise<void> {
-  const ownerId = await requireOwner(db);
-  const item = await getOwnedTripItem(db, itemId, ownerId);
+  const item = await getOwnedTripItem(db, itemId);
   if (!item || item.source !== "location") throw new Error("Trip stop not found");
   if (!updates.label.trim() || updates.label.length > 200 || !Number.isFinite(updates.lat) ||
       updates.lat < -90 || updates.lat > 90 || !Number.isFinite(updates.lng) ||
@@ -373,8 +371,7 @@ export async function updateTripItemLocation(
 }
 
 export async function deleteTripItem(itemId: string, db: SupabaseClient): Promise<void> {
-  const ownerId = await requireOwner(db);
-  const item = await getOwnedTripItem(db, itemId, ownerId);
+  const item = await getOwnedTripItem(db, itemId);
   if (!item) throw new Error("Trip not found");
   const { error } = await db.from("trip_items").delete().eq("id", itemId).eq("trip_id", item.trip_id);
   throwOnError(error, "Could not delete trip stop");

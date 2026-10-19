@@ -8,6 +8,7 @@ import type { EventClickArg } from "@fullcalendar/core";
 import { useTranslation } from "react-i18next";
 import { addMalaysiaCalendarDays, getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 /** One all-day entry per event location, spanning its own dates. Loaded only when the Calendar view opens. */
 export function EventsCalendar({ campaigns }: { campaigns: PromotionCampaignPublic[] }) {
@@ -24,7 +25,7 @@ export function EventsCalendar({ campaigns }: { campaigns: PromotionCampaignPubl
       end: addMalaysiaCalendarDays(location.endsOn, 1),
       allDay: true,
       classNames: [`mw-events-calendar__event--${campaign.visibility}`],
-      extendedProps: { slug: campaign.slug },
+      extendedProps: { slug: campaign.slug, campaignId: campaign.id, campaignTitle: campaign.title, locationName: location.name },
     })));
   const firstStart = entries.map((entry) => entry.start).sort()[0];
 
@@ -40,6 +41,7 @@ export function EventsCalendar({ campaigns }: { campaigns: PromotionCampaignPubl
         initialView="dayGridMonth"
         initialDate={firstStart && firstStart > today ? firstStart : today}
         events={entries}
+        eventContent={(info) => <span><LocalizedContent entityType="promotion_campaign" entityId={String(info.event.extendedProps.campaignId)} field="title" sourceText={String(info.event.extendedProps.campaignTitle)} /> · {String(info.event.extendedProps.locationName)}</span>}
         eventClick={openEvent}
         height="auto"
         dayMaxEvents={3}

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle2, ChevronDown, ChevronUp, MapPin, Star, Tag } from "lucide-react";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 export type VendorReviewItem = {
   id: string;
@@ -137,13 +138,13 @@ export function VendorReviewsList({ reviews, vendorId, initialVisibleCount = 6 }
 
                   {/* Review Title */}
                   <h3 className="mt-2.5 text-sm font-bold text-foreground">
-                    {review.title || t("ui.reviews.guestReview")}
+                    {review.title ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title} /> : t("ui.reviews.guestReview")}
                   </h3>
 
                   {/* Review Body */}
                   {review.body && (
                     <p className="mt-1.5 break-words whitespace-normal text-xs leading-5 text-muted-foreground">
-                      “{review.body}”
+                      “<LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />”
                     </p>
                   )}
                 </div>

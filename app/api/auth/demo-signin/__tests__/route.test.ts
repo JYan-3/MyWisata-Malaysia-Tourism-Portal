@@ -7,15 +7,15 @@ import { POST } from '../route';
 
 function request() {
   return new Request('http://localhost/api/auth/demo-signin', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'customer@demo.local' }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'customer@demo.local', captchaToken: 'valid-proof' }),
   });
 }
 
 describe('POST /api/auth/demo-signin runtime gate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'false');
-    vi.stubEnv('MYWISATA_ENV', '');
+    vi.stubEnv('MYLAWATAN_DEMO_TOOLS', 'false');
+    vi.stubEnv('MYLAWATAN_ENV', '');
     vi.stubEnv('VERCEL_ENV', '');
   });
 
@@ -26,11 +26,11 @@ describe('POST /api/auth/demo-signin runtime gate', () => {
   });
 
   it('permits the seeded login only in an explicitly enabled safe runtime', async () => {
-    vi.stubEnv('MYWISATA_DEMO_TOOLS', 'true');
+    vi.stubEnv('MYLAWATAN_DEMO_TOOLS', 'true');
     vi.stubEnv('NODE_ENV', 'test');
     signInWithPassword.mockResolvedValue({ error: null });
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect(signInWithPassword).toHaveBeenCalledWith({ email: 'customer@demo.local', password: 'demo123456' });
+    expect(signInWithPassword).toHaveBeenCalledWith({ email: 'customer@demo.local', password: 'demo123456', options: { captchaToken: 'valid-proof' } });
   });
 });

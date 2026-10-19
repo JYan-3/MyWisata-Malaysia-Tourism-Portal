@@ -1,5 +1,6 @@
 'use client';
 
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createClient } from '@/lib/supabase/client';
@@ -24,18 +25,23 @@ async function readError(response: Response, fallback: string) {
 
 export function VendorInviteAccountStep({ token, account, onContinue, onReload }: VendorInviteAccountStepProps) {
   const { t } = useTranslation('vendor');
+  const human = useHumanVerification('invite_email_send');
+  const { t: tAuth } = useTranslation('auth');
   const [state, setState] = useState<AccountStepState>('choose');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function sendCode() {
+    if (state === 'busy') return;
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth('humanVerification.required')); return; }
     setState('busy');
     setError(null);
     try {
       const response = await fetch('/api/vendor-invite/auth/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, captchaToken }),
       });
       if (!response.ok) throw new Error(await readError(response, t('invite.errors.sendCode')));
       setState('email-code');
@@ -118,6 +124,7 @@ export function VendorInviteAccountStep({ token, account, onContinue, onReload }
         </label>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <button type="submit" disabled={state === 'busy'} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{state === 'busy' ? t('invite.account.verifying') : t('invite.account.verifyEmailCode')}</button>
+        <HumanVerification {...human} />
         <button type="button" onClick={() => void sendCode()} disabled={state === 'busy'} className="w-full text-sm font-semibold text-primary hover:underline disabled:opacity-50">{t('invite.account.sendNewCode')}</button>
       </form>
     );
@@ -140,6 +147,7 @@ export function VendorInviteAccountStep({ token, account, onContinue, onReload }
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('invite.account.confirmDescription')}</p>
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      <HumanVerification {...human} />
       <button type="button" onClick={() => void sendCode()} disabled={state === 'busy'} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{state === 'busy' ? t('invite.account.sending') : t('invite.account.sendCode')}</button>
       <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />{t('invite.account.or')}<span className="h-px flex-1 bg-border" /></div>
       <button type="button" onClick={() => void continueWithGoogle()} disabled={state === 'busy'} className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:opacity-50">{t('invite.actions.continueWithGoogle')}</button>

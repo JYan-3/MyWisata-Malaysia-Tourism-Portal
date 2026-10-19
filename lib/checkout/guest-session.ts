@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import { isIP } from "node:net";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -9,12 +10,19 @@ export function hashGuestCredential(token: string): string {
 }
 export function newGuestCredential(): string { return randomBytes(32).toString("base64url"); }
 export function guestCookieName(request: Request, order = false): string {
+  return `${new URL(request.url).protocol === "https:" ? "__Host-" : ""}mylawatan-${order ? "order-access" : "guest"}`;
+}
+function legacyGuestCookieName(request: Request, order = false): string {
   return `${new URL(request.url).protocol === "https:" ? "__Host-" : ""}mywisata-${order ? "order-access" : "guest"}`;
 }
 export function readGuestCookie(request: Request, order = false): string | null {
-  const name = guestCookieName(request, order);
-  const raw = (request.headers.get("cookie") ?? "").split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
-  return raw && /^[A-Za-z0-9_-]{43}$/.test(raw) ? raw : null;
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  for (const name of [guestCookieName(request, order), legacyGuestCookieName(request, order)]) {
+    const raw = cookieHeader.split(";").map((part) => part.trim())
+      .find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+    if (raw && /^[A-Za-z0-9_-]{43}$/.test(raw)) return raw;
+  }
+  return null;
 }
 export function setGuestCookie(response: NextResponse, request: Request, token: string, order = false) {
   response.cookies.set(guestCookieName(request, order), token, {
@@ -60,10 +68,17 @@ export async function reserveGuestRateLimit(key: string, maximum: number, second
   return !error && data === true;
 }
 export function guestAddressRateKey(request: Request): string {
-  // Only trust the address injected by the configured hosting platform. Other
-  // deployments share a conservative fallback bucket, never caller-provided IPs.
-  const address = process.env.VERCEL === "1" ? request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() : null;
-  return `guest-address:${address ?? "unavailable"}`;
+  // Hostinger mode requires CDN enabled AND origin access restricted to that
+  // trusted proxy. Enabling the CDN alone does not establish this boundary.
+  let address: string | undefined;
+  if (process.env.VERCEL === "1") {
+    address = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+  } else if (process.env.GUEST_TRUSTED_PROXY === "hostinger-cdn") {
+    // Hostinger appends the visitor address; the first entry can be injected.
+    address = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
+  }
+  const canonical = address && isIP(address) ? new URL(`http://${address.includes(":") ? `[${address}]` : address}`).hostname.toLowerCase() : null;
+  return `guest-address:${canonical ?? "unavailable"}`;
 }
 export async function readGuestJson(request: Request): Promise<unknown> {
   if (Number(request.headers.get("content-length")) > 32768 || !request.body) return null;

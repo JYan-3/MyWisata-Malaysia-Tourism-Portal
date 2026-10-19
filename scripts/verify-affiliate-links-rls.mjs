@@ -18,7 +18,7 @@
  * generic, already-existing, admin-gated, audit-logged escape hatch that
  * writes the `tier` column directly, which is exactly what migration 039's
  * RLS policy checks. For the KYC path, a real kyc_submissions row + the
- * real admin_review_kyc RPC is still used — both called via the real seeded
+ * real review_kyc_case RPC is still used — both called via the real seeded
  * Super Admin demo account (admin@demo.local / demo123456 — already used
  * by this repo's own committed e2e suite,
  * tests/e2e/admin-user-management.spec.ts). Deliberately does NOT mint or
@@ -102,7 +102,7 @@ async function promoteToProfileComplete(adminClient, userId) {
 }
 
 async function main() {
-  // Signed in once, reused for admin_set_tier (Cases 2/3) and admin_review_kyc (Case 3).
+  // Signed in once, reused for admin_set_tier (Cases 2/3) and review_kyc_case (Case 3).
   const clientAdmin = await signIn(ADMIN_EMAIL, ADMIN_PASS);
 
   // ---- Case 1: profile-incomplete user, direct insert must be REJECTED ----
@@ -144,31 +144,35 @@ async function main() {
     errorB ? `${errorB.code} ${errorB.message}` : undefined
   );
 
-  // ---- Case 3: gen_affiliate_code() via admin_review_kyc still auto-creates a link ----
-  console.log('\n=== Case 3: KYC-approval auto-creation (gen_affiliate_code via admin_review_kyc) ===');
+  // ---- Case 3: gen_affiliate_code() via review_kyc_case still auto-creates a link ----
+  console.log('\n=== Case 3: KYC-approval auto-creation (gen_affiliate_code via review_kyc_case) ===');
   const userC = await createTestUser('kyc');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clientC = await signIn(userC.email, PASSWORD);
   await promoteToProfileComplete(clientAdmin, userC.id);
 
-  const { error: subErr } = await service.from('kyc_submissions').insert({
+  const { data: submission, error: subErr } = await service.from('kyc_submissions').insert({
     user_id: userC.id,
     ic_hash: `rls-verify-${userC.id}`,
     document_type: 'national_id',
     status: 'pending',
-  });
+  }).select('id').single();
   if (subErr) throw new Error(`kyc_submissions seed insert: ${subErr.message}`);
 
   const { data: preLink } = await service.from('affiliate_links').select('id').eq('user_id', userC.id).maybeSingle();
   console.log(`  link before approval: ${preLink ? preLink.id : 'none'}`);
 
-  const { error: reviewErr } = await clientAdmin.rpc('admin_review_kyc', {
+  const { data: claim, error: claimError } = await clientAdmin.rpc('claim_kyc_submission', { p_submission_id: submission.id });
+  if (claimError) throw new Error('KYC claim requires an authorised AAL2 reviewer session');
+  const { error: reviewErr } = await clientAdmin.rpc('review_kyc_case', {
+    p_submission_id: submission.id,
+    p_expected_version: claim.reviewVersion,
     p_user_id: userC.id,
     p_action: 'approve',
     p_reason_code: null,
     p_reason_detail: null,
   });
-  if (reviewErr) console.log(`  admin_review_kyc error: ${reviewErr.code ?? ''} ${reviewErr.message}`);
+  if (reviewErr) console.log(`  review_kyc_case error: ${reviewErr.code ?? ''} ${reviewErr.message}`);
 
   const { data: postLink } = await service.from('affiliate_links').select('id, affiliate_code').eq('user_id', userC.id).maybeSingle();
   console.log(`  link after approval: ${postLink ? `${postLink.id} (${postLink.affiliate_code})` : 'none'}`);

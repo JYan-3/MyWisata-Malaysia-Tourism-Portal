@@ -3,8 +3,8 @@ import { sendOtpSchema, verifyOtpSchema } from "@/lib/validation/phone-schemas";
 
 describe("phone OTP schemas", () => {
   it("canonicalizes a valid formatted international phone number", () => {
-    expect(sendOtpSchema.parse({ phone: "+60 17-714 3951" })).toEqual({
-      phone: "+60177143951",
+    expect(sendOtpSchema.parse({ phone: "+60 17-714 3951", captchaToken: "valid-proof" })).toEqual({
+      phone: "+60177143951", captchaToken: "valid-proof",
     });
   });
 

@@ -17,11 +17,11 @@ Option 2 (fix the shared runtime and audit the existing UI) and option 3 (AST/ES
 
 The mature pattern is therefore **all three together**: migrate existing UI to translation calls, make non-English resources complete, make missing translations visible instead of English in non-English locales, and make extraction/lint/parity a required CI check. A hardcoded-string linter is an enforcement layer, not a replacement for the migration and catalog checks.
 
-This directly addresses the user scenario: if a person cannot read English, showing an English fallback is a product failure. For MyWisata, a missing Chinese/Malay translation should be reported and should not silently resolve through fallback language English.
+This directly addresses the user scenario: if a person cannot read English, showing an English fallback is a product failure. For MyLawatan, a missing Chinese/Malay translation should be reported and should not silently resolve through fallback language English.
 
 ## What the mature ecosystems do
 
-### 1. i18next / i18next-cli (closest to MyWisata)
+### 1. i18next / i18next-cli (closest to MyLawatan)
 
 **Official facts**
 
@@ -32,9 +32,9 @@ This directly addresses the user scenario: if a person cannot read English, show
 - The CLI's instrument migration is intentionally heuristic. Its documentation warns about false positives/negatives, dynamic strings, plurals, framework-specific patterns, and the need for manual review. This supports using instrumentation as a migration aid, not as the final guarantee. [instrument limitations](https://github.com/i18next/i18next-cli#limitations)
 - i18next's fallback model can fall back across language variants, configured fallback languages, namespaces, and finally the key. Its documentation says production should explicitly configure an existing fallback language; it also documents using the key itself as a fallback. [fallback principles](https://www.i18next.com/principles/fallback.html) [translation resolution](https://www.i18next.com/principles/translation-resolution)
 
-**Implication for MyWisata**
+**Implication for MyLawatan**
 
-MyWisata already uses i18next/react-i18next and has a locale-resource parity check. The current provider sets fallback language English in [components/providers/i18n-provider.tsx](../../components/providers/i18n-provider.tsx), so a missing Chinese/Malay key can visibly become English. The existing [resource parity test](../../lib/i18n/__tests__/resources.test.ts) and [coverage script](../../scripts/verify-i18n-coverage.mjs) catch missing/extra keys and empty values, but they do not inspect source literals or prove that a runtime fallback cannot be English.
+MyLawatan already uses i18next/react-i18next and has a locale-resource parity check. The current provider sets fallback language English in [components/providers/i18n-provider.tsx](../../components/providers/i18n-provider.tsx), so a missing Chinese/Malay key can visibly become English. The existing [resource parity test](../../lib/i18n/__tests__/resources.test.ts) and [coverage script](../../scripts/verify-i18n-coverage.mjs) catch missing/extra keys and empty values, but they do not inspect source literals or prove that a runtime fallback cannot be English.
 
 The practical i18next posture is:
 
@@ -54,7 +54,7 @@ The practical i18next posture is:
 
 **Implication**
 
-FormatJS demonstrates why a JSX-only check is not enough: labels often live in arrays, option objects, accessibility props, table definitions, and other data structures. A strict MyWisata policy should lint both rendered JSX and user-visible fields in objects. It should also treat an English defaultValue/fallback as a deliberate exception requiring review, not as proof of localization.
+FormatJS demonstrates why a JSX-only check is not enough: labels often live in arrays, option objects, accessibility props, table definitions, and other data structures. A strict MyLawatan policy should lint both rendered JSX and user-visible fields in objects. It should also treat an English defaultValue/fallback as a deliberate exception requiring review, not as proof of localization.
 
 ### 3. Lingui + eslint-plugin-lingui
 
@@ -93,7 +93,7 @@ These must always use a translation key and exist in every supported locale:
 
 Names, email addresses, product names, outlet names, customer reviews, chat messages, vendor descriptions, and other values supplied by users or partners are data, not system UI. Mature source lints operate on source ASTs, so they do not and should not translate database values automatically. This is an inference from the scope of the i18next, FormatJS, and Lingui source-string rules; translating content would require separate multilingual fields or an explicit translation service.
 
-Product/brand names and unavoidable technical tokens (MyWisata, Google, RM, order IDs, CSS classes, URLs) should be explicit allowlist entries or stored as data. They should not be used as a general excuse to keep English UI copy in source.
+Product/brand names and unavoidable technical tokens (MyLawatan, Google, RM, order IDs, CSS classes, URLs) should be explicit allowlist entries or stored as data. They should not be used as a general excuse to keep English UI copy in source.
 
 ### Recommended failure behavior for this requirement
 
@@ -106,7 +106,7 @@ For the selected Chinese/Malay locale:
 
 This is stricter than i18next's general-purpose fallback recommendation, but it follows the product requirement that non-English users must not receive English system UI.
 
-## Recommended MyWisata combination
+## Recommended MyLawatan combination
 
 ### Decision
 

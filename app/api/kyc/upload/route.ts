@@ -4,8 +4,6 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
-import { runKycOcr } from '@/lib/kyc/ocr';
-import { requiresManualKycReview } from '@/lib/kyc/ocr-policy';
 
 const IC_PATTERNS: Record<string, RegExp> = {
   national_id: /^\d{6}-?\d{2}-?\d{4}$/,
@@ -44,12 +42,21 @@ export async function POST(request: Request) {
   const { data: { user } } = await authenticated.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  // Read-only fast path. begin also supersedes old info_requested cases, so it
+  // must remain after image validation. Its atomic check still fences races.
+  const service = createServiceClient();
+  const { data: activeCases, error: availabilityError } = await service.from('kyc_submissions')
+    .select('id').eq('user_id', user.id).in('status', ['draft', 'pending']).limit(1);
+  if (availabilityError || !Array.isArray(activeCases)) return apiFail('KYC_UNAVAILABLE', 'KYC submission is temporarily unavailable', 503);
+  if (activeCases.length) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
+
+
   let formData: FormData;
   try { formData = await request.formData(); }
   catch { return apiFail('INVALID_FORM', 'Could not parse form data', 400); }
 
   if (formData.get('ocrConsent') !== 'true') {
-    return apiFail('OCR_CONSENT_REQUIRED', 'Consent is required for AI-assisted document reading', 422);
+    return apiFail('OCR_CONSENT_REQUIRED', 'Consent is required for private document processing', 422);
   }
 
   const icNumber = formData.get('icNumber');
@@ -84,7 +91,6 @@ export async function POST(request: Request) {
   try { fingerprint = await hashICWithHmac(icNumber.trim()); }
   catch { return apiFail('SERVER_CONFIGURATION', 'KYC submission is temporarily unavailable', 503); }
 
-  const service = createServiceClient();
   const { data: submissionId, error: beginError } = await service.rpc('begin_kyc_submission', {
     p_user_id: user.id,
     p_ic_hash: fingerprint.value,
@@ -99,7 +105,7 @@ export async function POST(request: Request) {
     // `abandon_kyc_submission` is the state reconciliation step: it returns
     // true only when this caller's draft was deleted. Never remove evidence
     // after a finalize timeout/error unless that proof is positive.
-    const result = await abandonAndRemoveKycEvidence({ submissionId, paths, authenticated, service });
+    const result = await abandonAndRemoveKycEvidence({ submissionId, paths, authenticated, service }).catch(() => ({ ok: false as const, reason: 'draft_not_abandoned' }));
     if (!result.ok) {
       console.error('KYC draft cleanup failed', { submissionId, reason: result.reason });
       return false;
@@ -107,56 +113,43 @@ export async function POST(request: Request) {
     return true;
   };
 
-  const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, images[0].stored, {
-    contentType: frontFile.type, upsert: false,
-  });
-  if (frontUpload.error) {
+  try {
+    const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, images[0].stored, {
+      contentType: frontFile.type, upsert: false,
+    });
+    if (frontUpload.error) {
+      if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
+      return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
+    }
+
+    const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1].stored, {
+      contentType: backFile.type, upsert: false,
+    });
+    if (backUpload.error) {
+      if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
+      return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
+    }
+
+    // Finalization atomically enqueues private pre-screening in the database.
+    // Only watermarked evidence persists; OCR never delays the upload request.
+    const { error: finalizeError } = await authenticated.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId,
+      p_front_path: paths.front,
+      p_back_path: paths.back,
+    });
+    if (finalizeError) {
+      if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
+      return safeSubmissionFailure(finalizeError);
+    }
+
+    return apiOk({
+      submissionId,
+      status: 'pending',
+      ocrStatus: 'queued',
+      manualReviewRequired: true,
+    }, { status: 201 });
+  } catch {
     if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
-    return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
+    return apiFail('UPLOAD_FAILED', 'Unable to submit KYC documents', 502);
   }
-
-  const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1].stored, {
-    contentType: backFile.type, upsert: false,
-  });
-  if (backUpload.error) {
-    if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
-    return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
-  }
-
-  const ocrResult = await runKycOcr({
-    documentType: docType as 'national_id' | 'passport' | 'driving_license',
-    enteredDocumentNumber: icNumber.trim(),
-    front: { mimeType: frontFile.type, bytes: new Uint8Array(images[0].ocr) },
-    back: { mimeType: backFile.type, bytes: new Uint8Array(images[1].ocr) },
-    hmacKey: process.env.KYC_IC_HMAC_KEY ?? '',
-  });
-  const { error: ocrError } = await service.rpc('record_kyc_ocr_result', {
-    p_submission_id: submissionId,
-    p_status: ocrResult.status,
-    p_holder_name: ocrResult.holderName,
-    p_document_number_hmac: ocrResult.documentNumberHmac,
-    p_document_number_last4: ocrResult.documentNumberLast4,
-    p_expiry_date: ocrResult.expiryDate,
-    p_confidence: ocrResult.confidence,
-    p_mismatch_fields: ocrResult.mismatchFields,
-    p_provider_model: ocrResult.providerModel,
-  });
-  if (ocrError) console.error('KYC OCR result persistence failed', { submissionId, error: ocrError.message });
-
-  const { error: finalizeError } = await authenticated.rpc('finalize_kyc_submission', {
-    p_submission_id: submissionId,
-    p_front_path: paths.front,
-    p_back_path: paths.back,
-  });
-  if (finalizeError) {
-    if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
-    return safeSubmissionFailure(finalizeError);
-  }
-
-  return apiOk({
-    submissionId,
-    status: 'pending',
-    ocrStatus: ocrResult.status,
-    manualReviewRequired: requiresManualKycReview(ocrResult.status),
-  }, { status: 201 });
 }

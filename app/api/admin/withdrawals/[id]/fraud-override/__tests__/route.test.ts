@@ -62,6 +62,13 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
     expect(res.status).toBe(401);
   });
 
+  it.each([undefined, 'invalid-proof'])('rejects a missing or malformed financial proof: %s', async (proofId) => {
+    const res = await POST(request({ proofId, reason: 'Manually reviewed and confirmed legitimate.' }), params());
+    expect(res.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
+  });
+
   it('returns 403 when caller is a Wallet Approver (not Super Admin)', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: APPROVER } }, error: null });
     mocks.rpc.mockResolvedValue({

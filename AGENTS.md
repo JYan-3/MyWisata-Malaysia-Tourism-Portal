@@ -2,7 +2,7 @@
 
 ## Project
 
-MyWisata - Malaysia Tourism Portal
+MyLawatan - Malaysia Tourism Portal
 Tech Stack:
 - Next.js 16 App Router
 - TypeScript
@@ -155,6 +155,18 @@ Never:
 - Introduce new patterns.
 - Change formatting unnecessarily.
 - Rewrite working code.
+
+## Practical Coding Standards
+
+- Use 2 spaces for JavaScript, TypeScript, JSON, CSS, YAML, and SQL; use 4 spaces for Python. Preserve LF endings and a final newline.
+- Prefer domain-specific names; use `is`/`has`/`can` for booleans and action names for functions. Prefix intentionally unused parameters or destructured values with `_`.
+- Keep TypeScript strict. Model API and database boundaries with explicit types; use `unknown` with narrowing instead of `any`.
+- Validate untrusted input at route and service boundaries. Catch errors where they can be recovered or translated; preserve diagnostic context and never silently discard failures.
+- Add comments for domain invariants, security boundaries, compatibility constraints, and non-obvious side effects. Skip comments that restate the next line.
+- In React, derive render state where practical, keep effect dependencies complete, and use Next.js navigation APIs for internal navigation.
+- Add focused tests for observable behavior and regressions, especially authorization, money, and state transitions; prefer outcome assertions over source-shape assertions.
+- Keep SQL changes in migrations, preserve existing data, and document non-obvious constraints or backfills. Validate script targets and fail before destructive work when required inputs are missing.
+- Keep edits local; do not reformat unrelated files to make them match these rules.
 
 ---
 

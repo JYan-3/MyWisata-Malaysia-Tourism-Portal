@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { MyWisataLogo } from "@/components/shared/mywisata-logo";
+import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 
 // Public, auth-free layout for the Help Center — mirrors app/guest/layout.tsx so
@@ -17,7 +17,7 @@ export default function HelpLayout({ children }: { children: React.ReactNode }) 
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href="/help" className="flex items-center gap-2">
-            <MyWisataLogo
+            <MyLawatanLogo
               markSize={32}
               wordmarkClassName="font-[family-name:var(--font-plus-jakarta-sans)] text-lg font-bold tracking-tight text-foreground"
             />

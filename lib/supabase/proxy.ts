@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { LOCALE_COOKIE, resolveAppLocale } from '@/lib/i18n/locale';
+import { staffAssurance } from '@/lib/auth/staff-assurance';
+import { staffPasskeyEnforcementEnabled } from '@/lib/auth/staff-passkey-config';
+import { isStaffProtectedPath, staffMfaDestination, staffVerificationDestination } from '@/lib/auth/staff-route-boundaries';
 
 const localeCookieOptions = {
   path: '/',
@@ -79,26 +82,50 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
   }
 
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   const locale = resolveAppLocale({
     accountLocale,
-    cookieLocale: request.cookies.get(LOCALE_COOKIE)?.value,
+    cookieLocale,
     acceptLanguage: request.headers.get('accept-language'),
   });
 
   forwardedHeaders.set('x-app-locale', locale);
-  const { pathname, search } = request.nextUrl;
-  const gate = adminAssuranceGate(pathname, claims);
-  const supabaseResponse = gate === 'api'
+  const gate = adminAssuranceGate(request.nextUrl.pathname, claims);
+  let supabaseResponse = gate === 'api'
     ? NextResponse.json({ data: null, error: { code: 'MFA_REQUIRED', message: 'Authenticator verification required' } }, { status: 403 })
     : gate === 'page'
-      ? NextResponse.redirect(new URL(`/admin/security?next=${encodeURIComponent(pathname + search)}`, request.url))
+      ? NextResponse.redirect(new URL(staffMfaDestination(request.nextUrl.pathname + request.nextUrl.search), request.url))
       : NextResponse.next({ request: { headers: forwardedHeaders } });
+  if (!gate && isStaffProtectedPath(request.nextUrl.pathname) && staffPasskeyEnforcementEnabled()) {
+    try {
+      const status = claims?.sub ? await staffAssurance(supabase) : null;
+      if (!status?.required || !status.verified) {
+        supabaseResponse = request.nextUrl.pathname.startsWith('/api/')
+          ? NextResponse.json({ data: null, error: { code: 'STAFF_PASSKEY_REQUIRED', message: 'Password and Passkey verification required' } }, { status: claims?.sub ? 403 : 401 })
+          : NextResponse.redirect(new URL(claims?.sub ? staffVerificationDestination(request.nextUrl.pathname + request.nextUrl.search) : '/login', request.url));
+      }
+    } catch {
+      supabaseResponse = request.nextUrl.pathname.startsWith('/api/')
+        ? NextResponse.json({ data: null, error: { code: 'AUTHORIZATION_UNAVAILABLE', message: 'Staff verification unavailable' } }, { status: 503 })
+        : NextResponse.redirect(new URL(staffVerificationDestination(request.nextUrl.pathname + request.nextUrl.search), request.url));
+    }
+    supabaseResponse.headers.set('Cache-Control', 'private, no-store');
+  }
+
 
   responseHeaders.forEach((value, key) => supabaseResponse.headers.set(key, value));
   pendingCookies.forEach(({ name, value, options }) =>
     supabaseResponse.cookies.set(name, value, options as Parameters<typeof supabaseResponse.cookies.set>[2]),
   );
-  supabaseResponse.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions);
+  // Background responses may finish after /api/locale saves a newer preference.
+  // Only full document navigations initialize/sync this cookie; RSC and API
+  // reads still receive x-app-locale without persisting an older request snapshot.
+  const isDocumentNavigation = request.method === 'GET'
+    && request.headers.get('sec-fetch-dest') === 'document'
+    && !request.nextUrl.pathname.startsWith('/api/');
+  if (isDocumentNavigation && cookieLocale !== locale) {
+    supabaseResponse.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions);
+  }
 
   return supabaseResponse;
 }

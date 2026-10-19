@@ -248,7 +248,6 @@ export function ChatThreadPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: reportReason, details: reportDetails }),
       });
-      const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(t("strictMigration.chat.reportFailed"));
       setReportState("sent");
     } catch {

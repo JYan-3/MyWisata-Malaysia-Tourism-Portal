@@ -605,7 +605,7 @@ Replace `VendorClaimForm` usage in `vendor-invite-client.tsx` with:
 <VendorInviteWizard token={token} preview={preview} onReload={loadPreview} />
 ```
 
-Retain loading, invalid, expired, cancelled, already-used, and retry states. Add “Request a new invitation” and “Contact MyWisata support” recovery links where an existing route is available; otherwise use the existing support entry route rather than inventing an API.
+Retain loading, invalid, expired, cancelled, already-used, and retry states. Add “Request a new invitation” and “Contact MyLawatan support” recovery links where an existing route is available; otherwise use the existing support entry route rather than inventing an API.
 
 - [ ] **Step 7: Run Task 4 tests and lint**
 
@@ -681,7 +681,7 @@ Require `authorizedToRepresent`. POST the exact `GuidedVendorClaimInput`. Disabl
 
 ```tsx
 <h2>Vendor application submitted</h2>
-<p>Your Vendor and first Outlet are private while MyWisata reviews the application.</p>
+<p>Your Vendor and first Outlet are private while MyLawatan reviews the application.</p>
 ```
 
 Map claim errors by visible area: category inactive returns to Details/category, email mismatch returns to Account, phone verification returns to Verify, and invite state becomes the dedicated inactive-invitation page. Raw `field: Invalid input` messages are never rendered.

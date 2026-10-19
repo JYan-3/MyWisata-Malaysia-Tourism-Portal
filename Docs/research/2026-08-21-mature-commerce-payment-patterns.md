@@ -1,7 +1,7 @@
 # 成熟开源电商项目的支付与钱包混合支付模式
 
 日期：2026-08-21
-范围：仅作只读研究。以下结论来自各项目的第一方 GitHub 源码（固定 commit），不代表这些项目已替 MyWisata 接入任何本地支付渠道。
+范围：仅作只读研究。以下结论来自各项目的第一方 GitHub 源码（固定 commit），不代表这些项目已替 MyLawatan 接入任何本地支付渠道。
 
 ## 结论先行
 
@@ -13,11 +13,11 @@
 4. 外部部分只有在已验签的 provider 成功事件到达后，才能把整个订单标记为 paid；失败、取消、过期则释放钱包 reservation；
 5. 每个 provider attempt / event 都要可幂等地关联到订单与 payment allocation。
 
-MyWisata 当前 `wallet_split` 已能用数据库锁和 reservation 算出 `external_amount_sen`，但前端只把纯 `wallet` 当作可直接 finalize 的方式。因此当余额完全覆盖订单、`external_amount_sen = 0` 时，流程没有 Stripe URL，却被前端当成错误。这是状态分支缺失，不是 Stripe 的限制。
+MyLawatan 当前 `wallet_split` 已能用数据库锁和 reservation 算出 `external_amount_sen`，但前端只把纯 `wallet` 当作可直接 finalize 的方式。因此当余额完全覆盖订单、`external_amount_sen = 0` 时，流程没有 Stripe URL，却被前端当成错误。这是状态分支缺失，不是 Stripe 的限制。
 
 ## 项目对照
 
-| 项目 | 已由源码确认的模式 | 对 MyWisata 的直接启示 |
+| 项目 | 已由源码确认的模式 | 对 MyLawatan 的直接启示 |
 |---|---|---|
 | Solidus | Store Credit 是内部 payment source；订单依次处理未完成 payment，支付总额达到订单总额即停止。 | 全钱包覆盖是正常结算分支，不能继续要求卡。 |
 | Vendure | 支付是可插拔 handler；订单可有多笔 payment，新增 payment 时只计算未被既有 payments 覆盖的余额。 | 把 wallet / card 当作同一订单下的 allocations，而不是互斥的页面选项。 |
@@ -35,7 +35,7 @@ Solidus 把 Store Credit 建模为 `PaymentSource`。其余额以 `amount - amou
 
 - [Order payments：达到订单总额后停止继续处理](https://github.com/solidusio/solidus/blob/1f5bf5c638f5fe9fbda4d480bdb7ebcfa39a9a5e/core/app/models/spree/order/payments.rb#L40-L48)
 
-**对 MyWisata 的含义：** `wallet_split` 的全额覆盖分支应与纯钱包结算等价：在同一服务端事务中把 reservation commit、订单/payment/session 标为 paid，并直接进入订单页。不得生成 RM0.00 Stripe Checkout，也不得把「没有 Stripe URL」解释为失败。
+**对 MyLawatan 的含义：** `wallet_split` 的全额覆盖分支应与纯钱包结算等价：在同一服务端事务中把 reservation commit、订单/payment/session 标为 paid，并直接进入订单页。不得生成 RM0.00 Stripe Checkout，也不得把「没有 Stripe URL」解释为失败。
 
 ## 2. Vendure：provider abstraction 与多 payment 的余额计算
 
@@ -49,7 +49,7 @@ Vendure 的支付方式通过 `PaymentMethodHandler` 实现。handler 返回 pay
 - [所有 payments settled 后才转订单状态](https://github.com/vendure-ecommerce/vendure/blob/2bab619e988c9e62e59d65dd69016cf937f6587b/packages/core/src/service/services/order.service.ts#L1719-L1735)
 - [第三方 handler 调用在 DB transaction 外；若随后 DB 写入失败，需要上层 reconciliation](https://github.com/vendure-ecommerce/vendure/blob/2bab619e988c9e62e59d65dd69016cf937f6587b/packages/core/src/service/services/payment.service.ts#L123-L162)
 
-**对 MyWisata 的含义：** 订单应能表达至少两笔逻辑 payment：`wallet`（已 reserve/settled 的部分）与 `stripe_card`（仅 remainder）。钱包额度、Stripe session / payment intent id、状态及失败原因应分别可审计；不要把整个混合付款只压成一个 `wallet_split` method 加一个外部金额字段。
+**对 MyLawatan 的含义：** 订单应能表达至少两笔逻辑 payment：`wallet`（已 reserve/settled 的部分）与 `stripe_card`（仅 remainder）。钱包额度、Stripe session / payment intent id、状态及失败原因应分别可审计；不要把整个混合付款只压成一个 `wallet_split` method 加一个外部金额字段。
 
 ## 3. Saleor：provider 成功必须来自已验签、幂等的异步事件
 
@@ -68,7 +68,7 @@ Saleor 的 `Payment` 模型还明确说明一个 order 可使用多个 payment m
 - [Gift Card：行锁和余额/币种验证](https://github.com/saleor/saleor/blob/9062d3ee1346e3f278e700bd804d74c027a5d2b1/saleor/giftcard/gateway.py#L135-L175)
 - [Gift Card：事务内扣款与重复扣款保护](https://github.com/saleor/saleor/blob/9062d3ee1346e3f278e700bd804d74c027a5d2b1/saleor/giftcard/gateway.py#L273-L369)
 
-**对 MyWisata 的含义：** Stripe success return URL 只能显示「正在确认」；真正的 mixed-payment commit 应只由 webhook 完成。该 webhook 必须核对 session/order、支付币种与 **remainder** 金额，并用 provider event id / payment intent id 幂等；失败和过期需要调用现有 `release_wallet_split_checkout` 一次。
+**对 MyLawatan 的含义：** Stripe success return URL 只能显示「正在确认」；真正的 mixed-payment commit 应只由 webhook 完成。该 webhook 必须核对 session/order、支付币种与 **remainder** 金额，并用 provider event id / payment intent id 幂等；失败和过期需要调用现有 `release_wallet_split_checkout` 一次。
 
 ## 4. Medusa：没有完整 split workflow 时，明确不支持
 
@@ -81,9 +81,9 @@ Medusa 的 payment collection workflow 当前主动删除已有 active payment s
 - [webhook route：保存 raw data/headers、延迟与 retry 后返回 200](https://github.com/medusajs/medusa/blob/a6fff7ec920f3fa15b2f35429e186ebd76d0f1d4/packages/medusa/src/api/hooks/payment/%5Bprovider%5D/route.ts#L6-L38)
 - [subscriber：拒绝 foreign、失败、取消和 pending event，不触发 order completion](https://github.com/medusajs/medusa/blob/a6fff7ec920f3fa15b2f35429e186ebd76d0f1d4/packages/medusa/src/subscribers/payment-webhook.ts#L36-L62)
 
-**对 MyWisata 的含义：** `wallet_split` 目前已经有 reservation SQL，但尚未补齐全额覆盖直结、remainder Stripe session、webhook completion、failure release 与同一幂等边界时，最安全的短期产品决定是隐藏或禁用它。不要将一个看起来可选的功能交给用户测试。
+**对 MyLawatan 的含义：** `wallet_split` 目前已经有 reservation SQL，但尚未补齐全额覆盖直结、remainder Stripe session、webhook completion、failure release 与同一幂等边界时，最安全的短期产品决定是隐藏或禁用它。不要将一个看起来可选的功能交给用户测试。
 
-## 建议的 MyWisata 目标流程
+## 建议的 MyLawatan 目标流程
 
 ```text
 prepare（服务器锁定订单、计算 amount）
@@ -107,10 +107,10 @@ prepare（服务器锁定订单、计算 amount）
 
 ## 不确定性与范围
 
-- 本研究确认的是这些项目源码中的架构与语义，不宣称任何一个项目已内建 MyWisata 所需的「MyR wallet + Stripe Checkout」产品组合。
+- 本研究确认的是这些项目源码中的架构与语义，不宣称任何一个项目已内建 MyLawatan 所需的「MyR wallet + Stripe Checkout」产品组合。
 - Solidus/Vendure 的片段证明了多 payment 与全额覆盖的领域模型；具体 store-credit UI、gateway 的授权/捕获时机可按项目配置变化。
 - Medusa 当前源码明确不支持 split，因此它提供的是「不要半实现」的反例，而不是可直接复制的实现。
-- 尚未对 MyWisata 做任何代码、数据库、Stripe 配置或真实付款操作。
+- 尚未对 MyLawatan 做任何代码、数据库、Stripe 配置或真实付款操作。
 
 ## 简明建议
 

@@ -6,13 +6,14 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
 
-const schema = z.object({ token: z.string().trim().min(16).max(200) }).strict();
+const schema = z.object({ token: z.string().trim().min(16).max(200), captchaToken: z.string().trim().min(1).max(2048) }).strict();
 
 function isRateLimited(error: { code?: string; status?: number }) {
   return error.status === 429 || error.code === 'over_email_send_rate_limit';
 }
 
 function mapOtpSendError(error: { code?: string; status?: number }) {
+  if (error.code === 'captcha_failed') return apiFail('HUMAN_VERIFICATION_FAILED', 'Complete the security check and try again.', 403);
   if (isRateLimited(error)) {
     return apiFail('OTP_RATE_LIMITED', 'Too many sign-in codes were requested. Please try again later.', 429);
   }
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   const db = await createClient();
   const { error } = await db.auth.signInWithOtp({
     email: resolution.invite.email,
-    options: { shouldCreateUser: true },
+    options: { shouldCreateUser: true, captchaToken: parsed.data.captchaToken },
   });
   if (error) return mapOtpSendError(error);
 

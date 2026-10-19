@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Store } from 'lucide-react';
 import RegisterVendorForm from '@/components/vendor/register-vendor-form';
-import { getVendorOnboardingStatus } from '@/lib/vendor/onboarding-status';
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from '@/components/customer/customer-page-shell';
 
 export default async function RegisterVendorPage() {
@@ -24,7 +23,6 @@ export default async function RegisterVendorPage() {
     .maybeSingle();
 
   if (vendor) {
-    const status = getVendorOnboardingStatus(vendor.status);
     return (
       <>
         <CustomerPageTitle

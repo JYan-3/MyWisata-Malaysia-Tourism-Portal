@@ -1,15 +1,13 @@
 // Places domain — Penang place-first navigation (state > region > poi).
 // See docs/plans/2026-08-12-2152-penang-place-model-and-data-reset.md §4.
-// Reuses catalogue.ts's getActivities()/getVendors() instead of duplicating
-// their query/mapping logic — catalogue.ts is explicitly out of scope for
-// this plan (its outlet-collapsing toComputed() is correct for cards and
-// wrong for a place's product list, which is why this domain has its own
-// getPlaceProducts() rather than reusing searchActivities()).
+// Reuses catalogue.ts's ID-scoped Activity/vendor mappers instead of
+// duplicating their query/mapping logic. Place products keep their own
+// place-specific relation mapping rather than using outlet-collapsed search.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
 import type { Outlet, Place, PlaceAccess, PlaceAccessType, PlaceInformationalActivity, PlaceInformationalActivityType, PlaceLevel, PlaceProduct, PlaceRelation } from "@/backend/core/types";
-import { getActivities, getOutlets, getVendors } from "@/backend/domains/catalogue";
+import { getActivitiesByIds, getOutlets, getVendors } from "@/backend/domains/catalogue";
 import { selectEntityGallery, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { placeImageUrl } from "@/lib/storage/place-image";
 
@@ -145,42 +143,59 @@ export async function getRegionsWithPois(
 }
 
 type ProductPlaceRow = {
+  place_id: string;
   product_id: string;
   relation_type: PlaceRelation;
-  products: { vendor_id: string } | null;
 };
 
-/**
- * Every vendor product attached to a place, grouped by relation type on the
- * caller's side. Goes through getActivities() (all active+approved products)
- * rather than a place-scoped product query, since Activity's full mapping
- * (variants, price rules, review metrics) lives only in catalogue.ts.
- */
-export async function getPlaceProducts(placeId: string, db: SupabaseClient = supabase): Promise<PlaceProduct[]> {
+/** Load linked products for several places with one relation query and one scoped product read. */
+export async function getPlaceProductsForPlaces(
+  placeIds: string[],
+  db: SupabaseClient = supabase,
+): Promise<Map<string, PlaceProduct[]>> {
+  const uniquePlaceIds = [...new Set(placeIds.filter(Boolean))];
+  const productsByPlace = new Map(uniquePlaceIds.map((placeId) => [placeId, [] as PlaceProduct[]]));
+  if (uniquePlaceIds.length === 0) return productsByPlace;
+
   const { data, error } = await db
     .from("product_places")
-    .select("product_id,relation_type,products(vendor_id)")
-    .eq("place_id", placeId);
+    .select("place_id,product_id,relation_type")
+    .in("place_id", uniquePlaceIds);
   if (error) throw error;
 
   const links = (data ?? []) as unknown as ProductPlaceRow[];
-  if (links.length === 0) return [];
+  if (links.length === 0) return productsByPlace;
 
-  const relationByProduct = new Map(links.map((link) => [link.product_id, link.relation_type]));
-  const vendorIdByProduct = new Map(links.map((link) => [link.product_id, link.products?.vendor_id]));
+  const relationByPlaceAndProduct = new Map<string, Map<string, PlaceRelation>>();
+  for (const link of links) {
+    const relationByProduct = relationByPlaceAndProduct.get(link.place_id) ?? new Map<string, PlaceRelation>();
+    relationByProduct.set(link.product_id, link.relation_type);
+    relationByPlaceAndProduct.set(link.place_id, relationByProduct);
+  }
 
-  const [activities, vendors] = await Promise.all([getActivities(db), getVendors(db)]);
+  const productIds = [...new Set(links.map((link) => link.product_id).filter(Boolean))];
+  const [activities, vendors] = await Promise.all([
+    getActivitiesByIds(productIds, db),
+    getVendors(db),
+  ]);
   const vendorById = new Map(vendors.map((vendor) => [vendor.id, vendor]));
 
-  const result: PlaceProduct[] = [];
-  for (const product of activities) {
-    const relation = relationByProduct.get(product.id);
-    if (!relation) continue;
-    const vendor = vendorById.get(vendorIdByProduct.get(product.id) ?? "");
-    if (!vendor) continue;
-    result.push({ product, vendor, relation });
+  for (const [placeId, relationByProduct] of relationByPlaceAndProduct) {
+    const placeProducts = productsByPlace.get(placeId);
+    if (!placeProducts) continue;
+    for (const product of activities) {
+      const relation = relationByProduct.get(product.id);
+      const vendor = product.vendorId ? vendorById.get(product.vendorId) : undefined;
+      if (relation && vendor) placeProducts.push({ product, vendor, relation });
+    }
   }
-  return result;
+
+  return productsByPlace;
+}
+
+/** One-place wrapper used by the detail level of the place page. */
+export async function getPlaceProducts(placeId: string, db: SupabaseClient = supabase): Promise<PlaceProduct[]> {
+  return (await getPlaceProductsForPlaces([placeId], db)).get(placeId) ?? [];
 }
 
 type PlaceAccessRow = {

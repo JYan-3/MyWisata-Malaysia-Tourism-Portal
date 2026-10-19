@@ -67,11 +67,13 @@ interface Props {
 }
 
 export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props) {
-  const { t } = useTranslation('vendor');
-  const groupLabel = (id: string, fallback: string) => t(`builder.palette.groups.${id}.label`);
-  const groupHint = (id: string, fallback: string) => t(`builder.palette.groups.${id}.hint`);
-  const itemLabel = (type: string, fallback: string) => t(`builder.palette.items.${type}.label`);
-  const itemHint = (type: string, fallback: string) => t(`builder.palette.items.${type}.hint`);
+  const { t, i18n } = useTranslation('vendor');
+  const translateOrFallback = (key: string, fallback: string) =>
+    i18n.exists(key, { ns: 'vendor' }) ? t(key) : fallback;
+  const groupLabel = (id: string, fallback: string) => translateOrFallback(`builder.palette.groups.${id}.label`, fallback);
+  const groupHint = (id: string, fallback: string) => translateOrFallback(`builder.palette.groups.${id}.hint`, fallback);
+  const itemLabel = (type: string, fallback: string) => translateOrFallback(`builder.palette.items.${type}.label`, fallback);
+  const itemHint = (type: string, fallback: string) => translateOrFallback(`builder.palette.items.${type}.hint`, fallback);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(BUILDER_PALETTE_GROUPS.map((group) => [group.id, Boolean(group.defaultOpen)])),
   );

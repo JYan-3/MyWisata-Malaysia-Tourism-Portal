@@ -6,7 +6,7 @@ import { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 // an injected client, so the default export is never actually used here.
 vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
-const { getActivities, getComputedActivity } = await import("@/backend/domains/catalogue");
+const { getActivities, getComputedActivity, getOutletChoices } = await import("@/backend/domains/catalogue");
 
 const PRODUCT_ROW = {
   id: "p1",
@@ -159,12 +159,19 @@ const OUTLET_ROW = {
 };
 
 /** Stub that also records the equality filters each query applied. */
-function makeFilterRecordingDb(tables: Record<string, unknown[]>, filters: Record<string, unknown>[]) {
+function makeFilterRecordingDb(
+  tables: Record<string, unknown[]>,
+  filters: Record<string, unknown>[],
+  selectedFields: Record<string, string[]> = {},
+) {
   return {
     from(table: string) {
       const rows = tables[table] ?? [];
       const builder: Record<string, unknown> = {
-        select: () => builder,
+        select: (columns?: string) => {
+          if (columns) selectedFields[table] = [...(selectedFields[table] ?? []), columns];
+          return builder;
+        },
         eq: (column: string, value: unknown) => {
           filters.push({ table, column, value });
           return builder;
@@ -258,6 +265,41 @@ describe("getComputedActivity", () => {
   it("returns null for a product that is not active or approved", async () => {
     const db = makeFilterRecordingDb({ products: [], outlets: [OUTLET_ROW] }, []);
     expect(await getComputedActivity("missing", undefined, db)).toBeNull();
+  });
+});
+
+describe("getOutletChoices", () => {
+  it("loads only offered active outlets and preserves outlet-specific price ordering", async () => {
+    const filters: Record<string, unknown>[] = [];
+    const selectedFields: Record<string, string[]> = {};
+    const secondOutlet = { ...OUTLET_ROW, id: "o2", name: "Second outlet" };
+    const db = makeFilterRecordingDb(
+      { outlets: [OUTLET_ROW, secondOutlet], reviews: [] },
+      filters,
+      selectedFields,
+    );
+    const activity = {
+      id: "p1",
+      offers: [
+        { outletId: "o2", price: 20, status: "active" },
+        { outletId: "o1", price: 10, status: "active" },
+        { outletId: "unavailable-outlet", price: 5, status: "active" },
+      ],
+    } as never;
+
+    const choices = await getOutletChoices(activity, db);
+
+    expect(choices.map(({ outletId, price }) => ({ outletId, price }))).toEqual([
+      { outletId: "o1", price: 10 },
+      { outletId: "o2", price: 20 },
+    ]);
+    expect(filters).toContainEqual({
+      table: "outlets",
+      column: "id",
+      value: ["o2", "o1", "unavailable-outlet"],
+    });
+    expect(selectedFields.outlets?.[0]).not.toContain("outlet_pages");
+    expect(selectedFields.outlets?.[0]).not.toContain("products(categories");
   });
 });
 

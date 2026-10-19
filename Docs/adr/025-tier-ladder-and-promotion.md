@@ -3,6 +3,8 @@
 **Status:** Accepted  
 **PR:** 025 — `025_tier_ladder.sql`
 
+> Historical decision: this ADR's `phone_verified` checkout gate was superseded for purchase access by [the Guest and Email-verified purchase plan](../plans/2026-10-02-0046-guest-and-email-verified-purchases.md). Guests may purchase, and registered customers need verified Email. Other tier-gated capabilities in this ADR remain in scope.
+
 ---
 
 ## Context

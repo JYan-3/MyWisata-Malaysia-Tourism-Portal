@@ -34,7 +34,6 @@ export async function requireStaffPermission(
 
   const assuranceResponse = await requireStaffAssurance(db);
   if (assuranceResponse) return { db, user, response: assuranceResponse };
-
   const { data: allowed, error: permissionError } = await db.rpc("has_staff_permission", {
     p_user_id: user.id,
     p_permission_key: permission,

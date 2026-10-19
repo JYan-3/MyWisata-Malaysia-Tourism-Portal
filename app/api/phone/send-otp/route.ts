@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { sendOtpSchema } from '@/lib/validation/phone-schemas';
 import { sendOtp } from '@/lib/twilio';
+import { verifyHumanChallenge } from '@/lib/auth/human-verification';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, sendOtpSchema);
   if (!parsed.ok) return parsed.response;
   const { phone } = parsed.data;
+  const challenge = await verifyHumanChallenge(parsed.data.captchaToken, 'phone_send');
+  if (!challenge.ok) return apiFail(challenge.code, 'Human verification is required. Please try again.', challenge.status);
 
   // Pre-send collision check: is this number already verified on another account?
   const { data: collision, error: collisionError } = await supabase.rpc('check_phone_collision', {

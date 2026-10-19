@@ -47,6 +47,16 @@ describe('generateAiText', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('can cap provider attempts for globally budgeted background work', async () => {
+    process.env.QWEN_API_KEY = 'test-token';
+    process.env.QWEN_MODEL = 'primary';
+    process.env.QWEN_FALLBACK_MODEL = 'fallback';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('unavailable', { status: 503 }));
+
+    await expect(generateAiText('system', 'user', { maxProviderAttempts: 1 })).resolves.toEqual({ available: false, reason: 'unavailable' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('forwards an abort signal and stops retrying when the caller cancels', async () => {
     process.env.MODELSCOPE_API_KEY = 'test-token';
     const controller = new AbortController();

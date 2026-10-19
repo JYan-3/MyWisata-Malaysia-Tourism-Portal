@@ -420,7 +420,7 @@ function AdminSupportContent() {
           <div className="divide-y divide-border">
             {visibleTickets.map((ticket) => (
               <div key={ticket.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
-                <input type="checkbox" aria-label={t("ui.support.selectTicket", { subject: ticket.subject })} checked={selectedIds.has(ticket.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(ticket.id) : next.delete(ticket.id); return next; })} />
+                <input type="checkbox" aria-label={t("ui.support.selectTicket", { subject: ticket.subject })} checked={selectedIds.has(ticket.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(ticket.id); else next.delete(ticket.id); return next; })} />
                 <button onClick={() => openTicket(ticket.id)} className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <MessageSquare size={13} className="text-muted-foreground shrink-0" /> {ticket.subject}

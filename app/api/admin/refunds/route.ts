@@ -2,8 +2,34 @@ import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import type { Json } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
+
+type UserRoleRecord = {
+  roles: { name: string | null } | Array<{ name: string | null }> | null;
+};
+
+type RefundQueryRow = {
+  id: string;
+  order_id: string;
+  amount: number | string;
+  reason: string | null;
+  reason_code: string | null;
+  status: string;
+  provider_refund_id: string | null;
+  manual_reference: string | null;
+  wallet_topup_sen: number | null;
+  wallet_earnings_sen: number | null;
+  external_amount_sen: number | null;
+  provider_failure_code: string | null;
+  provider_failure_message: string | null;
+  attempt_count: number | null;
+  created_at: string;
+  updated_at: string;
+  payments: { method: string | null; provider: string | null } | Array<{ method: string | null; provider: string | null }> | null;
+  orders: { display_id: string | null } | Array<{ display_id: string | null }> | null;
+};
 
 export async function GET() {
   const db = await createClient();
@@ -12,7 +38,10 @@ export async function GET() {
   const assuranceResponse = await requireStaffAssurance(db);
   if (assuranceResponse) return assuranceResponse;
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
-  const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
+  const roleNames = (roles ?? []).map((row: UserRoleRecord) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return role?.name;
+  });
   if (!roleNames.includes('super_admin')) {
     return apiFail('FORBIDDEN', 'Admin role required', 403);
   }
@@ -26,8 +55,8 @@ export async function GET() {
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
 
   try {
-    const refunds = await Promise.all((data ?? []).map(async (refund: any) => {
-      const { data: evidence, error: evidenceError } = await service.rpc('get_event_refund_evidence', { p_refund: refund.id });
+    const refunds = await Promise.all(((data ?? []) as unknown as RefundQueryRow[]).map(async (refund) => {
+      const { data: evidenceData, error: evidenceError } = await service.rpc('get_event_refund_evidence', { p_refund: refund.id });
       if (evidenceError) throw new Error('refund_evidence_unavailable');
       const payment = Array.isArray(refund.payments) ? refund.payments[0] : refund.payments;
       const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
@@ -38,7 +67,7 @@ export async function GET() {
         amountRm: Number(refund.amount),
         reason: refund.reason ?? null,
         reasonCode: refund.reason_code ?? null,
-        evidence,
+        evidence: evidenceData as Json,
         status: refund.status,
         provider: payment?.provider ?? null,
         method: payment?.method ?? null,

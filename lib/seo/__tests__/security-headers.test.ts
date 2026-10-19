@@ -27,5 +27,7 @@ describe("security headers", () => {
     expect(csp).toMatch(/script-src 'self' 'unsafe-inline'[^;]*https:\/\/maps\.googleapis\.com/);
     expect(csp).not.toMatch(/script-src[^;]*\s(\*|https:)(\s|;|$)/);
     expect(csp).toContain("worker-src 'self' blob:");
+    expect(csp).toMatch(/script-src[^;]*https:\/\/challenges\.cloudflare\.com/);
+    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com");
   });
 });

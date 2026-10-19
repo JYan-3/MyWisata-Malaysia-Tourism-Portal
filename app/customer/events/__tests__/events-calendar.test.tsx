@@ -78,7 +78,12 @@ describe("EventsCalendar", () => {
       end: "2099-01-13",
       allDay: true,
       classNames: ["mw-events-calendar__event--live"],
-      extendedProps: { slug: "heritage-walk" },
+      extendedProps: {
+        slug: "heritage-walk",
+        campaignId: "campaign-1",
+        campaignTitle: "Heritage Walk KL",
+        locationName: "Main location",
+      },
     }]);
   });
 

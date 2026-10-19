@@ -11,12 +11,14 @@
 // `{recommendationId}` for the recommendations flow; empty for the vendor
 // flow, which carries its id in the URL instead).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Mail, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
+import { isAppLocale, type AppLocale } from "@/lib/i18n/locale";
 
 type Target = { id: string; name: string; defaultEmail?: string };
 
@@ -54,29 +56,52 @@ export function AiDraftEmailModal({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  async function runDraft() {
+  const [recipientLocale, setRecipientLocale] = useState<AppLocale | null>(null);
+  const recipientRef = useRef("");
+  const draftRequest = useRef(0);
+
+  async function resolveRecipientLanguage(recipient: string) {
+    if (!recipient.trim()) return;
+    try {
+      const res = await fetch(draftUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...extraBody, email: recipient.trim(), localeOnly: true }),
+      });
+      const result = await res.json() as { data?: { locale?: unknown } };
+      if (recipientRef.current !== recipient) return;
+      setRecipientLocale(res.ok && isAppLocale(result.data?.locale) ? result.data.locale : null);
+    } catch {
+      if (recipientRef.current === recipient) setRecipientLocale(null);
+    }
+  }
+
+  async function runDraft(recipient = email) {
+    const requestId = ++draftRequest.current;
     setDrafting(true);
     setDraftError(null);
     try {
       const res = await fetch(draftUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(extraBody),
+        body: JSON.stringify({ ...extraBody, ...(recipient.trim() ? { email: recipient.trim() } : {}) }),
       });
       const responseBody = (await res.json()) as {
-        data: { subject: string; body: string } | null;
+        data: { subject: string; body: string; locale?: unknown } | null;
         error: { message: string } | null;
       };
+      if (requestId !== draftRequest.current || recipientRef.current !== recipient) return;
       if (!res.ok || !responseBody.data) {
         setDraftError(responseBody.error?.message ?? t("email.draft.errors.unavailable"));
         return;
       }
+      setRecipientLocale(isAppLocale(responseBody.data.locale) ? responseBody.data.locale : null);
       setSubject(responseBody.data.subject);
       setBody(responseBody.data.body);
     } catch {
-      setDraftError(t("email.draft.errors.unavailable"));
+      if (requestId === draftRequest.current) setDraftError(t("email.draft.errors.unavailable"));
     } finally {
-      setDrafting(false);
+      if (requestId === draftRequest.current) setDrafting(false);
     }
   }
 
@@ -84,10 +109,14 @@ export function AiDraftEmailModal({
     if (!open || !target) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmail(target.defaultEmail ?? "");
+    const initialEmail = target.defaultEmail ?? "";
+    recipientRef.current = initialEmail;
+    setRecipientLocale(null);
     setSubject("");
     setBody("");
     setSendError(null);
-    runDraft();
+    runDraft(initialEmail);
+    return () => { draftRequest.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, target?.id]);
 
@@ -128,7 +157,7 @@ export function AiDraftEmailModal({
     }
   }
 
-  const canSend = email.trim().length > 0 && subject.trim().length > 0 && body.trim().length > 0 && !sending;
+  const canSend = email.trim().length > 0 && subject.trim().length > 0 && body.trim().length > 0 && !sending && !drafting;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4" role="presentation">
@@ -162,10 +191,23 @@ export function AiDraftEmailModal({
             <Input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                recipientRef.current = e.target.value;
+                setRecipientLocale(null);
+                draftRequest.current += 1;
+                setDrafting(false);
+              }}
+              onBlur={() => void resolveRecipientLanguage(email)}
               placeholder={t("email.draft.recipientPlaceholder")}
               disabled={sending}
             />
+            <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+              {recipientLocale
+                ? t("email.draft.recipientLanguage", { language: t(`email.draft.languages.${recipientLocale}`) })
+                : t("email.draft.languageUnavailable")}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("email.draft.languageReview")}</p>
           </div>
 
           <div>
@@ -182,7 +224,7 @@ export function AiDraftEmailModal({
                 <Sparkles size={11} /> {drafting ? t("email.draft.drafting") : t("email.draft.regenerate")}
               </Button>
             </div>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={drafting ? t("email.draft.drafting") : t("email.draft.subjectPlaceholder")} disabled={sending} />
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={drafting ? t("email.draft.drafting") : t("email.draft.subjectPlaceholder")} disabled={sending || drafting} />
           </div>
 
           <div>
@@ -192,7 +234,7 @@ export function AiDraftEmailModal({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={drafting ? t("email.draft.drafting") : t("email.draft.messagePlaceholder")}
-              disabled={sending}
+              disabled={sending || drafting}
             />
             <p className="mt-1 text-[0.6875rem] text-muted-foreground">{linkHint ?? t("email.draft.linkHint")}</p>
           </div>

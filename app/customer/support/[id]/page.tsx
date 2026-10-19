@@ -40,13 +40,6 @@ interface TicketDetail {
   replies: ReplyMessage[];
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
-
 const LOCKED_STATUSES = new Set(["resolved", "closed"]);
 
 export default function CustomerTicketDetailPage() {

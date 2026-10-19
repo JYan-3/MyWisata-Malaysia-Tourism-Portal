@@ -162,7 +162,6 @@ export const CUSTOMER_I18N_FILES = [
   "components/demo-map/malaysia-district-map.tsx",
   "components/demo-map/malaysia-state-map.tsx",
   "components/demo-map/mylawatan-explore-map.tsx",
-  "components/demo-map/mywisata-explore-map.tsx",
   "components/demo-map/story-map.tsx",
   "components/outlet/hotel-page.tsx",
   "components/outlet/outlet-block-renderer.tsx",

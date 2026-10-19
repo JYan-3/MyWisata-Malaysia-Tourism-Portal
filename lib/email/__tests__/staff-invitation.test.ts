@@ -11,7 +11,7 @@ describe("staff invitation email", () => {
       locale,
       roleName: "Reviewer <script>alert(1)</script>",
       permissionKeys: ["admin.kyc.review"],
-      invitationUrl: "https://mywisata.test/staff-invitations/secret",
+      invitationUrl: "https://mylawatan.test/staff-invitations/secret",
       expiresAt: "2026-09-13T04:30:00.000Z",
     });
 
@@ -43,7 +43,7 @@ describe("staff invitation email", () => {
       locale: "en",
       roleName: "Wallet Reviewer",
       permissionKeys: ["admin.withdrawal.approve", "admin.vendor.manage"],
-      invitationUrl: "https://mywisata.test/staff-invitations/secret",
+      invitationUrl: "https://mylawatan.test/staff-invitations/secret",
       expiresAt: "2026-09-13T04:30:00.000Z",
     });
     const content = `${result.subject}\n${result.text}\n${result.html}`;

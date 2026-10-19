@@ -8,7 +8,7 @@ import { getWalletBuckets, getMyWithdrawals, getWalletTransactions, requestWithd
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
-import { filterTransactions, transactionLabel, transactionTone, type TransactionFilter } from "@/lib/wallet/transaction-display";
+import { filterTransactions, transactionTone, type TransactionFilter } from "@/lib/wallet/transaction-display";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { DEMO_PAYOUT_ACCOUNT } from "@/lib/i18n/invariant-tokens";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";

@@ -46,7 +46,10 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       .then(async (response) => {
         if (!response.ok) return;
         const body = (await response.json()) as { data?: { productIds?: string[] } };
-        if (!cancelled) setSavedIds(new Set(body.data?.productIds ?? []));
+        if (!cancelled) {
+          setSavedIds(new Set(body.data?.productIds ?? []));
+          setHydrated(true);
+        }
       })
       .catch(() => {
         // Wishlist is an enhancement; browsing must remain available if it fails.
