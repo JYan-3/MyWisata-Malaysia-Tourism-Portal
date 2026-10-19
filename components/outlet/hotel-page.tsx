@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
 import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
@@ -18,8 +18,16 @@ import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { addDays, getMinimumRoomCount, getStayNightCount, MAX_STAY_NIGHTS } from "@/lib/customer/outlet-shop";
 
-function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: OutletRendererProduct }) {
+function RoomCard({ outlet, room, adults, rooms, availabilityStale, onSetRoomCount }: {
+  outlet: OutletRendererOutlet;
+  room: OutletRendererProduct;
+  adults: number;
+  rooms: number;
+  availabilityStale: boolean;
+  onSetRoomCount(roomCount: number): void;
+}) {
   const { t } = useTranslation("customer");
   const gate = useCustomerCapabilityGate();
   const { addItem, selectedKeys, setSelectedKeys } = useCart();
@@ -30,10 +38,14 @@ function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: Outlet
   const stay = outlet.stay!;
   const offer = room.stay!;
   const soldOut = offer.left < stay.rooms || !offer.checkInSlotId;
+  const minimumRoomCount = offer.details.maxGuests ? getMinimumRoomCount(adults, offer.details.maxGuests) : null;
+  const exceedsRoomLimit = minimumRoomCount !== null && minimumRoomCount > 10;
+  const needsMoreRooms = minimumRoomCount !== null && minimumRoomCount > rooms && !exceedsRoomLimit;
+  const cannotBook = soldOut || availabilityStale || needsMoreRooms || exceedsRoomLimit;
   const photo = offer.photos[0];
 
   function openGuestDetails() {
-    if (soldOut || !gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
+    if (cannotBook || !gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
     setGuestDialogKey((key) => key + 1);
     setGuestDialogOpen(true);
   }
@@ -62,12 +74,19 @@ function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: Outlet
           <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {offer.details.bedType && <span className="inline-flex items-center gap-1"><BedDouble size={13} aria-hidden="true" />{offer.details.bedType}</span>}
             {offer.details.maxGuests && <span className="inline-flex items-center gap-1"><Users size={13} aria-hidden="true" />{t("ui.hotel.sleepsCount", { count: offer.details.maxGuests })}</span>}
-            {offer.details.sizeSqm && <span className="inline-flex items-center gap-1"><Maximize2 size={13} aria-hidden="true" />{offer.details.sizeSqm} m²</span>}
+            {offer.details.sizeSqm && <span className="inline-flex items-center gap-1"><Maximize2 size={13} aria-hidden="true" />{offer.details.sizeSqm} {t("ui.hotel.areaUnit")}</span>}
           </p>
         )}
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{room.description || t("ui.property.roomFallback")}</p>
         <Button type="button" variant="link" className="mt-1 h-auto p-0" onClick={() => setDetailsOpen(true)}>{t("ui.hotel.roomDetails")}</Button>
         {!soldOut && offer.left <= 3 && <p className="mt-1 text-xs font-bold text-destructive">{t("ui.property.onlyLeft", { count: offer.left })}</p>}
+        {needsMoreRooms && <div className="mt-3 rounded-xl border border-border bg-secondary/50 p-3 text-sm text-foreground">
+          <p>{t("ui.hotel.minimumRoomsForAdults", { count: minimumRoomCount, adults, rooms: minimumRoomCount, maxGuests: offer.details.maxGuests })}</p>
+          <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => onSetRoomCount(minimumRoomCount)}>{t("ui.hotel.setMinimumRooms", { count: minimumRoomCount })}</Button>
+        </div>}
+        {exceedsRoomLimit && <p role="alert" className="mt-3 rounded-xl border border-border bg-secondary/50 p-3 text-sm text-foreground">
+          {t("ui.hotel.exceedsRoomLimit", { count: adults, rooms: minimumRoomCount, maxRooms: 10 })}
+        </p>}
       </div>
       <div className="flex flex-col items-start justify-between gap-3 sm:items-end sm:text-right">
         <div>
@@ -77,7 +96,7 @@ function RoomCard({ outlet, room }: { outlet: OutletRendererOutlet; room: Outlet
             {t("ui.hotel.totalFor", { count: stay.nights, rooms: stay.rooms })} <ReferencePrice amountMYR={offer.total * stay.rooms} />
           </p>
         </div>
-        <Button type="button" onClick={openGuestDetails} disabled={soldOut}>
+        <Button type="button" onClick={openGuestDetails} disabled={cannotBook}>
           {soldOut ? t("ui.property.soldOut") : t("ui.property.book")}
         </Button>
       </div>
@@ -92,10 +111,32 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
   const { t } = useTranslation("customer");
   const gate = useCustomerCapabilityGate();
   const { savedOutletIds, toggleSavedOutlet } = useWishlist();
-  const [roomCount, setRoomCount] = useState(outlet.stay!.rooms);
-  const [adultCount, setAdultCount] = useState(outlet.stay!.adults);
   const saved = savedOutletIds.has(outlet.id);
   const stay = outlet.stay!;
+  const serverSearchKey = JSON.stringify([outlet.id, stay.checkIn, stay.checkOut, stay.rooms, stay.adults]);
+  const serverSearch = { serverSearchKey, checkIn: stay.checkIn, checkOut: stay.checkOut, roomCount: stay.rooms, adultCount: stay.adults };
+  const [searchValues, setSearchValues] = useState(serverSearch);
+  const activeSearch = searchValues.serverSearchKey === serverSearchKey ? searchValues : serverSearch;
+  const { checkIn, checkOut, roomCount, adultCount } = activeSearch;
+  const nightCount = getStayNightCount(checkIn, checkOut);
+  const stayExceedsNightLimit = nightCount !== null && nightCount > MAX_STAY_NIGHTS;
+  const availabilityStale = checkIn !== stay.checkIn || checkOut !== stay.checkOut || roomCount !== stay.rooms || adultCount !== stay.adults;
+  const minimumCheckOut = (() => {
+    try {
+      const nextDay = addDays(checkIn, 1);
+      return getStayNightCount(checkIn, nextDay) === 1 ? nextDay : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const maximumCheckOut = (() => {
+    try {
+      const lastAllowedDay = addDays(checkIn, MAX_STAY_NIGHTS);
+      return getStayNightCount(checkIn, lastAllowedDay) === MAX_STAY_NIGHTS ? lastAllowedDay : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
   const address = outlet.address || [outlet.city, outlet.state].filter(Boolean).join(", ");
   const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([outlet.name, outlet.address, outlet.city, outlet.state].filter(Boolean).join(", "))}`;
   const lowestRoomPrice = rooms.length ? Math.min(...rooms.map((room) => Number(room.base_price)).filter(Number.isFinite)) : null;
@@ -109,14 +150,37 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
     ...(address ? [["location", t("ui.hotel.location")]] : []),
   ];
 
+  function updateSearchValues(update: Partial<Omit<typeof serverSearch, "serverSearchKey">>) {
+    setSearchValues((current) => ({
+      ...(current.serverSearchKey === serverSearchKey ? current : serverSearch),
+      ...update,
+    }));
+  }
+
   function changeRoomCount(delta: number) {
-    const next = Math.min(10, Math.max(1, roomCount + delta));
-    setRoomCount(next);
-    setAdultCount((current) => Math.max(current, next));
+    setSearchValues((current) => {
+      const base = current.serverSearchKey === serverSearchKey ? current : serverSearch;
+      const next = Math.min(10, Math.max(1, base.roomCount + delta));
+      return { ...base, roomCount: next, adultCount: Math.max(base.adultCount, next) };
+    });
   }
 
   function changeAdultCount(delta: number) {
-    setAdultCount((current) => Math.min(20, Math.max(roomCount, current + delta)));
+    setSearchValues((current) => {
+      const base = current.serverSearchKey === serverSearchKey ? current : serverSearch;
+      return { ...base, adultCount: Math.min(20, Math.max(base.roomCount, base.adultCount + delta)) };
+    });
+  }
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    if (nightCount === null || stayExceedsNightLimit) event.preventDefault();
+  }
+
+  function setMinimumRoomCount(roomCount: number) {
+    setSearchValues((current) => {
+      const base = current.serverSearchKey === serverSearchKey ? current : serverSearch;
+      return { ...base, roomCount, adultCount: Math.max(base.adultCount, roomCount) };
+    });
   }
 
   return (
@@ -134,15 +198,17 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
           {saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
         </SaveToggleButton>
       </header>
-      <form method="get" aria-label={t("ui.hotel.yourStay")} className="mb-6 grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm lg:grid-cols-[minmax(12rem,1.1fr)_minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto] lg:items-end">
+      <form method="get" onSubmit={handleSearchSubmit} aria-label={t("ui.hotel.yourStay")} className="mb-6 grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm lg:grid-cols-[minmax(12rem,1.1fr)_minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto] lg:items-end">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.hotel.property")}</p>
           <p className="mt-1 truncate font-semibold text-foreground">{outlet.name}</p>
           <p className="truncate text-sm text-muted-foreground">{address}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkIn")}<Input type="date" name="checkin" defaultValue={stay.checkIn} required className="mt-1" /></label>
-          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkOut")}<Input type="date" name="checkout" defaultValue={stay.checkOut} required className="mt-1" /></label>
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkIn")}<Input type="date" name="checkin" value={checkIn} onChange={(event) => updateSearchValues({ checkIn: event.target.value })} required className="mt-1" /></label>
+          <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkOut")}<Input type="date" name="checkout" min={minimumCheckOut} max={maximumCheckOut} value={checkOut} onChange={(event) => updateSearchValues({ checkOut: event.target.value })} required className="mt-1" /></label>
+          {nightCount === null && <p role="alert" className="col-span-2 text-xs font-medium text-destructive">{t("ui.hotel.invalidDateRange")}</p>}
+          {stayExceedsNightLimit && <p role="alert" className="col-span-2 text-xs font-medium text-destructive">{t("ui.hotel.stayExceedsNightLimit", { maxNights: MAX_STAY_NIGHTS })}</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -165,10 +231,11 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
           </div>
         </div>
         <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
-          <Button type="submit">{t("ui.property.search")}</Button>
-          <p className="text-xs text-muted-foreground">{t("ui.property.nightsSummary", { count: stay.nights })}</p>
+          <Button type="submit" disabled={nightCount === null || stayExceedsNightLimit}>{t("ui.hotel.checkAvailability")}</Button>
+          {nightCount !== null && <p className="text-xs text-muted-foreground">{t("ui.property.nightsSummary", { count: nightCount })}</p>}
         </div>
       </form>
+      {availabilityStale && nightCount !== null && !stayExceedsNightLimit && <p role="status" aria-live="polite" className="-mt-3 mb-6 rounded-xl border border-border bg-secondary/50 p-3 text-sm text-foreground">{t("ui.hotel.availabilityNeedsRefresh")}</p>}
 
       {gallery.length > 0 && (
         <div className="mb-6">
@@ -183,7 +250,7 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
 
       <section id="rooms" className="scroll-mt-16">
         <h2 className="mb-4 text-2xl font-bold tracking-tight text-foreground">{t("ui.property.rooms")}</h2>
-        <div className="space-y-4">{rooms.map((room) => <RoomCard key={room.id} outlet={outlet} room={room} />)}</div>
+        <div className="space-y-4">{rooms.map((room) => <RoomCard key={room.id} outlet={outlet} room={room} adults={adultCount} rooms={roomCount} availabilityStale={availabilityStale || nightCount === null || stayExceedsNightLimit} onSetRoomCount={setMinimumRoomCount} />)}</div>
       </section>
 
       {hasOverview && (

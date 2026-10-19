@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { findElements, findOne, installTestDom, TestElement, TestEvent, type TestDocument } from "@/components/shared/__tests__/render-test-dom";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 
 vi.mock("react-i18next", () => ({
@@ -13,6 +15,9 @@ vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ ale
 vi.mock("@/components/providers/wishlist", () => ({ useWishlist: () => ({ savedOutletIds: new Set<string>(), toggleSavedOutlet: vi.fn() }) }));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({ useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn() }) }));
 vi.mock("@/components/providers/reference-currency", () => ({ useReferenceCurrency: () => ({ currency: "MYR", snapshot: null, convert: (v: number) => v }) }));
+vi.mock("@/components/customer/stay-guest-details-dialog", () => ({
+  StayGuestDetailsDialog: ({ open }: { open: boolean }) => open ? <div data-testid="stay-guest-details-dialog" /> : null,
+}));
 
 import { HotelPage } from "../hotel-page";
 import { RoomDetailsContent } from "../room-details-dialog";
@@ -40,6 +45,59 @@ function room(id: string, attributes: Record<string, unknown>, photos: string[] 
 
 const full = room("full", { bedType: "1 king bed", maxGuests: 3, sizeSqm: 46.5, view: "Sea view", smoking: "non_smoking", roomAmenities: ["Electronic safe"] }, ["https://example.com/a.jpg"]);
 const empty = room("empty", {});
+
+let document: TestDocument;
+let createRoot: typeof import("react-dom/client").createRoot;
+let container: TestElement;
+let root: ReturnType<typeof createRoot>;
+
+beforeAll(async () => {
+  document = installTestDom();
+  ({ createRoot } = await import("react-dom/client"));
+});
+
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container as unknown as Element);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  document.body.removeChild(container);
+});
+
+async function renderHotelPage(nextOutlet: OutletRendererOutlet = outlet, nextRooms: OutletRendererProduct[] = [full]) {
+  await act(async () => {
+    root.render(<HotelPage outlet={nextOutlet} rooms={nextRooms} gallery={[]} />);
+    await Promise.resolve();
+  });
+}
+
+async function click(element: TestElement) {
+  await act(async () => { element.dispatchEvent(new TestEvent("click", { bubbles: true })); });
+}
+
+async function changeInput(name: string, value: string) {
+  const dateIndex = name === "checkin" ? 0 : 1;
+  const input = findElements(container, (element) => element.tagName === "INPUT" && element.type === "date")[dateIndex];
+  if (!input) throw new Error(`Expected ${name} date input to be rendered`);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(TestElement.prototype, "value")?.set?.call(input, value);
+    input.dispatchEvent(new TestEvent("input", { bubbles: true }));
+    await Promise.resolve();
+  });
+  return input;
+}
+
+function dateInputs() {
+  return findElements(container, (element) => element.tagName === "INPUT" && element.type === "date");
+}
+
+function bookingButton() {
+  return findOne(container, (element) => element.tagName === "BUTTON" &&
+    (element.textContent.includes("ui.property.book") || element.textContent.includes("ui.property.soldOut")));
+}
 
 describe("hotel page", () => {
   it("renders rooms with Book and never links a room to the product page", () => {
@@ -105,6 +163,9 @@ describe("hotel page", () => {
     expect(markup).toContain("name=\"checkout\"");
     expect(markup).toContain("name=\"rooms\"");
     expect(markup).toContain("name=\"adults\"");
+    expect(markup).toContain("method=\"get\"");
+    expect(markup).toContain("ui.hotel.checkAvailability");
+    expect(markup).not.toContain("ui.property.search");
     expect(markup).toContain("A lovely stay");
     expect(markup).toContain("The room was quiet and the staff were kind.");
     expect(markup).toContain("ui.reviews.verifiedPurchase");
@@ -130,5 +191,97 @@ describe("hotel page header", () => {
   it("hides the rating when the hotel has no reviews yet", () => {
     const markup = renderToStaticMarkup(<HotelPage outlet={{ ...outlet, stay: { ...outlet.stay!, rating: 0, reviews: 0 } }} rooms={[empty]} gallery={[]} />);
     expect(markup).not.toContain("ui.hotel.reviewCount");
+  });
+});
+
+describe("hotel search interactions", () => {
+  it("updates the displayed night count immediately when dates change", async () => {
+    await renderHotelPage();
+    expect(container.textContent).toContain("ui.property.nightsSummary:3");
+
+    await changeInput("checkout", "2026-10-29");
+
+    expect(container.textContent).toContain("ui.property.nightsSummary:5");
+    expect(dateInputs()[1].getAttribute("min")).toBe("2026-10-25");
+  });
+
+  it("blocks a same-day check-out instead of submitting invalid dates", async () => {
+    await renderHotelPage();
+    await changeInput("checkout", "2026-10-24");
+
+    expect(container.textContent).toContain("ui.hotel.invalidDateRange");
+    const submit = findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("ui.hotel.checkAvailability"));
+    expect(submit.disabled).toBe(true);
+    const form = findOne(container, (element) => element.tagName === "FORM");
+    const event = new TestEvent("submit", { bubbles: true });
+    await act(async () => { form.dispatchEvent(event); });
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("blocks stays longer than the server-supported 30-night limit", async () => {
+    await renderHotelPage();
+    const checkout = await changeInput("checkout", "2026-11-24");
+
+    expect(checkout.getAttribute("max")).toBe("2026-11-23");
+    expect(container.textContent).toContain("ui.hotel.stayExceedsNightLimit");
+    const submit = findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("ui.hotel.checkAvailability"));
+    expect(submit.disabled).toBe(true);
+    const form = findOne(container, (element) => element.tagName === "FORM");
+    const event = new TestEvent("submit", { bubbles: true });
+    await act(async () => { form.dispatchEvent(event); });
+    expect(event.defaultPrevented).toBe(true);
+    expect(bookingButton().disabled).toBe(true);
+  });
+
+  it("shows the minimum room count and only applies it to the search fields", async () => {
+    await renderHotelPage();
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "ui.hotel.moreAdults"));
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "ui.hotel.moreAdults"));
+
+    expect(container.textContent).toContain("ui.hotel.minimumRoomsForAdults");
+    expect(bookingButton().disabled).toBe(true);
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("ui.hotel.setMinimumRooms:2")));
+
+    expect(container.textContent).toContain("ui.property.roomsCount:2");
+    expect(container.textContent).toContain("ui.hotel.availabilityNeedsRefresh");
+    expect(bookingButton().disabled).toBe(true);
+  });
+
+  it("does not allow booking from stale results and enables booking after refreshed availability arrives", async () => {
+    await renderHotelPage();
+    await changeInput("checkout", "2026-10-28");
+
+    expect(container.textContent).toContain("ui.hotel.availabilityNeedsRefresh");
+    expect(bookingButton().disabled).toBe(true);
+    await click(bookingButton());
+    expect(findElements(container, (element) => element.getAttribute("data-testid") === "stay-guest-details-dialog")).toHaveLength(0);
+
+    await renderHotelPage({ ...outlet, stay: { ...outlet.stay!, checkOut: "2026-10-28", nights: 4 } });
+    expect(container.textContent).not.toContain("ui.hotel.availabilityNeedsRefresh");
+    expect(bookingButton().disabled).toBe(false);
+  });
+
+  it("does not block booking when a room type has no known adult capacity", async () => {
+    await renderHotelPage(outlet, [empty]);
+
+    expect(container.textContent).not.toContain("ui.hotel.minimumRoomsForAdults");
+    expect(bookingButton().disabled).toBe(false);
+  });
+
+  it("keeps the room unavailable when server stock is below the selected room count", async () => {
+    const twoRooms = { ...outlet, stay: { ...outlet.stay!, rooms: 2 } };
+    const lowStock = { ...full, stay: { ...full.stay!, left: 1 } };
+    await renderHotelPage(twoRooms, [lowStock]);
+
+    expect(bookingButton().disabled).toBe(true);
+  });
+
+  it("explains and blocks a room type that would need more than the ten-room search limit", async () => {
+    const twentyAdults = { ...outlet, stay: { ...outlet.stay!, adults: 20, rooms: 1 } };
+    const oneAdultPerRoom = room("single", { maxGuests: 1 });
+    await renderHotelPage(twentyAdults, [oneAdultPerRoom]);
+
+    expect(container.textContent).toContain("ui.hotel.exceedsRoomLimit:20");
+    expect(bookingButton().disabled).toBe(true);
   });
 });

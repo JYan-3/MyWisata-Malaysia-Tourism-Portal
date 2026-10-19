@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { resolveStaySearch, stayNightStartsAt } from "@/lib/customer/outlet-shop";
+import { getMinimumRoomCount, getStayNightCount, resolveStaySearch, stayNightStartsAt } from "@/lib/customer/outlet-shop";
+
+describe("stay search calculations", () => {
+  it("counts valid nights across month boundaries", () => {
+    expect(getStayNightCount("2026-10-30", "2026-11-02")).toBe(3);
+  });
+
+  it.each([
+    ["2026-10-24", "2026-10-24"],
+    ["2026-10-25", "2026-10-24"],
+    ["2026-02-30", "2026-03-02"],
+    ["2026-10-24", "not-a-date"],
+  ])("rejects invalid stay dates %s to %s", (checkIn, checkOut) => {
+    expect(getStayNightCount(checkIn, checkOut)).toBeNull();
+  });
+
+  it("calculates the minimum whole-room count for adult capacity", () => {
+    expect(getMinimumRoomCount(4, 3)).toBe(2);
+    expect(getMinimumRoomCount(6, 3)).toBe(2);
+  });
+});
 
 describe("resolveStaySearch", () => {
   const today = "2026-10-17";
