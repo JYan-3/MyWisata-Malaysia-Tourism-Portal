@@ -38,7 +38,7 @@ function contentSecurityPolicy() {
   const supabaseOrigins = supabase ? [supabase.origin, `wss://${supabase.host}`] : ['https://*.supabase.co', 'wss://*.supabase.co'];
   const directives: Record<string, string[]> = {
     'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), 'https://maps.googleapis.com', 'https://maps.gstatic.com'],
+    'script-src': ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), 'https://maps.googleapis.com', 'https://maps.gstatic.com', 'https://challenges.cloudflare.com'],
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
@@ -54,7 +54,7 @@ function contentSecurityPolicy() {
       ...(isDev ? ['ws:'] : []),
     ],
     'worker-src': ["'self'", 'blob:'],
-    'frame-src': ["'self'"],
+    'frame-src': ["'self'", 'https://challenges.cloudflare.com'],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
@@ -85,6 +85,7 @@ const nextConfig: NextConfig = {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
   serverExternalPackages: ['pdfkit'],
+  outputFileTracingIncludes: { '/api/**': ['./lib/pdf/fonts/*'] },
   experimental: {
     optimizePackageImports: [
       'lucide-react',
@@ -106,9 +107,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
+    qualities: [75, 90],
     remotePatterns: supabaseStorageRemotePattern(),
     localPatterns: [
-      { pathname: '/branding/mywisata-logo-transparent.png', search: '?v=2' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=2' },
       { pathname: '**', search: '' },
     ],
     minimumCacheTTL: 2592000,

@@ -16,6 +16,9 @@ import {
 } from '@/lib/email/templates';
 import { renderStaffInvitationEmail } from '@/lib/email/staff-invitation';
 import type { StaffInvitationEmailInput } from '@/lib/staff-invitations/types';
+import type { AppLocale } from '@/lib/i18n/locale';
+import { emailLocale } from './copy';
+import { ensureCustomEmailDeliveryEnabled } from '@/lib/platform/operations-settings';
 
 export type SendTransactionEmailInput = TransactionEmailInput & { to: string; delivery?: EmailDelivery };
 export type SendAccountEmailInput = AccountEmailInput & { to: string; delivery?: EmailDelivery };
@@ -36,6 +39,8 @@ async function sendRenderedEmail(to: string, rendered: { subject: string; html: 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     throw new Error('Email recipient is invalid');
   }
+
+  if (!delivery) await ensureCustomEmailDeliveryEnabled();
 
   const config = getEmailConfig();
   const transport = nodemailer.createTransport({
@@ -89,7 +94,7 @@ export function sendStaffInvitationEmail(input: SendStaffInvitationEmailInput): 
   return sendRenderedEmail(input.to, renderStaffInvitationEmail(input));
 }
 
-export type SendCustomVendorEmailInput = { to: string; subject: string; body: string };
+export type SendCustomVendorEmailInput = { to: string; subject: string; body: string; locale?: AppLocale };
 
 // Bypasses renderVendorEmail()'s fixed template entirely — used for the
 // admin-drafted/edited vendor recommendation invite (subject+body come from
@@ -99,7 +104,7 @@ export type SendCustomVendorEmailInput = { to: string; subject: string; body: st
 // — running it here risks mangling content the admin chose to include.
 // escapeHtml() is still applied for HTML-injection safety.
 export function sendCustomVendorEmail(input: SendCustomVendorEmailInput): Promise<{ id: string }> {
-  const html = `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">${input.body
+  const html = `<!doctype html><html lang="${emailLocale(input.locale)}"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">${input.body
     .split('\n')
     .filter((line) => line.trim().length > 0)
     .map((line) => `<p>${escapeHtml(line)}</p>`)

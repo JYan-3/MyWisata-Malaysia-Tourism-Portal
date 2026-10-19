@@ -2,74 +2,63 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Compass, MapPin, Search, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
-import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
+import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import dynamic from "next/dynamic";
 
-const DestinationPreviewModal = dynamic(
-  () => import("@/components/customer/destination-preview-modal").then((m) => m.DestinationPreviewModal),
-  { ssr: false, loading: () => null },
-);
 const EventCalendarDialog = dynamic(
   () => import("@/components/customer/event-calendar-dialog").then((m) => m.EventCalendarDialog),
   { ssr: false, loading: () => null },
 );
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ATLAS_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { useEffect, useRef, useState, type TransitionEvent } from "react";
 import { useAuth } from "@/components/providers/auth";
-import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
-import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import { EventPartnersSection, type EventPartner } from "@/components/customer/event-partners-section";
 
-const PLACEHOLDER_TEXTS = [
-  "Where should we wander?",
-  "Try 'Penang street food'...",
-  "Try 'Mount Kinabalu hike'...",
-  "Try 'Langkawi island hopping'...",
-  "Try 'Melaka heritage trail'...",
-  "Try 'Borneo rainforest'..."
+const DESTINATIONS_PER_PAGE = 4;
+const HERO_CROSSFADE_DURATION_MS = 240;
+const FEATURED_DESTINATION_STATES = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
+const FEATURED_DESTINATIONS = FEATURED_DESTINATION_STATES.flatMap((state) =>
+  MALAYSIA_DESTINATIONS.filter((destination) => destination.state === state),
+);
+export const HOME_DESTINATION_IMAGE_OVERRIDES: Record<string, string> = {
+  "Kuala Lumpur": "/customer/klcc-home-hero-match.webp",
+  Penang: "/customer/penang-home-destination.webp",
+  Sabah: "/customer/sabah-home-destination.webp",
+  Melaka: "/customer/melaka-home-destination.webp",
+  Johor: "/customer/johor-home-destination.webp",
+  Sarawak: "/customer/sarawak-home-destination.webp",
+  Kedah: "/customer/kedah-home-destination.webp",
+  Pahang: "/customer/pahang-home-destination.webp",
+  Terengganu: "/customer/terengganu-home-destination.webp",
+  Selangor: "/customer/selangor-home-destination.webp",
+  Perak: "/customer/perak-home-destination.webp",
+  "Negeri Sembilan": "/customer/negeri-sembilan-home-destination.webp",
+  Kelantan: "/customer/kelantan-home-destination.webp",
+  Perlis: "/customer/perlis-home-destination.webp",
+  Putrajaya: "/customer/putrajaya-home-destination.webp",
+  Labuan: "/customer/labuan-home-destination.webp",
+};
+const toHomeDestination = (destination: (typeof MALAYSIA_DESTINATIONS)[number]) => ({
+  ...destination,
+  image: HOME_DESTINATION_IMAGE_OVERRIDES[destination.state] ?? destination.image,
+});
+const HOME_DESTINATIONS = [
+  ...FEATURED_DESTINATIONS.map(toHomeDestination),
+  ...MALAYSIA_DESTINATIONS
+    .filter((destination) => !FEATURED_DESTINATION_STATES.includes(destination.state))
+    .map(toHomeDestination),
 ];
-
-function useTypewriterPlaceholder(texts: string[], typingSpeed = 70, deletingSpeed = 40, pauseDelay = 2000) {
-  const [text, setText] = useState("");
-  const [index, setIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-
-    const currentText = texts[index];
-
-    if (isDeleting) {
-      if (text.length > 0) {
-        timeout = setTimeout(() => setText(currentText.substring(0, text.length - 1)), deletingSpeed);
-      } else {
-        timeout = setTimeout(() => { setIsDeleting(false); setIndex((i) => (i + 1) % texts.length); }, 0);
-      }
-    } else {
-      if (text.length < currentText.length) {
-        timeout = setTimeout(() => setText(currentText.substring(0, text.length + 1)), typingSpeed);
-      } else {
-        timeout = setTimeout(() => setIsDeleting(true), pauseDelay);
-      }
-    }
-
-    return () => clearTimeout(timeout);
-  }, [text, isDeleting, index, texts, typingSpeed, deletingSpeed, pauseDelay]);
-
-  // Provide a minimum height character (zero-width space or space) to avoid collapse
-  return text || " ";
-}
 
 export type DemoVendor = CustomerVendorCardVendor & { businessType: string | null };
 type NearbyPartner = CustomerVendorCardVendor & { distanceKm: number };
@@ -83,6 +72,7 @@ export function CustomerHomeClient({
   campaign,
   campaigns,
   campaignUnavailable = false,
+  titleFontClassName = "",
 }: {
   recommended: ComputedActivity[];
   popular: ComputedActivity[];
@@ -91,30 +81,81 @@ export function CustomerHomeClient({
   campaign: PromotionCampaignPublic | null;
   campaigns?: PromotionCampaignPublic[];
   campaignUnavailable?: boolean;
+  titleFontClassName?: string;
 }) {
   const { t } = useTranslation("customer");
   const { currentUser } = useAuth();
-  const isGuest = !currentUser;
-  const router = useRouter();
   const gate = useCustomerCapabilityGate();
-  const [activeState, setActiveState] = useState(() => MALAYSIA_DESTINATIONS[0].state);
-  const [query, setQuery] = useState("");
   const { savedStates, toggleSaved } = useSavedDestinations();
-  const [previewDestination, setPreviewDestination] = useState<typeof MALAYSIA_DESTINATIONS[number] | null>(null);
+  const isGuest = !currentUser;
+  const [activeState, setActiveState] = useState(() => HOME_DESTINATIONS[0].state);
+  const [outgoingHeroState, setOutgoingHeroState] = useState<string | null>(null);
+  const [incomingHeroVisible, setIncomingHeroVisible] = useState(false);
   const [eventCalendarOpen, setEventCalendarOpen] = useState(false);
   const [nearbyPartners, setNearbyPartners] = useState<NearbyPartner[] | null>(null);
   const [nearbyLocationSource, setNearbyLocationSource] = useState<NearbyLocationSource | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
-  const destinationRailRef = useRef<HTMLDivElement>(null);
-  const placeholderText = useTypewriterPlaceholder(PLACEHOLDER_TEXTS);
-
-  const activeDestination = useMemo(
-    () => MALAYSIA_DESTINATIONS.find((destination) => destination.state === activeState) ?? MALAYSIA_DESTINATIONS[0],
-    [activeState],
+  const activeStateRef = useRef(activeState);
+  const heroCrossfadeTimeoutRef = useRef<number | null>(null);
+  const activeDestination = HOME_DESTINATIONS.find((destination) => destination.state === activeState) ?? HOME_DESTINATIONS[0];
+  const outgoingHeroDestination = outgoingHeroState
+    ? HOME_DESTINATIONS.find((destination) => destination.state === outgoingHeroState) ?? null
+    : null;
+  const activeIndex = HOME_DESTINATIONS.findIndex((destination) => destination.state === activeDestination.state);
+  const destinationPageCount = Math.ceil(HOME_DESTINATIONS.length / DESTINATIONS_PER_PAGE);
+  const destinationPage = Math.floor(activeIndex / DESTINATIONS_PER_PAGE);
+  const currentPageDestinations = HOME_DESTINATIONS.slice(
+    destinationPage * DESTINATIONS_PER_PAGE,
+    (destinationPage + 1) * DESTINATIONS_PER_PAGE,
   );
-  const activeIndex = MALAYSIA_DESTINATIONS.findIndex((destination) => destination.state === activeDestination.state);
-  const nextDestination = MALAYSIA_DESTINATIONS[(activeIndex + 1) % MALAYSIA_DESTINATIONS.length];
+  const activeHeroImage = activeDestination.image;
+
+  function clearHeroCrossfadeTimeout() {
+    if (heroCrossfadeTimeoutRef.current !== null) {
+      window.clearTimeout(heroCrossfadeTimeoutRef.current);
+      heroCrossfadeTimeoutRef.current = null;
+    }
+  }
+
+  function settleHeroCrossfade(destinationState: string) {
+    if (destinationState !== activeStateRef.current) return;
+    clearHeroCrossfadeTimeout();
+    setOutgoingHeroState(null);
+    setIncomingHeroVisible(false);
+  }
+
+  function completeHeroPhotoTransition(
+    event: TransitionEvent<HTMLImageElement>,
+    destinationState: string,
+  ) {
+    if (event.propertyName !== "opacity" || event.target !== event.currentTarget) return;
+    settleHeroCrossfade(destinationState);
+  }
+
+  function handleHeroPhotoLoaded(destinationState: string) {
+    if (destinationState !== activeStateRef.current || outgoingHeroState === null) return;
+    setIncomingHeroVisible(true);
+    clearHeroCrossfadeTimeout();
+    heroCrossfadeTimeoutRef.current = window.setTimeout(
+      () => settleHeroCrossfade(destinationState),
+      HERO_CROSSFADE_DURATION_MS + 80,
+    );
+  }
+
+  function selectDestination(destinationState: string) {
+    if (destinationState === activeStateRef.current) return;
+    clearHeroCrossfadeTimeout();
+    const visibleHeroState = incomingHeroVisible
+      ? activeStateRef.current
+      : outgoingHeroState ?? activeStateRef.current;
+    activeStateRef.current = destinationState;
+    setOutgoingHeroState(visibleHeroState);
+    setIncomingHeroVisible(false);
+    setActiveState(destinationState);
+  }
+
+  useEffect(() => () => clearHeroCrossfadeTimeout(), []);
 
   async function loadNearbyPartners(coordinates?: { latitude: number; longitude: number }) {
     setNearbyLoading(true);
@@ -161,135 +202,153 @@ export function CustomerHomeClient({
     );
   }
 
-  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmedQuery = query.trim();
-    router.push(trimmedQuery ? `/customer/partners?q=${encodeURIComponent(trimmedQuery)}` : "/customer/explore");
-  }
-
-  function scrollDestinations(direction: "previous" | "next") {
-    const rail = destinationRailRef.current;
-    if (!rail) return;
-    const distance = Math.max(rail.clientWidth * 0.75, 280);
-    rail.scrollBy({ left: direction === "next" ? distance : -distance, behavior: "smooth" });
+  function changeDestinationPage(direction: "previous" | "next") {
+    const nextPage = (destinationPage + (direction === "next" ? 1 : -1) + destinationPageCount) % destinationPageCount;
+    const nextPageDestinations = HOME_DESTINATIONS.slice(
+      nextPage * DESTINATIONS_PER_PAGE,
+      (nextPage + 1) * DESTINATIONS_PER_PAGE,
+    );
+    if (nextPageDestinations[0]) selectDestination(nextPageDestinations[0].state);
   }
 
   const highlightItems = groupAccommodationByProperty(popular).slice(0, 4);
   const highlightIds = new Set(highlightItems.map((activity) => activity.id));
   const forYouItems = groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
-  const quickSearches = [
-    { label: t("ui.home.penangFoodSearch"), query: "Penang" },
-    { label: t("ui.home.langkawiIslandSearch"), query: "Langkawi" },
-    { label: t("ui.home.melakaHeritageSearch"), query: "Melaka" },
-    { label: t("ui.home.sabahNatureSearch"), query: "Sabah" },
-  ];
-
   return (
-    <div className="bg-background min-h-screen text-foreground pb-20">
-      {/* 1. Hero Section */}
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary dark:bg-[#010066] text-white lg:h-auto lg:min-h-0">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_12%,rgba(255,204,0,0.2),transparent_24%),radial-gradient(circle_at_8%_85%,rgba(84,112,210,0.18),transparent_30%),linear-gradient(125deg,#020044_0%,#05083d_58%,#0a243b_100%)]" />
-        <div className="atlas-ambient absolute left-[55%] top-20 -z-10 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
-        <div className="atlas-ambient atlas-ambient-delayed absolute left-[58%] top-32 -z-10 h-56 w-56 rounded-full border border-white/10 sm:h-72 sm:w-72" />
+    <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
+      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-96px)] overflow-hidden bg-[#061326] text-white lg:min-h-[calc(100svh-64px)]">
+        <div className="absolute inset-0 z-0 overflow-hidden bg-[#061326]">
+          <Image key={`${activeDestination.state}-placeholder`} src={activeHeroImage} alt="" aria-hidden="true" fill quality={75} sizes="(max-width: 639px) 44vw, (max-width: 1023px) 45vw, 340px" className={`atlas-hero-placeholder object-cover ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`} />
+          {outgoingHeroDestination && (
+            <Image
+              key={`${outgoingHeroDestination.state}-outgoing`}
+              src={outgoingHeroDestination.image}
+              alt=""
+              aria-hidden="true"
+              fill
+              loading="eager"
+              quality={90}
+              sizes="100vw"
+              className={`atlas-hero-photo atlas-hero-photo--outgoing object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`}
+            />
+          )}
+          <Image
+            key={activeDestination.state}
+            src={activeHeroImage}
+            alt=""
+            fill
+            loading="eager"
+            quality={90}
+            sizes="100vw"
+            onLoad={() => handleHeroPhotoLoaded(activeDestination.state)}
+            onTransitionEnd={(event) => completeHeroPhotoTransition(event, activeDestination.state)}
+            className={`atlas-hero-photo object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,15,36,0.27)_0%,rgba(4,15,36,0.16)_27%,rgba(4,15,36,0.04)_64%,rgba(4,15,36,0.01)_100%),linear-gradient(0deg,rgba(4,17,39,0.36)_0%,rgba(4,17,39,0.16)_22%,rgba(4,17,39,0.02)_59%),linear-gradient(180deg,rgba(4,17,39,0.05)_0%,rgba(4,17,39,0)_52%)]" />
+        </div>
 
-        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:flex lg:flex-col lg:px-8 lg:pb-6 lg:pt-4">
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:mb-2">
-            <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/60"><Compass size={16} className="text-[#ffcc00]" /> {ATLAS_BRAND_NAME}</div>
-            <Link href="/customer/explore" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 transition hover:border-[#ffcc00] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">{t("ui.home.viewFullMap")} <ArrowRight size={14} /></Link>
-          </div>
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-96px)] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 lg:min-h-[calc(100svh-64px)] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
+          <header className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]">
+            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,9vw,9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
+              {t("ui.guest.discoverMalaysia")}
+            </h1>
+            <svg
+              className="atlas-title-accent ml-28 mt-8 block w-[clamp(132px,16vw,250px)] text-[#f4b900] sm:ml-32 sm:mt-9"
+              viewBox="0 0 228 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                className="atlas-title-accent__stroke"
+                d="M4 20 C 72 15 146 5 222 7"
+                pathLength={1}
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="5"
+              />
+            </svg>
+          </header>
 
-          <div className="grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:gap-7 lg:flex-none lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:gap-10">
-            <div className="max-w-2xl">
-              <h1 className="atlas-enter atlas-delay-1 max-w-xl font-[family-name:var(--font-display)] text-5xl font-bold leading-[0.96] tracking-[-0.04em] text-[#ffffff] sm:text-7xl lg:text-6xl">{t("ui.home.exploreMalaysia")}</h1>
-
-              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-2 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-card p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center lg:mt-5">
-                <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholderText} aria-label={t("ui.home.searchAria")} className="min-w-0 flex-1 bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" /></div>
-                <button type="submit" className="atlas-shimmer inline-flex items-center justify-center gap-2 rounded-[16px] bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.startExploring")} <ArrowRight size={15} /></button>
-              </form>
-
-              <div className="atlas-enter atlas-delay-3 mt-8 grid max-w-xl grid-cols-2 gap-4 border-t border-white/15 pt-5 lg:mt-4 lg:pt-3">
-                <div><p className="font-mono text-lg font-bold text-[#ffcc00]">{MALAYSIA_DESTINATIONS.length}</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">{t("ui.home.destinationCount")}</p></div>
-                <div><p className="font-mono text-lg font-bold text-[#ffcc00]">{popular.length}</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">{t("ui.home.experienceCount")}</p></div>
+          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-enter atlas-delay-2 mt-10 w-full">
+            <div className="mb-3 flex items-center justify-between gap-4 sm:mb-1">
+              <div className="flex items-center gap-3">
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
+                <Link href={destinationHref(activeDestination.state)} className="inline-flex items-center gap-1 text-xs font-semibold text-white/85 transition hover:text-[#f4bd00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd00] sm:text-sm">
+                  {t("ui.home.viewDestination")} <ArrowRight size={14} />
+                </Link>
+                <SaveToggleButton
+                  appearance="pill"
+                  saved={savedStates.has(activeDestination.state)}
+                  aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}
+                  onClick={() => {
+                    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
+                    void toggleSaved(activeDestination.state);
+                  }}
+                  className="px-2.5 py-1 text-[11px] sm:px-3 sm:text-xs"
+                  iconSize={13}
+                >
+                  {savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}
+                </SaveToggleButton>
               </div>
-
-              <nav aria-label={t("ui.home.quickSearches")} className="atlas-enter atlas-delay-4 mt-5 max-w-xl">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">{t("ui.home.quickSearches")}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {quickSearches.map(({ label, query }) => (
-                    <Link
-                      key={query}
-                      href={`/customer/partners?q=${encodeURIComponent(query)}`}
-                      className="group flex min-h-11 items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-semibold leading-snug text-white/80 transition hover:border-[#ffcc00]/45 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30"
-                    >
-                      <span className="min-w-0">{label}</span>
-                      <ArrowUpRight size={13} className="shrink-0 text-[#ffcc00]" aria-hidden="true" />
-                    </Link>
-                  ))}
-                </div>
-              </nav>
-            </div>
-
-            <div className="atlas-enter atlas-delay-3 relative mx-auto aspect-[0.78] w-full max-w-[460px] md:aspect-auto md:min-h-[500px] md:max-w-[390px] lg:min-h-[500px] lg:max-w-[560px]">
-              <div className="atlas-depth-card absolute right-0 top-7 hidden w-[72%] rotate-[5deg] overflow-hidden rounded-[28px] border border-white/20 bg-[#11115f] shadow-2xl lg:block lg:top-8 lg:h-[380px] lg:w-[68%]" aria-hidden="true">
-                <div className="relative aspect-[0.72] opacity-80 lg:h-full lg:aspect-auto"><Image src={nextDestination.image} alt="" fill sizes="320px" className="object-cover" /><div className="absolute inset-0 bg-[#010066]/35" /></div>
-              </div>
-              <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[88%]">
-                <div className="relative aspect-[0.78] lg:h-[500px] lg:aspect-auto">
-                  <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 560px" priority className="atlas-active-image object-cover object-top" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.viewDestination")} <ArrowUpRight size={14} /></button><SaveToggleButton onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(activeDestination.state); }} appearance="pill" saved={savedStates.has(activeDestination.state)} aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")} className="atlas-press">{savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}</SaveToggleButton></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <nav aria-label={t("ui.home.destinationCarousel")} className="mt-12 border-t border-white/15 pt-8 lg:mt-8 lg:pt-6">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{t("ui.home.exploreDestinations")}</p>
-                <p className="mt-1 text-xs text-white/55">{t("ui.home.swipeDestinations", { count: MALAYSIA_DESTINATIONS.length })}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <div className="flex items-center gap-1" aria-label={t("ui.home.destinationCarouselControls")}>
-                  <button type="button" onClick={() => scrollDestinations("previous")} aria-label={t("ui.map.previous")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 dark:hover:bg-card/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
-                    <ChevronLeft size={16} />
+              <div className="flex items-center gap-3 sm:gap-5">
+                <p aria-live="polite" className="min-w-[54px] text-right text-xs font-bold tracking-[0.08em] text-white/70 sm:text-sm">
+                  <span className="text-[#f4bd00]">{String(destinationPage + 1).padStart(2, "0")}</span>
+                  {" "}<span className="mx-1.5 text-white/35">/</span>{" "}
+                  {String(destinationPageCount).padStart(2, "0")}
+                </p>
+                <div className="flex items-center gap-2" aria-label={t("ui.home.destinationCarouselControls")}>
+                  <button type="button" onClick={() => changeDestinationPage("previous")} aria-label={t("ui.map.previous")} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#f4bd00]/80 text-[#f4bd00] transition duration-300 hover:bg-[#f4bd00] hover:text-[#071426] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/35 sm:h-10 sm:w-10">
+                    <ChevronLeft size={17} />
                   </button>
-                  <button type="button" onClick={() => scrollDestinations("next")} aria-label={t("ui.map.next")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 dark:hover:bg-card/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
-                    <ChevronRight size={16} />
+                  <button type="button" onClick={() => changeDestinationPage("next")} aria-label={t("ui.map.next")} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#f4bd00]/80 text-[#f4bd00] transition duration-300 hover:bg-[#f4bd00] hover:text-[#071426] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/35 sm:h-10 sm:w-10">
+                    <ChevronRight size={17} />
                   </button>
                 </div>
-                <Link href="/customer/explore" className="text-xs font-bold text-[#ffcc00] hover:underline">{t("ui.actions.viewAll")}</Link>
               </div>
             </div>
-            <div ref={destinationRailRef} className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory scroll-smooth">
-              {MALAYSIA_DESTINATIONS.map((dest) => {
-                const isSelected = dest.state === activeState;
+            <div key={destinationPage} className="atlas-destination-grid grid grid-cols-2 gap-x-3 gap-y-5 pb-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4 lg:gap-4">
+              {currentPageDestinations.map((destination) => {
+                const isSelected = destination.state === activeState;
+                const isSaved = savedStates.has(destination.state);
+                const saveLabel = t(isSaved ? "ui.map.savedToAtlas" : "ui.map.saveToAtlas");
                 return (
-                  <button
-                    key={dest.state}
-                    onClick={() => setActiveState(dest.state)}
-                    className={`group relative h-48 w-36 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40 sm:h-56 sm:w-44 lg:h-44 transition border ${isSelected ? "border-[#ffcc00] ring-2 ring-[#ffcc00]/35" : "border-white/15 hover:border-white/40"}`}
-                  >
-                    <Image src={dest.image} alt={dest.state} fill className="object-cover object-top transition duration-700 group-hover:scale-105" sizes="(min-width: 640px) 176px, 144px" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                    <div className="absolute bottom-3 left-3 text-left">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#ffcc00]">{dest.zone}</p>
-                      <p className="mt-1 text-sm font-bold text-white">{dest.state}</p>
-                    </div>
-                  </button>
+                  <div key={destination.state} className="relative min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => selectDestination(destination.state)}
+                      aria-pressed={isSelected}
+                      className={`group relative block h-[108px] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 sm:h-[138px] lg:h-[168px] ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
+                    >
+                      <Image src={destination.image} alt="" fill sizes="(max-width: 639px) 44vw, (max-width: 1023px) 45vw, 340px" className="object-cover transition duration-700 group-hover:scale-[1.045]" />
+                      <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                      <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
+                    </button>
+                    <SaveToggleButton
+                      appearance="icon"
+                      saved={isSaved}
+                      aria-label={saveLabel}
+                      title={saveLabel}
+                      onClick={() => {
+                        if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
+                        void toggleSaved(destination.state);
+                      }}
+                      className="absolute right-2 top-2 z-10 h-9 w-9 sm:right-3 sm:top-3"
+                    />
+                    <span className={`atlas-selected-progress absolute -bottom-2.5 left-1 h-[3px] w-[46%] rounded-full bg-[#f4bd00] ${isSelected ? "atlas-selected-progress--active" : ""}`} aria-hidden="true" />
+                  </div>
                 );
               })}
             </div>
           </nav>
-
-          <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-white/15 bg-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:mt-6">
-            <h2 className="text-lg font-bold text-white">{t("ui.home.eventCalendar")}</h2>
-            <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-white dark:hover:bg-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
-          </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-border/70 bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <h2 className="text-lg font-bold text-foreground">{t("ui.home.eventCalendar")}</h2>
+          <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
+        </div>
         <PromotionCampaignSpotlight campaign={campaign} campaigns={campaigns} unavailable={campaignUnavailable} />
 
         {highlightItems.length > 0 && (
@@ -403,136 +462,113 @@ export function CustomerHomeClient({
         </section>
       </div>
 
-      {previewDestination && (
-        <DestinationPreviewModal
-          destination={previewDestination}
-          onExplore={() => {
-            setPreviewDestination(null);
-            router.push(destinationHref(previewDestination.state));
-          }}
-          onClose={() => setPreviewDestination(null)}
-        />
-      )}
       {eventCalendarOpen && <EventCalendarDialog open onOpenChange={setEventCalendarOpen} />}
 
-      {/* Hero motion. The markup above was copied from the design-demo prototype
-          without this block, so every atlas-* class below had no rule and the hero
-          sat still. Restored from app/customer/design-demo/design-demo-client.tsx,
-          trimmed to the classes this page actually uses. */}
+      {/* Keep the title, photo, and carousel motion subtle and disable it for reduced-motion users. */}
       <style jsx>{`
         :global(:root) {
           --atlas-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-          --atlas-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
         }
 
         .atlas-enter {
-          animation: atlas-enter 900ms var(--atlas-ease-out) both;
+          animation: atlas-enter 760ms var(--atlas-ease-out) both;
         }
 
         .atlas-delay-1 { animation-delay: 80ms; }
         .atlas-delay-2 { animation-delay: 150ms; }
-        .atlas-delay-3 { animation-delay: 230ms; }
-        .atlas-delay-4 { animation-delay: 330ms; }
-        .atlas-delay-5 { animation-delay: 430ms; }
 
-        .atlas-ambient {
-          animation: atlas-orbit 18s var(--atlas-ease-in-out) infinite alternate;
-          transform-origin: 50% 50%;
+        :global(.atlas-hero-photo) {
+          animation: atlas-photo-breathe 22s ease-in-out 850ms infinite alternate;
+          filter: brightness(1.07) contrast(1.06) saturate(1.08);
+          transform-origin: center;
         }
 
-        .atlas-ambient-delayed { animation-delay: -7s; animation-direction: alternate-reverse; }
-
-        .atlas-depth-card { animation: atlas-depth-drift 8s var(--atlas-ease-in-out) infinite alternate; }
-
-          .atlas-active-card { animation: atlas-card-in 720ms var(--atlas-ease-out) both; }
-
-        /* :global because styled-jsx only adds its scoping class to plain DOM
-           elements, never to an imported component like next/image — a scoped
-           rule here would never match the <Image> and the zoom would not run. */
-        :global(.atlas-active-image) { animation: atlas-photo-breathe 16s var(--atlas-ease-in-out) infinite alternate; }
-
-        .atlas-press {
-          transition-property: transform, background-color, border-color, color, box-shadow;
-          transition-duration: 160ms;
-          transition-timing-function: var(--atlas-ease-out);
+        :global(.atlas-hero-photo--incoming) {
+          opacity: 0;
+          transition: opacity 240ms var(--atlas-ease-out);
         }
 
-        .atlas-press:active { transform: scale(0.97); }
+        :global(.atlas-hero-photo--incoming-visible) { opacity: 1; }
 
-        .atlas-shimmer {
-          position: relative;
-          isolation: isolate;
-          overflow: hidden;
-          transform: translateZ(0);
+        .atlas-selected-progress {
+          opacity: 0;
+          transform: scaleX(0.85);
+          transform-origin: left center;
+          transition: transform 160ms var(--atlas-ease-out), opacity 160ms var(--atlas-ease-out);
         }
 
-        .atlas-shimmer::after {
-          position: absolute;
-          inset: 0 auto 0 -45%;
-          width: 36%;
-          content: "";
-          background: linear-gradient(105deg, transparent, rgba(255,255,255,0.54), transparent);
-          transform: skewX(-18deg);
-          animation: atlas-sheen 4.8s var(--atlas-ease-in-out) infinite;
-          pointer-events: none;
+        .atlas-selected-progress--active {
+          opacity: 1;
+          transform: scaleX(1);
         }
 
-        .atlas-shimmer > :global(*) { position: relative; z-index: 1; }
+        .atlas-title-accent { animation: atlas-accent-in 700ms var(--atlas-ease-out) 460ms both; }
+        .atlas-title-accent__stroke {
+          stroke-dasharray: 1;
+          stroke-dashoffset: 1;
+          animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
+        }
+        .atlas-destination-grid { animation: atlas-enter 480ms var(--atlas-ease-out) both; }
+
+        .atlas-discover-title {
+          background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 25%, var(--malaysia-yellow) 43%, color-mix(in srgb, var(--malaysia-red) 55%, #fff1d2) 58%, #f1b948 76%, #f1b948 100%);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-style: italic;
+          font-weight: 400;
+          text-shadow: 0 3px 18px color-mix(in srgb, var(--malaysia-blue) 38%, transparent);
+        }
+
+        :global(html:lang(zh-CN)) .atlas-discover-title {
+          background-image: none;
+          color: #fff6df;
+          font-family: var(--font-display), serif;
+          font-style: normal;
+          font-weight: 600;
+          letter-spacing: -0.055em;
+          -webkit-text-fill-color: #fff6df;
+        }
 
         @keyframes atlas-enter {
-          from { opacity: 0; transform: translateY(24px); filter: blur(6px); }
-          to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-
-        @keyframes atlas-orbit {
-          from { transform: rotate(-9deg) scale(0.96); opacity: 0.55; }
-          to { transform: rotate(8deg) scale(1.05); opacity: 1; }
-        }
-
-        @keyframes atlas-depth-drift {
-          from { transform: translate3d(0, 0, 0) rotate(5deg); }
-          to { transform: translate3d(-12px, -10px, 0) rotate(8deg); }
-        }
-
-        @keyframes atlas-card-in {
-          from { opacity: 0; transform: translate3d(0, 26px, 0) scale(0.97); filter: blur(3px); }
-          to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes atlas-photo-breathe {
-          from { transform: scale(1.02); }
-          to { transform: scale(1.09); }
+          from { transform: scale(1.005); }
+          to { transform: scale(1.015); }
         }
 
-        @keyframes atlas-sheen {
-          0%, 35% { transform: translateX(0) skewX(-18deg); opacity: 0; }
-          50% { opacity: 1; }
-          75%, 100% { transform: translateX(420%) skewX(-18deg); opacity: 0; }
+        @keyframes atlas-accent-in {
+          from { opacity: 0; transform: translateX(-8px); }
+          to { opacity: 1; transform: translateX(0); }
         }
 
-        @media (hover: hover) and (pointer: fine) {
-          .atlas-shimmer:hover::after { animation-duration: 1.6s; }
-        }
-
-        @media (min-width: 1024px) and (max-height: 850px) {
-          .atlas-hero-section {
-            height: auto;
-            min-height: 0;
-          }
+        @keyframes atlas-accent-draw {
+          to { stroke-dashoffset: 0; }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .atlas-enter,
-          .atlas-ambient,
-          .atlas-depth-card,
-           .atlas-active-card,
-          .atlas-shimmer::after {
+          .atlas-title-accent,
+          .atlas-destination-grid,
+          :global(.atlas-hero-photo) {
             animation: none;
           }
 
-          :global(.atlas-active-image) { animation: none; transform: none; }
+          :global(.atlas-hero-photo--incoming) {
+            transition-duration: 120ms;
+          }
 
-          .atlas-press:active { transform: none; }
+          .atlas-selected-progress {
+            transition-duration: 100ms;
+          }
+
+          .atlas-title-accent__stroke {
+            stroke-dashoffset: 0;
+            animation: none;
+          }
         }
       `}</style>
     </div>

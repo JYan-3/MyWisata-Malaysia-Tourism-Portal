@@ -31,4 +31,14 @@ describe('recommendation content localization', () => {
     expect(prompt.user).toContain('[URL]');
     expect(prompt.user).not.toContain('vendor.example');
   });
+
+  it('uses English when translating supported public-content fields to English', () => {
+    const prompt = buildTranslationPrompt({
+      field: 'tagline',
+      sourceText: 'A welcoming coastal retreat.',
+      locale: 'en',
+    });
+
+    expect(prompt.user).toContain('Translate this tagline into English.');
+  });
 });

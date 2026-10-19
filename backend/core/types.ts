@@ -291,7 +291,7 @@ export interface PlaceAccess {
   imageUrl: string | null;
 }
 
-/** A source-backed attraction activity with no MyWisata vendor checkout path. */
+/** A source-backed attraction activity with no MyLawatan vendor checkout path. */
 export interface PlaceInformationalActivity {
   id: string;
   placeId: string;
@@ -529,6 +529,7 @@ export interface AdminKycSubmission {
 }
 
 export interface AdminKycSubmissionDetail extends AdminKycSubmission {
+  precheck?: { status: string; outcome: string | null; updatedAt: string } | null;
   assignedTo: string | null;
   claimedAt: string | null;
   legalIdentity: {
@@ -548,6 +549,7 @@ export interface AdminKycReviewDetail {
     avatarInitial: string;
   };
   assignment: {
+    reviewVersion: number;
     assignedTo: string | null;
     claimedAt: string | null;
     isAssignedToCurrentUser: boolean;

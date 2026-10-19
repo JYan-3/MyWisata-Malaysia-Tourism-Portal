@@ -166,7 +166,7 @@ export async function POST(req: Request) {
 
   if (event.type === 'refund.created' || event.type === 'refund.updated' || event.type === 'refund.failed') {
     const providerRefund = event.data.object as Stripe.Refund;
-    const refundId = providerRefund.metadata?.mywisata_refund_id;
+    const refundId = providerRefund.metadata?.mylawatan_refund_id ?? providerRefund.metadata?.mywisata_refund_id;
     // Ignore Stripe refunds created outside this order refund flow.
     if (refundId) {
       const outcome = providerRefund.status === 'succeeded'

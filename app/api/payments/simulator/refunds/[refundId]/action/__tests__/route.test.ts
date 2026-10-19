@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { verifySimulatorWebhookSignature } from '@/lib/payments/simulator-webhook';
 
 const REFUND_ID = '33333333-3333-4333-8333-333333333333';

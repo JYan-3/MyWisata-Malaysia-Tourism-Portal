@@ -5,7 +5,7 @@ import { buildCheckoutRequestHash, normalizeCheckoutRequest } from '@/lib/checko
 import { getCachedActivities } from '@/lib/cache/catalogue-cache';
 import { cartItemKey, cartItemTupleKey, cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, StayBookingDetails, Voucher } from '@/backend/core/types';
-import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
+import { activeCheckoutOrderId, getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import { planCheckoutPayment, startCheckoutPayment } from '@/lib/checkout/start-payment';
 import { stampReferralFromCookie } from '@/lib/affiliate/referral-cookie';
 import { normalizeVoucherCode } from '@/lib/validation/postgrest-filter';
@@ -314,7 +314,7 @@ export async function POST(request: Request) {
     const rawMessage = prepareError.message ?? "checkout_failed";
     const code = getCheckoutErrorCode(rawMessage);
     return privateCheckoutJson(
-      { error: { code, message: getCheckoutErrorMessage(code) } },
+      { error: { code, message: getCheckoutErrorMessage(code), ...(code === 'ACTIVE_CHECKOUT_EXISTS' ? { activeOrderId: activeCheckoutOrderId(prepareError.details) } : {}) } },
       { status: 409 },
     );
   }

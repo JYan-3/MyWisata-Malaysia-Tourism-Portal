@@ -2,7 +2,21 @@ import type { BookingSlot } from "@/backend/core/types";
 import { isBookingSlotAvailable } from "@/lib/customer/booking-slot-presenter";
 
 export type BookingSlotLookupStatus = "loading" | "loaded" | "error";
+export interface BookingSlotLookupState {
+  requestToken: symbol | null;
+  status: BookingSlotLookupStatus;
+}
 export type CartLineAvailabilityStatus = "available" | "checking" | "error" | "unavailable";
+
+/** Keep prior slot results in checking state until the current request resolves. */
+export function resolveBookingSlotLookupStatus(
+  hasBookingActivity: boolean,
+  currentRequestToken: symbol,
+  lookup: BookingSlotLookupState,
+): BookingSlotLookupStatus {
+  if (!hasBookingActivity) return "loaded";
+  return lookup.requestToken === currentRequestToken ? lookup.status : "loading";
+}
 
 export interface CartLineAvailabilityInput {
   slotId?: string;

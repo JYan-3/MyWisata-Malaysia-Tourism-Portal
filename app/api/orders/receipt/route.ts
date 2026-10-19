@@ -1,3 +1,4 @@
+import { emailCopy, emailLocale } from '@/lib/email/copy';
 import { authorizeOrder } from '@/lib/checkout/order-access';
 import { reserveGuestRateLimit } from '@/lib/checkout/guest-session';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
 
   const { data: userRow } = await service
     .from('users')
-    .select('email, full_name')
+    .select('email, full_name, preferred_locale')
     .eq('id', user.id)
     .single();
 
@@ -47,14 +48,15 @@ export async function POST(request: Request) {
 
   try {
     await sendOrderReceiptEmail({
+      locale: emailLocale(userRow?.preferred_locale),
       recipientEmail,
-      recipientName: userRow?.full_name ?? 'there',
+      recipientName: userRow?.full_name ?? emailCopy(userRow?.preferred_locale).there,
       orderId: order.id,
       createdAt: order.created_at,
       paymentMethod: order.payment_method ?? 'mock_card',
       items: items.map((i) => ({
         activityName: i.product_name,
-        variantLabel: i.variant_name ?? 'Standard',
+        variantLabel: i.variant_name ?? emailCopy(userRow?.preferred_locale).standard,
         unitPrice: i.unit_price,
         qty: i.quantity,
       })),

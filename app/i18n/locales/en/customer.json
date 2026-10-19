@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "Complete or cancel your existing unpaid order before starting another checkout.",
+    "reviewExisting": "Review existing unpaid order",
+    "cancelCheckout": "Cancel this unpaid checkout",
+    "cancelHelp": "Cancel only if you have not paid. Stop using the old payment link. Any payment received after cancellation needs Admin review."
+  },
   "navigation": {
     "home": "Home",
     "search": "Partners",
@@ -173,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "Machine translated",
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "pending": "Translation is being prepared"
+    },
     "accessibility": {
       "carousel": "carousel"
     },
@@ -457,7 +469,7 @@
       "orders": "orders",
       "newestFirst": "Newest first",
       "bookingReference": "Booking reference",
-      "mywisataOutlet": "MyLawatan outlet",
+      "mylawatanOutlet": "MyLawatan outlet",
       "localVendor": "Local vendor",
       "contactViaChat": "Contact via chat",
       "type": "Type",
@@ -880,32 +892,31 @@
     },
     "wishlist": {
       "shortlist": "Your travel shortlist",
-      "title": "Saved places & experiences",
-      "description": "Keep the destinations that change your pace and the experiences you want to book next.",
+      "title": "Saved places & items",
       "explore": "Explore Malaysia",
       "keepClose": "Keep this one close",
       "savedPlaces": "Saved places",
       "ready": "Ready when you are",
-      "savedExperiences": "Saved experiences",
+      "savedExperiences": "Saved items",
       "allSaved": "All saved",
       "savedContent": "Saved content",
       "placeCount": "{{count}} places",
-      "experienceCount": "{{count}} experiences",
-      "unavailable": "Saved experiences unavailable",
+      "experienceCount": "{{count}} items",
+      "unavailable": "Saved items unavailable",
       "tryAgain": "Please try again in a moment.",
       "savedOn": "Saved {{date}}",
       "removePlace": "Remove {{name}} from saved places",
       "removePlaceShort": "Remove saved place",
       "placeCount_one": "{{count}} places",
       "placeCount_other": "{{count}} places",
-      "experienceCount_one": "{{count}} experiences",
-      "experienceCount_other": "{{count}} experiences",
+      "experienceCount_one": "{{count}} item",
+      "experienceCount_other": "{{count}} items",
       "noPlaces": "No saved places yet",
       "savePlaces": "Save places you want to visit.",
-      "noExperiences": "No saved experiences yet",
-      "saveExperiences": "Save experiences you want to book.",
+      "noExperiences": "No saved items yet",
+      "saveExperiences": "Save food, activities, and other products to find them here.",
       "empty": "Nothing saved yet",
-      "saveBoth": "Save places and experiences to build your shortlist.",
+      "saveBoth": "Save places and products to build your shortlist.",
       "savedHotels": "Saved hotels"
     },
     "activity": {
@@ -920,10 +931,10 @@
       "outletBookingDetails": "Each outlet sets its own price, availability and booking times. Open an outlet menu to buy or book this experience.",
       "view": "View {{name}}",
       "imageUnavailable": "{{name}} image unavailable",
-      "removeSaved": "Remove {{name}} from saved experiences",
+      "removeSaved": "Remove {{name}} from saved items",
       "save": "Save {{name}}",
-      "removeSavedShort": "Remove from saved experiences",
-      "saveShort": "Save to wishlist",
+      "removeSavedShort": "Remove saved item",
+      "saveShort": "Save item",
       "visitShop": "Visit shop · {{vendor}}",
       "moreFromOutlet": "More from this outlet",
       "moreFromVendor": "More from this vendor",
@@ -1050,7 +1061,7 @@
       }
     },
     "outlet": {
-      "verifiedMyWisata": "Verified MyLawatan outlet",
+      "verifiedMyLawatan": "Verified MyLawatan outlet",
       "dropImage": "Drop image here",
       "verifiedGuestsRecommend": "Verified guests recommend this outlet.",
       "planVisit": "Plan your visit",
@@ -1366,13 +1377,13 @@
       "clickUpload": "Click to upload {{side}} of document",
       "fileHint": "JPG, PNG or WebP · max 5 MB",
       "clickChange": "click to change",
-      "consent": "I agree that MyLawatan may use a third-party AI service to assist with reading my document. A human administrator makes the final KYC decision.",
+      "consent": "I agree to private document processing for KYC. Evidence is not sent to external AI services. An authorised human makes the final decision.",
       "submitting": "Submitting…",
       "startNew": "Start new submission",
       "submitForReview": "Submit for review",
       "uploadRequired": "Please upload a document photo",
       "submissionFailed": "Submission failed.",
-      "manualReview": "AI document reading was unavailable or inconclusive. Your documents were submitted for manual administrator review.",
+      "manualReview": "Your submission is queued for human review. Private pre-checks may assist; they do not approve KYC.",
       "submitted": "KYC documents submitted for review.",
       "myKad": "MyKad (Malaysian IC)",
       "passport": "Passport",
@@ -1384,7 +1395,7 @@
       "passportHint": "Passport: 1–2 letters + 6–8 digits e.g. A12345678",
       "invalidFileType": "Each document must be a JPG, PNG, or WebP photo",
       "fileTooLarge": "File must be under 5 MB (current: {{size}} MB)",
-      "consentRequired": "Please consent to AI-assisted document reading before submitting.",
+      "consentRequired": "Please consent to private KYC document processing before submitting.",
       "tiers": {
         "emailVerified": "Email Verified",
         "phoneVerified": "Phone Verified",
@@ -1399,7 +1410,10 @@
         "document_suspected_tampering": "We could not complete verification with this submission. Please contact support if you need help.",
         "other": "We need more information to complete verification. Please review the reviewer note below.",
         "default": "We could not complete verification with this submission. Please review your documents and submit a new one."
-      }
+      },
+      "previewAlt": "Selected {{side}} photo",
+      "previewGuidance": "Check that this photo shows one document, all four corners, and a readable name and number. Avoid glare, fingers covering text, and collages. This preview does not verify your identity.",
+      "previewUnavailable": "This browser could not display the photo. You may replace it; the server will still validate your submission."
     },
     "recommendations": {
       "vendorNameMin": "Please enter a vendor or business name with at least 3 characters.",
@@ -1626,7 +1640,7 @@
       "exploreWithConfidence": "Explore with confidence",
       "activeLocations": "Active locations",
       "publishedListings": "Published listings",
-      "approvedOnMyWisata": "Approved on MyLawatan",
+      "approvedOnMyLawatan": "Approved on MyLawatan",
       "acrossMalaysia": "Across Malaysia",
       "readyToExplore": "Ready to explore",
       "newPartner": "New partner",
@@ -1926,7 +1940,7 @@
         "stripeCard": "Stripe demo card",
         "eWallet": "E-wallet",
         "bankTransfer": "Bank transfer",
-        "myWisataWallet": "MyLawatan wallet",
+        "myLawatanWallet": "MyLawatan wallet",
         "demoCard": "Demo card",
         "demoPayment": "Demo payment"
       },
@@ -2262,9 +2276,9 @@
     },
     "saved": {
       "metadataTitle": "Saved — MyLawatan",
-      "metadataDescription": "Your saved destinations and experiences across Malaysia.",
-      "signInTitle": "Sign in to view saved experiences",
-      "signInDescription": "Save your favourite Malaysia experiences and find them here later."
+      "metadataDescription": "Your saved destinations, food, activities, and products across Malaysia.",
+      "signInTitle": "Sign in to view your saved items",
+      "signInDescription": "Save places and products across Malaysia and find them here later."
     },
     "trip": {
       "title": "Your Trips",

@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/auth";
 type WishlistContextValue = {
   savedIds: ReadonlySet<string>;
   loading: boolean;
+  hydrated: boolean;
   toggleSaved: (productId: string) => Promise<boolean>;
   /** Saved hotels (whole outlets), separate from saved products. */
   savedOutletIds: ReadonlySet<string>;
@@ -20,6 +21,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const currentUserId = currentUser?.id;
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
   const [savedOutletIds, setSavedOutletIds] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       setSavedIds(new Set());
       setSavedOutletIds(new Set());
       setLoading(false);
+      setHydrated(true);
       return () => { cancelled = true; };
     }
 
@@ -38,7 +41,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setSavedIds(new Set());
     setSavedOutletIds(new Set());
     setLoading(true);
-    fetch("/api/saved-outlets")
+    setHydrated(false);
+    const hydrateProducts = fetch("/api/wishlist")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as { data?: { productIds?: string[] } };
+        if (!cancelled) setSavedIds(new Set(body.data?.productIds ?? []));
+      })
+      .catch(() => {
+        // Wishlist is an enhancement; browsing must remain available if it fails.
+      });
+    const hydrateOutlets = fetch("/api/saved-outlets")
       .then(async (response) => {
         if (!response.ok) return;
         const body = (await response.json()) as { data?: { outletIds?: string[] } };
@@ -47,18 +60,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         // Saved hotels are an enhancement, like saved products.
       });
-    fetch("/api/wishlist")
-      .then(async (response) => {
-        if (!response.ok) return;
-        const body = (await response.json()) as { data?: { productIds?: string[] } };
-        if (!cancelled) setSavedIds(new Set(body.data?.productIds ?? []));
-      })
-      .catch(() => {
-        // Wishlist is an enhancement; browsing must remain available if it fails.
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    Promise.all([hydrateProducts, hydrateOutlets]).finally(() => {
+      if (!cancelled) {
+        setHydrated(true);
+        setLoading(false);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -120,8 +127,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }, [savedOutletIds]);
 
   const value = useMemo(
-    () => ({ savedIds, loading, toggleSaved, savedOutletIds, toggleSavedOutlet }),
-    [savedIds, loading, toggleSaved, savedOutletIds, toggleSavedOutlet],
+    () => ({ savedIds, loading, hydrated, toggleSaved, savedOutletIds, toggleSavedOutlet }),
+    [savedIds, loading, hydrated, toggleSaved, savedOutletIds, toggleSavedOutlet],
   );
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
 }

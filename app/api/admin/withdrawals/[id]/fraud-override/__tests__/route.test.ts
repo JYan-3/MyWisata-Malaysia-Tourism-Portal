@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// These fixtures represent an already verified staff session; this suite focuses
+// on the proof-bound withdrawal action contract.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
+
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
 const mocks = vi.hoisted(() => ({
   getUser:             vi.fn(),
@@ -29,7 +36,7 @@ function request(body: Record<string, unknown> = {}) {
   return new Request(`http://localhost/api/admin/withdrawals/${W_ID}/fraud-override`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': '198.51.100.1' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ proofId: '12345678-1234-4234-8234-123456789abc', ...body }),
   });
 }
 
@@ -129,10 +136,12 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
     const body = await res.json();
     expect(body.data?.risk_level ?? body.risk_level).toBe('review');
     expect(mocks.rpc).toHaveBeenCalledWith(
-      'override_withdrawal_risk',
+      'authorize_staff_withdrawal_action',
       expect.objectContaining({
         p_withdrawal_id: W_ID,
-        p_reason: 'Manually reviewed and confirmed legitimate.',
+        p_action: 'fraud-override',
+        p_proof_id: '12345678-1234-4234-8234-123456789abc',
+        p_payload: { reason: 'Manually reviewed and confirmed legitimate.', reasonCategory: 'other' },
       }),
     );
   });
@@ -144,7 +153,7 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
     });
     await POST(request({ reason: 'Manually reviewed and confirmed legitimate.' }), params());
     expect(mocks.rpc).toHaveBeenCalledWith(
-      'override_withdrawal_risk',
+      'authorize_staff_withdrawal_action',
       expect.objectContaining({ p_ip: '198.51.100.1' }),
     );
   });

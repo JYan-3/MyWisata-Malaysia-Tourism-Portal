@@ -16,7 +16,11 @@ import { Button } from "@/components/ui/button";
 import type { Activity, BookingSlot, Outlet, StayBookingDetails, Voucher } from "@/backend/core/types";
 import { formatDate, formatMYRNumber } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { getCartLineAvailability, type BookingSlotLookupStatus } from "@/lib/customer/cart-availability";
+import {
+  getCartLineAvailability,
+  resolveBookingSlotLookupStatus,
+  type BookingSlotLookupState,
+} from "@/lib/customer/cart-availability";
 import { StayGuestDetailsDialog } from "@/components/customer/stay-guest-details-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -87,7 +91,7 @@ export default function CartPage() {
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
-  const [bookingSlotsLoad, setBookingSlotsLoad] = useState<{ key: string; status: BookingSlotLookupStatus }>({ key: "", status: "loaded" });
+  const [bookingSlotsLoad, setBookingSlotsLoad] = useState<BookingSlotLookupState>({ requestToken: null, status: "loaded" });
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [voucherOptions, setVoucherOptions] = useState<VoucherOption[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
@@ -116,31 +120,33 @@ export default function CartPage() {
     [items],
   );
   const bookingActivityKey = bookingActivityIds.join(",");
-  const bookingSlotsStatus = bookingSlotsLoad.key === bookingActivityKey ? bookingSlotsLoad.status : "loading";
+  const bookingActivityRequestToken = useMemo(() => Symbol(bookingActivityKey), [bookingActivityKey]);
+  const bookingSlotsStatus = resolveBookingSlotLookupStatus(
+    bookingActivityIds.length > 0,
+    bookingActivityRequestToken,
+    bookingSlotsLoad,
+  );
 
   useEffect(() => {
     let active = true;
-    if (bookingActivityIds.length === 0) {
-      setSlotsById(new Map());
-      setBookingSlotsLoad({ key: bookingActivityKey, status: "loaded" });
+    if (!bookingActivityKey) {
       return () => { active = false; };
     }
 
-    setBookingSlotsLoad({ key: bookingActivityKey, status: "loading" });
-    Promise.all(bookingActivityIds.map((id) => getBookingSlots(id)))
+    const activityIds = bookingActivityKey.split(",");
+    Promise.all(activityIds.map((id) => getBookingSlots(id)))
       .then((lists) => {
         if (!active) return;
         setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
-        setBookingSlotsLoad({ key: bookingActivityKey, status: "loaded" });
+        setBookingSlotsLoad({ requestToken: bookingActivityRequestToken, status: "loaded" });
       })
       .catch(() => {
         if (!active) return;
         setSlotsById(new Map());
-        setBookingSlotsLoad({ key: bookingActivityKey, status: "error" });
+        setBookingSlotsLoad({ requestToken: bookingActivityRequestToken, status: "error" });
       });
     return () => { active = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingActivityKey]);
+  }, [bookingActivityKey, bookingActivityRequestToken]);
 
   const { subtotal, discount, total } = totals(currentUser ? appliedVoucher ?? undefined : undefined);
   const selectAllRef = useRef<HTMLInputElement>(null);

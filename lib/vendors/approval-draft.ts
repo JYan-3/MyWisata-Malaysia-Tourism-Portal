@@ -15,6 +15,8 @@
 // time), for the same reason: nothing should depend on the model getting a
 // link right.
 
+import type { AppLocale } from '@/lib/i18n/locale';
+import { emailLocale } from '@/lib/email/copy';
 import { redactPII } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
@@ -64,6 +66,7 @@ export interface VendorApprovalDraft {
 }
 
 export interface VendorApprovalDraftContext {
+  locale?: AppLocale;
   vendorName: string;
   businessType: string | null;
   description: string | null;
@@ -85,6 +88,11 @@ export async function draftVendorApprovalEmail(context: VendorApprovalDraftConte
   // Same redaction boundary as invite-draft.ts/kb-draft.ts — the vendor's
   // free-text description may contain PII; nothing goes to Gemini unredacted.
   const { clean: cleanDescription } = redactPII(context.description ?? '');
+  const language = {
+    en: 'English',
+    'zh-CN': 'Simplified Chinese',
+    ms: 'Bahasa Melayu',
+  }[emailLocale(context.locale)];
 
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
@@ -104,7 +112,7 @@ export async function draftVendorApprovalEmail(context: VendorApprovalDraftConte
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\nWrite the subject and body in ${language}. Keep the SUBJECT: and BODY: parser labels unchanged.` }] },
         contents: [{ role: 'user', parts: [{ text: userText }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
       }),

@@ -1,3 +1,4 @@
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
@@ -17,6 +18,8 @@ export async function GET() {
   const { data: { user }, error: authError } = await authenticated.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const assuranceResponse = await requireStaffAssurance(authenticated);
+  if (assuranceResponse) return assuranceResponse;
   const { data: roleRows, error: roleError } = await authenticated
     .from('user_roles')
     .select('roles(name)')

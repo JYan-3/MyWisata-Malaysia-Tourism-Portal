@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()), requireStaffAssurance: vi.fn(async () => null) }));
 
 const REFUND_ID = '33333333-3333-4333-8333-333333333333';
 const mocks = vi.hoisted(() => ({
@@ -65,7 +66,7 @@ describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.createRefund).toHaveBeenCalledWith(
-      { payment_intent: 'pi_test_001', amount: 5000, metadata: { mywisata_refund_id: REFUND_ID } },
+      { payment_intent: 'pi_test_001', amount: 5000, metadata: { mylawatan_refund_id: REFUND_ID } },
       { idempotencyKey: `refund:${REFUND_ID}` },
     );
   });

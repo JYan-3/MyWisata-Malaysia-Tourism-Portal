@@ -6,8 +6,8 @@ vi.mock('@/backend/supabase',()=>({supabase:{}}));
 import {POST,GET,PATCH} from '../route';
 const ID='1d4057cf-c821-4b05-a454-61dbdc42d32c';
 const variant='2d4057cf-c821-4b05-a454-61dbdc42d32c';
+function request(body:unknown,origin='https://mylawatan.example'){return new Request('https://mylawatan.example/api/guest/cart',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});}
 let productCategory = 'food';
-function request(body:unknown,origin='https://mywisata.example'){return new Request('https://mywisata.example/api/guest/cart',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});}
 beforeEach(()=>{
  vi.clearAllMocks();mocks.guest.mockResolvedValue({guestSubjectId:ID});mocks.limit.mockResolvedValue(true);
  productCategory = 'food';
@@ -39,9 +39,9 @@ describe('guest cart server boundary',()=>{
   expect(mocks.insert).not.toHaveBeenCalled();
  });
  it('does not let a guest edit stay details for a cart row outside its resolved cart',async()=>{
-  const response = await PATCH(new Request('https://mywisata.example/api/guest/cart',{method:'PATCH',headers:{origin:'https://mywisata.example','content-type':'application/json'},body:JSON.stringify({cartItemId:'3d4057cf-c821-4b05-a454-61dbdc42d32c',stayDetails:{primaryGuestName:'Nur Aisyah',adults:1,estimatedArrival:'unknown'}})}));
+  const response = await PATCH(new Request('https://mylawatan.example/api/guest/cart',{method:'PATCH',headers:{origin:'https://mylawatan.example','content-type':'application/json'},body:JSON.stringify({cartItemId:'3d4057cf-c821-4b05-a454-61dbdc42d32c',stayDetails:{primaryGuestName:'Nur Aisyah',adults:1,estimatedArrival:'unknown'}})}));
   expect(response.status).toBe(404);
   expect(mocks.update).not.toHaveBeenCalled();
  });
- it('returns an empty private response without creating a subject for anonymous reads',async()=>{mocks.guest.mockResolvedValue(null);const response=await GET(new Request('https://mywisata.example/api/guest/cart'));expect(await response.json()).toEqual({data:{items:[]},error:null});expect(response.headers.get('cache-control')).toContain('no-store');expect(mocks.upsert).not.toHaveBeenCalled();});
+ it('returns an empty private response without creating a subject for anonymous reads',async()=>{mocks.guest.mockResolvedValue(null);const response=await GET(new Request('https://mylawatan.example/api/guest/cart'));expect(await response.json()).toEqual({data:{items:[]},error:null});expect(response.headers.get('cache-control')).toContain('no-store');expect(mocks.upsert).not.toHaveBeenCalled();});
 });

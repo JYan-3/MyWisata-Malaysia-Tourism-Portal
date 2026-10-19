@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/process-content-translation-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/process-paid-orders",
       "schedule": "*/5 * * * *"
     },
@@ -19,6 +23,10 @@
     {
       "path": "/api/cron/archive-chats",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/purge-guest-rate-limits",
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/tng-mock-callbacks",

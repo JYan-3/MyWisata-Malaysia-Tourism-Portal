@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarDays, Clock, MapPin, Megaphone, RefreshCw, Search } 
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
 import { Input } from "@/components/ui/input";
@@ -86,7 +87,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
     <CustomerPageShell wide>
       <CustomerPageHeader
         eyebrow={t("ui.promotionCampaigns.eyebrow")}
-        title={campaign?.title ?? t("ui.promotionCampaigns.detailTitle")}
+        title={campaign ? <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /> : t("ui.promotionCampaigns.detailTitle")}
         description={campaign ? undefined : t("ui.promotionCampaigns.detailDescription")}
         icon={<Megaphone size={15} />}
         className="mb-6"
@@ -143,7 +144,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             {t("ui.promotionCampaigns.campaignDetails")}
           </summary>
           <p className="mt-3 max-w-3xl whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">
-            {campaign.description}
+            <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="description" sourceText={campaign.description} />
           </p>
         </details>
         <section aria-labelledby="event-vendors-heading" className="min-w-0">

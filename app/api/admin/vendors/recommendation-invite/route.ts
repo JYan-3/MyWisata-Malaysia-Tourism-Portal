@@ -1,3 +1,5 @@
+import { recipientEmailLocale } from '@/lib/email/locale';
+import { vendorInviteCopy } from '@/lib/email/copy';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiFail, apiOk } from '@/lib/validation/schemas';
@@ -39,13 +41,18 @@ export async function POST(request: Request) {
     return apiFail('RECOMMENDATION_NOT_READY', 'Only approved recommendations can invite a vendor', 409);
   }
 
+  let locale;
+  try { locale = await recipientEmailLocale(service, parsed.data.email); }
+  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
+  const copy = vendorInviteCopy(recommendation.vendor_name, locale);
+
   const { token, tokenHash } = createRecommendationInviteToken();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
   const claimUrl = `${origin}/vendor-invite?recommendation=${encodeURIComponent(token)}`;
 
   // The admin's edited body never carries the real link (it doesn't exist
   // until this exact point) — the server appends it after their text.
-  const finalBody = parsed.data.body ? `${parsed.data.body}\n\nComplete your vendor sign-up here: ${claimUrl}` : null;
+  const finalBody = parsed.data.body ? `${parsed.data.body}\n\n${copy.action}: ${claimUrl}` : null;
 
   const { data, error } = await service
     .from('vendor_recommendation_invites')
@@ -70,9 +77,10 @@ export async function POST(request: Request) {
     // the outbound message. A durable outbox would persist the token.
     await sendCustomVendorEmail({
       to: parsed.data.email,
-      subject: parsed.data.subject ?? `Complete ${recommendation.vendor_name} vendor onboarding`,
+      locale,
+      subject: parsed.data.subject ?? copy.subject,
       body: finalBody
-        ?? `Your business has been invited to complete vendor onboarding.\n\nComplete your vendor sign-up here: ${claimUrl}`,
+        ?? `${copy.introduction}\n\n${copy.action}: ${claimUrl}`,
     });
   } catch (emailError) {
     console.error('[vendor-claim] invite email delivery failed:', emailError);

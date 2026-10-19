@@ -16,6 +16,8 @@
 // reference "the sign-up link included below" without ever writing a URL
 // itself. The server appends the real link after the admin's edited text.
 
+import type { AppLocale } from '@/lib/i18n/locale';
+import { emailLocale } from '@/lib/email/copy';
 import { redactPII } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
@@ -62,6 +64,7 @@ export interface VendorInviteDraft {
 }
 
 export interface VendorInviteDraftContext {
+  locale?: AppLocale;
   vendorName: string;
   description: string | null;
   vendorAddress: string | null;
@@ -83,6 +86,11 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
   // free-text description may contain PII the recommender typed in; nothing
   // user-typed reaches Gemini unredacted.
   const { clean: cleanDescription } = redactPII(context.description ?? '');
+  const language = {
+    en: 'English',
+    'zh-CN': 'Simplified Chinese',
+    ms: 'Bahasa Melayu',
+  }[emailLocale(context.locale)];
 
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
@@ -101,7 +109,7 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\nWrite the subject and body in ${language}. Keep the SUBJECT: and BODY: parser labels unchanged.` }] },
         contents: [{ role: 'user', parts: [{ text: userText }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
       }),

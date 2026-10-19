@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import { redactPII } from '@/lib/chatbot/pii';
+import type { AppLocale } from '@/lib/i18n/locale';
+import type { PublicTranslationField } from '@/lib/content-translations/contract';
 
-export type TranslationField = 'name' | 'description';
-export type TranslationLocale = 'zh-CN' | 'ms';
+export type TranslationField = PublicTranslationField;
+export type TranslationLocale = AppLocale;
 
 const URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi;
 
@@ -16,7 +18,7 @@ export function buildTranslationPrompt(input: {
   locale: TranslationLocale;
 }) {
   const source = redactPII(input.sourceText).clean.replace(URL_PATTERN, '[URL]').slice(0, 2000);
-  const targetLanguage = input.locale === 'zh-CN' ? 'Simplified Chinese' : 'Malay';
+  const targetLanguage = input.locale === 'zh-CN' ? 'Simplified Chinese' : input.locale === 'ms' ? 'Malay' : 'English';
   return {
     system: 'Translate public tourism business copy accurately. Preserve registered and brand names unless a natural local display form is unambiguous. Return only the translated plain text, without commentary or markup.',
     user: `Translate this ${input.field} into ${targetLanguage}.\n\n${source}`,

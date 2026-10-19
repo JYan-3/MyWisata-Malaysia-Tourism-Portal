@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "Selesaikan atau batalkan pesanan belum dibayar yang sedia ada sebelum memulakan pembayaran lain.",
+    "reviewExisting": "Semak pesanan belum dibayar",
+    "cancelCheckout": "Batalkan pembayaran belum dibayar ini",
+    "cancelHelp": "Batalkan hanya jika anda belum membayar. Jangan gunakan pautan pembayaran lama. Bayaran selepas pembatalan memerlukan semakan Admin."
+  },
   "navigation": {
     "home": "Utama",
     "search": "Rakan kongsi",
@@ -173,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "Terjemahan mesin",
+      "showOriginal": "Tunjukkan teks asal",
+      "showTranslation": "Tunjukkan terjemahan",
+      "pending": "Terjemahan sedang disediakan"
+    },
     "accessibility": {
       "carousel": "karusel"
     },
@@ -457,7 +469,7 @@
       "orders": "pesanan",
       "newestFirst": "Terbaharu dahulu",
       "bookingReference": "Rujukan tempahan",
-      "mywisataOutlet": "Cawangan MyLawatan",
+      "mylawatanOutlet": "Cawangan MyLawatan",
       "localVendor": "Vendor tempatan",
       "contactViaChat": "Hubungi melalui sembang",
       "type": "Jenis",
@@ -880,32 +892,31 @@
     },
     "wishlist": {
       "shortlist": "Senarai pilihan perjalanan anda",
-      "title": "Tempat dan pengalaman disimpan",
-      "description": "Simpan destinasi yang mengubah rentak perjalanan dan pengalaman yang ingin ditempah seterusnya.",
+      "title": "Tempat dan produk disimpan",
       "explore": "Terokai Malaysia",
       "keepClose": "Simpan yang ini dekat",
       "savedPlaces": "Tempat disimpan",
       "ready": "Bila-bila masa anda bersedia",
-      "savedExperiences": "Pengalaman disimpan",
+      "savedExperiences": "Produk disimpan",
       "allSaved": "Semua disimpan",
       "savedContent": "Kandungan disimpan",
       "placeCount": "{{count}} tempat",
-      "experienceCount": "{{count}} pengalaman",
-      "unavailable": "Pengalaman disimpan tidak tersedia",
+      "experienceCount": "{{count}} produk",
+      "unavailable": "Produk disimpan tidak tersedia",
       "tryAgain": "Sila cuba lagi sebentar nanti.",
       "savedOn": "Disimpan pada {{date}}",
       "removePlace": "Alih keluar {{name}} daripada tempat disimpan",
       "removePlaceShort": "Alih keluar tempat disimpan",
       "placeCount_one": "{{count}} tempat",
       "placeCount_other": "{{count}} tempat",
-      "experienceCount_one": "{{count}} pengalaman",
-      "experienceCount_other": "{{count}} pengalaman",
+      "experienceCount_one": "{{count}} produk",
+      "experienceCount_other": "{{count}} produk",
       "noPlaces": "Belum ada tempat disimpan",
       "savePlaces": "Simpan tempat yang ingin anda lawati.",
-      "noExperiences": "Belum ada pengalaman disimpan",
-      "saveExperiences": "Simpan pengalaman yang ingin anda tempah.",
+      "noExperiences": "Belum ada produk disimpan",
+      "saveExperiences": "Simpan makanan, aktiviti dan produk lain untuk dilihat di sini nanti.",
       "empty": "Belum ada apa-apa yang disimpan",
-      "saveBoth": "Simpan tempat dan pengalaman untuk membina senarai pilihan anda.",
+      "saveBoth": "Simpan tempat dan produk untuk membina senarai pilihan anda.",
       "savedHotels": "Hotel disimpan"
     },
     "activity": {
@@ -920,10 +931,10 @@
       "outletBookingDetails": "Setiap cawangan menetapkan harga, ketersediaan dan waktu tempahannya sendiri. Buka menu cawangan untuk membeli atau menempah pengalaman ini.",
       "view": "Lihat {{name}}",
       "imageUnavailable": "Imej {{name}} tidak tersedia",
-      "removeSaved": "Alih keluar {{name}} daripada pengalaman disimpan",
+      "removeSaved": "Alih keluar {{name}} daripada produk disimpan",
       "save": "Simpan {{name}}",
-      "removeSavedShort": "Alih keluar daripada pengalaman disimpan",
-      "saveShort": "Simpan ke senarai hajat",
+      "removeSavedShort": "Alih keluar produk disimpan",
+      "saveShort": "Simpan produk",
       "visitShop": "Lawati kedai · {{vendor}}",
       "moreFromOutlet": "Lagi dari cawangan ini",
       "moreFromVendor": "Lagi dari vendor ini",
@@ -1050,7 +1061,7 @@
       }
     },
     "outlet": {
-      "verifiedMyWisata": "Cawangan MyLawatan disahkan",
+      "verifiedMyLawatan": "Cawangan MyLawatan disahkan",
       "dropImage": "Letakkan imej di sini",
       "verifiedGuestsRecommend": "Tetamu disahkan mengesyorkan cawangan ini.",
       "planVisit": "Rancang lawatan anda",
@@ -1366,13 +1377,13 @@
       "clickUpload": "Klik untuk memuat naik {{side}} dokumen",
       "fileHint": "JPG, PNG atau WebP · maksimum 5 MB",
       "clickChange": "klik untuk menukar",
-      "consent": "Saya bersetuju MyLawatan boleh menggunakan perkhidmatan AI pihak ketiga untuk membantu membaca dokumen saya. Pentadbir manusia membuat keputusan KYC akhir.",
+      "consent": "Saya bersetuju dengan pemprosesan dokumen persendirian untuk KYC. Bukti tidak dihantar ke perkhidmatan AI luaran. Keputusan akhir dibuat oleh manusia yang diberi kuasa.",
       "submitting": "Menghantar…",
       "startNew": "Mulakan penghantaran baharu",
       "submitForReview": "Hantar untuk semakan",
       "uploadRequired": "Sila muat naik foto dokumen",
       "submissionFailed": "Penghantaran gagal.",
-      "manualReview": "Bacaan dokumen AI tidak tersedia atau tidak muktamad. Dokumen anda telah dihantar untuk semakan manual pentadbir.",
+      "manualReview": "Penyerahan anda beratur untuk semakan manusia. Pra-semak persendirian boleh membantu; ia tidak meluluskan KYC.",
       "submitted": "Dokumen KYC dihantar untuk semakan.",
       "myKad": "MyKad (Kad Pengenalan Malaysia)",
       "passport": "Pasport",
@@ -1384,7 +1395,7 @@
       "passportHint": "Pasport: 1–2 huruf + 6–8 digit, cth. A12345678",
       "invalidFileType": "Setiap dokumen mestilah foto JPG, PNG atau WebP",
       "fileTooLarge": "Fail mestilah di bawah 5 MB (semasa: {{size}} MB)",
-      "consentRequired": "Sila beri persetujuan untuk bacaan dokumen berbantu AI sebelum menghantar.",
+      "consentRequired": "Sila setuju dengan pemprosesan dokumen KYC persendirian sebelum menghantar.",
       "tiers": {
         "emailVerified": "E-mel Disahkan",
         "phoneVerified": "Telefon Disahkan",
@@ -1399,7 +1410,10 @@
         "document_suspected_tampering": "Kami tidak dapat melengkapkan pengesahan dengan penghantaran ini. Hubungi sokongan jika anda memerlukan bantuan.",
         "other": "Kami memerlukan maklumat lanjut untuk melengkapkan pengesahan. Semak nota penyemak di bawah.",
         "default": "Kami tidak dapat melengkapkan pengesahan dengan penghantaran ini. Semak dokumen anda dan hantar yang baharu."
-      }
+      },
+      "previewAlt": "Foto {{side}} yang dipilih",
+      "previewGuidance": "Pastikan foto menunjukkan satu dokumen, keempat-empat penjuru serta nama dan nombor yang jelas. Elakkan silau, jari menutup teks dan kolaj. Pratonton ini tidak mengesahkan identiti anda.",
+      "previewUnavailable": "Pelayar ini tidak dapat memaparkan foto. Anda boleh menggantikannya; pelayan tetap akan menyemak penyerahan anda."
     },
     "recommendations": {
       "vendorNameMin": "Masukkan nama vendor atau perniagaan sekurang-kurangnya 3 aksara.",
@@ -1626,7 +1640,7 @@
       "exploreWithConfidence": "Terokai dengan yakin",
       "activeLocations": "Lokasi aktif",
       "publishedListings": "Penyenaraian diterbitkan",
-      "approvedOnMyWisata": "Diluluskan di MyLawatan",
+      "approvedOnMyLawatan": "Diluluskan di MyLawatan",
       "acrossMalaysia": "Di seluruh Malaysia",
       "readyToExplore": "Sedia untuk diterokai",
       "newPartner": "Rakan baharu",
@@ -1926,7 +1940,7 @@
         "stripeCard": "Kad demo Stripe",
         "eWallet": "E-dompet",
         "bankTransfer": "Pindahan bank",
-        "myWisataWallet": "Dompet MyLawatan",
+        "myLawatanWallet": "Dompet MyLawatan",
         "demoCard": "Kad demo",
         "demoPayment": "Bayaran demo"
       },
@@ -2262,9 +2276,9 @@
     },
     "saved": {
       "metadataTitle": "Disimpan — MyLawatan",
-      "metadataDescription": "Destinasi dan pengalaman anda yang disimpan di seluruh Malaysia.",
-      "signInTitle": "Log masuk untuk melihat pengalaman disimpan",
-      "signInDescription": "Simpan pengalaman Malaysia kegemaran anda dan cari semula di sini nanti."
+      "metadataDescription": "Destinasi, makanan, aktiviti dan produk anda yang disimpan di seluruh Malaysia.",
+      "signInTitle": "Log masuk untuk melihat produk disimpan",
+      "signInDescription": "Simpan tempat dan produk di seluruh Malaysia untuk dicari semula di sini nanti."
     },
     "trip": {
       "title": "Perjalanan Anda",

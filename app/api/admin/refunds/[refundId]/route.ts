@@ -1,3 +1,4 @@
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
@@ -16,6 +17,8 @@ export async function POST(request: Request, { params }: Props) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return assuranceResponse;
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const names = (roles ?? []).map((row: any) => row.roles?.name);

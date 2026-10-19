@@ -1,4 +1,5 @@
 import "server-only";
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
@@ -30,6 +31,9 @@ export async function requireStaffPermission(
       response: apiFail("UNAUTHORIZED", "Sign in required", 401),
     };
   }
+
+  const assuranceResponse = await requireStaffAssurance(db);
+  if (assuranceResponse) return { db, user, response: assuranceResponse };
 
   const { data: allowed, error: permissionError } = await db.rpc("has_staff_permission", {
     p_user_id: user.id,

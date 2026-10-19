@@ -9,6 +9,7 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ReferencePrice } from "@/components/shared/reference-price";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
@@ -192,11 +193,8 @@ export default async function DestinationPage({ params }: Props) {
                 const category = Array.isArray(product.categories) ? product.categories[0] : product.categories;
                 const price = Number(product.base_price);
                 return (
-                  <Link
-                    key={product.id}
-                href={`/customer/activity/${product.id}`}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
+                  <article key={product.id} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <Link href={`/customer/activity/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                     <div className="relative aspect-[4/3] overflow-hidden bg-primary/10">
                       {product.cover_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -215,12 +213,14 @@ export default async function DestinationPage({ params }: Props) {
                           {category.name}
                         </span>
                       )}
-                    </div>
+                    </div></Link>
                     <div className="flex flex-1 flex-col p-3">
-                      <h3 className="break-words whitespace-normal text-sm font-bold text-foreground">{product.name}</h3>
+                      <LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
+                        {({ text, control }) => <><Link href={`/customer/activity/${product.id}`} className="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-sm">{text}</h3></Link>{control}</>}
+                      </LocalizedContent>
                       <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
                     </div>
-                  </Link>
+                  </article>
                 );
               })}
             </div>

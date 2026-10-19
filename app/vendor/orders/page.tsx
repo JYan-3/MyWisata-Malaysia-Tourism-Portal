@@ -246,6 +246,8 @@ export default function VendorOrdersPage() {
     if (!linkedOrderId || loading) return;
     const linkedOrder = items.find((order) => order.id === linkedOrderId);
     if (!linkedOrder) return;
+    // Apply the order deep link after the list arrives, then remove its one-time query parameter.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedItem(linkedOrder);
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete("orderId");

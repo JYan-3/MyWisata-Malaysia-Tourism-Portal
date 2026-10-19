@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "请先完成或取消现有未付款订单，再开始另一笔结账。",
+    "reviewExisting": "查看现有未付款订单",
+    "cancelCheckout": "取消这笔未付款结账",
+    "cancelHelp": "仅在尚未付款时取消。取消后请勿使用旧付款链接；取消后收到的款项需要管理员复核。"
+  },
   "navigation": {
     "home": "首页",
     "search": "合作伙伴",
@@ -173,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "机器翻译",
+      "showOriginal": "显示原文",
+      "showTranslation": "显示译文",
+      "pending": "正在准备翻译"
+    },
     "accessibility": {
       "carousel": "轮播图"
     },
@@ -457,7 +469,7 @@
       "orders": "订单",
       "newestFirst": "最新优先",
       "bookingReference": "预订编号",
-      "mywisataOutlet": "MyLawatan 门店",
+      "mylawatanOutlet": "MyLawatan 门店",
       "localVendor": "本地商家",
       "contactViaChat": "通过聊天联系",
       "type": "类型",
@@ -880,32 +892,31 @@
     },
     "wishlist": {
       "shortlist": "你的旅行收藏",
-      "title": "已保存的地点和体验",
-      "description": "收藏改变旅程节奏的目的地，以及下一步想预订的体验。",
+      "title": "已收藏地点与商品",
       "explore": "探索马来西亚",
       "keepClose": "把它留在身边",
       "savedPlaces": "已保存地点",
       "ready": "随时出发",
-      "savedExperiences": "已保存体验",
+      "savedExperiences": "已收藏商品",
       "allSaved": "全部收藏",
       "savedContent": "已保存内容",
       "placeCount": "{{count}} 个地点",
-      "experienceCount": "{{count}} 个体验",
-      "unavailable": "无法加载已保存体验",
+      "experienceCount": "{{count}} 件商品",
+      "unavailable": "无法加载已收藏商品",
       "tryAgain": "请稍后重试。",
       "savedOn": "保存于 {{date}}",
       "removePlace": "从已保存地点中移除 {{name}}",
       "removePlaceShort": "移除已保存地点",
       "placeCount_one": "{{count}} 个地点",
       "placeCount_other": "{{count}} 个地点",
-      "experienceCount_one": "{{count}} 个体验",
-      "experienceCount_other": "{{count}} 个体验",
+      "experienceCount_one": "{{count}} 件商品",
+      "experienceCount_other": "{{count}} 件商品",
       "noPlaces": "还没有保存地点",
       "savePlaces": "保存您想去的地点。",
-      "noExperiences": "还没有保存体验",
-      "saveExperiences": "保存您想预订的体验。",
+      "noExperiences": "还没有收藏商品",
+      "saveExperiences": "收藏美食、活动和其他商品，之后可在这里查看。",
       "empty": "还没有保存任何内容",
-      "saveBoth": "保存地点和体验，建立您的旅行收藏。",
+      "saveBoth": "收藏地点和商品，建立您的旅行清单。",
       "savedHotels": "收藏的酒店"
     },
     "activity": {
@@ -920,10 +931,10 @@
       "outletBookingDetails": "每家门店自行设定价格、库存及预订时段。打开门店菜单即可购买或预订此体验。",
       "view": "查看 {{name}}",
       "imageUnavailable": "无法显示 {{name}} 的图片",
-      "removeSaved": "从已保存体验中移除 {{name}}",
+      "removeSaved": "从已收藏商品中移除 {{name}}",
       "save": "保存 {{name}}",
-      "removeSavedShort": "从已保存体验中移除",
-      "saveShort": "保存到愿望清单",
+      "removeSavedShort": "移除已收藏商品",
+      "saveShort": "收藏商品",
       "visitShop": "访问商店 · {{vendor}}",
       "moreFromOutlet": "这家分店的其他产品",
       "moreFromVendor": "该商家的其他体验与产品",
@@ -1050,7 +1061,7 @@
       }
     },
     "outlet": {
-      "verifiedMyWisata": "已认证 MyLawatan 门店",
+      "verifiedMyLawatan": "已认证 MyLawatan 门店",
       "dropImage": "将图片拖放到这里",
       "verifiedGuestsRecommend": "已认证访客推荐此门店。",
       "planVisit": "规划到访",
@@ -1366,13 +1377,13 @@
       "clickUpload": "点击上传文件{{side}}",
       "fileHint": "JPG、PNG 或 WebP · 最大 5 MB",
       "clickChange": "点击更换",
-      "consent": "我同意 MyLawatan 使用第三方 AI 服务协助读取我的文件。最终 KYC 决定由人工管理员作出。",
+      "consent": "我同意为 KYC 进行私有证件处理。证件不会发送至外部 AI 服务，最终决定由有权限的人工审核者作出。",
       "submitting": "提交中…",
       "startNew": "开始新的提交",
       "submitForReview": "提交审核",
       "uploadRequired": "请上传证件照片",
       "submissionFailed": "提交失败。",
-      "manualReview": "AI 证件读取不可用或结果不明确。你的证件已提交给管理员人工审核。",
+      "manualReview": "资料已进入人工审核队列。私有预检查仅作辅助，不会自动批准 KYC。",
       "submitted": "KYC 证件已提交审核。",
       "myKad": "MyKad（马来西亚身份证）",
       "passport": "护照",
@@ -1384,7 +1395,7 @@
       "passportHint": "护照：1–2 个字母加 6–8 位数字，例如 A12345678",
       "invalidFileType": "每份文件必须是 JPG、PNG 或 WebP 照片",
       "fileTooLarge": "文件必须小于 5 MB（当前：{{size}} MB）",
-      "consentRequired": "提交前请同意使用 AI 协助读取证件。",
+      "consentRequired": "请先同意私有 KYC 证件处理再提交。",
       "tiers": {
         "emailVerified": "邮箱已验证",
         "phoneVerified": "电话已验证",
@@ -1399,7 +1410,10 @@
         "document_suspected_tampering": "我们无法通过此次提交完成验证。如需帮助，请联系支持团队。",
         "other": "我们需要更多资料才能完成验证，请查看下方审核备注。",
         "default": "我们无法通过此次提交完成验证，请检查证件并重新提交。"
-      }
+      },
+      "previewAlt": "已选择的{{side}}照片",
+      "previewGuidance": "请确认照片只有一张证件、四角完整，姓名和号码清楚可读。避免反光、手指遮字及拼图。此预览不会验证身份。",
+      "previewUnavailable": "浏览器无法显示此照片。你可以更换照片；提交时服务器仍会进行校验。"
     },
     "recommendations": {
       "vendorNameMin": "请输入至少 3 个字符的商家或企业名称。",
@@ -1626,7 +1640,7 @@
       "exploreWithConfidence": "安心探索",
       "activeLocations": "营业地点",
       "publishedListings": "已发布项目",
-      "approvedOnMyWisata": "已通过 MyLawatan 审核",
+      "approvedOnMyLawatan": "已通过 MyLawatan 审核",
       "acrossMalaysia": "遍布马来西亚",
       "readyToExplore": "随时可以探索",
       "newPartner": "新合作伙伴",
@@ -1926,7 +1940,7 @@
         "stripeCard": "Stripe 演示卡",
         "eWallet": "电子钱包",
         "bankTransfer": "银行转账",
-        "myWisataWallet": "MyLawatan 钱包",
+        "myLawatanWallet": "MyLawatan 钱包",
         "demoCard": "演示卡",
         "demoPayment": "演示付款"
       },
@@ -2262,9 +2276,9 @@
     },
     "saved": {
       "metadataTitle": "已保存 — MyLawatan",
-      "metadataDescription": "你在马来西亚各地保存的目的地和体验。",
-      "signInTitle": "登录以查看已保存的体验",
-      "signInDescription": "保存你喜欢的马来西亚体验，稍后在这里找到它们。"
+      "metadataDescription": "你在马来西亚各地收藏的目的地、美食、活动和商品。",
+      "signInTitle": "登录以查看已收藏商品",
+      "signInDescription": "收藏马来西亚各地的地点和商品，稍后可在这里找到。"
     },
     "trip": {
       "title": "你的行程",

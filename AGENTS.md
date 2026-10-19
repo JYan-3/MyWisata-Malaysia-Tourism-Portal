@@ -135,6 +135,17 @@ Always:
 - Use existing design tokens.
 - Keep changes minimal.
 - Preserve existing coding style.
+- Design Supabase reads for growth: select only needed fields; push filters,
+  ordering, aggregation, and bounded pagination into the database where the
+  semantics allow it; use key-based lookups for single records. Avoid loading a
+  growing collection into application memory for filtering, slicing, or counting,
+  and avoid per-row N+1 and duplicate/serial queries.
+- Document intentional broad reads (for example, a recommendation candidate
+  pool), filter and bound them at the database layer where possible, and do not
+  paginate before ranking when that would change the result. Preserve RLS and
+  ownership checks; validate index changes against query evidence rather than
+  applying Advisor suggestions blindly. See `docs/coding-standards.md` →
+  "Database Reads and Query Efficiency".
 
 Never:
 

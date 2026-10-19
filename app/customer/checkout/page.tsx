@@ -53,6 +53,7 @@ export default function CheckoutPage() {
   const [methodId, setMethodId] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [toyyibPayReturned, setToyyibPayReturned] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
@@ -89,6 +90,8 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // The query string initializes checkout state after the client can read the current URL.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVoucherCode(params.get("voucher"));
     setClaimId(params.get("claim"));
     setToyyibPayReturned(params.get("toyyibpay_return") === "1");
@@ -130,6 +133,8 @@ export default function CheckoutPage() {
     // once that one item is consumed.
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !checkoutAllowed || paying) return;
+    // Prevent duplicate confirmation while this one-time Stripe return is being verified.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPaying(true);
     fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))
@@ -246,6 +251,9 @@ export default function CheckoutPage() {
       }
       const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; toyyibpayUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
+        const pendingId = typeof prepared.error === 'object' && prepared.error?.code === 'ACTIVE_CHECKOUT_EXISTS' ? prepared.error.activeOrderId : null;
+        setActiveOrderId(pendingId && /^[0-9a-f-]{36}$/i.test(pendingId) ? pendingId : null);
+        if (pendingId) throw new Error(tCustomer('checkoutSafety.activeCheckout'));
         throw new Error(getCheckoutErrorMessage(prepared.error));
       }
       if (isFreeReservation) {
@@ -478,6 +486,7 @@ export default function CheckoutPage() {
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span>{checkoutError}</span>
               </div>
+              {activeOrderId && <Button type="button" variant="outline" className="mt-2" onClick={() => router.push(`/customer/orders/${activeOrderId}`)}>{tCustomer('checkoutSafety.reviewExisting')}</Button>}
               <button
                 type="button"
                 onClick={() => router.push("/customer/cart")}

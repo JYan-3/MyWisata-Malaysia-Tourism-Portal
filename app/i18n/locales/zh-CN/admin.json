@@ -43,7 +43,8 @@
     "Orders": "订单",
     "Event Promos": "活动推广",
     "Event Registrations": "报名审核",
-    "Announcements": "公告"
+    "Announcements": "公告",
+    "System Settings": "系统设置"
   },
   "navigationSections": {
     "workspace": "工作区",
@@ -792,6 +793,7 @@
       "click_velocity": "点击速度激增",
       "duplicate_attribution": "重复提现尝试",
       "expired_attribution": "归因窗口已过期",
+      "link_disabled_at_payout": "由于链接在订单付款前已停用，佣金结算已被阻止",
       "self_referral": "自我推荐",
       "vendor_ineligible": "商家/门店经理不符合佣金资格",
       "visitor_clustering": "点击集中在同一访客",
@@ -1366,7 +1368,11 @@
       "snapshotPhone": "手机号",
       "submittedAt": "提交时间",
       "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
-      "waitingTitle": "等待客户"
+      "waitingTitle": "等待客户",
+      "previewAlt": "用于身份资料对照的{{side}}证件",
+      "closePreview": "关闭证件预览",
+      "openPdf": "在浏览器中查看 PDF",
+      "pdfNote": "这份历史提交包含 PDF，请通过受保护的证件查看入口打开。"
     },
     "documents": {
       "driving_license": "驾驶执照 / MyPolis",
@@ -1508,6 +1514,54 @@
       "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。",
       "pending_one": "{{count}} 条安全告警正在等待符合权限的接收者。",
       "pending_other": "{{count}} 条安全告警正在等待符合权限的接收者。"
+    },
+    "operations": {
+      "title": "KYC 运营 · 今日（马来西亚时间）",
+      "next": "领取下一单",
+      "refresh": "刷新队列",
+      "noNext": "暂无未认领案件。请查看我的案件或稍后刷新。",
+      "workFailed": "无法更新认领状态，请刷新后重试。",
+      "unavailable": "运营数据暂不可用",
+      "submitted": "今日提交",
+      "decided": "今日审核决定",
+      "assigned": "已认领待审核",
+      "waitP95": "等待时间第 95 百分位（分钟）",
+      "worker": "预检查任务：{{queued}} 排队 · {{processing}} 处理中 · {{failed}} 需关注 · 今日完成 {{completedToday}}",
+      "notConfigured": "私有 OCR 后台任务尚未完整配置，仍可人工审核。",
+      "sessions_one": "{{count}} 段完整记录 · 共 {{minutes}} 分钟 · {{incomplete}} 段未完成记录已排除",
+      "sessions_other": "{{count}} 段完整记录 · 共 {{minutes}} 分钟 · {{incomplete}} 段未完成记录已排除",
+      "measurementNote": "记录区间不等于有效工作时间或单份处理时间。已排除中断及未结束区间，但仍可能包含空闲时间。产能与误接收率需要经校准的实测数据，此处不提供估算。",
+      "assignment": "认领状态",
+      "allAssignments": "全部认领状态",
+      "mine": "我认领的",
+      "unassigned": "未认领",
+      "pageSize": "每页条数",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
+      "range": "第 {{first}}–{{last}} 条，共 {{total}} 条符合筛选",
+      "precheck": "私有预检查",
+      "precheckNote": "预检查仅辅助人工核对，不证明证件真实或上传者身份，不批准 KYC，也不证明欺诈。",
+      "precheckStatus": {
+        "none": "暂无预检查记录",
+        "queued": "排队中",
+        "processing": "处理中",
+        "succeeded": "预检查已完成",
+        "failed": "预检查不可用，转人工核对",
+        "cancelled": "证据或案件已变更，预检查停止"
+      },
+      "precheckOutcome": {
+        "precheck_passed": "预检查通过，仍须人工决定",
+        "manual_review": "需要人工核对",
+        "resubmit_suggested": "建议考虑补件，由人工决定"
+      },
+      "start": "开始记录审核区间",
+      "pause": "暂停记录",
+      "release": "释放回队列",
+      "recording": "正在记录此区间。离开窗口会暂停，返回后请手动继续。",
+      "notRecording": "区间记录已暂停。开始审核时可开启，不影响审核决定。",
+      "recordingInterrupted": "无法确认暂停成功。未结束区间不会计入时间统计。",
+      "continueNext": "保存本次决定后，打开下一单",
+      "intervalMeans": "记录区间均值：初审 {{first}} 秒 · 补件重审 {{repeat}} 秒（不等于单份处理时间）"
     }
   },
   "reconciliation": {
@@ -1571,7 +1625,9 @@
       "payout_fees_rm": "提现手续费 RM",
       "pending_earnings_amount_rm": "待处理收益 RM",
       "pending_withdrawal_amount_rm": "待处理提现 RM",
-      "reserved_amount_rm": "预留 RM"
+      "reserved_amount_rm": "预留 RM",
+      "vendor_clawback_shortfall_month_rm": "本月商家结算追回缺口 RM",
+      "vendor_clawback_open_shortfall_rm": "未解决的商家结算追回缺口 RM"
     },
     "backToWallet": "返回钱包",
     "balance": {
@@ -1615,6 +1671,15 @@
     "reportMonth": "报告月份",
     "requestStatus": "请求状态",
     "requestStatusDescription": "月度提现队列的快速概览。",
+    "riskExposureTitle": "已记录的商家追回风险敞口",
+    "riskExposureDescription": "这里只统计已记录的商家结算追回缺口，不代表平台或联盟营销的全部损失，也不是已批准的准备金金额。",
+    "riskExposure": {
+      "month": "本月记录的缺口",
+      "open": "报告生成时尚未解决的缺口",
+      "count": "{{count}} 条记录",
+      "count_one": "{{count}} 条记录",
+      "count_other": "{{count}} 条记录"
+    },
     "searchPlaceholder": "搜索用户或来源",
     "snapshot": "月度快照",
     "sourceFilter": "按提现来源筛选",
@@ -2122,6 +2187,53 @@
       "title": "钱包审批人",
       "userLabel": "符合条件的用户"
     },
+    "systemSettings": {
+      "eyebrow": "平台控制",
+      "title": "系统设置",
+      "description": "在事故或计划维护期间，暂时暂停指定的顾客操作。",
+      "loading": "正在读取系统设置…",
+      "retry": "重试",
+      "unsaved": "有未保存的更改",
+      "active": "运行中",
+      "paused": "已暂停",
+      "neverUpdated": "尚无更改记录",
+      "unknownActor": "未知管理员",
+      "updated": "最近由 {{by}} 于 {{date}} 修改",
+      "saved": "系统设置已保存并记录。",
+      "controls": {
+        "title": "平台控制",
+        "description": "保存后会影响新的操作。"
+      },
+      "orders": {
+        "title": "暂停顾客新订单",
+        "description": "阻止新的购物车、活动预订及订单付款结账请求。",
+        "existing": "已创建订单仍可继续确认付款、履约、取消、退款及客服处理。"
+      },
+      "email": {
+        "title": "暂停自定义邮件发送",
+        "description": "暂存队列中的自定义 SMTP 邮件，并暂停平台直接发送的邮件。重新启用后会继续发送待处理邮件。",
+        "authExemption": "Supabase Auth 验证邮件和密码重设邮件不受影响。暂停时已经开始发送的邮件可能完成。"
+      },
+      "reasonLabel": "更改原因",
+      "reasonPlaceholder": "说明事故或维护原因（至少 10 个字符）。",
+      "impact": {
+        "title": "更改影响",
+        "description": "这些控制用于临时事故处理和维护。",
+        "orders": "暂停订单：阻止顾客创建新订单，不会取消已创建订单。",
+        "email": "暂停邮件：邮件保留在待发送队列，恢复后继续发送。",
+        "audit": "每次保存都会记录 Super Admin、时间、修改前后内容及原因。"
+      },
+      "confirm": {
+        "title": "确认更改系统设置？",
+        "pauseDescription": "你将暂停至少一项正在运行的功能。这次更改和原因会写入审计记录。",
+        "resumeDescription": "你将恢复至少一项功能。这次更改和原因会写入审计记录。"
+      },
+      "errors": {
+        "load": "无法读取系统设置。",
+        "save": "无法保存系统设置。",
+        "reason": "请填写至少 10 个字符的原因后再保存。"
+      }
+    },
     "walletSettings": {
       "audit": {
         "category": "更改类别",
@@ -2309,6 +2421,14 @@
   "email": {
     "draft": {
       "advisory": "AI 会起草以下消息——发送前请编辑确认。",
+      "recipientLanguage": "收件人语言：{{language}}",
+      "languageUnavailable": "请输入有效收件人邮箱，以检查其已保存的语言。",
+      "languageReview": "请按收件人语言检查主题和正文。更换邮箱会保留你的编辑，需要时请重新生成草稿。没有语言偏好则使用英文。",
+      "languages": {
+        "en": "英文",
+        "zh-CN": "华语",
+        "ms": "马来文"
+      },
       "close": "关闭",
       "recipient": "收件人邮箱",
       "recipientPlaceholder": "vendor@example.com",
@@ -3129,7 +3249,7 @@
     "providers": {
       "bankTransferSimulator": "银行转账 — 模拟器",
       "grabpaySimulator": "GrabPay — 模拟器",
-      "mywisataWallet": "MyLawatan 钱包",
+      "mylawatanWallet": "MyLawatan 钱包",
       "stripeSandbox": "Stripe 沙盒",
       "tngSimulator": "Touch ’n Go 电子钱包 — 模拟器",
       "unknown": "未知服务商"
@@ -3656,6 +3776,8 @@
     }
   },
   "eventOperations": {
+    "checkout_hold_expired": "结账预留结束后收到付款。已暂停履约，请复核已确认的款项及人工退款申请。",
+    "checkout_eligibility_lost": "购买资格变更后收到付款。已暂停履约，请复核已确认的款项及人工退款申请。",
     "pickupOverdue": "取货日期已过，领取结果待核实",
     "pickupHelp": "未领取不等于顾客缺席。请核对商品和联系记录后结案；待核实金额不代表已批准退款金额。",
     "refreshPickups": "刷新过期未领取订单",
@@ -3669,7 +3791,7 @@
       "collected": "已核实取货记录",
       "refunded": "已确认退款完成"
     },
-    "title": "待处理活动异常",
+    "title": "需要跟进的订单事项",
     "summary": "待处理：{{open}} · 未认领：{{unassigned}} · 未设期限：{{undated}} · 逾期：{{overdue}} · 待处理金额：{{amount}}",
     "deadlineHelp": "期限用于跟进处理。到期不会自动退款或关闭订单。时间均为马来西亚时间。",
     "dueRequired": "请选择未来的处理期限。",
@@ -3681,7 +3803,7 @@
     "failed": "上次运行失败",
     "stale": "近期无完成记录",
     "healthy": "上次运行完成",
-    "empty": "没有待处理活动异常。",
+    "empty": "没有尚未解决的订单事项。",
     "orderWithoutNumber": "订单编号待生成",
     "paymentException": "已收款，但预订无法履约",
     "refundAttention": "退款需要跟进",
@@ -3744,6 +3866,34 @@
       "matching_one": "匹配 {{count}} 条异常 · 待处理 {{amount}}",
       "matching_other": "匹配 {{count}} 条异常 · 待处理 {{amount}}"
     }
+  },
+  "passkey": {
+    "title": "后台安全验证",
+    "description": "使用已绑定设备，通过脸部识别、指纹或设备 PIN 验证。生物识别资料保留在你的设备上。",
+    "verify": "验证通行密钥",
+    "verifyAndConfirm": "验证并确认",
+    "working": "正在验证…",
+    "grantLabel": "一次性设备绑定码",
+    "deviceLabel": "设备名称",
+    "defaultDevice": "我的设备",
+    "register": "绑定设备",
+    "registered": "设备已绑定。请再验证通行密钥以继续。",
+    "enrollmentRequired": "请向有权限的管理员申请一次性绑定码。如果取消绑定，请申请新的绑定码。",
+    "passwordRequired": "请先使用账号密码登录，再验证设备。",
+    "passwordLogin": "返回密码登录",
+    "manage": "安全与设备",
+    "remove": "移除设备",
+    "recovery": "建议绑定备用设备。若所有设备遗失，请联系有权限的管理员，在核实身份后恢复。",
+    "rateLimited": "尝试次数过多，请稍等几分钟后重试。",
+    "unsupported": "当前浏览器或连接不支持通行密钥，请使用兼容设备和安全连接。",
+    "retryRequired": "设备或提现资料已变化，请刷新页面后重新验证。",
+    "unavailable": "安全验证暂时无法使用，请联系管理员后再继续。",
+    "failed": "验证已取消或失败，请重试。"
+  },
+  "staffMfa": {
+    "eyebrow": "后台账号安全",
+    "title": "验证你的验证器",
+    "description": "进入后台管理功能前，请先输入验证器 App 的动态验证码。"
   },
   "security": {
     "eyebrow": "账户安全",

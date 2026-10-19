@@ -1,3 +1,4 @@
+import { recipientEmailLocale } from '@/lib/email/locale';
 // P4 — Member 4: AI-drafted vendor recommendation invite emails.
 // POST /api/admin/vendors/recommendation-invite/draft — body
 // { recommendationId }. Returns a draft { subject, body } for the admin's
@@ -11,7 +12,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { draftVendorInviteEmail } from '@/lib/recommendations/invite-draft';
 
-const schema = z.object({ recommendationId: z.string().uuid() }).strict();
+const schema = z.object({ recommendationId: z.string().uuid(), email: z.string().trim().email().optional(), localeOnly: z.boolean().optional() }).strict();
 
 export async function POST(request: Request) {
   const { response } = await requireStaffPermission('admin.vendor.manage');
@@ -32,7 +33,13 @@ export async function POST(request: Request) {
     return apiFail('RECOMMENDATION_NOT_READY', 'Only approved recommendations can be drafted for invite', 409);
   }
 
+  let locale;
+  try { locale = parsed.data.email ? await recipientEmailLocale(service, parsed.data.email) : 'en' as const; }
+  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
+  if (parsed.data.localeOnly) return apiOk({ locale });
+
   const draft = await draftVendorInviteEmail({
+    locale,
     vendorName: recommendation.vendor_name,
     description: recommendation.description,
     vendorAddress: recommendation.vendor_address,
@@ -40,5 +47,5 @@ export async function POST(request: Request) {
   });
   if (!draft) return apiFail('DRAFT_UNAVAILABLE', 'Could not draft an invite email right now — try again, or write one manually.', 502);
 
-  return apiOk(draft);
+  return apiOk({ ...draft, locale });
 }

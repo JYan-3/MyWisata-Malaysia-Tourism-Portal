@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useState } from "react";
-import { Bookmark, Compass, Heart, MapPin, PackageOpen } from "lucide-react";
+import { Bookmark, Compass, MapPin, PackageOpen } from "lucide-react";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { SavedDestinationCard } from "@/components/customer/saved-destination-card";
@@ -36,12 +36,15 @@ function EmptySavedState({ tab }: { tab: SavedTab }) {
 export function SavedHubClient({ activities, destinations, hotelRooms = [] }: { activities: ComputedActivity[]; destinations: SavedDestinationRow[]; hotelRooms?: ComputedActivity[] }) {
   const { t: tCustomer } = useTranslation("customer");
   const { savedStates, savedAt, loading } = useSavedDestinations();
-  const { savedOutletIds, loading: wishlistLoading } = useWishlist();
+  const { savedIds, hydrated: productsHydrated, savedOutletIds, loading: wishlistLoading } = useWishlist();
   const [tab, setTab] = useState<SavedTab>("all");
   // Unsaving a hotel hides its card at once; until the provider loads, trust the server list.
   const hotels = groupAccommodationByProperty(hotelRooms).filter((hotel) => wishlistLoading || savedOutletIds.has(hotel.outlet.id));
   const initialStates = new Set(destinations.map((destination) => destination.state));
   const effectiveSavedStates = loading ? initialStates : savedStates;
+  const initialProductIds = new Set(activities.map((activity) => activity.id));
+  const effectiveSavedIds = productsHydrated ? savedIds : initialProductIds;
+  const savedProducts = activities.filter((activity) => effectiveSavedIds.has(activity.id));
   const savedPlaces = destinations
     .filter((destination) => effectiveSavedStates.has(destination.state))
     .map((record) => ({
@@ -49,25 +52,24 @@ export function SavedHubClient({ activities, destinations, hotelRooms = [] }: { 
       destination: MALAYSIA_DESTINATIONS.find((item) => item.state === record.state),
     }))
     .filter((item): item is { record: SavedDestinationRow; destination: (typeof MALAYSIA_DESTINATIONS)[number] } => Boolean(item.destination));
-  const totalSaved = savedPlaces.length + hotels.length + activities.length;
+  const totalSaved = savedPlaces.length + hotels.length + savedProducts.length;
   const tabs: Array<{ id: SavedTab; label: string; count: number }> = [
     { id: "all", label: tCustomer("ui.wishlist.allSaved"), count: totalSaved },
     { id: "places", label: tCustomer("ui.labels.places"), count: savedPlaces.length },
-    { id: "experiences", label: tCustomer("ui.wishlist.savedExperiences"), count: hotels.length + activities.length },
+    { id: "experiences", label: tCustomer("ui.wishlist.savedExperiences"), count: hotels.length + savedProducts.length },
   ];
 
   const showPlaces = tab === "all" || tab === "places";
   const showExperiences = tab === "all" || tab === "experiences";
-  const hasVisibleContent = (showPlaces && savedPlaces.length > 0) || (showExperiences && (hotels.length > 0 || activities.length > 0));
+  const hasVisibleContent = (showPlaces && savedPlaces.length > 0) || (showExperiences && (hotels.length > 0 || savedProducts.length > 0));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
-      <header className="rounded-3xl bg-primary dark:bg-[#010066] px-5 py-7 text-white shadow-[0_18px_45px_rgba(1,0,102,0.18)] sm:px-8">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <header className="rounded-3xl bg-primary px-5 py-7 text-white shadow-[0_18px_45px_rgba(1,0,102,0.18)] sm:px-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-[#ffcc00]"><Heart size={17} fill="currentColor" /><span className="text-xs font-bold uppercase tracking-[0.18em]">{tCustomer("ui.wishlist.shortlist")}</span></div>
+            <div className="flex items-center gap-2 text-[#ffcc00]"><Bookmark size={17} fill="currentColor" /><span className="text-xs font-bold uppercase tracking-[0.18em]">{tCustomer("ui.wishlist.shortlist")}</span></div>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold sm:text-4xl">{tCustomer("ui.wishlist.title")}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">{tCustomer("ui.wishlist.description")}</p>
           </div>
           <Link href="/customer" className="inline-flex items-center gap-2 self-start rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-primary dark:text-[#010066] transition hover:bg-[#ffd633] md:self-auto"><MapPin size={14} /> {tCustomer("ui.wishlist.explore")}</Link>
         </div>
@@ -85,7 +87,7 @@ export function SavedHubClient({ activities, destinations, hotelRooms = [] }: { 
       {!hasVisibleContent ? <div className="mt-6"><EmptySavedState tab={tab} /></div> : <div className="mt-8 space-y-10">
         {showPlaces && savedPlaces.length > 0 && <section aria-labelledby="saved-places-heading"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.wishlist.keepClose")}</p><h2 id="saved-places-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedPlaces")}</h2></div><span className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.wishlist.placeCount", { count: savedPlaces.length })}</span></div><div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{savedPlaces.map(({ record, destination }) => <SavedDestinationCard key={record.state} destination={destination} savedAt={savedAt.get(record.state) ?? record.savedAt} />)}</div></section>}
         {showExperiences && hotels.length > 0 && <section aria-labelledby="saved-hotels-heading"><h2 id="saved-hotels-heading" className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedHotels")}</h2><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{hotels.map((hotel) => <ActivityCard key={hotel.outlet.id} activity={hotel} returnTo="/customer/saved" />)}</div></section>}
-        {showExperiences && activities.length > 0 && <section aria-labelledby="saved-experiences-heading"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.wishlist.ready")}</p><h2 id="saved-experiences-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedExperiences")}</h2></div><span className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.wishlist.experienceCount", { count: activities.length })}</span></div><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{activities.map((activity) => <ActivityCard key={activity.id} activity={activity} returnTo="/customer/wishlist" />)}</div></section>}
+        {showExperiences && savedProducts.length > 0 && <section aria-labelledby="saved-experiences-heading"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.wishlist.ready")}</p><h2 id="saved-experiences-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedExperiences")}</h2></div><span className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.wishlist.experienceCount", { count: hotels.length + savedProducts.length })}</span></div><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{savedProducts.map((activity) => <ActivityCard key={activity.id} activity={activity} returnTo="/customer/wishlist" detailsRevealOnHover detailsRevealStyle="caption" />)}</div></section>}
       </div>}
     </div>
   );

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// These fixtures represent an already verified staff session; this suite focuses
+// on invitation drafting behavior.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
+
 const getUser = vi.fn();
 const rpc = vi.fn();
 const draftVendorInviteEmail = vi.fn();
@@ -89,15 +96,16 @@ describe('POST /api/admin/vendors/recommendation-invite/draft', () => {
 
   it('drafts using the recommendation\'s real details and returns subject/body', async () => {
     mockRecommendationRow();
-    draftVendorInviteEmail.mockResolvedValue({ subject: 'Join MyWisata', body: 'We would love to have you.' });
+    draftVendorInviteEmail.mockResolvedValue({ subject: 'Join MyLawatan', body: 'We would love to have you.' });
 
     const response = await POST(request({ recommendationId: RECOMMENDATION_ID }));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      data: { subject: 'Join MyWisata', body: 'We would love to have you.' },
+      data: { subject: 'Join MyLawatan', body: 'We would love to have you.' },
     });
     expect(draftVendorInviteEmail).toHaveBeenCalledWith({
+      locale: 'en',
       vendorName: 'Rasa Malaysia Kitchen',
       description: 'A cozy local eatery.',
       vendorAddress: '123 Jalan Example',
