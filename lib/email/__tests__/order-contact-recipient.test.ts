@@ -1,0 +1,57 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  orderContactEmail: null as string | null,
+  orderLookupError: false,
+  enqueueEmail: vi.fn(async () => undefined),
+}));
+
+vi.mock('@/lib/email/outbox', () => ({ enqueueEmail: mocks.enqueueEmail, processEmailOutbox: vi.fn(async () => undefined) }));
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: () => ({
+    from: (table: string) => {
+      const single = table === 'users'
+        ? { data: { email: 'account@example.com', full_name: 'Account Holder', preferred_locale: 'zh-CN' }, error: null }
+        : { data: mocks.orderLookupError ? null : { contact_email: mocks.orderContactEmail }, error: mocks.orderLookupError ? new Error('order_lookup_failed') : null };
+      const chain = { select: () => chain, eq: () => chain, single: async () => single, maybeSingle: async () => single };
+      return chain;
+    },
+  }),
+}));
+
+const { enqueueUserTransactionEmail } = await import('@/lib/email/events');
+const send = (orderId?: string) => enqueueUserTransactionEmail({
+  eventKey: 'checkout:1', userId: 'user-1', eventType: 'checkout_succeeded', amountRm: 100, reference: 'order-1', orderId,
+} as Parameters<typeof enqueueUserTransactionEmail>[0]);
+
+describe('signed-in order email recipient', () => {
+  beforeEach(() => {
+    mocks.enqueueEmail.mockClear();
+    mocks.orderContactEmail = null;
+    mocks.orderLookupError = false;
+  });
+
+  it('sends to the email typed at checkout for this order', async () => {
+    mocks.orderContactEmail = 'booking@example.com';
+    await send('order-1');
+    expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ toEmail: 'booking@example.com' }));
+  });
+
+  it('falls back to the account email when the order has none', async () => {
+    mocks.orderContactEmail = null;
+    await send('order-1');
+    expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ toEmail: 'account@example.com' }));
+  });
+
+  it('keeps the recipient language preference for order emails', async () => {
+    mocks.orderContactEmail = 'booking@example.com';
+    await send('order-1');
+    expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: 'zh-CN' }));
+  });
+
+  it('fails closed when the order contact lookup fails', async () => {
+    mocks.orderLookupError = true;
+    await expect(send('order-1')).rejects.toThrow('email_order_recipient_unavailable');
+    expect(mocks.enqueueEmail).not.toHaveBeenCalled();
+  });
+});

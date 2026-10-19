@@ -928,7 +928,8 @@
     "entity": {
       "listing": "Senarai",
       "outlet": "Outlet",
-      "voucher": "Baucar"
+      "voucher": "Baucar",
+      "hotelProfile": "Profil hotel"
     },
     "errors": {
       "actionFailed": "Tindakan semakan gagal",
@@ -969,6 +970,25 @@
       "changeReason": "Nyatakan perkara yang perlu diubah (sekurang-kurangnya 10 aksara):",
       "batchRejectReason": "Masukkan sebab menolak semua item dipilih (sekurang-kurangnya 10 aksara):",
       "batchChangeReason": "Nyatakan perubahan untuk semua item dipilih (sekurang-kurangnya 10 aksara):"
+    },
+    "hotelDiff": {
+      "title": "Perubahan dicadangkan (semasa → baharu). Hotel kekal dipaparkan sehingga anda meluluskan.",
+      "noChanges": "Tiada perubahan yang kelihatan.",
+      "photoCount_one": "{{count}} foto dihantar",
+      "photoCount_other": "{{count}} foto dihantar",
+      "fields": {
+        "name": "Nama hotel",
+        "address": "Alamat",
+        "city": "Bandar",
+        "state": "Negeri",
+        "phone": "Telefon",
+        "about": "Tentang hotel ini",
+        "amenities": "Kemudahan",
+        "checkIn": "Masa daftar masuk",
+        "checkOut": "Masa daftar keluar",
+        "policies": "Polisi",
+        "photos": "Foto"
+      }
     }
   },
   "chatbot": {
@@ -3879,5 +3899,38 @@
     "eyebrow": "Keselamatan akaun",
     "title": "Sahkan aplikasi pengesah anda",
     "description": "Akses admin memerlukan kod daripada aplikasi pengesah anda selain kata laluan."
+  },
+  "hotelAmenities": {
+    "eyebrow": "Hotel",
+    "title": "Kemudahan hotel",
+    "description": "Senarai semak yang ditanda oleh hotel dalam profil hotel mereka. Kemudahan yang dimatikan tidak dipaparkan dalam profil baharu dan halaman hotel.",
+    "loading": "Memuatkan kemudahan…",
+    "empty": "Belum ada kemudahan",
+    "manage": "Kemudahan hotel",
+    "form": {
+      "code": "Kod",
+      "labelEn": "Label Bahasa Inggeris",
+      "labelMs": "Label Bahasa Melayu",
+      "labelZh": "Label Bahasa Cina",
+      "icon": "Ikon",
+      "add": "Tambah kemudahan",
+      "codeHint": "Kod: 2–40 huruf kecil, nombor atau garis bawah. Tidak boleh diubah kemudian."
+    },
+    "table": {
+      "code": "Kod",
+      "labels": "Label (EN · MS · ZH)",
+      "status": "Keadaan"
+    },
+    "actions": {
+      "activate": "Hidupkan",
+      "deactivate": "Matikan"
+    },
+    "success": {
+      "added": "Kemudahan ditambah"
+    },
+    "errors": {
+      "add": "Kemudahan tidak dapat ditambah",
+      "update": "Kemudahan tidak dapat dikemas kini"
+    }
   }
 }

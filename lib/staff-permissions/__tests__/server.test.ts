@@ -1,4 +1,3 @@
-vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -7,9 +6,11 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   from: vi.fn(),
   requireSuperAdmin: vi.fn(),
+  assurance: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/auth/staff-assurance", () => ({ requireStaffAssurance: mocks.assurance }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/entitlements/admin-guard", () => ({
   requireAccessControlSuperAdmin: mocks.requireSuperAdmin,
@@ -39,6 +40,7 @@ describe("requireStaffPermission", () => {
     });
     mocks.getUser.mockResolvedValue({ data: { user: { id: "staff-1" } }, error: null });
     mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.assurance.mockResolvedValue(null);
   });
 
   it("returns 401 before querying permissions when authentication fails", async () => {
@@ -47,6 +49,16 @@ describe("requireStaffPermission", () => {
     const result = await requireStaffPermission("admin.kyc.review");
 
     expect(result.response?.status).toBe(401);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("requires staff assurance before querying permissions", async () => {
+    const denied = Response.json({ data: null, error: { code: "STAFF_PASSKEY_REQUIRED" } }, { status: 403 });
+    mocks.assurance.mockResolvedValue(denied);
+
+    const result = await requireStaffPermission("admin.kyc.review");
+
+    expect(result.response).toBe(denied);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

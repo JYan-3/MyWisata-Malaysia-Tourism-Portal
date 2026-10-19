@@ -14,6 +14,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import type { ComputedActivity } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import type { StateCounts } from "./malaysia-state-map";
@@ -151,7 +152,7 @@ function StateDetailPanel({
                             {activity.name}
                             {activity.sponsorship && <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-900">{t("ui.labels.sponsored")}</span>}
                           </span>
-                          {activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}
+                          {activity.categorySlug !== "accommodation" && activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}
                         </span>
                       </span>
                       <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
@@ -404,9 +405,9 @@ export function StoryMap({
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                  {selectedActivity.outlet.hours && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedActivity.outlet.hours}</span>}
+                  {selectedActivity.categorySlug !== "accommodation" && selectedActivity.outlet.hours && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedActivity.outlet.hours}</span>}
                   <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><ReferencePrice amountMYR={Number(selectedActivity.price)} className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary" /></div>
-                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
+                <div className="flex items-center gap-2"><Link href={selectedActivity.categorySlug === "accommodation" ? getOutletShopHref(selectedActivity.outlet.id) : `/customer/activity/${selectedActivity.id}`} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
             </div>
@@ -488,7 +489,7 @@ export function StoryMap({
                             <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
                             <span>{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</span>
                           </p>
-                          {activity.outlet.hours && <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85"><Clock3 size={12} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{activity.outlet.hours}</span></p>}
+                          {activity.categorySlug !== "accommodation" && activity.outlet.hours && <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85"><Clock3 size={12} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{activity.outlet.hours}</span></p>}
                         </div>
                       </div>
                       <div className="flex min-h-20 w-full flex-1 flex-col justify-between gap-2 p-3 sm:p-3.5">

@@ -140,8 +140,8 @@ describe("customer home first viewport", () => {
   });
 
   it("keeps the homepage discovery shelf under the Featured Highlights label", () => {
-    expect(homeSource).toContain("const highlightItems = popular.slice(0, 4)");
-    expect(homeSource).toContain("recommended.filter((activity) => !highlightIds.has(activity.id)).slice(0, 4)");
+    expect(homeSource).toContain("const highlightItems = groupAccommodationByProperty(popular).slice(0, 4)");
+    expect(homeSource).toContain("groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4)");
     expect(homeSource).toContain('t("ui.home.featuredHighlights")');
     expect(homeSource).toContain('t("ui.home.forYou")');
     expect(homeSource).toContain("!isGuest && forYouItems.length > 0");

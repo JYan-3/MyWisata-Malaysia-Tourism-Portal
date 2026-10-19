@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -39,6 +40,7 @@ export default async function ExperiencePage({ params }: Props) {
   
   if (!experience) notFound();
   const { t } = await getServerTranslation("customer");
+  const { t: tCommon } = await getServerTranslation("common");
 
   const [slots, reviews] = await Promise.all([
     experience.requiresBooking ? getBookingSlots(experience.id, db) : Promise.resolve([]),
@@ -56,13 +58,13 @@ export default async function ExperiencePage({ params }: Props) {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <Link
-          href="/customer/explore"
+        <BackLink
+          fallbackHref="/customer/explore"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary"
         >
           <ArrowLeft size={15} />
-          {t("ui.experience.backToExplore")}
-        </Link>
+          {tCommon("actions.back")}
+        </BackLink>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           {/* Main content */}

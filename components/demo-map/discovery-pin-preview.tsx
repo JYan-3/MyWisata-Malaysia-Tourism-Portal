@@ -27,7 +27,7 @@ export function DiscoveryPinPreview({ pins, onClose }: { pins: DiscoveryPin[]; o
         </button>
       </div>
       <div className="max-h-[50vh] divide-y divide-border overflow-y-auto">
-        {pins.map((pin) => (pin.kind === "outlet" ? <OutletCard key={pin.id} pin={pin} /> : <ActivityCard key={pin.id} pin={pin} />))}
+        {pins.map((pin) => (pin.kind === "outlet" ? <OutletCard key={pin.id} pin={pin} /> : <PinActivityCard key={pin.id} pin={pin} />))}
       </div>
     </aside>
   );
@@ -61,7 +61,7 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
   );
 }
 
-function ActivityCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "activity" }> }) {
+function PinActivityCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "activity" }> }) {
   const { t } = useTranslation("customer");
   return (
     <div className="p-4">

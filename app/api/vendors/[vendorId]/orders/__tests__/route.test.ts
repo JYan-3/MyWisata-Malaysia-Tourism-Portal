@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), from: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), from: vi.fn(), select: vi.fn() }));
 
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
 
@@ -29,7 +29,7 @@ describe('GET vendor orders by orderId', () => {
     });
 
     const query = {
-      select: vi.fn().mockReturnThis(),
+      select: mocks.select.mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
@@ -52,8 +52,43 @@ describe('GET vendor orders by orderId', () => {
             line_total: 17.82,
             fulfil_status: 'fulfilled',
             vendor_id: VENDOR_ID,
+            stay_details: {
+              primaryGuestName: 'Nur Aisyah',
+              additionalGuestNames: ['Sam Lee'],
+              adults: 2,
+              estimatedArrival: 'unknown',
+              specialRequest: 'Quiet room if available',
+            },
             outlets: { id: OUTLET_ID, name: 'Penang Road Famous Teochew Chendul — Lebuh Keng Kwee', city: 'George Town', state: 'Penang' },
-            products: { cover_url: null },
+            products: { cover_url: null, categories: { slug: 'accommodation' } },
+          }, {
+            id: 'other-vendor-item',
+            vendor_id: 'other-vendor',
+            fulfil_status: 'pending',
+            line_total: 100,
+            quantity: 1,
+            product_name: 'Other vendor room',
+            outlets: { id: OUTLET_ID, name: 'Same outlet' },
+            stay_details: { primaryGuestName: 'Private Guest', adults: 1, estimatedArrival: 'unknown' },
+          }, {
+            id: 'outside-outlet-item',
+            vendor_id: VENDOR_ID,
+            fulfil_status: 'pending',
+            line_total: 100,
+            quantity: 1,
+            product_name: 'Unauthorized outlet room',
+            outlets: { id: 'another-outlet', name: 'Another outlet' },
+            stay_details: { primaryGuestName: 'Another Private Guest', adults: 1, estimatedArrival: 'unknown' },
+          }, {
+            id: 'food-item-with-invalid-stay-details',
+            vendor_id: VENDOR_ID,
+            fulfil_status: 'pending',
+            line_total: 100,
+            quantity: 1,
+            product_name: 'Food item',
+            outlets: { id: OUTLET_ID, name: 'Authorized outlet' },
+            products: { categories: { slug: 'food' } },
+            stay_details: { primaryGuestName: 'Private Food Guest', adults: 1, estimatedArrival: 'unknown' },
           }],
         }],
         error: null,
@@ -75,13 +110,25 @@ describe('GET vendor orders by orderId', () => {
     expect(payload.data.items[0]).toMatchObject({
       id: ORDER_ID,
       display_id: 'ORD-20158',
-      product_summary: '2x Fried Wantan',
-      vendor_items: [expect.objectContaining({
-        id: ORDER_ITEM_ID,
-        product_name: 'Fried Wantan',
-        outlets: expect.objectContaining({ id: OUTLET_ID }),
-      })],
+      product_summary: '2x Fried Wantan, 1x Food item',
+      vendor_items: expect.arrayContaining([
+        expect.objectContaining({
+          id: ORDER_ITEM_ID,
+          product_name: 'Fried Wantan',
+          outlets: expect.objectContaining({ id: OUTLET_ID }),
+          stay_details: expect.objectContaining({ primaryGuestName: 'Nur Aisyah' }),
+        }),
+        expect.objectContaining({ id: 'food-item-with-invalid-stay-details', stay_details: null }),
+      ]),
     });
+    expect(payload.data.items[0].vendor_items).toHaveLength(2);
+    expect(JSON.stringify(payload.data.items[0].vendor_items)).not.toContain('Private Guest');
+    expect(JSON.stringify(payload.data.items[0].vendor_items)).not.toContain('Another Private Guest');
+    expect(JSON.stringify(payload.data.items[0].vendor_items)).not.toContain('Private Food Guest');
+    expect(JSON.stringify(payload.data.items[0])).not.toContain('Another Private Guest');
+    expect(JSON.stringify(payload.data.items[0])).not.toContain('Private Food Guest');
+    expect(mocks.select).toHaveBeenCalledWith(expect.stringContaining('stay_details'), expect.anything());
+    expect(mocks.select).toHaveBeenCalledWith(expect.stringContaining('categories(slug)'), expect.anything());
     expect(mocks.from).toHaveBeenCalledWith('orders');
   });
 });

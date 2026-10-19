@@ -60,7 +60,11 @@ vi.mock('@/lib/supabase/service', () => ({
 
 vi.mock('@/lib/cache/catalogue-cache', () => ({ getCachedActivities: mocks.getActivities }));
 vi.mock('@/backend/domains/catalogue', () => ({ getActivities: mocks.getActivities }));
-vi.mock('@/backend/core/helpers', () => ({ cartTotals: mocks.cartTotals, unitPrice: mocks.unitPrice }));
+vi.mock('@/backend/core/helpers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/backend/core/helpers')>()),
+  cartTotals: mocks.cartTotals,
+  unitPrice: mocks.unitPrice,
+}));
 vi.mock('@/lib/stripe', () => ({ stripe: { checkout: { sessions: { create: mocks.stripeCreate } } } }));
 
 import { POST } from '../prepare/route';
@@ -103,6 +107,8 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       slot_id: null,
       outlet_id: OUTLET_ID,
       quantity: 1,
+      nights: 1,
+      stay_details: null,
       product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: 'Standard' },
       booking_slots: null,
     };
@@ -290,6 +296,8 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       slot_id: null,
       outlet_id: OTHER_OUTLET_ID,
       quantity: 1,
+      nights: 1,
+      stay_details: null,
       product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: 'Standard' },
       booking_slots: null,
     }];
@@ -379,6 +387,8 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       slot_id: '99999999-9999-4999-8999-999999999999',
       outlet_id: OUTLET_ID,
       quantity: 1,
+      nights: 1,
+      stay_details: null,
       product_variants: null,
       booking_slots: {
         id: '99999999-9999-4999-8999-999999999999',

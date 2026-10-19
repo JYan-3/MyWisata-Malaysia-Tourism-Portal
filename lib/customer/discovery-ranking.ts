@@ -1,5 +1,6 @@
 import type {
   ComputedActivity,
+  DiscoveryPropertySummary,
   DiscoveryResult,
   SponsoredPlacement,
 } from "@/backend/core/types";
@@ -70,4 +71,54 @@ export function rankDiscoveryResults(input: {
     .map((activity) => ({ ...activity, sponsorship: null }));
 
   return [...sponsored, ...organic];
+}
+
+/**
+ * Accommodation is discovered as a property, while the rows underneath it
+ * remain room types. Keep the ranked room that first introduced a property so
+ * sponsored placement and click attribution still point at a real product.
+ */
+export function groupAccommodationByProperty<T extends ComputedActivity & { property?: DiscoveryPropertySummary }>(results: T[]): T[] {
+  const roomsByProperty = new Map<string, T[]>();
+
+  for (const result of results) {
+    if (result.categorySlug !== "accommodation") continue;
+    const propertyId = result.outlet.id || result.outletId;
+    if (!propertyId) continue;
+    const rooms = roomsByProperty.get(propertyId) ?? [];
+    rooms.push(result);
+    roomsByProperty.set(propertyId, rooms);
+  }
+
+  const emitted = new Set<string>();
+  return results.flatMap((result) => {
+    if (result.categorySlug !== "accommodation") return [result];
+
+    const propertyId = result.outlet.id || result.outletId;
+    const rooms = propertyId ? roomsByProperty.get(propertyId) : undefined;
+    if (!propertyId || !rooms || emitted.has(propertyId)) return [];
+    emitted.add(propertyId);
+
+    const fromPrice = rooms.reduce((minimum, room) => Math.min(minimum, Number(room.price)), Number.POSITIVE_INFINITY);
+    const safeFromPrice = Number.isFinite(fromPrice) ? fromPrice : Number(result.price);
+    return [{
+      ...result,
+      name: result.outlet.name || result.name,
+      image: result.outlet.coverUrl || result.image,
+      price: safeFromPrice,
+      property: {
+        roomTypeCount: rooms.length,
+        fromPrice: safeFromPrice,
+      },
+    }];
+  });
+}
+
+/** Same grouping for ranked items that carry extra data (e.g. For You's reasons): the best-ranked room keeps its slot. */
+export function groupRankedByProperty<T extends { activity: ComputedActivity & { property?: DiscoveryPropertySummary } }>(items: T[]): T[] {
+  const grouped = new Map(groupAccommodationByProperty(items.map((item) => item.activity)).map((activity) => [activity.id, activity]));
+  return items.flatMap((item) => {
+    const activity = grouped.get(item.activity.id);
+    return activity ? [{ ...item, activity }] : [];
+  });
 }
