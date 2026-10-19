@@ -20,6 +20,14 @@ describe("stay details before cart migration", () => {
     expect(sql).toMatch(/INSERT INTO public\.order_items[\s\S]*stay_details/i);
   });
 
+  it("parenthesizes CASE conditions inside PL/pgSQL IF predicates", () => {
+    const validation = sql.match(/v_validation_new TEXT := \$new\$([\s\S]*?)\$new\$;/)?.[1] ?? "";
+
+    expect(validation.match(/\bOR CASE\b/g)).toBeNull();
+    expect(validation.match(/\bOR \(CASE\b/g)).toHaveLength(3);
+    expect(validation.match(/\bEND\)/g)).toHaveLength(3);
+  });
+
   it("keeps the SQL transaction validation aligned with the application schema", () => {
     expect(sql).toContain("jsonb_object_keys(v_cart_item.stay_details)");
     expect(sql).toContain("specialRequest");

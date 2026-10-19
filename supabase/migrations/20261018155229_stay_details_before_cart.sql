@@ -53,14 +53,14 @@ $old$;
          OR COALESCE(NULLIF(BTRIM(v_cart_item.stay_details->>'primaryGuestName'), ''), '') = ''
          OR char_length(v_cart_item.stay_details->>'primaryGuestName') > 100
          OR jsonb_typeof(v_cart_item.stay_details->'adults') IS DISTINCT FROM 'number'
-         OR CASE
+         OR (CASE
               WHEN COALESCE(v_cart_item.stay_details->>'adults', '') ~ '^[0-9]+$'
               THEN (v_cart_item.stay_details->>'adults')::INTEGER NOT BETWEEN 1 AND 20
                    OR (v_cart_item.stay_details->>'adults')::INTEGER::NUMERIC <> (v_cart_item.stay_details->>'adults')::NUMERIC
               ELSE true
-            END
+            END)
          OR COALESCE(v_cart_item.stay_details->>'estimatedArrival', '') NOT IN ('unknown', '15:00-18:00', '18:00-21:00', 'after-21:00')
-         OR CASE
+         OR (CASE
               WHEN v_cart_item.stay_details ? 'additionalGuestNames'
                    AND jsonb_typeof(v_cart_item.stay_details->'additionalGuestNames') = 'array'
                    AND COALESCE(v_cart_item.stay_details->>'adults', '') ~ '^[0-9]+$'
@@ -74,13 +74,13 @@ $old$;
                    )
               WHEN v_cart_item.stay_details ? 'additionalGuestNames' THEN true
               ELSE false
-            END
-         OR CASE
+            END)
+         OR (CASE
               WHEN v_cart_item.stay_details ? 'specialRequest'
               THEN jsonb_typeof(v_cart_item.stay_details->'specialRequest') NOT IN ('string', 'null')
                    OR COALESCE(char_length(v_cart_item.stay_details->>'specialRequest') > 500, false)
               ELSE false
-            END
+            END)
          OR EXISTS (
               SELECT 1
                 FROM jsonb_object_keys(v_cart_item.stay_details) AS detail(key)
