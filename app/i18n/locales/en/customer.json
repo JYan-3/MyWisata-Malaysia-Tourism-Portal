@@ -1595,7 +1595,10 @@
       "chatVendor": "Chat with vendor",
       "viewCart": "View cart",
       "addBooking": "Add booking",
-      "addCart": "Add to cart"
+      "addCart": "Add to cart",
+      "priceUnits": {
+        "perNight": "per night"
+      }
     },
     "vendor": {
       "notFound": "Vendor not found",

@@ -1595,7 +1595,10 @@
       "chatVendor": "与商家聊天",
       "viewCart": "查看购物车",
       "addBooking": "添加预订",
-      "addCart": "加入购物车"
+      "addCart": "加入购物车",
+      "priceUnits": {
+        "perNight": "每晚"
+      }
     },
     "vendor": {
       "notFound": "找不到商家",

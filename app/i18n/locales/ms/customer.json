@@ -1595,7 +1595,10 @@
       "chatVendor": "Sembang dengan vendor",
       "viewCart": "Lihat troli",
       "addBooking": "Tambah tempahan",
-      "addCart": "Tambah ke troli"
+      "addCart": "Tambah ke troli",
+      "priceUnits": {
+        "perNight": "setiap malam"
+      }
     },
     "vendor": {
       "notFound": "Vendor tidak ditemui",
