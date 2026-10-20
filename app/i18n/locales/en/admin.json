@@ -3900,6 +3900,26 @@
     "title": "Verify your authenticator",
     "description": "Admin access needs a code from your authenticator app as well as your password."
   },
+  "staffHelp": {
+    "eyebrow": "Staff help",
+    "title": "Admin help",
+    "description": "How each section of the admin panel works, who can use it, and the rules to know before you act.",
+    "searchLabel": "Search help",
+    "searchPlaceholder": "Search sections, actions or rules",
+    "contentLanguage": "Section details are in English.",
+    "permissionNote": "Some sections also depend on permissions granted in Access Control, so a section listed here may not open for your account yet.",
+    "whoSuperAdmin": "Super Admin only",
+    "whoStaff": "Admin, approver and Super Admin",
+    "whoGranted": "Granted to your account",
+    "actions": "What you can do",
+    "notes": "Important",
+    "empty": "No sections match your search.",
+    "headerLink": "Help",
+    "otherGroup": "Other",
+    "backToHelp": "All help topics",
+    "openPage": "Open this page",
+    "notAvailable": "This guide is not available for your account. Go back to see the help topics you can use."
+  },
   "hotelAmenities": {
     "eyebrow": "Hotels",
     "title": "Hotel amenities",
