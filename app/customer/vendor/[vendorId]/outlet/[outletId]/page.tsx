@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
 import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, relationOne, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
@@ -16,9 +15,7 @@ import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { readRoomDetails } from "@/lib/customer/room-details";
-import { getPublicReviewAuthorNames } from "@/backend/domains/catalogue";
-import { toProductReview } from "@/backend/domains/review-presenter";
-import type { ProductReview } from "@/backend/core/types";
+import { getReviewRatingSummary, getScopedReviewPage } from "@/backend/domains/vendor-reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -55,10 +52,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const document = selectPublicDocument(page || {});
   const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
 
-  // Rating prefix for the WhatsApp/social preview card — never fabricated,
-  // omitted entirely when there are zero visible reviews.
-  const { data: reviewRows } = await createServiceClient().from("reviews").select("rating").eq("outlet_id", outletId).eq("is_visible", true);
-  const { rating } = await ratingFromRows(reviewRows ?? []);
+  // Hotel metadata uses the same accommodation-only aggregate as its review section.
+  const reviewSummary = await getReviewRatingSummary("outlet_accommodation", outletId, createServiceClient());
+  const rating = reviewSummary.total > 0 ? reviewSummary.rating : null;
   const baseDescription = document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name });
   const description = rating !== null ? `★ ${rating.toFixed(1)} · ${baseDescription}` : baseDescription;
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/customer/vendor/${vendorId}/outlet/${outletId}`;
@@ -156,22 +152,10 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
   const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
   const STAY_SLUG = "accommodation";
   const stayIds = (products || []).filter((p) => relationOne(p.categories)?.slug === STAY_SLUG).map((p) => p.id);
-  const { data: hotelReviewRows } = stayIds.length
-    ? await db.from("reviews").select("id,rating,title,body,created_at,user_id,product_id").in("product_id", stayIds).eq("outlet_id", outletId).eq("is_visible", true).order("created_at", { ascending: false }).limit(6)
-    : { data: [] };
-  let hotelReviews: ProductReview[] = [];
-  if (hotelReviewRows?.length) {
-    try {
-      const authorNames = await getPublicReviewAuthorNames(db, hotelReviewRows.map((row) => row.user_id ?? ""));
-      hotelReviews = hotelReviewRows.map((row) => toProductReview({
-        ...row,
-        users: { full_name: row.user_id ? authorNames.get(row.user_id) ?? null : null },
-      }));
-    } catch {
-      // Public review text is optional; preserve the hotel page if reviewer names are unavailable.
-      hotelReviews = hotelReviewRows.map((row) => toProductReview({ ...row, users: null }));
-    }
-  }
+  const [hotelReviewPage, hotelReviewSummary] = await Promise.all([
+    getScopedReviewPage("outlet", outletId, { page: 1, pageSize: 6, productCategorySlug: STAY_SLUG }, db),
+    getReviewRatingSummary("outlet_accommodation", outletId, createServiceClient()),
+  ]);
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
   const stay = resolveStaySearch(search, today);
   const nightDays = Array.from({ length: stay.nights }, (_, k) => addDays(stay.checkIn, k));
@@ -242,11 +226,8 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
         policies: outlet.stay_policies ?? null,
         about: outlet.hotel_about ?? null,
         amenities: hotelAmenities,
-        ...(() => {
-          const roomMetrics = stayIds.map((id) => metricByProduct.get(id)).filter((metric) => metric && metric.reviews > 0) as { rating: number; reviews: number }[];
-          const reviews = roomMetrics.reduce((sum, metric) => sum + metric.reviews, 0);
-          return { reviews, rating: reviews ? Math.round((roomMetrics.reduce((sum, metric) => sum + metric.rating * metric.reviews, 0) / reviews) * 10) / 10 : 0 };
-        })(),
+        reviews: hotelReviewSummary.total,
+        rating: hotelReviewSummary.rating,
       },
     }),
   };
@@ -291,7 +272,15 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
           <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
         </div>
       </div>}
-      <OutletPageRenderer document={publicDocument} outlet={stayOutlet} products={menuProducts} reviews={hotelReviews} mode="public" />
+      <OutletPageRenderer
+        document={publicDocument}
+        outlet={stayOutlet}
+        products={menuProducts}
+        reviews={hotelReviewPage.items}
+        reviewRatingBuckets={hotelReviewSummary.buckets}
+        reviewTotal={hotelReviewSummary.total}
+        mode="public"
+      />
     </main>
   );
 }

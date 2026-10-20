@@ -66,10 +66,10 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
 
   return (
     <article
-      className="mw-card group transition-all duration-200 hover:-translate-y-1"
+      className="mw-card group"
     >
       <div className="mw-card-media">
-        <Link href={activityHref} onClick={onSponsoredClick} className="block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
+        <Link href={activityHref} onClick={onSponsoredClick} className="group/activity-media block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
           {!imageSrc || imageFailed ? (
             <div
               role="img"
@@ -86,7 +86,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
               src={imageSrc}
               alt={cardName}
               onError={() => setImageFailed(true)}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover/activity-media:scale-105"
               style={{ backgroundColor: "#EEF2FF" }}
             />
           )}

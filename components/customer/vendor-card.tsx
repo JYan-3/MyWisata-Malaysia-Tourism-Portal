@@ -69,13 +69,13 @@ export function VendorCard({
   const detailsId = `vendor-card-details-${vendor.id}`;
 
   return (
-    <article className={`${compactHomeCard ? "mw-card relative" : "relative flex h-full flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-sm"} group transition duration-300 hover:-translate-y-1 hover:shadow-md`}>
+    <article className={`${compactHomeCard ? "mw-card relative" : "relative flex h-full flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-sm"} group`}>
       <div className={compactHomeCard ? "mw-card-media" : "relative aspect-[1.45] overflow-hidden bg-[#eef2ff]"}>
-        <Link href={`/customer/vendor/${vendor.id}`} className="absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
+        <Link href={`/customer/vendor/${vendor.id}`} className="group/vendor-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: vendor.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+            <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: vendor.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/vendor-media:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           </> : <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(255,204,0,0.28),transparent_28%),linear-gradient(135deg,#010066,#172b72_58%,#2d5273)] text-white">
             <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/25 bg-white/10 dark:bg-card/10 text-2xl font-black tracking-tight shadow-xl backdrop-blur-sm">{visual.initials}</span>

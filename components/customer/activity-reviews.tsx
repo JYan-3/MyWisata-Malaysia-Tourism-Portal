@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LocalizedContent } from "@/components/customer/localized-content";
+import { FeedbackCollection, type FeedbackReviewItem } from "@/components/customer/feedback/feedback-collection";
+import type { ReviewRatingBucket } from "@/backend/domains/vendor-reviews";
 
 interface Props {
   productId: string;
@@ -29,35 +31,16 @@ type ReviewViewer = {
   orderItemId: string | null;
 };
 
-function ReviewCard({ review }: { review: ProductReview }) {
-  const { t, i18n } = useTranslation("customer");
-  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  return (
-    <article className="rounded-xl bg-muted/70 px-3 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{review.title ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title} /> : t("ui.reviews.guestReview")}</p>
-          <p className="mt-1 break-words whitespace-normal text-xs text-muted-foreground">{review.authorName} · {formatDate(review.createdAt, locale)}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1" aria-label={t("ui.reviews.ratingOutOfFive", { rating: review.rating })}>
-          <Star size={12} fill="var(--highlight-yellow)" stroke="none" />
-          <span className="text-xs font-bold text-foreground">{review.rating}</span>
-        </div>
-      </div>
-      {review.body && <p className="mt-2 text-sm leading-6 text-foreground/80">“<LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />”</p>}
-      {review.verifiedPurchase && <p className="mt-2 text-[11px] font-semibold text-primary">✓ {t("ui.reviews.verifiedPurchase")}</p>}
-    </article>
-  );
-}
-
-function reviewsQueryString(page: number, pageSize: number, outletId?: string): string {
+function reviewsQueryString(page: number, pageSize: number, outletId?: string, rating?: number | null): string {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (outletId) params.set("outletId", outletId);
+  if (rating !== undefined && rating !== null) params.set("rating", String(rating));
   return params.toString();
 }
 
 export function ActivityReviews({ productId, outletId, rating, totalReviews, initialReviews }: Props) {
-  const { t } = useTranslation("customer");
+  const { t, i18n } = useTranslation("customer");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const gate = useCustomerCapabilityGate();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(initialReviews);
@@ -74,9 +57,12 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
   const [reviewError, setReviewError] = useState("");
   const [page, setPage] = useState(1);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [ratingBuckets, setRatingBuckets] = useState<ReviewRatingBucket[]>([]);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [filteredTotal, setFilteredTotal] = useState(totalReviews);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const pageState = getReviewPageState(summaryTotal, page, DEFAULT_REVIEW_PAGE_SIZE);
+  const pageState = getReviewPageState(filteredTotal, page, DEFAULT_REVIEW_PAGE_SIZE);
   const previousOutletId = useRef(outletId);
 
   async function refreshPreview() {
@@ -86,6 +72,7 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
     setPreview(payload.data.items);
     setSummaryTotal(payload.data.total);
     setViewer(payload.data.viewer ?? null);
+    setRatingBuckets(payload.data.ratingBuckets ?? []);
   }
 
   // The SSR preview remains visible while this request also loads the viewer's
@@ -99,6 +86,9 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
       setReviewMessage("");
       setReviewError("");
       setSummaryRating(rating);
+      setSelectedRating(null);
+      setFilteredTotal(totalReviews);
+      setRatingBuckets([]);
       setPreviewLoading(true);
     }
     let cancelled = false;
@@ -110,23 +100,26 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
           setPreview(payload.data.items);
           setSummaryTotal(payload.data.total);
           setViewer(payload.data.viewer ?? null);
+          setRatingBuckets(payload.data.ratingBuckets ?? []);
+          setFilteredTotal(payload.data.total);
         }
       })
       .catch(() => undefined)
       .finally(() => { if (!cancelled && changedOutlet) setPreviewLoading(false); });
     return () => { cancelled = true; };
-  }, [outletId, productId, rating, t]);
+  }, [outletId, productId, rating, t, totalReviews]);
 
-  async function loadPage(nextPage: number) {
+  async function loadPage(nextPage: number, nextRating = selectedRating) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/products/${productId}/reviews?${reviewsQueryString(nextPage, DEFAULT_REVIEW_PAGE_SIZE, outletId)}`, { cache: "no-store" });
+      const response = await fetch(`/api/products/${productId}/reviews?${reviewsQueryString(nextPage, DEFAULT_REVIEW_PAGE_SIZE, outletId, nextRating)}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok || !payload.data) throw new Error(payload.error?.message || t("ui.reviews.loadError"));
       setReviews(payload.data.items);
       setPage(payload.data.page);
-      setSummaryTotal(payload.data.total);
+      setFilteredTotal(payload.data.total);
+      setRatingBuckets(payload.data.ratingBuckets ?? []);
       setViewer(payload.data.viewer ?? null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("ui.reviews.loadError"));
@@ -136,8 +129,37 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
   }
 
   function openAllReviews() {
+    setSelectedRating(null);
+    setFilteredTotal(summaryTotal);
     setOpen(true);
-    void loadPage(1);
+    void loadPage(1, null);
+  }
+
+  function reviewPresentation(review: ProductReview): FeedbackReviewItem {
+    const reviewTitle = review.title
+      ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title}>{({ text }) => text}</LocalizedContent>
+      : undefined;
+    const detailTitle = review.title
+      ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title} />
+      : undefined;
+    const preview = review.body
+      ? <LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body}>{({ text }) => text}</LocalizedContent>
+      : reviewTitle ?? t("ui.reviews.guestReview");
+    const body = review.body
+      ? <LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />
+      : null;
+    return {
+      id: review.id,
+      author: review.authorName,
+      date: formatDate(review.createdAt, locale),
+      title: reviewTitle,
+      detailTitle,
+      preview,
+      content: body ?? reviewTitle ?? t("ui.reviews.guestReview"),
+      rating: review.rating,
+      ratingLabel: t("ui.reviews.ratingOutOfFive", { rating: review.rating.toFixed(1) }),
+      verifiedLabel: review.verifiedPurchase ? t("ui.reviews.verifiedPurchase") : undefined,
+    };
   }
 
   function openReviewForm() {
@@ -253,7 +275,7 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
           <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">{t("ui.states.noReviews")}</p>
         ) : (
           <div className="mt-4 space-y-3">
-            {preview.slice(0, 3).map((review) => <ReviewCard key={review.id} review={review} />)}
+            <FeedbackCollection mode="reviews" items={preview.slice(0, 3).map(reviewPresentation)} />
             {summaryTotal > 3 && (
               <button type="button" onClick={openAllReviews} className="w-full rounded-xl border border-primary/20 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-secondary">
                 {t("ui.actions.viewAll")} {summaryTotal}
@@ -274,9 +296,29 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
               <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label={t("ui.reviews.closeAll")}><X size={18} /></button>
             </div>
 
-            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : error ? <div className="mt-5 rounded-xl bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">{t("ui.actions.retry")}</button></div> : reviews.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.states.noReviews")}</p> : <div className="mt-5 space-y-3">{reviews.map((review) => <ReviewCard key={review.id} review={review} />)}</div>}
+            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : error ? <div className="mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">{t("ui.actions.retry")}</button></div> : (
+              <div className="mt-5">
+                <FeedbackCollection
+                  mode="reviews"
+                  items={reviews.map(reviewPresentation)}
+                  emptyState={<p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{selectedRating === null ? t("ui.states.noReviews") : t("ui.reviews.noReviewsForRating")}</p>}
+                  controls={(
+                    <>
+                      <Button type="button" size="sm" variant={selectedRating === null ? "default" : "outline"} onClick={() => { setSelectedRating(null); void loadPage(1, null); }}>
+                        {t("ui.reviews.allRatings")} ({summaryTotal})
+                      </Button>
+                      {ratingBuckets.map(({ rating: stars, count }) => (
+                        <Button key={stars} type="button" size="sm" variant={selectedRating === stars ? "default" : "outline"} onClick={() => { setSelectedRating(stars); void loadPage(1, stars); }}>
+                          <Star size={13} aria-hidden="true" /> {stars}★ ({count})
+                        </Button>
+                      ))}
+                    </>
+                  )}
+                />
+              </div>
+            )}
 
-            {!loading && !error && summaryTotal > 0 && (
+            {!loading && !error && filteredTotal > 0 && (
               <nav aria-label={t("ui.reviews.pages")} className="mt-5 flex items-center justify-between border-t border-border pt-4">
                 <button type="button" onClick={() => void loadPage(pageState.page - 1)} disabled={!pageState.hasPrevious} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> {t("actions.previous", { ns: "common" })}</button>
                 <span className="text-xs font-semibold text-muted-foreground">{t("ui.reviews.pageOf", { page: pageState.page, total: pageState.totalPages })}</span>

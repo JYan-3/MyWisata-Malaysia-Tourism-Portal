@@ -55,4 +55,24 @@ describe("public product review authors", () => {
     expect(queries[2].select).toHaveBeenCalledWith("id,full_name");
     expect(queries[2].in).toHaveBeenCalledWith("id", [userId]);
   });
+
+  it("applies rating filters before paging and uses a stable newest-first tie breaker", async () => {
+    const queries = [
+      resultQuery({ count: 2, error: null }),
+      resultQuery({ data: [], error: null }),
+      resultQuery({ data: [], error: null }),
+    ];
+    const from = vi.fn()
+      .mockReturnValueOnce(queries[0])
+      .mockReturnValueOnce(queries[1])
+      .mockReturnValueOnce(queries[2]);
+
+    await getProductReviewsPage("product-1", { page: 1, pageSize: 2, outletId: "outlet-1", rating: 4 }, { from } as unknown as SupabaseClient);
+
+    expect(queries[0].eq).toHaveBeenCalledWith("rating", 4);
+    expect(queries[1].eq).toHaveBeenCalledWith("rating", 4);
+    expect(queries[1].order).toHaveBeenNthCalledWith(1, "created_at", { ascending: false });
+    expect(queries[1].order).toHaveBeenNthCalledWith(2, "id", { ascending: false });
+    expect(queries[1].range).toHaveBeenCalledWith(0, 1);
+  });
 });

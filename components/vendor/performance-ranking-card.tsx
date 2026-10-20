@@ -26,7 +26,6 @@ const accent = {
     heroClass: 'border-primary/10 bg-gradient-to-br from-secondary via-white dark:via-card to-white dark:to-card',
     rankClass: 'bg-primary text-white',
     barClass: 'bg-primary',
-    hoverClass: 'hover:border-primary/20 hover:bg-secondary/40',
     linkLabel: 'ranking.selling.link',
   },
   rated: {
@@ -39,7 +38,6 @@ const accent = {
     heroClass: 'border-amber-100 dark:border-amber-500/30 bg-gradient-to-br from-amber-50 dark:from-amber-500/10 via-white dark:via-card to-white dark:to-card',
     rankClass: 'bg-amber-500 text-white',
     barClass: 'bg-amber-500',
-    hoverClass: 'hover:border-amber-200 dark:hover:border-amber-500/30 hover:bg-amber-50/40 dark:hover:bg-amber-500/10',
     linkLabel: 'ranking.rated.link',
   },
 } as const;
@@ -80,7 +78,7 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
               const metric = kind === 'selling' ? (item as SellingItem).quantity : (item as RatedItem).rating;
               const progress = kind === 'selling' ? rankingPercent(metric, leader) : rankingPercent(metric, leader);
               return (
-                <article key={`${item.name}-${index}`} className={`rounded-xl border px-3 py-3 transition ${isFirst ? style.heroClass : `border-transparent ${style.hoverClass}`}`}>
+                <article key={`${item.name}-${index}`} className={`rounded-xl border px-3 py-3 ${isFirst ? style.heroClass : 'border-transparent'}`}>
                   <div className="flex items-center gap-3">
                     <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isFirst ? style.rankClass : 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground'}`}>{isFirst ? <Crown size={14} /> : `#${index + 1}`}</div>
                     <CompactThumbnail src={item.coverUrl} alt={item.name} kind="product" size={isFirst ? 'md' : 'sm'} />

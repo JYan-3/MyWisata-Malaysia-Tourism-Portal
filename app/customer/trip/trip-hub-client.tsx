@@ -269,7 +269,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence }: { initi
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {visibleTrips.map((trip) => (
-              <div key={trip.id} className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-6">
+              <div key={trip.id} className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
                 <div>
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">

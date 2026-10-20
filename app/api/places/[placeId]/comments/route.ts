@@ -39,14 +39,18 @@ export async function GET(request: Request, { params }: Props) {
   const query = new URL(request.url).searchParams;
   const page = queryInteger(query.get("page"), 1);
   const pageSize = queryInteger(query.get("pageSize"), 6);
+  const sort = query.get("sort") ?? "newest";
   if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 20) {
     return apiFail("INVALID_QUERY", "page must be positive and pageSize must be between 1 and 20", 400);
+  }
+  if (sort !== "newest" && sort !== "oldest") {
+    return apiFail("INVALID_QUERY", "sort must be newest or oldest", 400);
   }
 
   try {
     if (!await activePlace(placeId)) return apiFail("NOT_FOUND", "Place not found", 404);
     const user = await currentUser();
-    return apiOk(await getPlaceCommentsPage(placeId, { page, pageSize, viewerId: user?.id }, createServiceClient()));
+    return apiOk(await getPlaceCommentsPage(placeId, { page, pageSize, sort, viewerId: user?.id }, createServiceClient()));
   } catch (error) {
     return apiFail("DB_ERROR", error instanceof Error ? error.message : "Could not load local notes", 500);
   }

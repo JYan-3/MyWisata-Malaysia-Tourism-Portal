@@ -429,7 +429,7 @@ export default function VendorOutletsPage() {
             {outlets.map((outlet) => (
               <article
                 key={outlet.id}
-                className="group flex min-w-0 gap-4 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
+                className="group flex min-w-0 gap-4 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm"
               >
                 {isOwner && (
                   <div className="pt-1">

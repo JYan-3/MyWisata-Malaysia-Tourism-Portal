@@ -64,11 +64,11 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   const image = getPlaceActivityImage(activity);
 
   return (
-    <article className="group overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
-      <Link href={`/customer/activity/${activity.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
+    <article className="overflow-hidden rounded-[24px] border border-border bg-card shadow-sm">
+      <Link href={`/customer/activity/${activity.id}`} className="group/activity-media block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
         <div className="relative aspect-[1.55] overflow-hidden bg-[#eef2ff]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image} alt={activity.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <img src={image} alt={activity.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/activity-media:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#071923]/80 via-[#071923]/5 to-transparent" />
           <span className="absolute left-3 top-3 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">{t("ui.labels.placeBasedExperience")}</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>

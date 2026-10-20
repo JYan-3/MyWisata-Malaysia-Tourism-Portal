@@ -131,13 +131,13 @@ function DemoVendorCard({ vendor, index }: { vendor: DemoVendor; index: number }
     : tCustomer("ui.vendor.localExperiencePartner");
 
   return (
-    <article className="atlas-stagger-card group overflow-hidden rounded-[22px] border border-[#d8deef] bg-white shadow-[0_14px_35px_rgba(1,0,102,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(1,0,102,0.12)]" style={{ "--atlas-delay": `${index * 70}ms` } as CSSProperties}>
-      <Link href={`/customer/vendor/${vendor.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+    <article className="atlas-stagger-card overflow-hidden rounded-[22px] border border-[#d8deef] bg-white shadow-[0_14px_35px_rgba(1,0,102,0.07)]" style={{ "--atlas-delay": `${index * 70}ms` } as CSSProperties}>
+      <Link href={`/customer/vendor/${vendor.id}`} className="group/vendor-media block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
         <div className="relative aspect-[1.5] overflow-hidden bg-secondary">
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={visual.coverUrl} alt={tCustomer("ui.home.vendorCover", { vendor: vendor.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+            <img src={visual.coverUrl} alt={tCustomer("ui.home.vendorCover", { vendor: vendor.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/vendor-media:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/70 via-transparent to-transparent" />
           </> : <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(255,204,0,0.28),transparent_28%),linear-gradient(135deg,#010066,#172b72_58%,#2d5273)] text-white">
             <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/25 bg-white/10 text-2xl font-black tracking-tight shadow-xl backdrop-blur-sm">{visual.initials}</span>
@@ -161,7 +161,7 @@ function DemoVendorCard({ vendor, index }: { vendor: DemoVendor; index: number }
         </div>
         <p className="min-h-10 break-words whitespace-normal text-[11px] leading-5 text-[#64748b]">{vendor.description || tCustomer("ui.home.vendorDescription", { type: businessType, location: tCustomer("ui.labels.malaysia") })}</p>
         <div className="flex flex-wrap items-start justify-between gap-2 text-[11px] text-[#64748b]"><span className="inline-flex items-center gap-1.5"><Building2 size={12} aria-hidden="true" /> {tCustomer("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="min-w-0 flex-1 break-words whitespace-normal text-right">{businessType}</span></div>
-        <Link href={`/customer/vendor/${vendor.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-[#0f172a] transition group-hover:text-primary">{tCustomer("ui.actions.exploreVendor")} <ArrowRight size={13} aria-hidden="true" /></Link>
+        <Link href={`/customer/vendor/${vendor.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-[#0f172a] transition hover:text-primary">{tCustomer("ui.actions.exploreVendor")} <ArrowRight size={13} aria-hidden="true" /></Link>
       </div>
     </article>
   );

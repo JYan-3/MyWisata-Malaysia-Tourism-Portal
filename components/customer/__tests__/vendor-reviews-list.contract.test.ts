@@ -13,19 +13,17 @@ const pageSource = readFileSync(
 
 describe("vendor reviews list and contract", () => {
   it("renders review cards with star rating, verified badge, and product links", () => {
+    expect(listSource).toContain("FeedbackCollection mode=\"reviews\"");
     expect(listSource).toContain("t(\"ui.reviews.allRatings\")");
     expect(listSource).toContain("t(\"ui.reviews.verifiedPurchase\")");
-    expect(listSource).toContain("t(\"ui.reviews.showAll\"");
-    expect(listSource).toContain("t(\"ui.reviews.showLess\")");
     expect(listSource).toContain("productHref");
     expect(listSource).toContain("source=vendor");
   });
 
   it("integrates VendorReviewsList into the vendor page", () => {
     expect(pageSource).toContain("import { VendorReviewsList");
-    expect(pageSource).toContain("<VendorReviewsList reviews={reviews} vendorId={vendor.id} />");
-    expect(pageSource).toContain("from('reviews')");
-    expect(pageSource).toContain("getPublicReviewAuthorNames");
+    expect(pageSource).toContain("<VendorReviewsList reviews={reviews} ratingBuckets={reviewRatingBuckets} totalReviews={reviewSummary.reviews} vendorId={vendor.id} />");
+    expect(pageSource).toContain("getScopedReviewPage(\"vendor\", vendorId");
     expect(pageSource).not.toContain("users(full_name)");
   });
 });

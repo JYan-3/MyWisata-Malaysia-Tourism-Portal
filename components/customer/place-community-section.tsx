@@ -8,6 +8,7 @@ import { useAuth } from "@/components/providers/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FeedbackCollection, type FeedbackTipItem } from "@/components/customer/feedback/feedback-collection";
 import type { PlaceComment, PlaceCommentsPage } from "@/backend/core/types";
 
 const PAGE_SIZE = 6;
@@ -48,11 +49,11 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  async function loadComments(targetPage: number, append = false) {
+  async function loadComments(targetPage: number, append = false, targetSort = sortOrder) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/places/${placeId}/comments?page=${targetPage}&pageSize=${PAGE_SIZE}`, { cache: "no-store" });
+      const response = await fetch(`/api/places/${placeId}/comments?page=${targetPage}&pageSize=${PAGE_SIZE}&sort=${targetSort}`, { cache: "no-store" });
       const payload = await response.json() as { data?: PlaceCommentsPage; error?: { message?: string } };
       if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Could not load local notes");
       setComments((previous) => append ? [...previous, ...payload.data!.items] : payload.data!.items);
@@ -68,7 +69,7 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
   useEffect(() => {
     // Defer the request so this effect subscribes to a new place rather than
     // synchronously driving a render during React's effect flush.
-    void Promise.resolve().then(() => loadComments(1));
+    void Promise.resolve().then(() => loadComments(1, false, "newest"));
   // Loading needs to restart only when the displayed place changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeId]);
@@ -94,10 +95,10 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
       });
       const payload = await response.json() as { data?: PlaceComment; error?: { message?: string } };
       if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Could not publish local note");
-      setComments((previous) => [payload.data!, ...previous]);
       setTotal((previous) => previous + 1);
       setBody("");
       setIsComposerExpanded(false);
+      await loadComments(1, false, sortOrder);
     } catch {
       setError(t("ui.place.localNotes.publishError"));
     } finally {
@@ -137,11 +138,41 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
     }
   }
 
-  const orderedComments = [...comments].sort((first, second) => {
-    const firstTime = new Date(first.createdAt).getTime();
-    const secondTime = new Date(second.createdAt).getTime();
-    return sortOrder === "newest" ? secondTime - firstTime : firstTime - secondTime;
-  });
+  const tipPresentation = (comment: PlaceComment): FeedbackTipItem => {
+    const displayName = comment.isAnonymous ? t("ui.place.localNotes.anonymousVisitor") : comment.authorName;
+    const fullDateTime = new Date(comment.createdAt).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
+    return {
+      id: comment.id,
+      anchorId: `local-note-${comment.id}`,
+      author: displayName,
+      date: <time dateTime={comment.createdAt} title={fullDateTime} className="text-sm text-muted-foreground">{formatRelativeTime(comment.createdAt, t)}</time>,
+      preview: comment.body,
+      content: comment.body,
+      avatar: comment.isAnonymous ? (
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border"><Shield size={18} aria-hidden="true" /></div>
+      ) : (
+        <Avatar className="h-10 w-10 shrink-0 ring-1 ring-border">
+          {comment.authorAvatarUrl ? <AvatarImage src={comment.authorAvatarUrl} alt={displayName} /> : null}
+          <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">{comment.authorInitial}</AvatarFallback>
+        </Avatar>
+      ),
+      metadata: (
+        <>
+          {comment.isAnonymous && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{t("ui.place.localNotes.anonymousBadge")}</span>}
+          {comment.authorCity && !comment.isAnonymous && <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary"><MapPin size={10} aria-hidden="true" />{t("ui.place.localNotes.fromCity", { city: comment.authorCity })}</span>}
+        </>
+      ),
+      actions: (
+        <>
+          <Button type="button" variant="ghost" size="sm" onClick={() => void copyNoteLink(comment.id)} className="h-7 rounded-full px-2.5 text-xs text-muted-foreground hover:text-primary">
+            {copiedNoteId === comment.id ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+            {copiedNoteId === comment.id ? t("ui.place.localNotes.copied") : t("ui.place.localNotes.copyLink")}
+          </Button>
+          {comment.canDelete && <Button type="button" variant="ghost" size="sm" onClick={() => void deleteNote(comment.id)} aria-label={t("ui.place.localNotes.delete")} className="h-7 rounded-full px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={13} aria-hidden="true" /><span>{t("ui.place.localNotes.delete")}</span></Button>}
+        </>
+      ),
+    };
+  };
 
   return (
     <section className="mt-10 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:p-7" aria-labelledby="local-notes-heading">
@@ -157,19 +188,6 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
             <MessageCircle size={14} aria-hidden="true" /> {t("ui.place.localNotes.count", { count: total })}
           </span>
-          <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "newest" | "oldest")}>
-            <SelectTrigger
-              aria-label={t("ui.place.localNotes.sortBy")}
-              className="h-8 w-[7.75rem] rounded-full border-border bg-background px-3 text-xs font-bold text-foreground"
-            >
-              <ArrowDownUp size={13} aria-hidden="true" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">{t("ui.place.localNotes.newest")}</SelectItem>
-              <SelectItem value="oldest">{t("ui.place.localNotes.oldest")}</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -286,99 +304,33 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
       <div className="mt-5 grid gap-3 md:grid-cols-2" aria-live="polite" aria-busy={loading}>
         {loading && comments.length === 0 ? (
           <p className="text-sm text-muted-foreground md:col-span-2">{t("ui.place.localNotes.loading")}</p>
-        ) : comments.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground md:col-span-2">{t("ui.place.localNotes.empty")}</p>
-        ) : orderedComments.map((comment) => {
-          const displayName = comment.isAnonymous
-            ? t("ui.place.localNotes.anonymousVisitor")
-            : comment.authorName;
-          const relativeTime = formatRelativeTime(comment.createdAt, t);
-          const fullDateTime = new Date(comment.createdAt).toLocaleString(i18n.language, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          });
-
-          return (
-            <article id={`local-note-${comment.id}`} key={comment.id} className="group h-full rounded-2xl border border-border border-l-2 border-l-primary/25 bg-background p-4 transition hover:border-primary/30 hover:shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  {comment.isAnonymous ? (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border">
-                      <Shield size={18} aria-hidden="true" />
-                    </div>
-                  ) : (
-                    <Avatar className="h-10 w-10 shrink-0 ring-1 ring-border">
-                      {comment.authorAvatarUrl ? (
-                        <AvatarImage src={comment.authorAvatarUrl} alt={displayName} />
-                      ) : null}
-                      <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                        {comment.authorInitial}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="break-words whitespace-normal text-sm font-bold text-foreground">{displayName}</p>
-                      {comment.isAnonymous && (
-                        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {t("ui.place.localNotes.anonymousBadge")}
-                        </span>
-                      )}
-                      {comment.authorCity && !comment.isAnonymous && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
-                          <MapPin size={10} aria-hidden="true" />
-                          {t("ui.place.localNotes.fromCity", { city: comment.authorCity })}
-                        </span>
-                      )}
-                    </div>
-                    <time
-                      dateTime={comment.createdAt}
-                      title={fullDateTime}
-                      className="mt-0.5 block cursor-default text-xs text-muted-foreground hover:underline"
-                    >
-                      {relativeTime}
-                    </time>
-                  </div>
+        ) : (
+          <div className="md:col-span-2">
+            <FeedbackCollection
+              mode="tips"
+              items={comments.map(tipPresentation)}
+              emptyState={<p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">{t("ui.place.localNotes.empty")}</p>}
+              controls={(
+                <div className="ml-auto">
+                  <Select value={sortOrder} onValueChange={(value) => {
+                    const nextSort = value as "newest" | "oldest";
+                    setSortOrder(nextSort);
+                    void loadComments(1, false, nextSort);
+                  }}>
+                    <SelectTrigger aria-label={t("ui.place.localNotes.sortBy")} className="h-8 w-[7.75rem] rounded-full border-border bg-background px-3 text-xs font-bold text-foreground">
+                      <ArrowDownUp size={13} aria-hidden="true" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">{t("ui.place.localNotes.newest")}</SelectItem>
+                      <SelectItem value="oldest">{t("ui.place.localNotes.oldest")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-
-              </div>
-              <p className="mt-3.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground sm:pl-[52px]">
-                {comment.body}
-              </p>
-              <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3 sm:pl-[52px]">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  {t("ui.place.localNotes.noteLabel")}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void copyNoteLink(comment.id)}
-                    className="h-7 rounded-full px-2.5 text-xs text-muted-foreground hover:text-primary"
-                  >
-                    {copiedNoteId === comment.id ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
-                    {copiedNoteId === comment.id ? t("ui.place.localNotes.copied") : t("ui.place.localNotes.copyLink")}
-                  </Button>
-                  {comment.canDelete && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void deleteNote(comment.id)}
-                      aria-label={t("ui.place.localNotes.delete")}
-                      className="h-7 rounded-full px-2.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 size={13} aria-hidden="true" />
-                      <span>{t("ui.place.localNotes.delete")}</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </article>
-          );
-        })}
+              )}
+            />
+          </div>
+        )}
       </div>
 
       {comments.length < total && (
@@ -387,7 +339,7 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
           variant="outline"
           size="sm"
           disabled={loading}
-          onClick={() => void loadComments(page + 1, true)}
+          onClick={() => void loadComments(page + 1, true, sortOrder)}
           className="mt-5 rounded-full px-4 font-bold text-primary"
         >
           <ArrowDown size={14} aria-hidden="true" />

@@ -148,6 +148,8 @@ describe("hotel page", () => {
       outlet={outlet}
       rooms={[full]}
       gallery={[]}
+      reviewTotal={8}
+      reviewRatingBuckets={[{ rating: 5, count: 4 }, { rating: 4, count: 4 }]}
       reviews={[{
         id: "review-1",
         rating: 5,
@@ -156,6 +158,10 @@ describe("hotel page", () => {
         createdAt: "2026-09-12T10:00:00.000Z",
         authorName: "Aisyah R.",
         verifiedPurchase: true,
+        productId: "room-1",
+        productName: "Garden Family Room",
+        outletId: "hotel-1",
+        outletName: "Pelangi Beach Resort & Spa",
       }]}
     />);
 
@@ -166,9 +172,12 @@ describe("hotel page", () => {
     expect(markup).toContain("method=\"get\"");
     expect(markup).toContain("ui.hotel.checkAvailability");
     expect(markup).not.toContain("ui.property.search");
-    expect(markup).toContain("A lovely stay");
+    expect(markup).not.toContain("A lovely stay");
     expect(markup).toContain("The room was quiet and the staff were kind.");
     expect(markup).toContain("ui.reviews.verifiedPurchase");
+    expect(markup).toContain("Garden Family Room");
+    expect(markup).toContain("ui.reviews.allRatings (8)");
+    expect(markup).toContain("5★ (4)");
   });
 
   it("captures guest details before adding and does not redirect directly to checkout", () => {

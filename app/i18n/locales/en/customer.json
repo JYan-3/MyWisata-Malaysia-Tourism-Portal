@@ -1112,6 +1112,12 @@
         "custom": "{{type}}"
       }
     },
+    "feedback": {
+      "openReview": "Read full review by {{author}}",
+      "openTip": "Read full tip by {{author}}",
+      "reviewDetails": "Review details",
+      "tipDetails": "Local tip details"
+    },
     "reviews": {
       "guestReview": "Guest review",
       "ratingOutOfFive": "{{rating}} out of 5 stars",

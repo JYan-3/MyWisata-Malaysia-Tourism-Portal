@@ -626,7 +626,7 @@ export async function getPublicReviewAuthorNames(
 
 export async function getProductReviewsPage(
   productId: string,
-  options: { page?: number; pageSize?: number; outletId?: string } = {},
+  options: { page?: number; pageSize?: number; outletId?: string; rating?: number } = {},
   db: SupabaseClient = supabase,
 ): Promise<ProductReviewPage> {
   const requestedPageSize = Math.floor(Number(options.pageSize ?? 5));
@@ -638,6 +638,7 @@ export async function getProductReviewsPage(
     .eq("product_id", productId)
     .eq("is_visible", true);
   if (options.outletId) countQuery = countQuery.eq("outlet_id", options.outletId);
+  if (options.rating !== undefined) countQuery = countQuery.eq("rating", options.rating);
   const { count, error: countError } = await countQuery;
   if (countError) throw countError;
 
@@ -653,8 +654,10 @@ export async function getProductReviewsPage(
     .eq("product_id", productId)
     .eq("is_visible", true);
   if (options.outletId) dataQuery = dataQuery.eq("outlet_id", options.outletId);
+  if (options.rating !== undefined) dataQuery = dataQuery.eq("rating", options.rating);
   const { data, error } = await dataQuery
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .range(offset, offset + pageSize - 1);
   if (error) throw error;
 

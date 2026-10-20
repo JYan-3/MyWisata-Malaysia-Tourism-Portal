@@ -2,16 +2,21 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
+import { ArrowUpRight, BedDouble, Check, ChevronLeft, ChevronRight, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
 import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
-import type { ProductReview, StayBookingDetails } from "@/backend/core/types";
+import type { StayBookingDetails } from "@/backend/core/types";
+import type { ReviewRatingBucket, ScopedReviewItem } from "@/backend/domains/vendor-reviews";
 import { RoomDetailsDialog } from "@/components/outlet/room-details-dialog";
 import { StayGuestDetailsDialog } from "@/components/customer/stay-guest-details-dialog";
 import { MediaGallery } from "@/components/customer/media-gallery";
+import { FeedbackCollection, type FeedbackReviewItem } from "@/components/customer/feedback/feedback-collection";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDate } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { useCart } from "@/components/providers/cart";
 import { useWishlist } from "@/components/providers/wishlist";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
@@ -106,13 +111,31 @@ function RoomCard({ outlet, room, adults, rooms, availabilityStale, onSetRoomCou
   );
 }
 
+const HOTEL_REVIEW_PAGE_SIZE = 6;
+
 /** Fixed hotel layout (D1): every accommodation outlet looks the same; only its profile content differs. */
-export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: OutletRendererOutlet; rooms: OutletRendererProduct[]; gallery: GalleryItem[]; reviews?: ProductReview[] }) {
-  const { t } = useTranslation("customer");
+export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBuckets = [], reviewTotal }: { outlet: OutletRendererOutlet; rooms: OutletRendererProduct[]; gallery: GalleryItem[]; reviews?: ScopedReviewItem[]; reviewRatingBuckets?: ReviewRatingBucket[]; reviewTotal?: number }) {
+  const { t, i18n } = useTranslation("customer");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const gate = useCustomerCapabilityGate();
   const { savedOutletIds, toggleSavedOutlet } = useWishlist();
   const saved = savedOutletIds.has(outlet.id);
   const stay = outlet.stay!;
+  const initialReviewTotal = reviewTotal ?? stay.reviews;
+  const initialReviewPage = {
+    outletId: outlet.id,
+    items: reviews,
+    ratingBuckets: reviewRatingBuckets,
+    total: initialReviewTotal,
+    page: 1,
+    totalPages: Math.max(1, Math.ceil(initialReviewTotal / HOTEL_REVIEW_PAGE_SIZE)),
+  };
+  const [reviewPageState, setReviewPageState] = useState(initialReviewPage);
+  const currentReviewPage = reviewPageState.outletId === outlet.id ? reviewPageState : initialReviewPage;
+  const [reviewFilter, setReviewFilter] = useState<{ outletId: string; rating: number | null }>({ outletId: outlet.id, rating: null });
+  const selectedReviewRating = reviewFilter.outletId === outlet.id ? reviewFilter.rating : null;
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
   const serverSearchKey = JSON.stringify([outlet.id, stay.checkIn, stay.checkOut, stay.rooms, stay.adults]);
   const serverSearch = { serverSearchKey, checkIn: stay.checkIn, checkOut: stay.checkOut, roomCount: stay.rooms, adultCount: stay.adults };
   const [searchValues, setSearchValues] = useState(serverSearch);
@@ -175,6 +198,73 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     if (nightCount === null || stayExceedsNightLimit) event.preventDefault();
   }
+
+  async function loadHotelReviews(nextPage: number, nextRating = selectedReviewRating) {
+    setReviewsLoading(true);
+    setReviewsError(null);
+    const params = new URLSearchParams({ category: "accommodation", page: String(nextPage), pageSize: String(HOTEL_REVIEW_PAGE_SIZE) });
+    if (nextRating !== null) params.set("rating", String(nextRating));
+    try {
+      const response = await fetch(`/api/outlets/${outlet.id}/reviews?${params}`, { cache: "no-store" });
+      const payload = await response.json() as { data?: { items?: ScopedReviewItem[]; ratingBuckets?: ReviewRatingBucket[]; page?: number; total?: number; totalPages?: number }; error?: { message?: string } };
+      if (!response.ok || !payload.data) throw new Error(payload.error?.message || t("ui.reviews.loadError"));
+      setReviewPageState({
+        outletId: outlet.id,
+        items: payload.data.items ?? [],
+        ratingBuckets: payload.data.ratingBuckets ?? [],
+        total: payload.data.total ?? 0,
+        page: payload.data.page ?? nextPage,
+        totalPages: payload.data.totalPages ?? 1,
+      });
+    } catch (error) {
+      setReviewsError(error instanceof Error ? error.message : t("ui.reviews.loadError"));
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  function reviewPresentation(review: ScopedReviewItem): FeedbackReviewItem {
+    const title = review.title
+      ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title}>{({ text }) => text}</LocalizedContent>
+      : undefined;
+    const detailTitle = review.title
+      ? <LocalizedContent entityType="review" entityId={review.id} field="title" sourceText={review.title} />
+      : undefined;
+    const preview = review.body
+      ? <LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body}>{({ text }) => text}</LocalizedContent>
+      : title ?? t("ui.reviews.guestReview");
+    const content = review.body
+      ? <LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />
+      : title ?? t("ui.reviews.guestReview");
+    return {
+      id: review.id,
+      author: review.authorName,
+      date: formatDate(review.createdAt, locale),
+      title,
+      detailTitle,
+      preview,
+      content,
+      rating: review.rating,
+      ratingLabel: t("ui.reviews.ratingOutOfFive", { rating: review.rating.toFixed(1) }),
+      verifiedLabel: review.verifiedPurchase ? t("ui.reviews.verifiedPurchase") : undefined,
+      metadata: review.productName ? <span className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-primary">{review.productName}</span> : undefined,
+    };
+  }
+
+  const reviewControls = (
+    <>
+      <Button type="button" size="sm" variant={selectedReviewRating === null ? "default" : "outline"} onClick={() => {
+        setReviewFilter({ outletId: outlet.id, rating: null });
+        void loadHotelReviews(1, null);
+      }}>{t("ui.reviews.allRatings")} ({initialReviewTotal})</Button>
+      {currentReviewPage.ratingBuckets.map(({ rating, count }) => (
+        <Button key={rating} type="button" size="sm" variant={selectedReviewRating === rating ? "default" : "outline"} onClick={() => {
+          setReviewFilter({ outletId: outlet.id, rating });
+          void loadHotelReviews(1, rating);
+        }}><Star size={13} aria-hidden="true" /> {rating}★ ({count})</Button>
+      ))}
+    </>
+  );
 
   function setMinimumRoomCount(roomCount: number) {
     setSearchValues((current) => {
@@ -265,15 +355,22 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [] }: { outlet: Ou
       {hasReviews && (
         <section id="reviews" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div><h2 className="text-xl font-bold text-foreground">{t("ui.hotel.reviews")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("ui.hotel.reviewCount", { count: stay.reviews })}</p></div>
+            <div><h2 className="text-xl font-bold text-foreground">{t("ui.hotel.reviews")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("ui.hotel.reviewCount", { count: initialReviewTotal })}</p></div>
             {stay.rating > 0 && <p className="inline-flex items-center gap-1 font-semibold text-foreground"><Star size={15} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{stay.rating.toFixed(1)} / 5</p>}
           </div>
-          {reviews.length > 0 ? <div className="mt-4 grid gap-3 md:grid-cols-2">{reviews.map((review) => <article key={review.id} className="rounded-xl border border-border p-4">
-            <div className="flex items-center justify-between gap-3"><p className="font-semibold text-foreground">{review.authorName}</p><span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground"><Star size={13} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{review.rating.toFixed(1)}</span></div>
-            {review.title && <h3 className="mt-2 font-semibold text-foreground">{review.title}</h3>}
-            {review.body && <p className="mt-1 text-sm leading-6 text-muted-foreground">{review.body}</p>}
-            {review.verifiedPurchase && <p className="mt-3 text-xs font-semibold text-primary">{t("ui.reviews.verifiedPurchase")}</p>}
-          </article>)}</div> : <p className="mt-4 text-sm text-muted-foreground">{t("ui.hotel.noWrittenReviews")}</p>}
+          {reviewsError && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{reviewsError}</p>}
+          {reviewsLoading ? <p role="status" className="mt-4 text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : currentReviewPage.items.length > 0 ? (
+            <div className="mt-4">
+              <FeedbackCollection mode="reviews" items={currentReviewPage.items.map(reviewPresentation)} controls={reviewControls} />
+            </div>
+          ) : <p className="mt-4 text-sm text-muted-foreground">{selectedReviewRating === null ? t("ui.hotel.noWrittenReviews") : t("ui.reviews.noReviewsForRating")}</p>}
+          {!reviewsLoading && currentReviewPage.totalPages > 1 && (
+            <nav aria-label={t("ui.reviews.pages")} className="mt-5 flex items-center justify-between border-t border-border pt-4">
+              <Button type="button" size="sm" variant="outline" disabled={currentReviewPage.page <= 1} onClick={() => void loadHotelReviews(currentReviewPage.page - 1)}><ChevronLeft size={15} aria-hidden="true" />{t("actions.previous", { ns: "common" })}</Button>
+              <span className="text-xs text-muted-foreground">{t("ui.reviews.pageOf", { page: currentReviewPage.page, total: currentReviewPage.totalPages })}</span>
+              <Button type="button" size="sm" variant="outline" disabled={currentReviewPage.page >= currentReviewPage.totalPages} onClick={() => void loadHotelReviews(currentReviewPage.page + 1)}>{t("actions.next", { ns: "common" })}<ChevronRight size={15} aria-hidden="true" /></Button>
+            </nav>
+          )}
         </section>
       )}
 

@@ -1112,6 +1112,12 @@
         "custom": "{{type}}"
       }
     },
+    "feedback": {
+      "openReview": "查看 {{author}} 的完整评价",
+      "openTip": "查看 {{author}} 的完整贴士",
+      "reviewDetails": "评价详情",
+      "tipDetails": "当地贴士详情"
+    },
     "reviews": {
       "guestReview": "访客评价",
       "ratingOutOfFive": "5 星中获得 {{rating}} 星",

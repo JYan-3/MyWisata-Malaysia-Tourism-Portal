@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPlaceCommentAuthor, toPlaceComment } from "@/backend/domains/place-comments";
+import { formatPlaceCommentAuthor, getPlaceCommentsPage, toPlaceComment } from "@/backend/domains/place-comments";
 
 describe("place comment presenter", () => {
   it("formats author name preferring display name over full name", () => {
@@ -64,5 +64,26 @@ describe("place comment presenter", () => {
       isAnonymous: true,
       canDelete: true,
     });
+  });
+});
+
+describe("place comment paging", () => {
+  it("applies the requested stable order before the server-side page range", async () => {
+    const calls: Array<{ method: string; args: unknown[] }> = [];
+    const builder: Record<string, unknown> = {};
+    for (const method of ["select", "eq", "order", "range"]) {
+      builder[method] = (...args: unknown[]) => {
+        calls.push({ method, args });
+        return builder;
+      };
+    }
+    builder.then = (resolve: (value: unknown) => unknown) => resolve({ data: [], count: 12, error: null });
+    const db = { from: () => builder } as never;
+
+    await getPlaceCommentsPage("place-1", { page: 2, pageSize: 6, sort: "oldest" }, db);
+
+    expect(calls).toContainEqual({ method: "order", args: ["created_at", { ascending: true }] });
+    expect(calls).toContainEqual({ method: "order", args: ["id", { ascending: true }] });
+    expect(calls).toContainEqual({ method: "range", args: [6, 11] });
   });
 });

@@ -21,4 +21,11 @@ describe("customer product review API", () => {
     expect(source).toContain("parseBody");
     expect(source).toContain("CONTENT_REJECTED");
   });
+
+  it("validates rating filters and returns server-side full-scope rating buckets", () => {
+    expect(source).toContain('query.get("rating")');
+    expect(source).toContain("rating < 1 || rating > 5");
+    expect(source).toContain('outletIdParam ? "product_outlet" : "product"');
+    expect(source).toContain("ratingBuckets: ratingSummary.buckets");
+  });
 });

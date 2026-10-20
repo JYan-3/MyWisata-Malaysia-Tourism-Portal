@@ -83,7 +83,7 @@ function VoucherCodeDisplay({ code, label, copyLabels }: { code: string; label?:
 
 export function VoucherTicket({ offer, children, className }: VoucherTicketProps) {
   return (
-    <article data-voucher-ticket className={cn("group relative flex overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-[0_12px_32px_rgba(1,0,102,0.08)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(1,0,102,0.14)] max-sm:flex-col", className)}>
+    <article data-voucher-ticket className={cn("group relative flex overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-[0_12px_32px_rgba(1,0,102,0.08)] max-sm:flex-col", className)}>
       <div className="relative flex min-h-48 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-[#15158a] to-[#31537b] text-white sm:w-[34%] sm:max-w-72">
         {offer.images !== undefined ? (
           offer.images.length > 0 ? (

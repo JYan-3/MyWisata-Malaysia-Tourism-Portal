@@ -1112,6 +1112,12 @@
         "custom": "{{type}}"
       }
     },
+    "feedback": {
+      "openReview": "Baca ulasan penuh oleh {{author}}",
+      "openTip": "Baca tip penuh oleh {{author}}",
+      "reviewDetails": "Butiran ulasan",
+      "tipDetails": "Butiran tip tempatan"
+    },
     "reviews": {
       "guestReview": "Ulasan tetamu",
       "ratingOutOfFive": "{{rating}} daripada 5 bintang",

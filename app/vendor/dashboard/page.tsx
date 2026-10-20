@@ -72,8 +72,8 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, note, icon: Icon, tone }) => (
-          <article key={label} className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <div className="absolute -right-3 -top-3 opacity-[0.045] transition group-hover:scale-110"><Icon size={104} /></div>
+          <article key={label} className="relative overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+            <div className="absolute -right-3 -top-3 opacity-[0.045]"><Icon size={104} /></div>
             <div className="mb-5 flex items-center gap-3"><div className={`flex h-10 w-10 items-center justify-center rounded-full ${statTone(tone)}`}><Icon size={20} /></div><p className="font-medium text-gray-600 dark:text-muted-foreground">{label}</p></div>
             <p className="text-3xl font-bold tracking-tight text-gray-950 dark:text-foreground">{value}</p>
             <div className={`mt-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground'}`}><ArrowUpRight size={13} />{note}</div>
