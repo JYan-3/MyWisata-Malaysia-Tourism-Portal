@@ -64,7 +64,10 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
   const { t } = useTranslation("customer");
   const [items, setItems] = useState<TripItem[]>(initialItems);
 
-  const stops: TripStop[] = items.map(i => ({
+  // Memoized on `items` so `origin` keeps the same identity between renders: the
+  // route memo and the map's fit-to-route depend on it, and a new object every
+  // render re-fit the map on each re-render, undoing zoom gestures.
+  const stops: TripStop[] = useMemo(() => items.map(i => ({
     id: i.id, // using the item id (which matches experience_id or loc-xxx)
     lat: i.lat,
     lng: i.lng,
@@ -72,9 +75,9 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
     sublabel: i.sublabel,
     source: i.source,
     locationKind: i.kind
-  }));
+  })), [items]);
 
-  const origin = stops.find(s => s.source === "location") || null;
+  const origin = useMemo(() => stops.find(s => s.source === "location") || null, [stops]);
 
   return {
     items,
@@ -117,9 +120,12 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
         setItems((current) => current.map((item) => item.id === tempId ? stored : item));
         return stored;
       } catch {
+        // The alert is the user-facing error; most callers fire-and-forget, so
+        // a rethrow here surfaced as an unhandled rejection. Callers that
+        // continue after adding check for null instead.
         setItems((current) => current.filter((item) => item.id !== tempId));
         await alert(t("strictMigration.tripPlanner.addFailed"));
-        throw new Error("Unable to add trip item");
+        return null;
       }
     },
     remove: async (id: string) => {
@@ -737,8 +743,8 @@ export function MapClient({
     const targetOrder = computeSwapTargetOrder(trip.items, existing.id, pin.id);
 
     await trip.remove(existing.id);
-    await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id }, schedule);
-    if (targetOrder && targetOrder.length > 1) await trip.reorderIds(targetOrder);
+    const added = await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id }, schedule);
+    if (added && targetOrder && targetOrder.length > 1) await trip.reorderIds(targetOrder);
   }
   // Checks out every scheduled stop in one go: real vendor items go straight
   // into the cart, a stop that requires booking is only ever matched to a

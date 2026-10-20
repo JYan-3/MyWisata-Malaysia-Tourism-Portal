@@ -206,7 +206,12 @@ export function MaplibreMap({
   const mapRef = useRef<MapRef | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState("grab");
-  const routeCoordinates = useMemo(() => fitCoordinates ?? [], [fitCoordinates]);
+  // Re-fit only when the coordinates really change. A parent that passes a new
+  // array with the same values on each render must not snap the map back to the
+  // route while the user is zooming or panning.
+  const routeKey = fitCoordinates?.map(([lat, lng]) => `${lat},${lng}`).join("|") ?? "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const routeCoordinates = useMemo(() => fitCoordinates ?? [], [routeKey]);
 
   // Trip-stop and suggested pins render as DOM markers below, not the GL dot layer.
   const dotPins = useMemo(
