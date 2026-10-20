@@ -28,4 +28,9 @@ describe("place activity card", () => {
     expect(source).toContain("text-lg font-bold leading-tight text-foreground");
     expect(source).toContain("mb-5 mt-3 break-words whitespace-normal text-xs leading-5 text-muted-foreground");
   });
+
+  it("uses serializable localized heading props for translated activity titles", () => {
+    expect(source).toContain("<LocalizedContentHeading");
+    expect(source).not.toContain("{({ text, control }) =>");
+  });
 });

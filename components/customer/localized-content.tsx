@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { requestContentTranslation } from '@/lib/content-translations/client-batcher';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
@@ -14,6 +15,13 @@ type Props = {
   className?: string;
   as?: 'span' | 'p';
   children?: (value: { text: string; control: ReactNode; pending: boolean }) => ReactNode;
+};
+
+type LocalizedContentHeadingProps = Omit<Props, 'children' | 'className' | 'as'> & {
+  href?: string;
+  headingClassName?: string;
+  linkClassName?: string;
+  showTitleAttribute?: boolean;
 };
 
 export function LocalizedContent({ entityType, entityId, field, sourceText, className, as = 'span', children }: Props) {
@@ -49,4 +57,24 @@ export function LocalizedContent({ entityType, entityId, field, sourceText, clas
   if (children) return children({ text, control, pending: Boolean(currentTranslation?.pending && !hasTranslation) });
   const Tag = as;
   return <Tag className={className}>{text}{control}</Tag>;
+}
+
+export function LocalizedContentHeading({
+  entityType,
+  entityId,
+  field,
+  sourceText,
+  href,
+  headingClassName,
+  linkClassName,
+  showTitleAttribute = false,
+}: LocalizedContentHeadingProps) {
+  return (
+    <LocalizedContent entityType={entityType} entityId={entityId} field={field} sourceText={sourceText}>
+      {({ text, control }) => {
+        const heading = <h3 className={headingClassName}>{text}</h3>;
+        return <>{href ? <Link href={href} className={linkClassName} title={showTitleAttribute ? text : undefined}>{heading}</Link> : heading}{control}</>;
+      }}
+    </LocalizedContent>
+  );
 }
