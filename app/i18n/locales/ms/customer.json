@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "Selesaikan atau batalkan pesanan belum dibayar yang sedia ada sebelum memulakan pembayaran lain.",
+    "reviewExisting": "Semak pesanan belum dibayar",
+    "cancelCheckout": "Batalkan pembayaran belum dibayar ini",
+    "cancelHelp": "Batalkan hanya jika anda belum membayar. Jangan gunakan pautan pembayaran lama. Bayaran selepas pembatalan memerlukan semakan Admin."
+  },
   "navigation": {
     "home": "Utama",
     "search": "Rakan kongsi",
@@ -173,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "Terjemahan mesin",
+      "showOriginal": "Tunjukkan teks asal",
+      "showTranslation": "Tunjukkan terjemahan",
+      "pending": "Terjemahan sedang disediakan"
+    },
     "accessibility": {
       "carousel": "karusel"
     },
@@ -328,6 +340,79 @@
       "submitting": "Mengemukakan…",
       "cancel": "Batal",
       "close": "Tutup"
+    },
+    "property": {
+      "roomTypes_one": "{{count}} jenis bilik",
+      "roomTypes_other": "{{count}} jenis bilik",
+      "seeRooms": "Lihat bilik",
+      "bookError": "Tempahan tidak dapat dimulakan. Sila cuba lagi.",
+      "roomFallback": "Bilik selesa dengan kemudahan asas.",
+      "onlyLeft_one": "Tinggal {{count}} bilik sahaja",
+      "onlyLeft_other": "Tinggal {{count}} bilik sahaja",
+      "perNight": "/ semalam",
+      "totalFor": "{{count}} malam × {{rooms}} bilik: RM {{price}}",
+      "soldOut": "Tidak tersedia",
+      "book": "Tempah",
+      "sections": "Bahagian hotel",
+      "rooms": "Bilik",
+      "policies": "Polisi hotel",
+      "checkIn": "Daftar masuk",
+      "checkOut": "Daftar keluar",
+      "roomCount": "Bilik",
+      "adults": "Dewasa",
+      "search": "Cari",
+      "nightsSummary_one": "{{count}} malam",
+      "nightsSummary_other": "{{count}} malam",
+      "times": "Daftar masuk dari {{checkIn}} · Daftar keluar sebelum {{checkOut}}",
+      "stepRoom": "Bilik anda",
+      "stepDetails": "Butiran tetamu dan bayaran",
+      "changeRoom": "Tukar bilik",
+      "guestDetails": "Butiran tetamu",
+      "contactDetails": "Butiran hubungan",
+      "prefilledHint": "Kami telah mengisi butiran ini daripada profil anda. Pastikan ia sepadan dengan ID yang akan ditunjukkan semasa daftar masuk. Perubahan hanya untuk tempahan ini.",
+      "yourSelection": "Pilihan Anda",
+      "yourDetails": "Butiran Anda",
+      "payment": "Bayaran",
+      "stayDetails": "Butiran penginapan",
+      "stayDetailsIntro": "Masukkan nama penuh seorang tetamu utama. Nama tetamu tambahan adalah pilihan.",
+      "primaryGuestName": "Nama penuh tetamu utama",
+      "additionalGuestName": "Tetamu tambahan {{number}}",
+      "additionalGuests": "Tetamu tambahan",
+      "addGuestName": "Tambah nama tetamu lain",
+      "removeGuestName": "Buang tetamu tambahan {{number}}",
+      "optional": "Pilihan",
+      "saveStayDetails": "Simpan butiran",
+      "cancel": "Batal",
+      "stayDetailsInvalid": "Semak butiran tetamu dan cuba lagi.",
+      "stayDetailsSaveError": "Butiran penginapan tidak dapat disimpan. Sila cuba lagi.",
+      "stayAdded": "Ditambah Ke Troli",
+      "viewStayDetails": "Lihat butiran tetamu",
+      "editStayDetails": "Edit butiran tetamu",
+      "completeStayDetails": "Lengkapkan butiran tetamu",
+      "stayDetailsCompleteBeforeCheckout": "Lengkapkan butiran tetamu untuk penginapan ini sebelum daftar keluar.",
+      "guestDetailsRequired": "Masukkan nama tetamu utama, alamat e-mel yang sah dan nombor telefon bimbit yang sah untuk meneruskan.",
+      "estimatedArrival": "Anggaran waktu ketibaan",
+      "arrivalUnknown": "Belum pasti",
+      "arrivalAfternoon": "3:00 PTG–6:00 PTG",
+      "arrivalEvening": "6:00 PTG–9:00 MLM",
+      "arrivalLate": "Selepas 9:00 MLM",
+      "arrivalLabels": {
+        "unknown": "Tidak dinyatakan",
+        "15:00-18:00": "3:00 PTG–6:00 PTG",
+        "18:00-21:00": "6:00 PTG–9:00 MLM",
+        "after-21:00": "Selepas 9:00 MLM"
+      },
+      "secondGuestName": "Nama tetamu kedua (pilihan)",
+      "specialRequest": "Permintaan khas (pilihan)",
+      "continueToPayment": "Teruskan ke Bayaran",
+      "editDetails": "Edit Butiran",
+      "nameOnId": "Nama penuh (seperti dalam IC atau pasport)",
+      "email": "E-mel untuk pas tempahan anda",
+      "phone": "Nombor telefon bimbit",
+      "checkInFrom": "Dari {{time}}",
+      "checkOutBy": "Sebelum {{time}}",
+      "roomsCount_one": "{{count}} bilik",
+      "roomsCount_other": "{{count}} bilik"
     },
     "labels": {
       "hiddenGem": "Permata Tersembunyi",
@@ -831,7 +916,8 @@
       "noExperiences": "Belum ada produk disimpan",
       "saveExperiences": "Simpan makanan, aktiviti dan produk lain untuk dilihat di sini nanti.",
       "empty": "Belum ada apa-apa yang disimpan",
-      "saveBoth": "Simpan tempat dan produk untuk membina senarai pilihan anda."
+      "saveBoth": "Simpan tempat dan produk untuk membina senarai pilihan anda.",
+      "savedHotels": "Hotel disimpan"
     },
     "activity": {
       "notFound": "Pengalaman tidak ditemui",
@@ -1234,6 +1320,7 @@
       "allNeedSlot": "Tiada satu pun perhentian berjadual anda mempunyai slot tempahan terbuka pada hari yang dirancang — pilih masa pada halaman setiap aktiviti dahulu.",
       "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka.",
       "unavailable": "{{names}} tidak boleh dibeli dari perancang. Buka halamannya untuk menyemak pilihan yang ada.",
+      "stayMustBeBookedFromHotelPage": "Bilik memerlukan maklumat tetamu sebelum boleh ditambah. Tempah penginapan melalui halaman hotel. Item itinerari lain yang layak masih boleh ditambah.",
       "addFailed": "Tidak dapat menambah {{name}} ke troli anda. Item yang ditambah sebelumnya masih dalam troli.",
       "buy_one": "Beli {{count}}",
       "buy_other": "Beli {{count}}"
@@ -1290,13 +1377,13 @@
       "clickUpload": "Klik untuk memuat naik {{side}} dokumen",
       "fileHint": "JPG, PNG atau WebP · maksimum 5 MB",
       "clickChange": "klik untuk menukar",
-      "consent": "Saya bersetuju MyLawatan boleh menggunakan perkhidmatan AI pihak ketiga untuk membantu membaca dokumen saya. Pentadbir manusia membuat keputusan KYC akhir.",
+      "consent": "Saya bersetuju dengan pemprosesan dokumen persendirian untuk KYC. Bukti tidak dihantar ke perkhidmatan AI luaran. Keputusan akhir dibuat oleh manusia yang diberi kuasa.",
       "submitting": "Menghantar…",
       "startNew": "Mulakan penghantaran baharu",
       "submitForReview": "Hantar untuk semakan",
       "uploadRequired": "Sila muat naik foto dokumen",
       "submissionFailed": "Penghantaran gagal.",
-      "manualReview": "Bacaan dokumen AI tidak tersedia atau tidak muktamad. Dokumen anda telah dihantar untuk semakan manual pentadbir.",
+      "manualReview": "Penyerahan anda beratur untuk semakan manusia. Pra-semak persendirian boleh membantu; ia tidak meluluskan KYC.",
       "submitted": "Dokumen KYC dihantar untuk semakan.",
       "myKad": "MyKad (Kad Pengenalan Malaysia)",
       "passport": "Pasport",
@@ -1308,7 +1395,7 @@
       "passportHint": "Pasport: 1–2 huruf + 6–8 digit, cth. A12345678",
       "invalidFileType": "Setiap dokumen mestilah foto JPG, PNG atau WebP",
       "fileTooLarge": "Fail mestilah di bawah 5 MB (semasa: {{size}} MB)",
-      "consentRequired": "Sila beri persetujuan untuk bacaan dokumen berbantu AI sebelum menghantar.",
+      "consentRequired": "Sila setuju dengan pemprosesan dokumen KYC persendirian sebelum menghantar.",
       "tiers": {
         "emailVerified": "E-mel Disahkan",
         "phoneVerified": "Telefon Disahkan",
@@ -1323,7 +1410,10 @@
         "document_suspected_tampering": "Kami tidak dapat melengkapkan pengesahan dengan penghantaran ini. Hubungi sokongan jika anda memerlukan bantuan.",
         "other": "Kami memerlukan maklumat lanjut untuk melengkapkan pengesahan. Semak nota penyemak di bawah.",
         "default": "Kami tidak dapat melengkapkan pengesahan dengan penghantaran ini. Semak dokumen anda dan hantar yang baharu."
-      }
+      },
+      "previewAlt": "Foto {{side}} yang dipilih",
+      "previewGuidance": "Pastikan foto menunjukkan satu dokumen, keempat-empat penjuru serta nama dan nombor yang jelas. Elakkan silau, jari menutup teks dan kolaj. Pratonton ini tidak mengesahkan identiti anda.",
+      "previewUnavailable": "Pelayar ini tidak dapat memaparkan foto. Anda boleh menggantikannya; pelayan tetap akan menyemak penyerahan anda."
     },
     "recommendations": {
       "vendorNameMin": "Masukkan nama vendor atau perniagaan sekurang-kurangnya 3 aksara.",
@@ -1505,7 +1595,10 @@
       "chatVendor": "Sembang dengan vendor",
       "viewCart": "Lihat troli",
       "addBooking": "Tambah tempahan",
-      "addCart": "Tambah ke troli"
+      "addCart": "Tambah ke troli",
+      "priceUnits": {
+        "perNight": "setiap malam"
+      }
     },
     "vendor": {
       "notFound": "Vendor tidak ditemui",
@@ -2722,6 +2815,52 @@
         "pending": "Sedia untuk diambil",
         "collected": "Telah diambil"
       }
+    },
+    "hotel": {
+      "yourStay": "Penginapan anda",
+      "property": "Penginapan",
+      "roomsAndGuests": "Bilik dan tetamu",
+      "adults": "Dewasa",
+      "checkAvailability": "Semak Ketersediaan Bilik",
+      "invalidDateRange": "Tarikh daftar keluar mesti selepas tarikh daftar masuk.",
+      "stayExceedsNightLimit": "Tempoh penginapan maksimum ialah {{maxNights}} malam. Pilih tarikh daftar keluar yang lebih awal.",
+      "availabilityNeedsRefresh": "Butiran penginapan anda telah berubah. Semak ketersediaan sekali lagi sebelum membuat tempahan.",
+      "minimumRoomsForAdults_one": "{{adults}} orang dewasa memerlukan sekurang-kurangnya {{rooms}} bilik untuk jenis bilik ini (maksimum {{maxGuests}} orang dewasa sebilik).",
+      "minimumRoomsForAdults_other": "{{adults}} orang dewasa memerlukan sekurang-kurangnya {{rooms}} bilik untuk jenis bilik ini (maksimum {{maxGuests}} orang dewasa sebilik).",
+      "setMinimumRooms_one": "Tetapkan kepada {{count}} bilik",
+      "setMinimumRooms_other": "Tetapkan kepada {{count}} bilik",
+      "exceedsRoomLimit_one": "{{count}} orang dewasa memerlukan lebih daripada 10 bilik untuk jenis bilik ini.",
+      "exceedsRoomLimit_other": "{{count}} orang dewasa memerlukan lebih daripada 10 bilik untuk jenis bilik ini.",
+      "adultsCount_one": "{{count}} dewasa",
+      "adultsCount_other": "{{count}} dewasa",
+      "fewerRooms": "Kurangkan satu bilik",
+      "moreRooms": "Tambah satu bilik",
+      "fewerAdults": "Kurangkan seorang dewasa",
+      "moreAdults": "Tambah seorang dewasa",
+      "from": "Dari",
+      "selectRoom": "Pilih bilik",
+      "overview": "Gambaran keseluruhan",
+      "reviews": "Ulasan",
+      "noWrittenReviews": "Belum ada ulasan bertulis.",
+      "about": "Tentang hotel ini",
+      "amenities": "Kemudahan",
+      "location": "Lokasi",
+      "roomDetails": "Butiran bilik",
+      "selectThisRoom": "Pilih bilik ini",
+      "bed": "Katil",
+      "sleeps": "Tetamu maksimum",
+      "areaUnit": "m²",
+      "sleepsCount_one": "Muat {{count}} orang",
+      "sleepsCount_other": "Muat {{count}} orang",
+      "size": "Saiz bilik",
+      "view": "Pemandangan",
+      "nonSmoking": "Bebas rokok",
+      "roomAmenities": "Dalam bilik",
+      "photoAlt": "Foto {{room}} {{index}}",
+      "totalFor_one": "Jumlah untuk {{count}} malam · {{rooms}} bilik:",
+      "totalFor_other": "Jumlah untuk {{count}} malam · {{rooms}} bilik:",
+      "reviewCount_one": "({{count}} ulasan)",
+      "reviewCount_other": "({{count}} ulasan)"
     }
   },
   "strictMigration": {

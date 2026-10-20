@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "请先完成或取消现有未付款订单，再开始另一笔结账。",
+    "reviewExisting": "查看现有未付款订单",
+    "cancelCheckout": "取消这笔未付款结账",
+    "cancelHelp": "仅在尚未付款时取消。取消后请勿使用旧付款链接；取消后收到的款项需要管理员复核。"
+  },
   "navigation": {
     "home": "首页",
     "search": "合作伙伴",
@@ -173,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "机器翻译",
+      "showOriginal": "显示原文",
+      "showTranslation": "显示译文",
+      "pending": "正在准备翻译"
+    },
     "accessibility": {
       "carousel": "轮播图"
     },
@@ -328,6 +340,79 @@
       "submitting": "正在提交…",
       "cancel": "取消",
       "close": "关闭"
+    },
+    "property": {
+      "roomTypes_other": "{{count}} 种房型",
+      "seeRooms": "查看房型",
+      "bookError": "无法开始预订，请重试。",
+      "roomFallback": "舒适客房，配备基本设施。",
+      "onlyLeft_one": "仅剩 {{count}} 间",
+      "onlyLeft_other": "仅剩 {{count}} 间",
+      "perNight": "/ 每晚",
+      "totalFor": "{{count}} 晚 × {{rooms}} 间：RM {{price}}",
+      "soldOut": "暂无房间",
+      "book": "预订",
+      "sections": "酒店栏目",
+      "rooms": "客房",
+      "policies": "酒店政策",
+      "checkIn": "入住",
+      "checkOut": "退房",
+      "roomCount": "房间数",
+      "adults": "成人",
+      "search": "搜索",
+      "nightsSummary_one": "{{count}} 晚",
+      "nightsSummary_other": "{{count}} 晚",
+      "times": "{{checkIn}} 起入住 · {{checkOut}} 前退房",
+      "roomTypes_one": "{{count}} 种房型",
+      "stepRoom": "您的房间",
+      "stepDetails": "入住人信息与付款",
+      "changeRoom": "更换房间",
+      "guestDetails": "入住人信息",
+      "contactDetails": "联系资料",
+      "prefilledHint": "我们已根据您的个人资料填写，请确认与入住时出示的证件一致。修改只适用于本次预订。",
+      "yourSelection": "您的选择",
+      "yourDetails": "您的资料",
+      "payment": "付款",
+      "stayDetails": "住宿资料",
+      "stayDetailsIntro": "请填写一位主要入住人的全名；其他入住人姓名可选填。",
+      "primaryGuestName": "主要入住人全名",
+      "additionalGuestName": "其他入住人 {{number}}",
+      "additionalGuests": "其他入住人",
+      "addGuestName": "添加其他入住人姓名",
+      "removeGuestName": "移除其他入住人 {{number}}",
+      "optional": "选填",
+      "saveStayDetails": "保存资料",
+      "cancel": "取消",
+      "stayDetailsInvalid": "请检查入住人资料后重试。",
+      "stayDetailsSaveError": "无法保存入住资料，请重试。",
+      "stayAdded": "已加入购物车",
+      "viewStayDetails": "查看入住人资料",
+      "editStayDetails": "修改入住人资料",
+      "completeStayDetails": "补全入住人资料",
+      "stayDetailsCompleteBeforeCheckout": "请先补全这项住宿的入住人资料，再结账。",
+      "guestDetailsRequired": "请填写主入住人姓名、有效邮箱和有效手机号码后继续。",
+      "estimatedArrival": "预计抵达时间",
+      "arrivalUnknown": "暂不确定",
+      "arrivalAfternoon": "下午 3:00–6:00",
+      "arrivalEvening": "晚上 6:00–9:00",
+      "arrivalLate": "晚上 9:00 后",
+      "arrivalLabels": {
+        "unknown": "未指定",
+        "15:00-18:00": "下午 3:00–6:00",
+        "18:00-21:00": "晚上 6:00–9:00",
+        "after-21:00": "晚上 9:00 后"
+      },
+      "secondGuestName": "第二位入住人姓名（选填）",
+      "specialRequest": "特别要求（选填）",
+      "continueToPayment": "继续付款",
+      "editDetails": "修改资料",
+      "nameOnId": "全名（与身份证或护照一致）",
+      "email": "接收预订凭证的邮箱",
+      "phone": "手机号码",
+      "checkInFrom": "{{time}} 起",
+      "checkOutBy": "{{time}} 前",
+      "roomsCount_one": "{{count}} 间",
+      "roomsCount_other": "{{count}} 间"
     },
     "labels": {
       "hiddenGem": "隐藏宝藏",
@@ -831,7 +916,8 @@
       "noExperiences": "还没有收藏商品",
       "saveExperiences": "收藏美食、活动和其他商品，之后可在这里查看。",
       "empty": "还没有保存任何内容",
-      "saveBoth": "收藏地点和商品，建立您的旅行清单。"
+      "saveBoth": "收藏地点和商品，建立您的旅行清单。",
+      "savedHotels": "收藏的酒店"
     },
     "activity": {
       "notFound": "找不到该体验",
@@ -1234,6 +1320,7 @@
       "allNeedSlot": "您已安排的行程在计划当天都没有可预订的时段 — 请先在各活动页面选择时段。",
       "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。",
       "unavailable": "{{names}} 无法在行程规划中购买，请打开其页面查看可选项。",
+      "stayMustBeBookedFromHotelPage": "客房需要先填写入住人资料才能加入购物车，请从酒店页面预订。其他符合条件的行程商品仍可加入。",
       "addFailed": "无法将 {{name}} 加入购物车。之前已加入的项目仍在购物车中。",
       "buy_one": "购买 {{count}} 项",
       "buy_other": "购买 {{count}} 项"
@@ -1290,13 +1377,13 @@
       "clickUpload": "点击上传文件{{side}}",
       "fileHint": "JPG、PNG 或 WebP · 最大 5 MB",
       "clickChange": "点击更换",
-      "consent": "我同意 MyLawatan 使用第三方 AI 服务协助读取我的文件。最终 KYC 决定由人工管理员作出。",
+      "consent": "我同意为 KYC 进行私有证件处理。证件不会发送至外部 AI 服务，最终决定由有权限的人工审核者作出。",
       "submitting": "提交中…",
       "startNew": "开始新的提交",
       "submitForReview": "提交审核",
       "uploadRequired": "请上传证件照片",
       "submissionFailed": "提交失败。",
-      "manualReview": "AI 证件读取不可用或结果不明确。你的证件已提交给管理员人工审核。",
+      "manualReview": "资料已进入人工审核队列。私有预检查仅作辅助，不会自动批准 KYC。",
       "submitted": "KYC 证件已提交审核。",
       "myKad": "MyKad（马来西亚身份证）",
       "passport": "护照",
@@ -1308,7 +1395,7 @@
       "passportHint": "护照：1–2 个字母加 6–8 位数字，例如 A12345678",
       "invalidFileType": "每份文件必须是 JPG、PNG 或 WebP 照片",
       "fileTooLarge": "文件必须小于 5 MB（当前：{{size}} MB）",
-      "consentRequired": "提交前请同意使用 AI 协助读取证件。",
+      "consentRequired": "请先同意私有 KYC 证件处理再提交。",
       "tiers": {
         "emailVerified": "邮箱已验证",
         "phoneVerified": "电话已验证",
@@ -1323,7 +1410,10 @@
         "document_suspected_tampering": "我们无法通过此次提交完成验证。如需帮助，请联系支持团队。",
         "other": "我们需要更多资料才能完成验证，请查看下方审核备注。",
         "default": "我们无法通过此次提交完成验证，请检查证件并重新提交。"
-      }
+      },
+      "previewAlt": "已选择的{{side}}照片",
+      "previewGuidance": "请确认照片只有一张证件、四角完整，姓名和号码清楚可读。避免反光、手指遮字及拼图。此预览不会验证身份。",
+      "previewUnavailable": "浏览器无法显示此照片。你可以更换照片；提交时服务器仍会进行校验。"
     },
     "recommendations": {
       "vendorNameMin": "请输入至少 3 个字符的商家或企业名称。",
@@ -1505,7 +1595,10 @@
       "chatVendor": "与商家聊天",
       "viewCart": "查看购物车",
       "addBooking": "添加预订",
-      "addCart": "加入购物车"
+      "addCart": "加入购物车",
+      "priceUnits": {
+        "perNight": "每晚"
+      }
     },
     "vendor": {
       "notFound": "找不到商家",
@@ -2722,6 +2815,52 @@
         "pending": "待领取",
         "collected": "已领取"
       }
+    },
+    "hotel": {
+      "yourStay": "您的住宿",
+      "property": "酒店",
+      "roomsAndGuests": "房间与入住人数",
+      "adults": "成人",
+      "checkAvailability": "查询房态",
+      "invalidDateRange": "退房日期必须晚于入住日期。",
+      "stayExceedsNightLimit": "入住时间最多为 {{maxNights}} 晚，请选择更早的退房日期。",
+      "availabilityNeedsRefresh": "入住资料已更改，请重新查询房态后再预订。",
+      "minimumRoomsForAdults_one": "{{adults}} 位成人入住此房型至少需要 {{rooms}} 间房（每间最多入住 {{maxGuests}} 位成人）。",
+      "minimumRoomsForAdults_other": "{{adults}} 位成人入住此房型至少需要 {{rooms}} 间房（每间最多入住 {{maxGuests}} 位成人）。",
+      "setMinimumRooms_one": "调整为 {{count}} 间房",
+      "setMinimumRooms_other": "调整为 {{count}} 间房",
+      "exceedsRoomLimit_one": "{{count}} 位成人入住此房型需要超过 10 间房，目前最多只能查询 10 间。",
+      "exceedsRoomLimit_other": "{{count}} 位成人入住此房型需要超过 10 间房，目前最多只能查询 10 间。",
+      "adultsCount_one": "{{count}} 位成人",
+      "adultsCount_other": "{{count}} 位成人",
+      "fewerRooms": "减少一间房",
+      "moreRooms": "增加一间房",
+      "fewerAdults": "减少一位成人",
+      "moreAdults": "增加一位成人",
+      "from": "起价",
+      "selectRoom": "选择房型",
+      "overview": "简介",
+      "reviews": "评价",
+      "noWrittenReviews": "暂时没有文字评价。",
+      "about": "关于酒店",
+      "amenities": "设施",
+      "location": "位置",
+      "roomDetails": "房间详情",
+      "selectThisRoom": "选择这个房间",
+      "bed": "床型",
+      "sleeps": "最多入住",
+      "areaUnit": "平方米",
+      "sleepsCount_one": "可住 {{count}} 人",
+      "sleepsCount_other": "可住 {{count}} 人",
+      "size": "房间面积",
+      "view": "景观",
+      "nonSmoking": "禁烟",
+      "roomAmenities": "房内设施",
+      "photoAlt": "{{room}} 照片 {{index}}",
+      "totalFor_one": "{{count}} 晚 · {{rooms}} 间总价：",
+      "totalFor_other": "{{count}} 晚 · {{rooms}} 间总价：",
+      "reviewCount_one": "（{{count}} 条评价）",
+      "reviewCount_other": "（{{count}} 条评价）"
     }
   },
   "strictMigration": {

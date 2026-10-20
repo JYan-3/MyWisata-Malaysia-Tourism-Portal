@@ -1,18 +1,19 @@
 "use client";
 
+import { formatStayRange } from "@/lib/customer/booking-view";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import { CalendarClock, Check, ChevronDown, ImageOff, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, ImageOff, Info, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
 import { getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
 import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Button } from "@/components/ui/button";
-import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, Outlet, StayBookingDetails, Voucher } from "@/backend/core/types";
 import { formatDate, formatMYRNumber } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import {
@@ -20,6 +21,8 @@ import {
   resolveBookingSlotLookupStatus,
   type BookingSlotLookupState,
 } from "@/lib/customer/cart-availability";
+import { StayGuestDetailsDialog } from "@/components/customer/stay-guest-details-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type VoucherOption = {
   voucher: Voucher;
@@ -78,7 +81,7 @@ function VoucherOptionCard({ option, applied, hasAppliedVoucher = false, onApply
 
 export default function CartPage() {
   const { t: tCustomer } = useTranslation("customer");
-  const { items, activities = [], activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
+  const { items, activities = [], activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, updateStayDetails, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const { currentUser } = useAuth();
   const [code, setCode] = useState("");
@@ -96,6 +99,9 @@ export default function CartPage() {
   const [showAllVouchers, setShowAllVouchers] = useState(false);
   const [voucherSearch, setVoucherSearch] = useState("");
   const [voucherTypeFilter, setVoucherTypeFilter] = useState<"all" | Voucher["type"]>("all");
+  const [stayInfoIndex, setStayInfoIndex] = useState<number | null>(null);
+  const [stayEditIndex, setStayEditIndex] = useState<number | null>(null);
+  const [stayDialogKey, setStayDialogKey] = useState(0);
 
   useEffect(() => {
     getOutlets().then((list) => setOutlets(new Map(list.map((o) => [o.id, o]))));
@@ -148,6 +154,7 @@ export default function CartPage() {
     () => items.flatMap((item) => {
       const activity = activities.find((candidate) => candidate.id === item.activityId);
       if (!activity) return [];
+      if (activity.categorySlug === "accommodation" && !item.stayDetails) return [];
       const stockLimit = !activity.requiresBooking ? activity.availableStock : undefined;
       const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
       const availability = getCartLineAvailability({
@@ -354,6 +361,22 @@ export default function CartPage() {
     });
   }, [activitiesReady, bookingSlotsStatus, selectableKeys, selectedKeys, toggleSelected]);
 
+  const stayInfoItem = stayInfoIndex === null ? null : items[stayInfoIndex] ?? null;
+  const stayInfoActivity = stayInfoItem ? activities.find((activity) => activity.id === stayInfoItem.activityId) : undefined;
+  const stayInfoSlot = stayInfoItem?.slotId ? slotsById.get(stayInfoItem.slotId) : undefined;
+  const stayInfoDetails = stayInfoItem?.stayDetails;
+  const stayEditItem = stayEditIndex === null ? null : items[stayEditIndex] ?? null;
+
+  function openStayEditor(index: number) {
+    setStayInfoIndex(null);
+    setStayDialogKey((key) => key + 1);
+    setStayEditIndex(index);
+  }
+
+  async function saveStayDetails(index: number, details: StayBookingDetails) {
+    await updateStayDetails(index, details);
+  }
+
   if (items.length === 0) {
     return (
       <EmptyState
@@ -440,6 +463,8 @@ export default function CartPage() {
             stockLimit,
           });
           const available = availability.available;
+          const isAccommodation = activity.categorySlug === "accommodation";
+          const missingStayDetails = isAccommodation && !item.stayDetails;
           const availabilityLabel = availability.status === "checking"
             ? tCustomer("ui.cart.checkingAvailability")
             : availability.status === "error"
@@ -454,9 +479,9 @@ export default function CartPage() {
               <input
                 type="checkbox"
                 checked={checked}
-                disabled={!available}
+                disabled={!available || missingStayDetails}
                 onChange={() => toggleSelected(key)}
-                aria-label={available ? tCustomer("ui.cart.selectItem", { item: activity.name }) : availabilityLabel}
+                aria-label={missingStayDetails ? tCustomer("ui.property.stayDetailsCompleteBeforeCheckout") : available ? tCustomer("ui.cart.selectItem", { item: activity.name }) : availabilityLabel}
                 className="mt-1 h-4 w-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
               />
               {activity.image ? (
@@ -473,7 +498,7 @@ export default function CartPage() {
                 {confirmedSlot && (
                   <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                     <CalendarClock size={11} />
-                    {new Date(confirmedSlot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {activity.categorySlug === "accommodation" ? `${formatStayRange(confirmedSlot.startsAt, item.nights ?? 1)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : new Date(confirmedSlot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     {availability.status === "unavailable"
                       ? ` · ${confirmedSlot.status === "expired" ? tCustomer("ui.cart.slotExpired") : tCustomer("ui.cart.slotUnavailable")}`
                       : availability.seatsLeft !== undefined && ` · ${tCustomer("ui.cart.seatsLeft", { count: availability.seatsLeft })}`}
@@ -483,6 +508,22 @@ export default function CartPage() {
                   <p className="mt-0.5 text-xs text-muted-foreground">{availabilityLabel}</p>
                 )}
                 <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1"><ReferencePrice amountMYR={price} /> × {item.qty}</p>
+                {isAccommodation && (
+                  <div className="mt-2">
+                    {missingStayDetails ? (
+                      <div>
+                        <p className="text-xs text-muted-foreground">{tCustomer("ui.property.stayDetailsCompleteBeforeCheckout")}</p>
+                        <Button type="button" size="sm" variant="outline" className="mt-1" onClick={() => openStayEditor(index)}>
+                          {tCustomer("ui.property.completeStayDetails")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button type="button" size="sm" variant="ghost" className="h-auto px-0 text-xs" onClick={() => setStayInfoIndex(index)}>
+                        <Info size={14} aria-hidden="true" /> {tCustomer("ui.property.viewStayDetails")}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {stockLimit !== undefined && (
                   <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600 dark:text-red-300" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700 dark:text-amber-200" : "text-emerald-700 dark:text-emerald-200"}`}>
                     {stockLimit === 0 ? "Out of stock" : `${stockLimit} in stock${stockLimit <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}`}
@@ -655,6 +696,39 @@ export default function CartPage() {
         <Button type="button" className="h-12 w-full rounded-full text-base" disabled>
           {tCustomer("ui.actions.proceedCheckout")}
         </Button>
+      )}
+
+      <Dialog open={stayInfoIndex !== null} onOpenChange={(open) => { if (!open) setStayInfoIndex(null); }}>
+        {stayInfoItem && stayInfoActivity && stayInfoDetails && (
+          <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{tCustomer("ui.property.stayDetails")}</DialogTitle>
+              <DialogDescription>{stayInfoActivity.name}</DialogDescription>
+            </DialogHeader>
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              {stayInfoSlot && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("ui.property.yourSelection")}</dt><dd className="mt-1 font-semibold text-foreground">{formatStayRange(stayInfoSlot.startsAt, stayInfoItem.nights ?? 1)} · {tCustomer("ui.property.roomsCount", { count: stayInfoItem.qty })}</dd></div>}
+              <div><dt className="text-muted-foreground">{tCustomer("ui.property.primaryGuestName")}</dt><dd className="mt-1 font-semibold text-foreground">{stayInfoDetails.primaryGuestName}</dd></div>
+              <div><dt className="text-muted-foreground">{tCustomer("ui.property.adults")}</dt><dd className="mt-1 font-semibold text-foreground">{stayInfoDetails.adults}</dd></div>
+              <div><dt className="text-muted-foreground">{tCustomer("ui.property.estimatedArrival")}</dt><dd className="mt-1 font-semibold text-foreground">{tCustomer(`ui.property.arrivalLabels.${stayInfoDetails.estimatedArrival}`)}</dd></div>
+              {stayInfoDetails.additionalGuestNames?.length ? <div><dt className="text-muted-foreground">{tCustomer("ui.property.additionalGuests")}</dt><dd className="mt-1 font-semibold text-foreground">{stayInfoDetails.additionalGuestNames.join(", ")}</dd></div> : null}
+              {stayInfoDetails.specialRequest && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("ui.property.specialRequest")}</dt><dd className="mt-1 whitespace-pre-wrap font-semibold text-foreground">{stayInfoDetails.specialRequest}</dd></div>}
+            </dl>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setStayInfoIndex(null)}>{tCustomer("ui.property.cancel")}</Button>
+              <Button type="button" onClick={() => { if (stayInfoIndex !== null) openStayEditor(stayInfoIndex); }}>{tCustomer("ui.property.editStayDetails")}</Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+      {stayEditIndex !== null && stayEditItem && (
+        <StayGuestDetailsDialog
+          key={`${stayEditItem.cartItemId ?? stayEditIndex}:${stayDialogKey}`}
+          open
+          onOpenChange={(open) => { if (!open) setStayEditIndex(null); }}
+          adults={stayEditItem.stayDetails?.adults}
+          initialDetails={stayEditItem.stayDetails}
+          onSave={(details) => saveStayDetails(stayEditIndex, details)}
+        />
       )}
     </div>
   );

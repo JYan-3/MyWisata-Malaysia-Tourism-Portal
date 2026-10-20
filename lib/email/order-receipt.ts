@@ -6,6 +6,7 @@ import { classifyEmailDeliveryError, emailTransportTimeouts, type EmailDelivery 
 import { generateReceiptPdf, type ReceiptData } from '@/lib/pdf/receipt';
 import { emailCopy, emailLocale } from './copy';
 import { formatMYR } from '@/lib/i18n/format';
+import type { AppLocale } from '@/lib/i18n/locale';
 import { ensureCustomEmailDeliveryEnabled } from '@/lib/platform/operations-settings';
 
 export type OrderReceiptPickupPass = {
@@ -16,7 +17,7 @@ export type OrderReceiptPickupPass = {
   qrUrl: string;
 };
 
-export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; accessUrl?: string; pickupPasses?: OrderReceiptPickupPass[]; delivery?: EmailDelivery };
+export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; locale?: AppLocale; accessUrl?: string; pickupPasses?: OrderReceiptPickupPass[]; delivery?: EmailDelivery };
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';

@@ -50,7 +50,12 @@ vi.mock('@/lib/supabase/service', () => ({
 
 vi.mock('@/lib/cache/catalogue-cache', () => ({ getCachedActivities: mocks.getActivities }));
 vi.mock('@/backend/domains/catalogue', () => ({ getActivities: mocks.getActivities }));
-vi.mock('@/backend/core/helpers', () => ({ cartTotals: mocks.cartTotals, unitPrice: mocks.unitPrice }));
+vi.mock('@/backend/core/helpers', () => ({
+  cartTotals: mocks.cartTotals,
+  unitPrice: mocks.unitPrice,
+  cartItemKey: (item: { cartItemId?: string; activityId: string; variantId: string; slotId?: string; outletId?: string; nights?: number }) => item.cartItemId ? `cart-item:${item.cartItemId}` : `${item.activityId}|${item.variantId}|${item.slotId ?? ''}|${item.outletId ?? ''}${(item.nights ?? 1) > 1 ? `|${item.nights}` : ''}`,
+  cartItemTupleKey: (item: { activityId: string; variantId: string; slotId?: string; outletId?: string; nights?: number }) => `${item.activityId}|${item.variantId}|${item.slotId ?? ''}|${item.outletId ?? ''}${(item.nights ?? 1) > 1 ? `|${item.nights}` : ''}`,
+}));
 vi.mock('@/lib/stripe', () => ({ stripe: { checkout: { sessions: { create: mocks.stripeCreate } } } }));
 
 import { POST } from '../prepare/route';
@@ -88,6 +93,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
             slot_id: SLOT_ID,
             outlet_id: OUTLET_ID,
             quantity: 2,
+            stay_details: null,
             product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: 'Standard' },
             booking_slots: { id: SLOT_ID, product_id: PRODUCT_ID, outlet_id: OUTLET_ID, starts_at: '2026-09-15T09:00:00Z', price_override: 0 },
           },
@@ -164,6 +170,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
         slot_id: SLOT_ID,
         outlet_id: OUTLET_ID,
         quantity: 2,
+        stay_details: null,
         product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: "Standard" },
         booking_slots: { id: SLOT_ID, product_id: PRODUCT_ID, outlet_id: OUTLET_ID, starts_at: "2026-09-15T09:00:00Z", price_override: 0 },
       }]);
@@ -208,6 +215,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
         slot_id: SLOT_ID,
         outlet_id: OUTLET_ID,
         quantity: 2,
+        stay_details: null,
         product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: "Standard" },
         booking_slots: { id: SLOT_ID, product_id: PRODUCT_ID, outlet_id: OUTLET_ID, starts_at: "2026-09-15T09:00:00Z", price_override: 0 },
       }]);

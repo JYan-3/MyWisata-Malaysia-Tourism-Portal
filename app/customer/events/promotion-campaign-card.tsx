@@ -11,6 +11,7 @@ import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 function CampaignPoster({
   campaign,
@@ -80,7 +81,7 @@ export function PromotionCampaignCard({
               id={`campaign-${campaign.id}`}
               className="mt-3 break-words font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-foreground sm:text-2xl"
             >
-              {campaign.title}
+              <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
             </h2>
             <Button asChild className="mt-5 min-h-11 w-full shrink-0 rounded-full lg:mt-auto">
               <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
@@ -119,10 +120,10 @@ export function PromotionCampaignCard({
               id={`campaign-${campaign.id}`}
               className="mt-4 break-words font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-foreground sm:text-3xl"
             >
-              {campaign.title}
+              <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
             </h2>
             <p className="mt-3 break-words text-sm leading-6 text-muted-foreground">
-              {campaign.summary}
+              <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="summary" sourceText={campaign.summary} />
             </p>
             <Button asChild className="mt-5 min-h-11 w-full shrink-0 rounded-full sm:w-auto lg:mt-auto lg:self-start">
               <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>

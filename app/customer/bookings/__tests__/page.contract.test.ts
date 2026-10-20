@@ -28,7 +28,7 @@ describe("customer booking details", () => {
     expect(pageSource).toContain("showFullReceipt");
     expect(pageSource).toContain('tCustomer("strictMigration.bookingReceipt.viewFullReceipt")');
     expect(pageSource).toContain("/customer/orders/${booking.orderId}");
-    expect(pageSource.match(/tCustomer\("ui\.actions\.backToCalendar"\)/g)).toHaveLength(1);
+    expect(pageSource).toContain('<BackLink fallbackHref="/customer/activity?tab=itinerary"');
     expect(pageSource).not.toContain("booking.qrCode");
     expect(pageSource).not.toContain("DEMO-QR");
   });

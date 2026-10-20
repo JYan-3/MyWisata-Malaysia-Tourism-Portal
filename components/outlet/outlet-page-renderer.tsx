@@ -6,6 +6,7 @@ import type { OutletPageRendererProps } from '@/components/outlet/outlet-block-t
 import { Accessibility, ArrowUpRight, Clock3, MapPin, Navigation, PawPrint, Phone } from 'lucide-react';
 import { OutletBlockRenderer, OutletHeroRenderer, formatHours } from '@/components/outlet/outlet-block-renderer';
 import { OutletMenu } from '@/components/outlet/outlet-menu';
+import { HotelPage } from '@/components/outlet/hotel-page';
 import { readingOrder } from '@/lib/vendor/outlet-grid';
 import { MediaGallery } from '@/components/customer/media-gallery';
 
@@ -29,12 +30,17 @@ function VisitSummary({ outlet, mode = 'public' }: { outlet: OutletPageRendererP
   </section>;
 }
 
-function PublicOutletTemplate({ document, outlet, products = [] }: Pick<OutletPageRendererProps, 'document' | 'outlet' | 'products'>) {
+function PublicOutletTemplate({ document, outlet, products = [], reviews = [] }: Pick<OutletPageRendererProps, 'document' | 'outlet' | 'products' | 'reviews'>) {
   const { t } = useTranslation('customer');
   const hero = document.hero.imageUrl || document.gallery[0]?.url
     ? { ...document.hero, imageUrl: document.hero.imageUrl || document.gallery[0]?.url }
     : document.hero;
   const publicBlocks = readingOrder(document.blocks).filter((block) => block.type !== 'product_grid' && block.type !== 'gallery');
+  // Hotels use one fixed layout with rooms only (D1, D12); vendor blocks and other products are not shown.
+  if (outlet.stay) {
+    const gallery = [...(hero.imageUrl ? [{ url: hero.imageUrl }] : []), ...document.gallery.filter((item) => item.url !== hero.imageUrl)];
+    return <HotelPage outlet={outlet} rooms={products.filter((p) => p.stay)} gallery={gallery} reviews={reviews} />;
+  }
 
   return <div style={{ fontFamily: document.fontFamily }}>
     <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
@@ -53,8 +59,8 @@ function PublicOutletTemplate({ document, outlet, products = [] }: Pick<OutletPa
   </div>;
 }
 
-export function OutletPageRenderer({ document, outlet, products = [], mode = 'public', selectedBlockId, onSelect }: OutletPageRendererProps) {
-  if (mode === 'public') return <PublicOutletTemplate document={document} outlet={outlet} products={products} />;
+export function OutletPageRenderer({ document, outlet, products = [], reviews = [], mode = 'public', selectedBlockId, onSelect }: OutletPageRendererProps) {
+  if (mode === 'public') return <PublicOutletTemplate document={document} outlet={outlet} products={products} reviews={reviews} />;
 
   return <div style={{ fontFamily: document.fontFamily }}>
     <OutletHeroRenderer hero={document.hero} brandColour={document.brandColour} outlet={outlet} mode={mode} selected={selectedBlockId === document.hero.id} onSelect={onSelect} />

@@ -1,8 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { Check, ChevronLeft, ChevronRight, ClipboardCheck, Eye, MessageSquare, X } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { HotelProfileDiff } from '@/components/admin/hotel-profile-diff';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { AdminBatchActionBar } from '@/components/admin/batch-action-bar';
@@ -14,8 +17,11 @@ import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 
 type ReviewItem = {
   id: string;
-  entityType: 'outlet' | 'product' | 'voucher';
+  entityType: 'outlet' | 'product' | 'voucher' | 'hotel_profile';
   entityLabel: string;
+  live?: Record<string, unknown> | null;
+  updated_at?: string;
+  proposed?: Record<string, unknown> | null;
   context: string;
   vendor_id: string;
   vendors?: { name?: string } | null;
@@ -30,6 +36,7 @@ const labelKeys: Record<ReviewItem['entityType'], string> = {
   outlet: 'catalogue.entity.outlet',
   product: 'catalogue.entity.listing',
   voucher: 'catalogue.entity.voucher',
+  hotel_profile: 'catalogue.entity.hotelProfile',
 };
 
 export default function CatalogueReviewPage() {
@@ -76,7 +83,7 @@ export default function CatalogueReviewPage() {
       const response = await fetch('/api/admin/catalogue/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType: item.entityType, entityId: item.id, action, note: trimmedNote }),
+        body: JSON.stringify({ entityType: item.entityType, entityId: item.id, action, note: trimmedNote, ...(item.entityType === 'hotel_profile' && item.updated_at ? { expectedVersion: item.updated_at } : {}) }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || t('catalogue.errors.actionFailed'));
@@ -120,7 +127,7 @@ export default function CatalogueReviewPage() {
       const results = await Promise.all(selected.map((item) => fetch('/api/admin/catalogue/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType: item.entityType, entityId: item.id, action, note: trimmedNote }),
+        body: JSON.stringify({ entityType: item.entityType, entityId: item.id, action, note: trimmedNote, ...(item.entityType === 'hotel_profile' && item.updated_at ? { expectedVersion: item.updated_at } : {}) }),
       })));
       const failed = results.find((response) => !response.ok);
       if (failed) {
@@ -155,6 +162,7 @@ export default function CatalogueReviewPage() {
       outlet: items.filter((item) => item.entityType === 'outlet').length,
       product: items.filter((item) => item.entityType === 'product').length,
       voucher: items.filter((item) => item.entityType === 'voucher').length,
+      hotel_profile: items.filter((item) => item.entityType === 'hotel_profile').length,
     }),
     [items]
   );
@@ -192,14 +200,14 @@ export default function CatalogueReviewPage() {
           eyebrow={<><ClipboardCheck size={15} /> {t('catalogue.eyebrow')}</>}
           title={t('catalogue.title')}
           description={t('catalogue.description')}
-          actions={<div className="rounded-2xl border border-amber-200/60 bg-amber-50 px-4 py-3 text-right dark:border-amber-500/30 dark:bg-amber-500/10"><p className="text-sm font-semibold text-amber-700 dark:text-amber-400">{t('catalogue.waiting')}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-amber-950 dark:text-amber-100">{items.length}</p></div>}
+          actions={<div className="flex flex-col items-end gap-3"><Button asChild variant="outline" size="sm"><Link href="/admin/hotel-amenities">{t('hotelAmenities.manage')}</Link></Button><div className="rounded-2xl border border-amber-200/60 bg-amber-50 px-4 py-3 text-right dark:border-amber-500/30 dark:bg-amber-500/10"><p className="text-sm font-semibold text-amber-700 dark:text-amber-400">{t('catalogue.waiting')}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-amber-950 dark:text-amber-100">{items.length}</p></div></div>}
         />
 
         <AdminFilterBar>
           <AdminSegmentedFilter
             value={filter}
             ariaLabel="catalogue.accessibility.itemType"
-            items={(['all', 'outlet', 'product', 'voucher'] as const).map((value) => ({ value, label: value === 'all' ? t('catalogue.filters.allItems') : t(labelKeys[value]), count: counts[value] }))}
+            items={(['all', 'outlet', 'product', 'voucher', 'hotel_profile'] as const).map((value) => ({ value, label: value === 'all' ? t('catalogue.filters.allItems') : t(labelKeys[value]), count: counts[value] }))}
             onChange={(value) => setFilter(value as 'all' | ReviewItem['entityType'])}
           />
         </AdminFilterBar>
@@ -257,6 +265,7 @@ export default function CatalogueReviewPage() {
                 <p className="mt-1 break-all font-mono text-xs text-foreground">{active.display_id || active.id}</p>
                 <p className="mt-2 text-muted-foreground">{active.context || t('catalogue.fallback.noLocation')}</p>
               </div>
+              {active.entityType === 'hotel_profile' && <HotelProfileDiff live={active.live} proposed={active.proposed} />}
               <div className="rounded-xl border border-primary/20 bg-secondary p-4 text-primary">
                 <div className="flex items-center gap-2 font-semibold"><MessageSquare size={15} /> {t('catalogue.checklist.title')}</div>
                 <p className="mt-2 text-xs leading-5">{t('catalogue.checklist.description')}</p>

@@ -928,7 +928,8 @@
     "entity": {
       "listing": "商品",
       "outlet": "门店",
-      "voucher": "优惠券"
+      "voucher": "优惠券",
+      "hotelProfile": "酒店资料"
     },
     "errors": {
       "actionFailed": "审核操作失败",
@@ -969,6 +970,25 @@
       "changeReason": "请输入需要修改的内容（至少 10 个字符）：",
       "batchRejectReason": "请输入拒绝所有已选项目的原因（至少 10 个字符）：",
       "batchChangeReason": "请输入所有已选项目需要修改的内容（至少 10 个字符）："
+    },
+    "hotelDiff": {
+      "title": "提议的修改（目前 → 新）。批准之前，酒店会继续上线显示。",
+      "noChanges": "没有可见的修改。",
+      "photoCount_one": "提交了 {{count}} 张照片",
+      "photoCount_other": "提交了 {{count}} 张照片",
+      "fields": {
+        "name": "酒店名称",
+        "address": "地址",
+        "city": "城市",
+        "state": "州属",
+        "phone": "电话",
+        "about": "关于酒店",
+        "amenities": "设施",
+        "checkIn": "入住时间",
+        "checkOut": "退房时间",
+        "policies": "政策",
+        "photos": "照片"
+      }
     }
   },
   "chatbot": {
@@ -1348,7 +1368,11 @@
       "snapshotPhone": "手机号",
       "submittedAt": "提交时间",
       "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
-      "waitingTitle": "等待客户"
+      "waitingTitle": "等待客户",
+      "previewAlt": "用于身份资料对照的{{side}}证件",
+      "closePreview": "关闭证件预览",
+      "openPdf": "在浏览器中查看 PDF",
+      "pdfNote": "这份历史提交包含 PDF，请通过受保护的证件查看入口打开。"
     },
     "documents": {
       "driving_license": "驾驶执照 / MyPolis",
@@ -1490,6 +1514,54 @@
       "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。",
       "pending_one": "{{count}} 条安全告警正在等待符合权限的接收者。",
       "pending_other": "{{count}} 条安全告警正在等待符合权限的接收者。"
+    },
+    "operations": {
+      "title": "KYC 运营 · 今日（马来西亚时间）",
+      "next": "领取下一单",
+      "refresh": "刷新队列",
+      "noNext": "暂无未认领案件。请查看我的案件或稍后刷新。",
+      "workFailed": "无法更新认领状态，请刷新后重试。",
+      "unavailable": "运营数据暂不可用",
+      "submitted": "今日提交",
+      "decided": "今日审核决定",
+      "assigned": "已认领待审核",
+      "waitP95": "等待时间第 95 百分位（分钟）",
+      "worker": "预检查任务：{{queued}} 排队 · {{processing}} 处理中 · {{failed}} 需关注 · 今日完成 {{completedToday}}",
+      "notConfigured": "私有 OCR 后台任务尚未完整配置，仍可人工审核。",
+      "sessions_one": "{{count}} 段完整记录 · 共 {{minutes}} 分钟 · {{incomplete}} 段未完成记录已排除",
+      "sessions_other": "{{count}} 段完整记录 · 共 {{minutes}} 分钟 · {{incomplete}} 段未完成记录已排除",
+      "measurementNote": "记录区间不等于有效工作时间或单份处理时间。已排除中断及未结束区间，但仍可能包含空闲时间。产能与误接收率需要经校准的实测数据，此处不提供估算。",
+      "assignment": "认领状态",
+      "allAssignments": "全部认领状态",
+      "mine": "我认领的",
+      "unassigned": "未认领",
+      "pageSize": "每页条数",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
+      "range": "第 {{first}}–{{last}} 条，共 {{total}} 条符合筛选",
+      "precheck": "私有预检查",
+      "precheckNote": "预检查仅辅助人工核对，不证明证件真实或上传者身份，不批准 KYC，也不证明欺诈。",
+      "precheckStatus": {
+        "none": "暂无预检查记录",
+        "queued": "排队中",
+        "processing": "处理中",
+        "succeeded": "预检查已完成",
+        "failed": "预检查不可用，转人工核对",
+        "cancelled": "证据或案件已变更，预检查停止"
+      },
+      "precheckOutcome": {
+        "precheck_passed": "预检查通过，仍须人工决定",
+        "manual_review": "需要人工核对",
+        "resubmit_suggested": "建议考虑补件，由人工决定"
+      },
+      "start": "开始记录审核区间",
+      "pause": "暂停记录",
+      "release": "释放回队列",
+      "recording": "正在记录此区间。离开窗口会暂停，返回后请手动继续。",
+      "notRecording": "区间记录已暂停。开始审核时可开启，不影响审核决定。",
+      "recordingInterrupted": "无法确认暂停成功。未结束区间不会计入时间统计。",
+      "continueNext": "保存本次决定后，打开下一单",
+      "intervalMeans": "记录区间均值：初审 {{first}} 秒 · 补件重审 {{repeat}} 秒（不等于单份处理时间）"
     }
   },
   "reconciliation": {
@@ -3704,6 +3776,8 @@
     }
   },
   "eventOperations": {
+    "checkout_hold_expired": "结账预留结束后收到付款。已暂停履约，请复核已确认的款项及人工退款申请。",
+    "checkout_eligibility_lost": "购买资格变更后收到付款。已暂停履约，请复核已确认的款项及人工退款申请。",
     "pickupOverdue": "取货日期已过，领取结果待核实",
     "pickupHelp": "未领取不等于顾客缺席。请核对商品和联系记录后结案；待核实金额不代表已批准退款金额。",
     "refreshPickups": "刷新过期未领取订单",
@@ -3717,7 +3791,7 @@
       "collected": "已核实取货记录",
       "refunded": "已确认退款完成"
     },
-    "title": "待处理活动异常",
+    "title": "需要跟进的订单事项",
     "summary": "待处理：{{open}} · 未认领：{{unassigned}} · 未设期限：{{undated}} · 逾期：{{overdue}} · 待处理金额：{{amount}}",
     "deadlineHelp": "期限用于跟进处理。到期不会自动退款或关闭订单。时间均为马来西亚时间。",
     "dueRequired": "请选择未来的处理期限。",
@@ -3729,7 +3803,7 @@
     "failed": "上次运行失败",
     "stale": "近期无完成记录",
     "healthy": "上次运行完成",
-    "empty": "没有待处理活动异常。",
+    "empty": "没有尚未解决的订单事项。",
     "orderWithoutNumber": "订单编号待生成",
     "paymentException": "已收款，但预订无法履约",
     "refundAttention": "退款需要跟进",
@@ -3845,5 +3919,38 @@
     "backToHelp": "全部帮助主题",
     "openPage": "打开此页面",
     "notAvailable": "您的账户无法查看此指南。返回即可查看您可以使用的帮助主题。"
+  },
+  "hotelAmenities": {
+    "eyebrow": "酒店",
+    "title": "酒店设施",
+    "description": "酒店在酒店资料里勾选的设施清单。关闭的设施不会出现在新的资料和酒店页上。",
+    "loading": "正在加载设施…",
+    "empty": "还没有设施",
+    "manage": "酒店设施",
+    "form": {
+      "code": "代码",
+      "labelEn": "英文名称",
+      "labelMs": "马来文名称",
+      "labelZh": "中文名称",
+      "icon": "图标",
+      "add": "新增设施",
+      "codeHint": "代码：2–40 个小写字母、数字或下划线，之后不能修改。"
+    },
+    "table": {
+      "code": "代码",
+      "labels": "名称（英 · 马 · 中）",
+      "status": "状态"
+    },
+    "actions": {
+      "activate": "开启",
+      "deactivate": "关闭"
+    },
+    "success": {
+      "added": "已新增设施"
+    },
+    "errors": {
+      "add": "无法新增设施",
+      "update": "无法更新设施"
+    }
   }
 }

@@ -1,5 +1,11 @@
-vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// These fixtures represent an already verified staff session; this suite focuses
+// on payout retry behavior.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -12,7 +18,16 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser, getClaims: vi.fn(async () => ({ data: { claims: { sub: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", session_id: "22222222-2222-4222-8222-222222222222", amr: [{ method: "password", timestamp: 100 }] } }, error: null })) }, rpc: mocks.authRpc })),
+  createClient: vi.fn(async () => ({
+    auth: {
+      getUser: mocks.getUser,
+      getClaims: vi.fn(async () => ({
+        data: { claims: { sub: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', session_id: '22222222-2222-4222-8222-222222222222', amr: [{ method: 'password', timestamp: 100 }] } },
+        error: null,
+      })),
+    },
+    rpc: mocks.authRpc,
+  })),
 }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.from, rpc: mocks.serviceRpc })),

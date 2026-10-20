@@ -57,6 +57,33 @@ describe('executeApprovedWithdrawalPayout', () => {
     mocks.tngConfigured.mockReturnValue(true);
   });
 
+  it('preserves a manual eligibility hold without provider or failure mutations', async () => {
+    mocks.from.mockImplementation((table: string) => table === 'users'
+      ? queryResult({ stripe_connect_account_id: 'acct_example' })
+      : queryResult({ status: 'approved', payout_provider: 'tng_direct_credit', updated_at: new Date().toISOString() }));
+    mocks.rpc.mockResolvedValue({ data: { acquired: false, requires_review: true, status: 'hold' }, error: null });
+    const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 50 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.response.status).toBe(409);
+      expect(await result.response.json()).toMatchObject({ error: { code: 'WITHDRAWAL_REQUIRES_REVIEW' } });
+    }
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).not.toHaveBeenCalledWith('record_withdrawal_execution_failure', expect.anything());
+    expect(mocks.createTngPayout).not.toHaveBeenCalled();
+    expect(mocks.transfersCreate).not.toHaveBeenCalled();
+    expect(mocks.payoutsCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not undo an unknown committed claim or hold after an RPC transport error', async () => {
+    mocks.from.mockReturnValue(queryResult({ status: 'approved', payout_provider: 'stripe_connect', destination_provider_reference: 'acct_test', updated_at: new Date().toISOString() }));
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'connection interrupted' } });
+    const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 50 });
+    expect(result.ok).toBe(false);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.transfersCreate).not.toHaveBeenCalled();
+  });
+
   it('starts a TNG mock payout and persists the provider event id', async () => {
     mocks.from.mockImplementation((table: string) => table === 'users'
       ? queryResult({ stripe_connect_account_id: null })
@@ -149,6 +176,7 @@ describe('executeApprovedWithdrawalPayout', () => {
     mocks.payoutsCreate.mockResolvedValue({ id: 'po_created' });
     mocks.rpc.mockImplementation((name: string) => Promise.resolve(name === 'record_stripe_payout'
       ? { data: null, error: { message: 'database unavailable' } }
+      : name === 'start_withdrawal_payout_attempt' ? { data: { acquired: true, started_at: new Date().toISOString() }, error: null }
       : { data: {}, error: null }));
 
     const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 70 });
@@ -187,7 +215,7 @@ describe('executeApprovedWithdrawalPayout', () => {
           stripe_transfer_id: 'tr_test', stripe_payout_id: null, updated_at: new Date().toISOString(),
         }));
     mocks.rpc.mockImplementation((name: string) => Promise.resolve(name === 'start_withdrawal_payout_attempt'
-      ? { data: { started_at: new Date(Date.now() - 25 * 3_600_000).toISOString() }, error: null }
+      ? { data: { acquired: true, started_at: new Date(Date.now() - 25 * 3_600_000).toISOString() }, error: null }
       : { data: {}, error: null }));
 
     const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 70 });
@@ -253,6 +281,7 @@ describe('executeApprovedWithdrawalPayout', () => {
     mocks.createTngPayout.mockResolvedValue({ status: 'processing', providerEventId: 'tng_payout_opaque', failure: null });
     mocks.rpc.mockImplementation((name: string) => Promise.resolve(name === 'start_tng_mock_payout'
       ? { data: null, error: { message: 'database unavailable' } }
+      : name === 'start_withdrawal_payout_attempt' ? { data: { acquired: true, started_at: new Date().toISOString() }, error: null }
       : { data: {}, error: null }));
 
     const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 50 });

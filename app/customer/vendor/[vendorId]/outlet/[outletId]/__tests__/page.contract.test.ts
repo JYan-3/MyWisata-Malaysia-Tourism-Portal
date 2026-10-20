@@ -13,4 +13,9 @@ describe("customer public outlet media hierarchy", () => {
     expect(pageSource).toContain("const heroImageUrl = gallery[0]?.url || document.hero.imageUrl || document.gallery[0]?.url;");
     expect(pageSource).toContain("availableGallery.filter((item) => item.url !== heroImageUrl)");
   });
+
+  it("recognizes hotel products regardless of the typed PostgREST relation shape", () => {
+    expect(pageSource).toContain("relationOne(p.categories)?.slug === STAY_SLUG");
+    expect(pageSource).toContain("category: relationOne(product.categories)?.name ?? null");
+  });
 });

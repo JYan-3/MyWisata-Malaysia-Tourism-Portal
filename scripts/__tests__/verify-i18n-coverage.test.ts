@@ -154,6 +154,17 @@ describe("verifyI18nCoverage", () => {
     await expect(verify(root)).resolves.toEqual({ ok: true, errors: [] });
   });
 
+  it("ignores generated output snapshots when checking tracked UI inventories", async () => {
+    const root = createMiniRepository();
+    writeText(
+      root,
+      "output/legacy/app/customer/__tests__/sitewide-i18n.contract.test.ts",
+      `export const CUSTOMER_I18N_FILES = [\n  "components/demo-map/mywisata-explore-map.tsx",\n] as const;\n`,
+    );
+
+    await expect(verify(root)).resolves.toEqual({ ok: true, errors: [] });
+  });
+
   it("defaults the CLI root to the current working directory", () => {
     expect(existsSync(scriptPath)).toBe(true);
     const result = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });

@@ -143,6 +143,7 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
         return {
           data: {
             assignedTo: '33333333-3333-4333-8333-333333333333',
+            reviewVersion: 7,
             claimedAt: '2026-07-15T08:02:00.000Z',
             isAssignedToActor: true,
             canDecide: true,
@@ -242,6 +243,7 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
     const serialized = JSON.stringify(body);
 
     expect(response.status).toBe(200);
+    expect(body.data.assignment.reviewVersion).toBe(7);
     expect(body.data.customer).toEqual({
       id: customerId,
       name: 'Customer Bob',
@@ -251,6 +253,7 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
     expect(body.data.submission.documents).toEqual([{ side: 'front' }]);
     expect(body.data.assignment).toEqual({
       assignedTo: '33333333-3333-4333-8333-333333333333',
+            reviewVersion: 7,
       claimedAt: '2026-07-15T08:02:00.000Z',
       isAssignedToCurrentUser: true,
       canDecide: true,

@@ -117,6 +117,11 @@ function clean(value?: string | null) {
   return value?.trim() || '';
 }
 
+/** PostgREST joins may be typed as arrays while a many-to-one relation is returned as an object. */
+export function relationOne<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
 export function getOutletAvailableStock(variants: readonly OutletInventoryVariant[], outletId: string): number {
   return variants
     .filter((variant) => variant.is_active !== false)
@@ -282,4 +287,47 @@ export function getPublicOutletEmptyState(kind: 'products' | 'gallery'): PublicO
     title: 'Experiences coming soon',
     body: 'This outlet is preparing its bookable experiences. Check back soon for local favourites.',
   };
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+export function addDays(day: string, n: number) {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function validDay(value?: string) {
+  return value && ISO_DAY.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && addDays(value, 0) === value ? value : null;
+}
+
+/** Returns the number of nights between valid Malaysia calendar dates, or null for an invalid range. */
+export function getStayNightCount(checkIn: string, checkOut: string): number | null {
+  const validCheckIn = validDay(checkIn);
+  const validCheckOut = validDay(checkOut);
+  if (!validCheckIn || !validCheckOut || validCheckOut <= validCheckIn) return null;
+  return Math.round((Date.parse(`${validCheckOut}T00:00:00Z`) - Date.parse(`${validCheckIn}T00:00:00Z`)) / 86_400_000);
+}
+
+/** The existing stay search normalizes reservations to at most 30 nights. */
+export const MAX_STAY_NIGHTS = 30;
+
+/** Returns how many whole rooms are needed to fit the selected adults. */
+export function getMinimumRoomCount(adults: number, maxGuestsPerRoom: number): number {
+  return Math.ceil(adults / maxGuestsPerRoom);
+}
+
+/** Normalises the hotel page search params; `today` is the Malaysia calendar date. */
+export function resolveStaySearch(p: { checkin?: string; checkout?: string; rooms?: string; adults?: string }, today: string) {
+  const checkIn = validDay(p.checkin) && p.checkin! >= today ? p.checkin! : today;
+  const out = validDay(p.checkout);
+  const diff = out ? Math.round((Date.parse(`${out}T00:00:00Z`) - Date.parse(`${checkIn}T00:00:00Z`)) / 86_400_000) : 1;
+  const nights = Math.min(Math.max(diff, 1), MAX_STAY_NIGHTS);
+  const int = (v: string | undefined, min: number, max: number) => Math.min(Math.max(Number.parseInt(v ?? "", 10) || min, min), max);
+  return { checkIn, checkOut: addDays(checkIn, nights), nights, rooms: int(p.rooms, 1, 10), adults: int(p.adults, 1, 20) };
+}
+
+/** One night's slot: 15:00 Malaysia time on that date. */
+export function stayNightStartsAt(day: string) {
+  return new Date(`${day}T15:00:00+08:00`).toISOString();
 }

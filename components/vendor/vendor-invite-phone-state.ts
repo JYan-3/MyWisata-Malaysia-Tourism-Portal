@@ -43,11 +43,11 @@ async function apiResult(response: Response) {
   };
 }
 
-export async function requestPhoneOtp(fetcher: Fetcher, phone: string) {
+export async function requestPhoneOtp(fetcher: Fetcher, phone: string, captchaToken: string) {
   const response = await fetcher('/api/phone/send-otp', {
     method: 'POST',
     headers: JSON_HEADERS,
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ phone, captchaToken }),
   });
   return apiResult(response);
 }

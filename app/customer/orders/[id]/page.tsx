@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import {
   ArrowLeft,
   CalendarDays,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { getOutlets } from "@/backend/domains/catalogue";
+import { formatStayRange } from "@/lib/customer/booking-view";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
@@ -138,6 +140,8 @@ export default function OrderDetailPage() {
   const [requestingRefund, setRequestingRefund] = useState(false);
 
   const locale = i18n.resolvedLanguage || i18n.language || "en";
+  const hasLegacyStayDetails = order && order.stayDetails && order.items.some((item) => item.categorySlug === "accommodation");
+  const hasStayDetails = Boolean(hasLegacyStayDetails || order?.items.some((item) => item.categorySlug === "accommodation" && item.stayDetails));
 
   function paymentMethodLabel(method: string) {
     switch (method.toLowerCase()) {
@@ -247,11 +251,11 @@ export default function OrderDetailPage() {
     }
   }
 
-  async function handleReviewCart() {
+  async function handleReviewCart(explicitCancel = false) {
     if (!order || order.status !== "PENDING_PAYMENT") return;
     setPaymentResume({ orderId: order.id, state: "checking" });
     try {
-      const response = await fetch(`/api/customer/orders/${encodeURIComponent(order.id)}/payment-session`, {
+      const response = await fetch(`/api/customer/orders/${encodeURIComponent(order.id)}/payment-session${explicitCancel ? '?cancel=1' : ''}`, {
         method: "POST",
         cache: "no-store",
       });
@@ -311,12 +315,12 @@ export default function OrderDetailPage() {
           icon={<ReceiptText size={14} />}
           actions={
             <>
-              <Link href="/customer/orders">
+              <BackLink fallbackHref="/customer/orders">
                 <Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-secondary">
                   <ArrowLeft size={14} className="mr-1.5" />
-                  {tCustomer("ui.orders.backToOrders")}
+                  {tCustomer("actions.back", { ns: "common" })}
                 </Button>
-              </Link>
+              </BackLink>
               <Link href="/customer">
                 <Button className="rounded-full bg-primary px-5 hover:bg-primary/90">
                   {tCustomer("ui.actions.continueExploring")}
@@ -431,7 +435,7 @@ export default function OrderDetailPage() {
                           {item.slotStartsAt && (
                             <p className="mt-1 flex items-center gap-1.5 text-xs text-primary font-medium">
                               <Clock3 size={13} className="shrink-0" />
-                              <span>{dateTimeLabel(item.slotStartsAt, locale)}</span>
+                              <span>{item.categorySlug === "accommodation" ? `${formatStayRange(item.slotStartsAt, item.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : dateTimeLabel(item.slotStartsAt, locale)}</span>
                             </p>
                           )}
                         </div>
@@ -450,6 +454,40 @@ export default function OrderDetailPage() {
                   })}
                 </div>
               </section>
+
+              {hasStayDetails && (
+                <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="stay-order-details-heading">
+                  <h2 id="stay-order-details-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
+                    {tCustomer("ui.property.stayDetails")}
+                  </h2>
+                  <div className="mt-4 space-y-4">
+                    {order.items.filter((item) => item.categorySlug === "accommodation").map((item, index) => {
+                      const details = item.stayDetails ?? order.stayDetails;
+                      if (!details) return null;
+                      return (
+                        <div key={`${item.activityId}-${index}`} className="rounded-xl bg-secondary/30 p-4">
+                          <p className="font-semibold text-foreground">{item.activityName}</p>
+                          <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+                            <div><dt className="text-muted-foreground">{tCustomer("ui.property.nameOnId")}</dt><dd className="mt-1 font-semibold text-foreground">{"primaryGuestName" in details ? details.primaryGuestName : order.contact?.name || "—"}</dd></div>
+                            {"primaryGuestName" in details ? (
+                              details.additionalGuestNames?.map((name, guestIndex) => <div key={`${name}-${guestIndex}`}><dt className="text-muted-foreground">{tCustomer("ui.property.additionalGuestName", { number: guestIndex + 1 })}</dt><dd className="mt-1 font-semibold text-foreground">{name}</dd></div>)
+                            ) : (
+                              <>
+                                <div><dt className="text-muted-foreground">{tCustomer("ui.property.email")}</dt><dd className="mt-1 break-all font-semibold text-foreground">{order.contact?.email || "—"}</dd></div>
+                                {order.contact?.phone && <div><dt className="text-muted-foreground">{tCustomer("ui.property.phone")}</dt><dd className="mt-1 font-semibold text-foreground">{order.contact.phone}</dd></div>}
+                                {details.secondGuestName && <div><dt className="text-muted-foreground">{tCustomer("ui.property.secondGuestName")}</dt><dd className="mt-1 font-semibold text-foreground">{details.secondGuestName}</dd></div>}
+                              </>
+                            )}
+                            <div><dt className="text-muted-foreground">{tCustomer("ui.property.adults")}</dt><dd className="mt-1 font-semibold text-foreground">{details.adults}</dd></div>
+                            <div><dt className="text-muted-foreground">{tCustomer("ui.property.estimatedArrival")}</dt><dd className="mt-1 font-semibold text-foreground">{tCustomer(`ui.property.arrivalLabels.${details.estimatedArrival}`)}</dd></div>
+                            {details.specialRequest && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("ui.property.specialRequest")}</dt><dd className="mt-1 whitespace-pre-wrap text-foreground">{details.specialRequest}</dd></div>}
+                          </dl>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
 
               {/* Digital Entry Pass / QR Codes if Bookings exist */}
               {bookings.length > 0 && isPaid && (
@@ -490,7 +528,7 @@ export default function OrderDetailPage() {
                         {b.slotStartsAt && (
                           <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
                             <CalendarDays size={15} className="shrink-0 text-primary" aria-hidden="true" />
-                            <span>{dateTimeLabel(b.slotStartsAt, locale)}</span>
+                            <span>{b.categorySlug === "accommodation" ? `${formatStayRange(b.slotStartsAt, b.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: b.nights ?? 1 })}` : dateTimeLabel(b.slotStartsAt, locale)}</span>
                           </p>
                         )}
                         <div className="mt-3 flex min-w-0 flex-col gap-1 border-t border-border pt-3">
@@ -599,7 +637,7 @@ export default function OrderDetailPage() {
                           type="button"
                           variant="outline"
                           className="mt-3 w-full gap-2 rounded-xl border-amber-300 text-amber-950 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/40"
-                          onClick={handleReviewCart}
+                          onClick={() => void handleReviewCart()}
                         >
                           {tCustomer("ui.orders.reviewCart")}
                         </Button>
@@ -633,6 +671,8 @@ export default function OrderDetailPage() {
                         </Button>
                       </>
                     )}
+                    <p className="mt-3 text-xs">{tCustomer('checkoutSafety.cancelHelp')}</p>
+                    <Button type="button" variant="outline" className="mt-2 w-full" disabled={paymentResumeState === 'checking' || paymentResumeState === 'processing'} onClick={() => void handleReviewCart(true)}>{tCustomer('checkoutSafety.cancelCheckout')}</Button>
                   </section>
                 )}
 
@@ -765,7 +805,7 @@ export default function OrderDetailPage() {
                     {item.variantLabel && <p className="text-gray-500 dark:text-muted-foreground text-[11px]">{item.variantLabel}</p>}
                     {item.slotStartsAt && (
                       <p className="text-gray-500 dark:text-muted-foreground text-[11px] font-medium">
-                        {tCustomer("ui.orders.slot", { time: dateTimeLabel(item.slotStartsAt, locale) })}
+                        {tCustomer("ui.orders.slot", { time: item.categorySlug === "accommodation" ? `${formatStayRange(item.slotStartsAt, item.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : dateTimeLabel(item.slotStartsAt, locale) })}
                       </p>
                     )}
                   </td>

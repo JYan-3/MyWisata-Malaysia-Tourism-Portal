@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCheckoutRequestHash, normalizeCheckoutRequest } from "../idempotency";
+import { cartItemKey } from "@/backend/core/helpers";
 
 describe("checkout idempotency request", () => {
   it("normalizes selected keys so retries with different ordering share a hash", () => {
@@ -16,6 +17,14 @@ describe("checkout idempotency request", () => {
 
     expect(first).toEqual(second);
     expect(buildCheckoutRequestHash(first)).toBe(buildCheckoutRequestHash(second));
+  });
+
+  it("gives two stays with the same check-in but different nights different retry hashes", () => {
+    const stay = { activityId: "room", variantId: "", slotId: "night-24-oct", outletId: "hotel" };
+    const twoNights = normalizeCheckoutRequest({ selectedKeys: [cartItemKey({ ...stay, nights: 2 })], paymentMethod: "stripe_card" });
+    const threeNights = normalizeCheckoutRequest({ selectedKeys: [cartItemKey({ ...stay, nights: 3 })], paymentMethod: "stripe_card" });
+
+    expect(buildCheckoutRequestHash(twoNights)).not.toBe(buildCheckoutRequestHash(threeNights));
   });
 
   it("normalizes a claimed voucher ID and includes it in the idempotency hash", () => {
@@ -59,6 +68,14 @@ describe("checkout idempotency request", () => {
     });
 
     expect(buildCheckoutRequestHash(first)).toBe(buildCheckoutRequestHash(retry));
+    expect(buildCheckoutRequestHash(first)).not.toBe(buildCheckoutRequestHash(changed));
+  });
+
+  it("includes server-read stay details in the retry hash without adding them to checkout input", () => {
+    const base = normalizeCheckoutRequest({ selectedKeys: ["cart-item:stay"], paymentMethod: "stripe_card" });
+    const first = { ...base, stayLineDetails: [{ cartItemId: "stay", stayDetails: { primaryGuestName: "Nur", adults: 2, estimatedArrival: "unknown" as const } }] };
+    const changed = { ...base, stayLineDetails: [{ cartItemId: "stay", stayDetails: { primaryGuestName: "Nur", adults: 2, estimatedArrival: "after-21:00" as const } }] };
+
     expect(buildCheckoutRequestHash(first)).not.toBe(buildCheckoutRequestHash(changed));
   });
 });

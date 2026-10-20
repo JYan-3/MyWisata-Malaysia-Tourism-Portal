@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Info, MapPin, Ticket } from "lucide-react";
 import type { PlaceInformationalActivity } from "@/backend/core/types";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
+import { LocalizedContent } from "@/components/customer/localized-content";
 import {
   Dialog,
   DialogContent,
@@ -90,9 +91,10 @@ export function PlaceInformationalActivitySection({
             imageFallback={<Ticket size={24} className="text-primary/30" />}
             badge={<><Ticket size={14} aria-hidden="true" />{activity.activityType === "informational_paid_activity" ? ticketLabel : informationLabel}</>}
             title={activity.title}
+            titleTranslation={{ entityType: "place_informational_activity", entityId: activity.id, field: "title", sourceText: activity.title }}
             supportingText={activity.sourceTitle}
             price={activity.priceLabel ? <span className="text-xs font-bold text-foreground">{activity.priceLabel}</span> : null}
-            description={activity.description}
+            description={<LocalizedContent entityType="place_informational_activity" entityId={activity.id} field="description" sourceText={activity.description} />}
             footer={venueDetailsHint}
             action={(
               <button

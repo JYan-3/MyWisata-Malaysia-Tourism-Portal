@@ -91,6 +91,17 @@ describe("trip planner scheduling helpers", () => {
     expect(hasChronologicalTripTimes(equal)).toBe(false);
   });
 
+  it("compares PostgreSQL TIME values with seconds at minute precision", () => {
+    const items = [
+      item("first", { sequence: 1, scheduled_date: "2026-08-15", scheduled_time: "09:00:00" }),
+      item("second", { sequence: 2, scheduled_date: "2026-08-15", scheduled_time: "10:00:00" }),
+    ];
+
+    expect(hasChronologicalTripTimes(items)).toBe(true);
+    expect(getTripItemTimeBounds(items, "second")).toEqual({ min: "09:01" });
+    expect(hasChronologicalTripTimes([{ ...items[0], scheduled_time: "10:00:00" }, items[1]])).toBe(false);
+  });
+
   it("does not constrain untimed items or items scheduled on another day", () => {
     expect(hasChronologicalTripTimes([
       item("first", { sequence: 1, scheduled_date: "2026-08-15", scheduled_time: "14:00" }),

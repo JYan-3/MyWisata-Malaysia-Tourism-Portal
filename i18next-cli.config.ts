@@ -14,6 +14,7 @@ export default defineConfig({
       "**/__tests__/**",
       "**/*.{test,spec}.{ts,tsx}",
       ".next/**",
+      "output/**",
       "node_modules/**",
       // Last-resort error boundary: renders outside all providers (it replaces
       // the root layout), so the i18n runtime is unavailable and its copy is

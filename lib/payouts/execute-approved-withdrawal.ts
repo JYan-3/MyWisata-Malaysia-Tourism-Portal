@@ -50,14 +50,11 @@ export async function executeApprovedWithdrawalPayout({
   amountRm,
 }: ExecutionInput): Promise<PayoutExecutionResult> {
   const db = createServiceClient();
-  const [{ data: userRow }, { data: withdrawalRow }] = await Promise.all([
-    db.from('users').select('stripe_connect_account_id').eq('id', userId).single(),
-    db
+  const { data: withdrawalRow } = await db
       .from('withdrawal_requests')
       .select('status, payout_provider, destination_provider_reference, payout_provider_event_id, stripe_transfer_id, stripe_payout_id, updated_at')
       .eq('id', withdrawalId)
-      .single(),
-  ]);
+      .single();
 
   const row = withdrawalRow as {
     status: string;
@@ -107,10 +104,19 @@ export async function executeApprovedWithdrawalPayout({
   });
   if (attemptError) {
     console.error('[payout-execution] start withdrawal payout attempt:', attemptError);
-    return persistFailure({ code: 'PAYOUT_ATTEMPT_STATE_FAILED', message: 'MyLawatan could not start a safe payout attempt. No provider call was made; refresh and try again.', status: 503, retryable: true });
+    // A transport failure can hide a committed claim or eligibility hold.
+    // Do not run a failure mutation that could undo its reserve protection.
+    return { ok: false, response: apiFail('PAYOUT_ATTEMPT_STATE_FAILED', 'Payout claim could not be confirmed. Reserved funds are retained; refresh and review the request before retrying.', 503, { retryable: false }) };
   }
-  const attempt = attemptData as { acquired?: boolean; started_at?: string } | null;
-  if (attempt?.acquired === false) {
+  const attempt = attemptData as { acquired?: boolean; started_at?: string; requires_review?: boolean } | null;
+  if (attempt?.requires_review === true) {
+    return { ok: false, response: apiFail(
+      'WITHDRAWAL_REQUIRES_REVIEW',
+      'Withdrawal paused for eligibility and destination review. Reserved funds are retained; review the held request before resuming.',
+      409, { retryable: false },
+    ) };
+  }
+  if (attempt?.acquired !== true) {
     return {
       ok: false,
       response: apiFail(
@@ -191,8 +197,9 @@ export async function executeApprovedWithdrawalPayout({
     };
   }
 
-  const connectAccountId = (userRow as { stripe_connect_account_id?: string | null } | null)
-    ?.stripe_connect_account_id;
+  // The claim checked this immutable request destination against the current
+  // account. Never pay a separately prefetched, potentially changed account.
+  const connectAccountId = row.destination_provider_reference;
   if (!connectAccountId) {
     return persistFailure({ code: 'PAYOUT_ACCOUNT_MISSING', message: 'The customer has not completed Stripe Connect onboarding. Ask them to finish payout setup, then retry.', status: 422, category: 'invalid_destination', retryable: true });
   }

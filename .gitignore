@@ -89,6 +89,8 @@ scripts/screenshot-*.png
 
 # agent task reports and local work scratch docs
 work/
+!app/api/admin/kyc/work/
+!app/api/admin/kyc/work/**
 design-qa.md
 structure.txt
 DARKMODE-A11Y-TEAM-AUDIT.md

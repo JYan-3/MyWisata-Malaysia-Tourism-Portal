@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   }));
   if (assignments.length === 0) {
     const parsedNext = next ? new URL(next, "https://mylawatan.invalid") : null;
-    const invitationDestination = parsedNext?.pathname.startsWith("/staff-invitations/")
+    const invitationDestination = parsedNext?.pathname.startsWith("/staff-invitations/") || parsedNext?.pathname === "/reset-password"
       ? `${parsedNext.pathname}${parsedNext.search}${parsedNext.hash}`
       : "/";
     return NextResponse.redirect(new URL(invitationDestination, redirectOrigin));

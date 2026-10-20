@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   // Verify the order belongs to this user
   const { data: order } = await service
     .from('orders')
-    .select('id, created_at, payment_method, subtotal, discount_amount, total_amount, voucher_code')
+    .select('id, contact_email, created_at, payment_method, subtotal, discount_amount, total_amount, voucher_code')
     .eq('id', orderId)
     .eq('user_id', user.id)
     .eq('status', 'paid')
@@ -43,19 +43,20 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single();
 
-  if (!userRow?.email || !items?.length) return apiOk({ sent: false });
+  const recipientEmail = order.contact_email?.trim() || userRow?.email;
+  if (!recipientEmail || !items?.length) return apiOk({ sent: false });
 
   try {
     await sendOrderReceiptEmail({
-      locale: emailLocale(userRow.preferred_locale),
-      recipientEmail: userRow.email,
-      recipientName: userRow.full_name ?? emailCopy(userRow.preferred_locale).there,
+      locale: emailLocale(userRow?.preferred_locale),
+      recipientEmail,
+      recipientName: userRow?.full_name ?? emailCopy(userRow?.preferred_locale).there,
       orderId: order.id,
       createdAt: order.created_at,
       paymentMethod: order.payment_method ?? 'mock_card',
       items: items.map((i) => ({
         activityName: i.product_name,
-        variantLabel: i.variant_name ?? emailCopy(userRow.preferred_locale).standard,
+        variantLabel: i.variant_name ?? emailCopy(userRow?.preferred_locale).standard,
         unitPrice: i.unit_price,
         qty: i.quantity,
       })),

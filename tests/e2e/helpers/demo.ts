@@ -18,10 +18,10 @@ export const ACCOUNTS = {
 /** Every row created by these specs carries this prefix so it can be found and cleaned up. */
 export const TEST_PREFIX = 'E2E';
 
-export async function signIn(page: Page, email: string) {
+export async function signIn(page: Page, email: string, password = DEMO_PASSWORD) {
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(DEMO_PASSWORD);
+  await page.locator('input[type="password"]').fill(password);
   await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 120_000 });
   await page.waitForURL((url) => !url.pathname.startsWith('/auth/'), { timeout: 120_000 });

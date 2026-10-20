@@ -39,6 +39,7 @@ describe('POST /api/admin/kyc/review', () => {
       body: JSON.stringify({
         submissionId: '33333333-3333-4333-8333-333333333333',
         userId,
+        expectedVersion: 7,
         action: 'reject',
         reasonCode: 'other',
         reasonDetail: '  The document image has an obscured security feature.  ',
@@ -49,9 +50,10 @@ describe('POST /api/admin/kyc/review', () => {
     await expect(response.json()).resolves.toMatchObject({
       data: { userId, kycStatus: 'rejected', action: 'reject' },
     });
-    expect(rpc).toHaveBeenCalledWith('admin_review_kyc', {
+    expect(rpc).toHaveBeenCalledWith('review_kyc_case', {
       p_submission_id: '33333333-3333-4333-8333-333333333333',
       p_user_id: userId,
+      p_expected_version: 7,
       p_action: 'reject',
       p_reason_code: 'other',
       p_reason_detail: 'The document image has an obscured security feature.',
@@ -63,7 +65,7 @@ describe('POST /api/admin/kyc/review', () => {
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
-      body: JSON.stringify({ submissionId: '33333333-3333-4333-8333-333333333333', userId, action: 'reject', reasonCode: 'unknown' }),
+      body: JSON.stringify({ submissionId: '33333333-3333-4333-8333-333333333333', userId, expectedVersion: 7, action: 'reject', reasonCode: 'unknown' }),
     }));
 
     expect(response.status).toBe(422);
@@ -96,6 +98,7 @@ describe('POST /api/admin/kyc/review', () => {
       body: JSON.stringify({
         submissionId: '33333333-3333-4333-8333-333333333333',
         userId,
+        expectedVersion: 7,
         action: 'approve',
       }),
     }));
@@ -105,6 +108,7 @@ describe('POST /api/admin/kyc/review', () => {
 
   it.each([
     ['kyc_permission_required', 403, 'FORBIDDEN'],
+    ['kyc_assignment_changed', 409, 'CONFLICT'],
     ['self_dealing', 403, 'SELF_DEALING'],
     ['invalid_reason_code', 422, 'VALIDATION_FAILED'],
     ['reason_detail_too_short', 422, 'VALIDATION_FAILED'],
@@ -116,6 +120,7 @@ describe('POST /api/admin/kyc/review', () => {
       body: JSON.stringify({
         submissionId: '33333333-3333-4333-8333-333333333333',
         userId,
+        expectedVersion: 7,
         action: 'approve',
       }),
     }));
@@ -134,6 +139,7 @@ describe('POST /api/admin/kyc/review', () => {
       body: JSON.stringify({
         submissionId: '33333333-3333-4333-8333-333333333333',
         userId,
+        expectedVersion: 7,
         action: 'approve',
       }),
     }));
@@ -153,6 +159,7 @@ describe('POST /api/admin/kyc/review', () => {
       body: JSON.stringify({
         submissionId: '33333333-3333-4333-8333-333333333333',
         userId,
+        expectedVersion: 7,
         action: 'approve',
       }),
     }));

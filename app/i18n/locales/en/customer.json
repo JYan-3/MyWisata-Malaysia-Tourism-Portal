@@ -1,4 +1,10 @@
 {
+  "checkoutSafety": {
+    "activeCheckout": "Complete or cancel your existing unpaid order before starting another checkout.",
+    "reviewExisting": "Review existing unpaid order",
+    "cancelCheckout": "Cancel this unpaid checkout",
+    "cancelHelp": "Cancel only if you have not paid. Stop using the old payment link. Any payment received after cancellation needs Admin review."
+  },
   "navigation": {
     "home": "Home",
     "search": "Partners",
@@ -173,6 +179,12 @@
     }
   },
   "ui": {
+    "contentTranslation": {
+      "machineTranslated": "Machine translated",
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "pending": "Translation is being prepared"
+    },
     "accessibility": {
       "carousel": "carousel"
     },
@@ -328,6 +340,79 @@
       "submitting": "Submitting…",
       "cancel": "Cancel",
       "close": "Close"
+    },
+    "property": {
+      "roomTypes_one": "{{count}} room type",
+      "roomTypes_other": "{{count}} room types",
+      "seeRooms": "See rooms",
+      "bookError": "Could not start your booking. Please try again.",
+      "roomFallback": "Comfortable room with essential amenities.",
+      "onlyLeft_one": "Only {{count}} room left",
+      "onlyLeft_other": "Only {{count}} rooms left",
+      "perNight": "/ per night",
+      "totalFor": "{{count}} night(s) × {{rooms}} room(s): RM {{price}}",
+      "soldOut": "Not available",
+      "book": "Book",
+      "sections": "Hotel sections",
+      "rooms": "Rooms",
+      "policies": "Hotel policies",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "roomCount": "Rooms",
+      "adults": "Adults",
+      "search": "Search",
+      "nightsSummary_one": "{{count}} night",
+      "nightsSummary_other": "{{count}} nights",
+      "times": "Check-in from {{checkIn}} · Check-out by {{checkOut}}",
+      "stepRoom": "Your room",
+      "stepDetails": "Guest details and payment",
+      "changeRoom": "Change room",
+      "guestDetails": "Guest details",
+      "contactDetails": "Contact details",
+      "prefilledHint": "We filled this in from your profile. Check it matches the ID you will show at check-in. Changes apply to this booking only.",
+      "yourSelection": "Your Selection",
+      "yourDetails": "Your Details",
+      "payment": "Payment",
+      "stayDetails": "Stay details",
+      "stayDetailsIntro": "Enter one primary guest's full name. Additional guest names are optional.",
+      "primaryGuestName": "Primary guest's full name",
+      "additionalGuestName": "Additional guest {{number}}",
+      "additionalGuests": "Additional guests",
+      "addGuestName": "Add another guest name",
+      "removeGuestName": "Remove additional guest {{number}}",
+      "optional": "Optional",
+      "saveStayDetails": "Save details",
+      "cancel": "Cancel",
+      "stayDetailsInvalid": "Check the guest details and try again.",
+      "stayDetailsSaveError": "Couldn't save stay details. Please try again.",
+      "stayAdded": "Added To Cart",
+      "viewStayDetails": "View guest details",
+      "editStayDetails": "Edit guest details",
+      "completeStayDetails": "Complete guest details",
+      "stayDetailsCompleteBeforeCheckout": "Complete guest details for this stay before checking out.",
+      "guestDetailsRequired": "Enter the lead guest's name, a valid email address, and a valid mobile number to continue.",
+      "estimatedArrival": "Estimated arrival time",
+      "arrivalUnknown": "I don't know yet",
+      "arrivalAfternoon": "3:00 PM–6:00 PM",
+      "arrivalEvening": "6:00 PM–9:00 PM",
+      "arrivalLate": "After 9:00 PM",
+      "arrivalLabels": {
+        "unknown": "Not specified",
+        "15:00-18:00": "3:00 PM–6:00 PM",
+        "18:00-21:00": "6:00 PM–9:00 PM",
+        "after-21:00": "After 9:00 PM"
+      },
+      "secondGuestName": "Second guest's name (optional)",
+      "specialRequest": "Special requests (optional)",
+      "continueToPayment": "Continue to Payment",
+      "editDetails": "Edit Details",
+      "nameOnId": "Full name (as on IC or passport)",
+      "email": "Email for your booking pass",
+      "phone": "Mobile number",
+      "checkInFrom": "From {{time}}",
+      "checkOutBy": "By {{time}}",
+      "roomsCount_one": "{{count}} room",
+      "roomsCount_other": "{{count}} rooms"
     },
     "labels": {
       "hiddenGem": "Hidden Gem",
@@ -831,7 +916,8 @@
       "noExperiences": "No saved items yet",
       "saveExperiences": "Save food, activities, and other products to find them here.",
       "empty": "Nothing saved yet",
-      "saveBoth": "Save places and products to build your shortlist."
+      "saveBoth": "Save places and products to build your shortlist.",
+      "savedHotels": "Saved hotels"
     },
     "activity": {
       "notFound": "Experience not found",
@@ -1234,6 +1320,7 @@
       "allNeedSlot": "None of your scheduled stops have an open booking slot on their planned day — pick a time on each activity's page first.",
       "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot.",
       "unavailable": "{{names}} can't be bought from the planner. Open their page to check what's available.",
+      "stayMustBeBookedFromHotelPage": "Rooms need guest details before they can be added. Book each stay from its hotel page. Other eligible itinerary items can still be added.",
       "addFailed": "Couldn't add {{name}} to your cart. Anything added before it is still in your cart.",
       "buy_one": "Buy {{count}}",
       "buy_other": "Buy {{count}}"
@@ -1290,13 +1377,13 @@
       "clickUpload": "Click to upload {{side}} of document",
       "fileHint": "JPG, PNG or WebP · max 5 MB",
       "clickChange": "click to change",
-      "consent": "I agree that MyLawatan may use a third-party AI service to assist with reading my document. A human administrator makes the final KYC decision.",
+      "consent": "I agree to private document processing for KYC. Evidence is not sent to external AI services. An authorised human makes the final decision.",
       "submitting": "Submitting…",
       "startNew": "Start new submission",
       "submitForReview": "Submit for review",
       "uploadRequired": "Please upload a document photo",
       "submissionFailed": "Submission failed.",
-      "manualReview": "AI document reading was unavailable or inconclusive. Your documents were submitted for manual administrator review.",
+      "manualReview": "Your submission is queued for human review. Private pre-checks may assist; they do not approve KYC.",
       "submitted": "KYC documents submitted for review.",
       "myKad": "MyKad (Malaysian IC)",
       "passport": "Passport",
@@ -1308,7 +1395,7 @@
       "passportHint": "Passport: 1–2 letters + 6–8 digits e.g. A12345678",
       "invalidFileType": "Each document must be a JPG, PNG, or WebP photo",
       "fileTooLarge": "File must be under 5 MB (current: {{size}} MB)",
-      "consentRequired": "Please consent to AI-assisted document reading before submitting.",
+      "consentRequired": "Please consent to private KYC document processing before submitting.",
       "tiers": {
         "emailVerified": "Email Verified",
         "phoneVerified": "Phone Verified",
@@ -1323,7 +1410,10 @@
         "document_suspected_tampering": "We could not complete verification with this submission. Please contact support if you need help.",
         "other": "We need more information to complete verification. Please review the reviewer note below.",
         "default": "We could not complete verification with this submission. Please review your documents and submit a new one."
-      }
+      },
+      "previewAlt": "Selected {{side}} photo",
+      "previewGuidance": "Check that this photo shows one document, all four corners, and a readable name and number. Avoid glare, fingers covering text, and collages. This preview does not verify your identity.",
+      "previewUnavailable": "This browser could not display the photo. You may replace it; the server will still validate your submission."
     },
     "recommendations": {
       "vendorNameMin": "Please enter a vendor or business name with at least 3 characters.",
@@ -1505,7 +1595,10 @@
       "chatVendor": "Chat with vendor",
       "viewCart": "View cart",
       "addBooking": "Add booking",
-      "addCart": "Add to cart"
+      "addCart": "Add to cart",
+      "priceUnits": {
+        "perNight": "per night"
+      }
     },
     "vendor": {
       "notFound": "Vendor not found",
@@ -2722,6 +2815,52 @@
         "pending": "Ready to collect",
         "collected": "Collected"
       }
+    },
+    "hotel": {
+      "yourStay": "Your stay",
+      "property": "Property",
+      "roomsAndGuests": "Rooms and guests",
+      "adults": "Adults",
+      "checkAvailability": "Check Availability",
+      "invalidDateRange": "Check-out must be after check-in.",
+      "stayExceedsNightLimit": "A stay can be up to {{maxNights}} nights. Choose an earlier check-out date.",
+      "availabilityNeedsRefresh": "Your stay details changed. Check availability again before booking.",
+      "minimumRoomsForAdults_one": "{{adults}} adults need at least {{rooms}} room for this room type (maximum {{maxGuests}} adults per room).",
+      "minimumRoomsForAdults_other": "{{adults}} adults need at least {{rooms}} rooms for this room type (maximum {{maxGuests}} adults per room).",
+      "setMinimumRooms_one": "Set to {{count}} room",
+      "setMinimumRooms_other": "Set to {{count}} rooms",
+      "exceedsRoomLimit_one": "{{count}} adult needs more than 10 rooms for this room type.",
+      "exceedsRoomLimit_other": "{{count}} adults need more than 10 rooms for this room type.",
+      "adultsCount_one": "{{count}} adult",
+      "adultsCount_other": "{{count}} adults",
+      "fewerRooms": "Remove one room",
+      "moreRooms": "Add one room",
+      "fewerAdults": "Remove one adult",
+      "moreAdults": "Add one adult",
+      "from": "From",
+      "selectRoom": "Select a room",
+      "overview": "Overview",
+      "reviews": "Reviews",
+      "noWrittenReviews": "No written reviews yet.",
+      "about": "About this hotel",
+      "amenities": "Amenities",
+      "location": "Location",
+      "roomDetails": "Room details",
+      "selectThisRoom": "Select this room",
+      "bed": "Bed",
+      "sleeps": "Max guests",
+      "areaUnit": "m²",
+      "sleepsCount_one": "Sleeps {{count}}",
+      "sleepsCount_other": "Sleeps {{count}}",
+      "size": "Room size",
+      "view": "View",
+      "nonSmoking": "Non-smoking",
+      "roomAmenities": "In the room",
+      "photoAlt": "{{room}} photo {{index}}",
+      "totalFor_one": "Total for {{count}} night · {{rooms}} room(s):",
+      "totalFor_other": "Total for {{count}} nights · {{rooms}} room(s):",
+      "reviewCount_one": "({{count}} review)",
+      "reviewCount_other": "({{count}} reviews)"
     }
   },
   "strictMigration": {

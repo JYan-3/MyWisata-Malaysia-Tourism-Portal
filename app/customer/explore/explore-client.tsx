@@ -15,7 +15,7 @@ import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
 import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
 import { createClient } from "@/lib/supabase/client";
-import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
+import { groupAccommodationByProperty, rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
 import type { DiscoveryResult, SponsoredPlacement } from "@/backend/core/types";
 
 type ExploreTab = "destinations" | "experiences";
@@ -55,6 +55,7 @@ export function ExploreClient({
   const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
   const [visibleLimit, setVisibleLimit] = useState(8);
   const initialCandidatesExpireAt = useRef<number | null>(null);
+  const displayActivities = useMemo(() => groupAccommodationByProperty(activities), [activities]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -270,7 +271,7 @@ export function ExploreClient({
       {tab === "destinations" && (
         <div>
           {/* Malaysia map + state cards via existing StoryMap */}
-          <StoryMap activities={activities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
+          <StoryMap activities={displayActivities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
 
           {/* Destination cards grid */}
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -365,10 +366,10 @@ export function ExploreClient({
                     ? t("ui.explore.categoryExperiences", { category: filters.categories[0] })
                     : t("ui.explore.allExperiences")}
                 </h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: activities.length })}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: displayActivities.length })}</p>
               </div>
             </div>
-            {activities.length === 0 ? (
+            {displayActivities.length === 0 ? (
               dataUnavailable ? null : (
                 <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
                   <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
@@ -378,15 +379,15 @@ export function ExploreClient({
               )
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
-                {activities.slice(0, visibleLimit).map((a) => (
+                {displayActivities.slice(0, visibleLimit).map((a) => (
                   <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                 ))}
               </div>
             )}
-            {activities.length > 8 && visibleLimit < activities.length && (
+            {displayActivities.length > 8 && visibleLimit < displayActivities.length && (
               <div className="mt-6 flex justify-end">
                 <button type="button" onClick={() => setVisibleLimit(activities.length)} className="rounded-full border border-border px-5 py-2 text-sm font-bold text-primary hover:bg-secondary">
-                  {t("ui.discovery.showAll", { count: activities.length })}
+                  {t("ui.discovery.showAll", { count: displayActivities.length })}
                 </button>
               </div>
             )}

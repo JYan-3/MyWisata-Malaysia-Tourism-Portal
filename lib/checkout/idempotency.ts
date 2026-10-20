@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { StayBookingDetails } from "@/backend/core/types";
 
 export type CheckoutRequest = {
   selectedKeys?: string[];
@@ -35,7 +36,11 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
   };
 }
 
-export function buildCheckoutRequestHash(input: NormalizedCheckoutRequest & { subject?: unknown; contact?: unknown }): string {
+export function buildCheckoutRequestHash(input: NormalizedCheckoutRequest & {
+  subject?: unknown;
+  contact?: unknown;
+  stayLineDetails?: { cartItemId: string; stayDetails: StayBookingDetails }[];
+}): string {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 

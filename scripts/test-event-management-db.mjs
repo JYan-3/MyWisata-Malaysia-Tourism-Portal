@@ -462,6 +462,11 @@ try {
     await runTransaction(dbClient, 'booth allocation and intake', sqlFile('supabase/tests/event_booth_allocation_and_intake.sql'));
     if (env.EVENT_TEST_INTAKE !== 'baseline') await runBoothConcurrencyCheck(database);
   }
+  if (env.EVENT_TEST_BUYER_GUARDS === '1') {
+    if (!env.EVENT_TEST_GUARANTEES || env.EVENT_TEST_CHECKOUT_LAYOUT !== 'guest') throw new Error('Buyer guards require guarantees and Guest fixture layout');
+    const { verifyCheckoutEligibility } = await import('./lib/checkout-eligibility-db.mjs');
+    await verifyCheckoutEligibility({ db: dbClient, query, config: { ...baseConfig, database } });
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;

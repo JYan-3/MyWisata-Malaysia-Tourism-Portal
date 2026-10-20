@@ -52,6 +52,7 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
   const [methodId, setMethodId] = useState(PAYMENT_CHOICES[0]?.id ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
 
   const [contactEmail, setContactEmail] = useState("");
   const [contactName, setContactName] = useState("");
@@ -120,10 +121,15 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
       if (await gate.handleResponse(response, pathname)) return;
       const body = await response.json() as {
         data?: { checkout_session_id?: string; order_id?: string; status?: string; stripeUrl?: string; toyyibpayUrl?: string; simulatorUrl?: string; externalAmountSen?: number };
-        error?: { code?: string };
+        error?: { code?: string; activeOrderId?: string };
       };
       if (!response.ok || !body.data?.order_id) {
         const code = body.error?.code ?? "";
+        if (code === 'ACTIVE_CHECKOUT_EXISTS') {
+          const id = body.error?.activeOrderId;
+          setActiveOrderId(id && /^[0-9a-f-]{36}$/i.test(id) ? id : null);
+          throw new Error(t('checkoutSafety.activeCheckout'));
+        }
         throw new Error(KNOWN_ERRORS.includes(code) ? t(`ui.reserve.errors.${code}`) : t("ui.reserve.errors.generic"));
       }
       const redirect = body.data.stripeUrl ?? body.data.toyyibpayUrl ?? body.data.simulatorUrl;
@@ -214,6 +220,7 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
               {!isFree && choices.find(choice => choice.id === methodId)?.paymentProvider === "toyyibpay" && <label className="block">{t("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>}
               <p className="text-xs text-muted-foreground">{t("ui.reserve.qrNote")}</p>
               {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-destructive">{error}</p>}
+              {activeOrderId && <Button type="button" variant="outline" onClick={() => router.push(`/customer/orders/${activeOrderId}`)}>{t('checkoutSafety.reviewExisting')}</Button>}
 
               <Button type="button" className="w-full rounded-full" disabled={submitting || !slot || maxQuantity < 1 || quantity > maxQuantity} onClick={() => void reserve()}>
                 <CalendarCheck size={16} aria-hidden="true" />

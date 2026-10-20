@@ -138,7 +138,13 @@ export const outletCreateSchema = z.object({
     .default(["dine_in", "takeaway"]),
 }).strict();
 
-export const outletUpdateSchema = outletCreateSchema.partial();
+// .partial() keeps .default(), which would add foodServiceModes to every update (blocking managers'
+// hours edits and resetting food modes). Updates only change what the vendor actually sent.
+export const outletUpdateSchema = outletCreateSchema.partial().extend({
+  foodServiceModes: z.array(z.enum(FOOD_SERVICE_MODES)).min(1).max(2)
+    .refine((modes) => new Set(modes).size === modes.length)
+    .optional(),
+});
 
 // ── Product ────────────────────────────────────────────────
 
@@ -336,10 +342,12 @@ export const vendorBatchSchema = z.object({
 }).strict();
 
 export const contentReviewSchema = z.object({
-  entityType: z.enum(['outlet', 'product', 'voucher']),
+  entityType: z.enum(['outlet', 'product', 'voucher', 'hotel_profile']),
   entityId: uuid,
   action: z.enum(['approve', 'change_requested', 'reject']),
   note: z.string().trim().max(500).optional(),
+  /** Hotel profiles only: the submission version (updated_at) the admin reviewed. */
+  expectedVersion: z.string().trim().min(1).max(64).optional(),
 }).strict().superRefine((data, context) => {
   if (data.action !== 'approve' && (!data.note || data.note.length < 10)) {
     context.addIssue({
@@ -451,3 +459,26 @@ export type CampaignRegistrationSubmit = z.infer<typeof campaignRegistrationSubm
 export type CampaignRegistrationResubmit = z.infer<typeof campaignRegistrationResubmitSchema>;
 export type CampaignListingUpdate = z.infer<typeof campaignListingUpdateSchema>;
 export type PickupSlotInput = z.infer<typeof pickupSlotSchema>;
+
+// Hotel profile (hotel property page plan, Task 4.2). Submitted for admin review; never written live directly.
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM (24-hour)');
+export const hotelProfileSchema = z.object({
+  about: z.string().trim().max(2000),
+  amenityCodes: z.array(z.string().regex(/^[a-z0-9_]{2,40}$/)).max(40),
+  checkInTime: hhmm,
+  checkOutTime: hhmm,
+  policies: z.string().trim().max(2000),
+  photos: z.array(z.string().url()).max(20),
+  // Same limits as outletCreateSchema, so outlet-form edits always fit the hotel profile.
+  name: z.string().trim().min(2).max(255).optional(),
+  address: z.string().trim().max(500).optional(),
+  city: z.string().trim().max(100).optional(),
+  state: z.string().trim().max(100).optional(),
+  postcode: z.string().trim().max(20).optional(),
+  phone: z.string().trim().max(50).optional(),
+  country: z.string().trim().max(100).optional(),
+  email: z.string().email().max(255).optional().or(z.literal('')),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+}).strict();
+export type HotelProfile = z.infer<typeof hotelProfileSchema>;

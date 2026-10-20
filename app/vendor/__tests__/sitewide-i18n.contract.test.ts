@@ -95,10 +95,12 @@ const priorTaskFiles = new Set([
   'components/vendor/vendor-invite-wizard-state.ts',
   'components/vendor/vendor-invite-wizard.tsx',
   'components/vendor/vendor-settlement-panel.tsx',
+  'components/vendor/hotel-profile-editor.tsx',
   'components/shared/action-feedback.tsx',
   'components/shared/affiliate-qr-code.tsx',
   'components/shared/appearance-control.tsx',
   'components/shared/auth-page-shell.tsx',
+  'components/shared/back-link.tsx',
   'components/shared/chat-widget/chat-widget-inbox.tsx',
   'components/shared/chat-widget/chat-widget-vendor-thread.tsx',
   'components/shared/chatbot-widget.tsx',
@@ -106,6 +108,10 @@ const priorTaskFiles = new Set([
   'components/shared/currency-switcher.tsx',
   'components/shared/empty-state.tsx',
   'components/shared/global-command-palette.tsx',
+  // Shared authentication challenge; it is outside the vendor translation task.
+  'components/shared/human-verification.tsx',
+  // Shared OTP countdown helper; its consumer owns the visible copy.
+  'components/shared/use-otp-resend.ts',
   'components/shared/header-icon-button.ts',
   'components/shared/language-switcher.tsx',
   'components/shared/mylawatan-logo.tsx',

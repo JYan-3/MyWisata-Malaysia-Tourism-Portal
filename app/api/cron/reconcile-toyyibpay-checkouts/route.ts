@@ -158,6 +158,7 @@ export async function GET(request: Request) {
           eventKey: `toyyibpay-checkout:${eventId}`,
           reference: billCode,
           amountRm: evidence.amountSen / 100,
+          orderId: result.order_id,
         });
       } catch {
         // Settlement is authoritative; notification delivery is best-effort.

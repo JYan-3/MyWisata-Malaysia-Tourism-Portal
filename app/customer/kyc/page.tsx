@@ -8,11 +8,13 @@ import {
   Info, AlertTriangle, ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
+import { KycPhotoPreview } from "@/components/customer/kyc-photo-preview";
 import { Button } from "@/components/ui/button";
 import type { CustomerKycSubmission } from "@/backend/core/types";
 import { useSearchParams } from "next/navigation";
@@ -163,10 +165,10 @@ export default function KycPage() {
         icon={<ShieldCheck size={14} />}
         actions={
           <Button asChild variant="outline">
-            <Link href="/customer/profile">
+            <BackLink fallbackHref="/customer/profile">
               <ArrowLeft size={16} />
-              {tCustomer("ui.profile.backToProfile")}
-            </Link>
+              {tCustomer("actions.back", { ns: "common" })}
+            </BackLink>
           </Button>
         }
       />
@@ -307,6 +309,7 @@ export default function KycPage() {
                 {file ? <><FileCheck2 size={22} className="text-primary" /><p className="text-sm font-semibold text-primary">{file.name}</p><p className="text-xs text-muted-foreground">{tCustomer("strictMigration.kyc.fileMeta", { size: (file.size / 1024 / 1024).toFixed(2), type: tCustomer("ui.kyc.clickChange") })}</p></>
                   : <><Upload size={20} className="text-muted-foreground" /><p className="text-sm text-muted-foreground">{tCustomer("ui.kyc.clickUpload", { side: side === "front" ? tCustomer("ui.kyc.frontOf") : tCustomer("ui.kyc.backOf") })}</p><p className="text-xs text-muted-foreground">{tCustomer("ui.kyc.fileHint")}</p></>}
               </button>
+              <KycPhotoPreview file={fileError ? null : file} label={tCustomer(side === "front" ? "ui.kyc.frontOf" : "ui.kyc.backOf")} />
               {fileError && <p className="text-xs text-destructive">{fileError}</p>}
             </div>;
           })}

@@ -1,4 +1,35 @@
 {
+  "hotelProfile": {
+    "eyebrow": "Profil hotel",
+    "description": "Halaman hotel anda menggunakan susun atur tetap. Sunting kandungannya di sini; perubahan disiarkan selepas semakan admin, dan hotel anda kekal dipaparkan sementara itu.",
+    "loading": "Memuatkan profil hotel…",
+    "close": "Tutup profil hotel",
+    "status": {
+      "live": "Memaparkan profil hotel semasa anda.",
+      "pending": "Menunggu semakan. Hotel anda kekal dipaparkan dengan butiran semasa sehingga admin meluluskan perubahan ini.",
+      "rejected": "Perubahan terakhir anda tidak diluluskan: {{note}}"
+    },
+    "fields": {
+      "about": "Tentang hotel ini",
+      "amenities": "Kemudahan",
+      "checkIn": "Masa daftar masuk",
+      "checkOut": "Masa daftar keluar",
+      "policies": "Polisi hotel",
+      "photos": "Foto"
+    },
+    "photoHint": "JPG, PNG atau WebP sehingga 2 MB. Foto pertama ialah foto utama.",
+    "photoAlt": "Foto hotel {{index}}",
+    "movePhotoUp": "Alih foto ke atas",
+    "removePhoto": "Buang foto",
+    "addPhoto": "Tambah foto",
+    "submit": "Hantar untuk semakan",
+    "submitting": "Menghantar…",
+    "submitted": "Dihantar untuk semakan. Hotel anda kekal dipaparkan sementara itu.",
+    "errors": {
+      "submit": "Profil hotel tidak dapat dihantar",
+      "upload": "Foto tidak dapat dimuat naik"
+    }
+  },
   "shell": {
     "portal": "Portal Vendor",
     "brand": "Pelancongan Malaysia",
@@ -895,6 +926,18 @@
       "foodServiceMode": "{{service}}: {{mode}}",
       "foodService": "Perkhidmatan makanan",
       "dineInArrivalConfirmed": "Ketibaan pelanggan disahkan melalui imbasan QR.",
+      "stayDetails": "Maklumat tetamu",
+      "primaryGuest": "Tetamu utama",
+      "additionalGuests": "Tetamu tambahan",
+      "adults": "Dewasa",
+      "estimatedArrival": "Anggaran ketibaan",
+      "specialRequest": "Permintaan khas",
+      "arrivalLabels": {
+        "unknown": "Tidak dinyatakan",
+        "15:00-18:00": "3:00–6:00 petang",
+        "18:00-21:00": "6:00–9:00 malam",
+        "after-21:00": "Selepas 9:00 malam"
+      },
       "title": "Pesanan",
       "description": "Lihat perkara yang perlu diberi perhatian dahulu, kemudian buka butiran di tengah.",
       "allOrders": "Semua pesanan",
@@ -1967,6 +2010,7 @@
     "uploadedPreview": "Pratonton media produk yang dimuat naik"
   },
   "outletForm": {
+    "hotelPendingReview": "Dihantar untuk semakan. Hotel anda kekal dipaparkan dengan butiran semasa sehingga admin meluluskan perubahan.",
     "foodServiceModes": "Pilihan perkhidmatan makanan",
     "foodServiceModesHint": "Pelanggan memilih satu pilihan yang diaktifkan semasa pembayaran.",
     "foodServiceModeRequired": "Aktifkan sekurang-kurangnya satu pilihan perkhidmatan makanan.",

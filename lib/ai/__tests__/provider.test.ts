@@ -5,7 +5,11 @@ import { generateAiText } from '@/lib/ai/provider';
 describe('generateAiText', () => {
   beforeEach(() => {
     delete process.env.QWEN_API_KEY;
+    delete process.env.QWEN_MODEL;
+    delete process.env.QWEN_FALLBACK_MODEL;
+    delete process.env.QWEN_BASE_URL;
     delete process.env.DASHSCOPE_API_KEY;
+    delete process.env.DASHSCOPE_BASE_URL;
     delete process.env.MODELSCOPE_API_KEY;
     delete process.env.MODELSCOPE_MODEL;
     vi.restoreAllMocks();
@@ -13,7 +17,11 @@ describe('generateAiText', () => {
 
   afterEach(() => {
     delete process.env.QWEN_API_KEY;
+    delete process.env.QWEN_MODEL;
+    delete process.env.QWEN_FALLBACK_MODEL;
+    delete process.env.QWEN_BASE_URL;
     delete process.env.DASHSCOPE_API_KEY;
+    delete process.env.DASHSCOPE_BASE_URL;
     delete process.env.MODELSCOPE_API_KEY;
     delete process.env.MODELSCOPE_MODEL;
   });
@@ -39,6 +47,16 @@ describe('generateAiText', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('can cap provider attempts for globally budgeted background work', async () => {
+    process.env.QWEN_API_KEY = 'test-token';
+    process.env.QWEN_MODEL = 'primary';
+    process.env.QWEN_FALLBACK_MODEL = 'fallback';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('unavailable', { status: 503 }));
+
+    await expect(generateAiText('system', 'user', { maxProviderAttempts: 1 })).resolves.toEqual({ available: false, reason: 'unavailable' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('forwards an abort signal and stops retrying when the caller cancels', async () => {
     process.env.MODELSCOPE_API_KEY = 'test-token';
     const controller = new AbortController();
@@ -51,5 +69,16 @@ describe('generateAiText', () => {
 
     await expect(result).resolves.toEqual({ available: false, reason: 'unavailable' });
     expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signal: controller.signal }));
+  });
+
+  it('limits provider attempts when the caller sets maxProviderAttempts', async () => {
+    process.env.QWEN_API_KEY = 'test-token';
+    process.env.QWEN_MODEL = 'primary-model';
+    process.env.QWEN_FALLBACK_MODEL = 'fallback-model';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('unavailable', { status: 503 }));
+
+    await expect(generateAiText('system', 'user', { maxProviderAttempts: 1 })).resolves.toEqual({ available: false, reason: 'unavailable' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).model).toBe('primary-model');
   });
 });

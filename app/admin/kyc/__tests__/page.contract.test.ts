@@ -8,7 +8,8 @@ describe('admin KYC queue data boundary', () => {
   it('loads customer-safe identities from the protected KYC API', () => {
     expect(source).not.toContain('import { getUsers }');
     expect(source).not.toContain('getUsers()');
-    expect(source).toContain('body.data?.customers');
-    expect(source).toContain('body.data?.verifiedCount');
+    expect(source).toContain('setQueue(body.data as KycQueueResult)');
+    expect(source).toContain('queue?.customers ?? []');
+    expect(source).toContain('queue?.verifiedCount ?? "—"');
   });
 });

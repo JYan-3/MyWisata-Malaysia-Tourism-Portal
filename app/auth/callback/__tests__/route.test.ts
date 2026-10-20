@@ -114,6 +114,12 @@ describe("GET /auth/callback", () => {
     expect(unrelatedResponse.headers.get("location")).toBe("http://localhost/");
   });
 
+  it("lets a roleless invited Staff identity finish password recovery", async () => {
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
+    const response = await GET(new Request("http://localhost/auth/callback?code=recovery-code&next=%2Freset-password"));
+    expect(response.headers.get("location")).toBe("http://localhost/reset-password");
+  });
+
   it("checks the normalized path before applying the role boundary", async () => {
     const response = await GET(new Request("http://localhost/auth/callback?code=oauth-code&next=%2Fcustomer%2F..%2Fadmin%2Fdashboard"));
 

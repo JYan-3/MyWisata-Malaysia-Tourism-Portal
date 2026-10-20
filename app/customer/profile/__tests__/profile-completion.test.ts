@@ -62,8 +62,7 @@ describe('profile completion display contract', () => {
     expect(kycPage).toContain('verificationFacts?.kycStatus');
     expect(kycPage).not.toContain('TIER_STEPS');
     expect(kycPage).not.toContain('isProfileComplete');
-    expect(kycPage).toContain('href="/customer/profile"');
-    expect(kycPage).toContain('tCustomer("ui.profile.backToProfile")');
+    expect(kycPage).toContain('<BackLink fallbackHref="/customer/profile">');
   });
 
   it('uses the same upload and camera picker in wizard and completed Profile settings', () => {

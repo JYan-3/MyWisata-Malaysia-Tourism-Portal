@@ -1,4 +1,4 @@
-import { privateCheckoutJson } from '@/lib/checkout/guest-session';
+import { privateCheckoutJson, isSameOriginMutation } from '@/lib/checkout/guest-session';
 import { apiFail } from '@/lib/validation/schemas';
 import { authorizeOrder } from '@/lib/checkout/order-access';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -171,6 +171,8 @@ export async function GET(request: Request, { params }: RouteContext) {
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
+  const explicitCancel = new URL(request.url).searchParams.get('cancel') === '1';
+  if (!isSameOriginMutation(request)) return apiFail('FORBIDDEN', 'Same-origin request required', 403);
   const { orderId } = await params;
   const access = await authorizeOrder(request,orderId);
   if (!access) return apiFail("NOT_FOUND","Order not found",404);
@@ -196,6 +198,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     const session = checkout as CheckoutSessionRow;
     if (session.status === 'paid') return unavailable('processing');
     if (!['pending_payment', 'requires_action', 'expired'].includes(session.status)) return unavailable('unsupported');
+    if (explicitCancel) {
+      const { data, error } = await service.rpc('finalize_checkout', {
+        p_checkout_session_id: session.id, p_outcome: 'cancelled',
+        p_provider_payment_id: null, p_provider_event_id: null,
+      });
+      if (error || !data) return apiFail('CHECKOUT_CANCEL_FAILED', 'Checkout could not be cancelled safely', 503);
+      if (data.status === 'paid') return unavailable('processing');
+      return privateCheckoutJson({ data: { canReviewCart: true }, error: null });
+    }
     if (!['stripe_card', 'wallet_split'].includes(session.payment_method)) return unavailable('unsupported');
 
     const { data: payment, error: paymentError } = await service

@@ -1,4 +1,4 @@
-import type { CartItem } from "@/backend/core/types";
+import type { CartItem, StayBookingDetails } from "@/backend/core/types";
 
 async function guestCartRequest(method: string, body?: unknown): Promise<CartItem[]> {
   if (method !== "GET") {
@@ -15,5 +15,6 @@ async function guestCartRequest(method: string, body?: unknown): Promise<CartIte
 export const getGuestCart = () => guestCartRequest("GET");
 export const addGuestCartItem = (item: CartItem) => guestCartRequest("POST", { item });
 export const updateGuestCartQty = (key: string, quantity: number) => guestCartRequest("PATCH", { key, quantity });
+export const updateGuestCartStayDetails = (cartItemId: string, stayDetails: StayBookingDetails) => guestCartRequest("PATCH", { cartItemId, stayDetails });
 export const removeGuestCartItem = (key: string) => updateGuestCartQty(key, 0);
 export const clearGuestCart = () => guestCartRequest("DELETE");

@@ -1,6 +1,6 @@
 export type CheckoutErrorPayload =
   | string
-  | { code?: string; message?: string }
+  | { code?: string; message?: string; activeOrderId?: string }
   | null
   | undefined;
 
@@ -23,6 +23,8 @@ export type CheckoutErrorCode =
   | "VOUCHER_CLAIM_EXPIRED"
   | "VOUCHER_CLAIM_MISMATCH"
   | "NEW_ORDERS_PAUSED"
+  | "ACTIVE_CHECKOUT_EXISTS"
+  | "CHECKOUT_COMMITMENT_UNAVAILABLE"
   | "CHECKOUT_FAILED";
 
 function payloadText(payload: CheckoutErrorPayload): string {
@@ -32,6 +34,8 @@ function payloadText(payload: CheckoutErrorPayload): string {
 }
 export function getCheckoutErrorCode(payload: CheckoutErrorPayload): CheckoutErrorCode {
   const text = payloadText(payload).toLowerCase();
+  if (text.includes("active_checkout_exists")) return "ACTIVE_CHECKOUT_EXISTS";
+  if (text.includes("checkout_commitment_unavailable")) return "CHECKOUT_COMMITMENT_UNAVAILABLE";
   if (text.includes("booking_capacity_unavailable")) return "BOOKING_CAPACITY_UNAVAILABLE";
   if (text.includes("booking_slot_invalid")) return "BOOKING_SLOT_INVALID";
   if (text.includes("cart_item_unavailable")) return "CART_ITEM_UNAVAILABLE";
@@ -55,6 +59,10 @@ export function getCheckoutErrorCode(payload: CheckoutErrorPayload): CheckoutErr
 
 export function getCheckoutErrorMessage(payload: CheckoutErrorPayload): string {
   switch (getCheckoutErrorCode(payload)) {
+    case "ACTIVE_CHECKOUT_EXISTS":
+      return "Complete or cancel your existing unpaid order before starting another checkout.";
+    case "CHECKOUT_COMMITMENT_UNAVAILABLE":
+      return "Your checkout expired or purchase eligibility changed. Review your order before paying again.";
     case "BOOKING_CAPACITY_UNAVAILABLE":
       return "This time slot was just booked by another customer. Please choose another available slot.";
     case "BOOKING_SLOT_INVALID":
@@ -95,4 +103,12 @@ export function getCheckoutErrorMessage(payload: CheckoutErrorPayload): string {
     default:
       return "We could not start checkout right now. Please try again.";
   }
+}
+
+/** Postgres DETAIL is untrusted text; expose only the validated owner-bound ID. */
+export function activeCheckoutOrderId(details: string | null | undefined): string | undefined {
+  try {
+    const id = JSON.parse(details ?? "{}").order_id;
+    return typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : undefined;
+  } catch { return undefined; }
 }

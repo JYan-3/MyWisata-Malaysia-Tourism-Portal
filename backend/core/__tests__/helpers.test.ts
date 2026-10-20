@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canTransition, cartTotals, haversineKm, validateVoucher, voucherDiscount } from "../helpers";
+import { canMergeCartItemLines, canTransition, cartItemKey, cartTotals, haversineKm, validateVoucher, voucherDiscount } from "../helpers";
 import type { Activity, Voucher } from "../types";
 
 const activity: Activity = {
@@ -154,5 +154,43 @@ describe("order state machine", () => {
     expect(canTransition("DRAFT", "PAID")).toBe(false);
     expect(canTransition("COMPLETED", "CANCELLED")).toBe(false);
     expect(canTransition("CANCELLED", "PAID")).toBe(false);
+  });
+});
+
+describe("cartItemKey nights", () => {
+  it("distinguishes stay lengths and defaults to 1 night", async () => {
+    const base = { activityId: "a", variantId: "v", slotId: "s", outletId: "o" };
+    expect(cartItemKey(base)).toBe("a|v|s|o");
+    expect(cartItemKey({ ...base, nights: 3 })).not.toBe(cartItemKey({ ...base, nights: 2 }));
+  });
+
+  it("uses a saved row UUID instead of personal details for persisted cart identity", () => {
+    const base = { activityId: "room", variantId: "v", slotId: "night", outletId: "hotel", nights: 1 };
+    const first = cartItemKey({ ...base, cartItemId: "saved-line-1", stayDetails: { primaryGuestName: "A", adults: 1, estimatedArrival: "unknown" } });
+    const second = cartItemKey({ ...base, cartItemId: "saved-line-2", stayDetails: { primaryGuestName: "B", adults: 1, estimatedArrival: "unknown" } });
+
+    expect(first).toBe("cart-item:saved-line-1");
+    expect(second).toBe("cart-item:saved-line-2");
+    expect(first).not.toContain("A");
+    expect(second).not.toContain("B");
+  });
+});
+
+describe("cart line merging", () => {
+  const stay = {
+    activityId: "room", variantId: "v", slotId: "night", outletId: "hotel", nights: 1, qty: 1,
+    stayDetails: { primaryGuestName: "Nur", additionalGuestNames: ["Sam"], adults: 2, estimatedArrival: "unknown" as const },
+  };
+
+  it("merges accommodation lines only when their stored guest details match", () => {
+    expect(canMergeCartItemLines(stay, { ...stay, qty: 2 })).toBe(true);
+    expect(canMergeCartItemLines(stay, { ...stay, stayDetails: { ...stay.stayDetails, primaryGuestName: "Lee" } })).toBe(false);
+    expect(canMergeCartItemLines(stay, { ...stay, stayDetails: { ...stay.stayDetails, additionalGuestNames: ["Alex"] } })).toBe(false);
+  });
+
+  it("continues merging ordinary lines without stay details", () => {
+    const ordinary = { activityId: "food", variantId: "v", slotId: undefined, outletId: "shop", qty: 1 };
+    expect(canMergeCartItemLines(ordinary, { ...ordinary, qty: 2 })).toBe(true);
+    expect(canMergeCartItemLines(ordinary, { ...ordinary, stayDetails: stay.stayDetails })).toBe(false);
   });
 });

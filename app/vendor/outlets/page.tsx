@@ -23,6 +23,7 @@ import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import OutletManagerPanel from '@/components/vendor/outlet-manager-panel';
 import OutletPageBuilder from '@/components/vendor/outlet-page-builder';
+import { HotelProfileEditor } from '@/components/vendor/hotel-profile-editor';
 import OutletShopPreview from '@/components/vendor/outlet-shop-preview';
 import CenteredDetailModal from '@/components/ui/centered-detail-modal';
 import OutletActionGroup from '@/components/vendor/outlet-action-group';
@@ -178,16 +179,18 @@ export default function VendorOutletsPage() {
     );
   if (managerShopMode && vendorId && outlets[0] && managerShopEditMode)
     return (
-      <OutletPageBuilder
-        vendorId={vendorId}
-        outletId={outlets[0].id}
-        outletName={outletShortName(outlets[0].name)}
-        outletAddress={outlets[0].address}
-        outletCity={outlets[0].city}
-        outletState={outlets[0].state}
-        outletPhone={outlets[0].phone}
-        onClose={() => router.push('/vendor/outlets?mode=shop')}
-      />
+      <HotelProfileEditor vendorId={vendorId} outletId={outlets[0].id} outletName={outletShortName(outlets[0].name)} onClose={() => router.push('/vendor/outlets?mode=shop')}>
+        <OutletPageBuilder
+          vendorId={vendorId}
+          outletId={outlets[0].id}
+          outletName={outletShortName(outlets[0].name)}
+          outletAddress={outlets[0].address}
+          outletCity={outlets[0].city}
+          outletState={outlets[0].state}
+          outletPhone={outlets[0].phone}
+          onClose={() => router.push('/vendor/outlets?mode=shop')}
+        />
+      </HotelProfileEditor>
     );
   if (managerShopMode && vendorId && outlets[0])
     return (
@@ -778,16 +781,18 @@ export default function VendorOutletsPage() {
         onConfirm={() => void closeOutlet()}
       />
       {builderOutlet && vendorId && isOutletManager && (
-        <OutletPageBuilder
-          vendorId={vendorId}
-          outletId={builderOutlet.id}
-          outletName={outletShortName(builderOutlet.name)}
-          outletAddress={builderOutlet.address}
-          outletCity={builderOutlet.city}
-          outletState={builderOutlet.state}
-          outletPhone={builderOutlet.phone}
-          onClose={() => setBuilderOutlet(null)}
-        />
+        <HotelProfileEditor vendorId={vendorId} outletId={builderOutlet.id} outletName={outletShortName(builderOutlet.name)} onClose={() => setBuilderOutlet(null)}>
+          <OutletPageBuilder
+            vendorId={vendorId}
+            outletId={builderOutlet.id}
+            outletName={outletShortName(builderOutlet.name)}
+            outletAddress={builderOutlet.address}
+            outletCity={builderOutlet.city}
+            outletState={builderOutlet.state}
+            outletPhone={builderOutlet.phone}
+            onClose={() => setBuilderOutlet(null)}
+          />
+        </HotelProfileEditor>
       )}
     </div>
   );

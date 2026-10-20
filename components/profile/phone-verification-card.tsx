@@ -4,6 +4,9 @@ import { useState, type KeyboardEvent } from "react";
 import { Loader2, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
+import { useOtpResend } from "@/components/shared/use-otp-resend";
+import { phoneOtpFeedbackKey } from "@/lib/phone/otp-feedback";
 import { Button } from "@/components/ui/button";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
@@ -14,6 +17,9 @@ type PhoneVerificationCardProps = {
 
 export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps) {
   const { t: tCustomer } = useTranslation("customer");
+  const { t: tAuth } = useTranslation("auth");
+  const human = useHumanVerification("phone_send");
+  const resend = useOtpResend();
   const { showFeedback } = useActionFeedback();
   const [phase, setPhase] = useState<"enter" | "verify">("enter");
   const [phone, setPhone] = useState("");
@@ -22,11 +28,14 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
   const [busy, setBusy] = useState(false);
 
   async function sendOtp() {
+    if (busy || resend.seconds > 0) return;
     const parsedPhone = parseInternationalPhone(phone);
     if (!parsedPhone.ok) {
       setError(tCustomer("ui.profileWizard.invalidPhone"));
       return;
     }
+    const captchaToken = human.takeToken();
+    if (!captchaToken) { setError(tAuth("humanVerification.required")); return; }
     setPhone(parsedPhone.e164);
     setError(null);
     setBusy(true);
@@ -34,13 +43,14 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
       const response = await fetch("/api/phone/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: parsedPhone.e164 }),
+        body: JSON.stringify({ phone: parsedPhone.e164, captchaToken }),
       });
-      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.sendOtp"));
+      if (!response.ok) { setError(tAuth(await phoneOtpFeedbackKey(response, "send"))); return; }
+      resend.start();
       setPhase("verify");
       showFeedback("success", tCustomer("ui.profileWizard.sendOtp"));
     } catch {
-      setError(tCustomer("ui.profileWizard.sendOtp"));
+      setError(tAuth("humanVerification.unavailable"));
     } finally {
       setBusy(false);
     }
@@ -71,7 +81,7 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: parsedPhone.e164, code: otp.trim() }),
       });
-      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.verifyOtp"));
+      if (!response.ok) { setError(tAuth(await phoneOtpFeedbackKey(response, "verify"))); return; }
       await onVerified();
       showFeedback("success", tCustomer("ui.phoneVerification.verified"));
     } catch {
@@ -94,6 +104,7 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
         <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.verifyPhone")}</h2>
       </div>
 
+      <HumanVerification {...human} />
       {phase === "enter" ? (
         <>
           <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.phoneDescription")}</p>
@@ -110,7 +121,7 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
-          <Button onClick={sendOtp} disabled={busy} className="w-full">
+          <Button onClick={sendOtp} disabled={busy || resend.seconds > 0} className="w-full">
             {busy && <Loader2 size={14} className="animate-spin mr-1.5" />}
             {busy ? tCustomer("ui.profileWizard.sending") : tCustomer("ui.profileWizard.sendOtp")}
           </Button>
@@ -152,6 +163,8 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
           </div>
         </>
       )}
+      {resend.seconds > 0 && <p role="status" className="text-xs text-muted-foreground">{tAuth("humanVerification.resendIn", { seconds: resend.seconds })}</p>}
+      {phase === "verify" && <Button type="button" variant="outline" onClick={sendOtp} disabled={busy || resend.seconds > 0}>{tCustomer("ui.profileSections.resendOtp")}</Button>}
     </div>
   );
 }

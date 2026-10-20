@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/process-content-translation-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/process-paid-orders",
       "schedule": "*/5 * * * *"
     },
@@ -39,6 +43,10 @@
     {
       "path": "/api/cron/process-event-refunds",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/ensure-stay-nights",
+      "schedule": "0 17 * * *"
     },
     {
       "path": "/api/cron/purge-kyc-evidence",
