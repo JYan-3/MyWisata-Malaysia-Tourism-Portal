@@ -90,6 +90,26 @@ describe('admin capability registry', () => {
     expect(matchCapabilityByKeywords('where do I review flagged conduct')?.name).toBe('staff_conduct');
   });
 
+  it('routes event and operations how-to questions to their sections', () => {
+    expect(matchCapabilityByKeywords('how do I create an event with two locations')?.name).toBe('event_campaigns');
+    expect(matchCapabilityByKeywords('how do I cancel a location')?.name).toBe('event_campaigns');
+    expect(matchCapabilityByKeywords('where do I assign a booth number')?.name).toBe('event_registrations');
+    expect(matchCapabilityByKeywords('how do I pause a promotion')?.name).toBe('event_promotions');
+    expect(matchCapabilityByKeywords('how do I send a vendor announcement')?.name).toBe('vendor_announcements');
+    expect(matchCapabilityByKeywords('how do I handle an event shortage')?.name).toBe('orders');
+    expect(matchCapabilityByKeywords('how do I approve a refund')?.name).toBe('refund_review');
+    expect(matchCapabilityByKeywords('what do I do with a pickup overdue case')?.name).toBe('event_exceptions');
+    expect(matchCapabilityByKeywords('how do I pause new orders')?.name).toBe('system_settings');
+    expect(matchCapabilityByKeywords('I lost my passkey')?.name).toBe('staff_sign_in_security');
+  });
+
+  it('gates the super-admin event and money sections', () => {
+    for (const name of ['event_campaigns', 'event_registrations', 'refund_review', 'event_exceptions', 'system_settings']) {
+      expect(capabilityContext(findCapability(name)!)).toContain('Super Admin only');
+    }
+    expect(capabilityContext(findCapability('event_promotions')!)).toContain('admin, approver, or super admin');
+  });
+
   it('keeps staff conduct and chat reports as distinct, non-colliding sections', () => {
     // Both are about "reported" chats, but different surfaces — a shared
     // keyword here would tie and silently break routing for both.

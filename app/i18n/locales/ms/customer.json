@@ -3594,7 +3594,9 @@
       "affiliate": "Afiliasi",
       "vendor": "Vendor",
       "payment": "Pembayaran",
-      "general": "Umum"
+      "general": "Umum",
+      "events": "Acara",
+      "vendorEvents": "Acara vendor"
     }
   },
   "legal": {
@@ -3684,7 +3686,7 @@
       },
       "collect": {
         "heading": "Apa yang kami kumpul untuk KYC",
-        "body": "Apabila anda memilih untuk disahkan, kami mengumpul dokumen identiti dikeluarkan kerajaan (seperti IC atau pasport) — imej bahagian depan dan belakang — dan nombor identiti yang tercetak padanya. Kami menggunakan imbasan teks automatik (OCR) untuk membaca dokumen dan mempercepat semakan."
+        "body": "Apabila anda memilih untuk disahkan, kami mengumpul imej bahagian depan dan belakang dokumen identiti dikeluarkan kerajaan (seperti IC atau pasport), serta nombor identiti yang tercetak padanya. Kami menggunakan imbasan teks automatik (OCR) untuk membaca dokumen dan mempercepat semakan."
       },
       "storage": {
         "heading": "Di mana ia disimpan",
@@ -3704,7 +3706,7 @@
       },
       "consent": {
         "heading": "Menarik balik keizinan",
-        "body": "Pengesahan adalah pilihan. Jika anda tidak mahu kami menyimpan dokumen identiti anda, jangan mulakan KYC — anda masih boleh menggunakan platform selebihnya kecuali pengeluaran. Anda juga boleh menutup akaun anda, iaitu penutupan lembut seperti diterangkan dalam Dasar Privasi."
+        "body": "Pengesahan adalah pilihan. Jika anda tidak mahu kami menyimpan dokumen identiti anda, jangan mulakan KYC. Anda masih boleh menggunakan platform selebihnya kecuali pengeluaran. Anda juga boleh menutup akaun anda, iaitu penutupan lembut seperti diterangkan dalam Dasar Privasi."
       }
     },
     "about": {
@@ -3716,7 +3718,7 @@
       },
       "prototype": {
         "heading": "Prototaip pelajar",
-        "body": "Ini ialah projek akademik dan bukan perkhidmatan komersial. Sesetengah ciri — termasuk kaedah pembayaran tertentu — disimulasikan untuk demonstrasi, dan ia tidak bertujuan untuk tempahan perjalanan wang sebenar."
+        "body": "Ini ialah projek akademik dan bukan perkhidmatan komersial. Sesetengah ciri, termasuk kaedah pembayaran tertentu, disimulasikan untuk demonstrasi, dan ia tidak bertujuan untuk tempahan perjalanan wang sebenar."
       },
       "contact": {
         "heading": "Mendapatkan bantuan",
