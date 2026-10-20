@@ -9,7 +9,7 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { LocalizedContent } from "@/components/customer/localized-content";
+import { LocalizedContentHeading } from "@/components/customer/localized-content";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
@@ -215,9 +215,7 @@ export default async function DestinationPage({ params }: Props) {
                       )}
                     </div></Link>
                     <div className="flex flex-1 flex-col p-3">
-                      <LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
-                        {({ text, control }) => <><Link href={`/customer/activity/${product.id}`} className="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-sm">{text}</h3></Link>{control}</>}
-                      </LocalizedContent>
+                      <LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={`/customer/activity/${product.id}`} linkClassName="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" headingClassName="break-words whitespace-normal text-sm" />
                       <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
                     </div>
                   </article>
