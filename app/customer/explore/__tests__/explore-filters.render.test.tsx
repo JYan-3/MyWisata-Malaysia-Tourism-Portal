@@ -50,7 +50,7 @@ vi.mock("@/backend/domains/catalogue", () => ({
   searchActivities: mocks.searchActivities,
   filterComputedActivities: mocks.filterComputedActivities,
 }));
-vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity }: { activity: { id: string; name: string } }) => <article data-testid={`activity-${activity.id}`}>{activity.name}</article> }));
+vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, returnTo }: { activity: { id: string; name: string }; returnTo?: string }) => <article data-testid={`activity-${activity.id}`}>{activity.name}|{returnTo}</article> }));
 vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
 
 import { ExploreClient } from "../explore-client";
@@ -169,12 +169,39 @@ describe("ExploreClient URL-backed advanced filters", () => {
     act(() => root.unmount());
     root = createRoot(container as unknown as Element);
     await render(root, <ExploreClient initialActivities={activities} />);
-    expect(findOne(container, (element) => element.getAttribute("data-testid") === "story-map-ids").textContent).toBe(Array.from({ length: 10 }, (_, index) => `result-${index + 1}`).join(","));
-    await click(button(container, "Experiences"));
+    expect(findElements(container, (element) => element.getAttribute("data-testid") === "story-map-ids").length).toBe(0);
+    expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
     await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent?.startsWith("More filters") === true));
     expect(labelled(container, "State").value).toBe("Sabah");
     expect(labelled(container, "Nature").getAttribute("aria-pressed")).toBe("true");
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
+  });
+
+  it("restores the Experiences tab from the URL", async () => {
+    mocks.params = new URLSearchParams("tab=experiences");
+    await render(root, <ExploreClient initialActivities={activities} />);
+
+    expect(findElements(container, (element) => element.getAttribute("data-testid") === "story-map-ids").length).toBe(0);
+    expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
+  });
+
+  it("keeps the selected tab and current filters in the product return URL", async () => {
+    mocks.params = new URLSearchParams("state=Sabah");
+    await render(root, <ExploreClient initialActivities={activities} />);
+    await click(button(container, "Experiences"));
+    await click(button(container, "Open now"));
+
+    const currentUrl = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
+    expect(currentUrl.searchParams.get("tab")).toBe("experiences");
+    expect(currentUrl.searchParams.get("state")).toBe("Sabah");
+    expect(currentUrl.searchParams.get("openNow")).toBe("1");
+
+    const activityCard = findOne(container, (element) => element.getAttribute("data-testid") === "activity-result-1");
+    const returnTo = new URL(activityCard.textContent?.split("|").at(-1) ?? "", "https://mylawatan.test");
+    expect(returnTo.pathname).toBe("/customer/explore");
+    expect(returnTo.searchParams.get("tab")).toBe("experiences");
+    expect(returnTo.searchParams.get("state")).toBe("Sabah");
+    expect(returnTo.searchParams.get("openNow")).toBe("1");
   });
 
   it("keeps Open now at hand and opens opening hours before secondary filter groups", async () => {

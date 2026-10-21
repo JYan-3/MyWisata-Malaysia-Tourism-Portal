@@ -29,6 +29,14 @@ const ZONE_ORDER = [
   "East Coast Malaysia",
 ];
 
+function buildExploreHref(filters: DiscoveryQuery, tab: ExploreTab) {
+  const params = serializeDiscoveryQuery(filters);
+  if (tab === "experiences") params.set("tab", "experiences");
+  else params.delete("tab");
+  const query = params.toString();
+  return query ? `/customer/explore?${query}` : "/customer/explore";
+}
+
 export function ExploreClient({
   initialActivities,
   statesWithPlaces = [],
@@ -49,7 +57,7 @@ export function ExploreClient({
       : null
   ), []);
   const impressedPlacementIds = useRef(new Set<string>());
-  const [tab, setTab] = useState<ExploreTab>("destinations");
+  const [tab, setTab] = useState<ExploreTab>(() => searchParams.get("tab") === "experiences" ? "experiences" : "destinations");
   const [filters, setFilters] = useState<DiscoveryQuery>(() => parseDiscoveryQuery(new URLSearchParams(searchParams.toString())));
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
   const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
@@ -210,8 +218,13 @@ export function ExploreClient({
   const updateFilters = (patch: Partial<DiscoveryQuery>) => {
     const next = { ...filters, ...patch };
     setFilters(next);
-    router.replace(`/customer/explore?${serializeDiscoveryQuery(next).toString()}`.replace(/\?$/, ""));
+    router.replace(buildExploreHref(next, tab));
     setVisibleLimit(8);
+  };
+
+  const changeTab = (nextTab: ExploreTab) => {
+    setTab(nextTab);
+    router.replace(buildExploreHref(filters, nextTab));
   };
 
   const clearFilters = () => {
@@ -240,7 +253,7 @@ export function ExploreClient({
             <div className="inline-flex shrink-0 self-end md:self-auto rounded-2xl border border-border bg-card p-2 shadow-sm">
               <button
                 type="button"
-                onClick={() => setTab("destinations")}
+                onClick={() => changeTab("destinations")}
                 className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
                   tab === "destinations"
                     ? "bg-primary text-white shadow-sm"
@@ -252,7 +265,7 @@ export function ExploreClient({
               </button>
               <button
                 type="button"
-                onClick={() => setTab("experiences")}
+                onClick={() => changeTab("experiences")}
                 className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
                   tab === "experiences"
                     ? "bg-primary text-white shadow-sm"
@@ -380,7 +393,7 @@ export function ExploreClient({
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
                 {displayActivities.slice(0, visibleLimit).map((a) => (
-                  <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
+                  <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab)} onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                 ))}
               </div>
             )}
