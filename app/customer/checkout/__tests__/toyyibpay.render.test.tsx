@@ -1,5 +1,6 @@
 import React, { act } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getBookingSlots } from '@/backend/domains/catalogue';
 import {
   findElements,
   findOne,
@@ -185,8 +186,12 @@ describe('ToyyibPay checkout presentation', () => {
     Object.assign(mocks.currentUser, { email: 'guest@example.com', name: 'Aisyah Tan', phone: '+60177143951' });
     const activity = {
       id: 'product-1', name: 'Deluxe Room', image: '', outletId: 'outlet-1', categorySlug: 'accommodation',
-      variants: [{ id: 'variant-1', label: 'Standard' }], requiresBooking: true,
+      price: 50, variants: [{ id: 'variant-1', label: 'Standard', priceDelta: 0 }], requiresBooking: true,
     };
+    vi.mocked(getBookingSlots).mockResolvedValueOnce([{
+      id: 'slot-1', activityId: 'product-1', outletId: 'outlet-1',
+      startsAt: new Date(Date.now() + 86_400_000).toISOString(), capacity: 5, booked: 0,
+    }]);
     mocks.cart.mockReturnValue({
       selectedItems: [{ cartItemId: 'stay-line-1', activityId: 'product-1', variantId: 'variant-1', slotId: 'slot-1', outletId: 'outlet-1', qty: 1, nights: 2, stayDetails: { primaryGuestName: 'Nur Aisyah', adults: 3, estimatedArrival: 'unknown' } }],
       selectedKeys: new Set(['cart-item:stay-line-1']),
@@ -204,6 +209,7 @@ describe('ToyyibPay checkout presentation', () => {
     expect(container.textContent).not.toContain('Estimated arrival time');
     expect(container.textContent).not.toContain('Continue to Payment');
     const payButton = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Continue to Stripe'));
+    expect(payButton.getAttribute('disabled')).toBeNull();
     await act(async () => { payButton.dispatchEvent(new TestEvent('click', { bubbles: true })); await settle(); });
 
     const prepareCall = mocks.fetch.mock.calls.find(([input]) => String(input) === '/api/checkout/prepare');
