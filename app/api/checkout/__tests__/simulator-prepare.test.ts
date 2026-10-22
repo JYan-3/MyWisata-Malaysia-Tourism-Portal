@@ -315,6 +315,20 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     }));
   });
 
+  it('matches real cart pricing and the server quote for a selected outlet', async () => {
+    const real = await vi.importActual<typeof import('@/backend/core/helpers')>('@/backend/core/helpers');
+    productOutletId = null;
+    outletOfferRows = [{product_id:PRODUCT_ID,outlet_id:OUTLET_ID,price:37.5,status:'active'}];
+    const activity = {id:PRODUCT_ID,outletId:OTHER_OUTLET_ID,vendorId:VENDOR_ID,price:10,variants:[{id:VARIANT_ID,label:'Standard',priceDelta:2.5}],offers:[{outletId:OUTLET_ID,price:37.5,status:'active'},{outletId:OTHER_OUTLET_ID,price:10,status:'active'}]} as import('@/backend/core/types').Activity;
+    mocks.getActivities.mockResolvedValue([activity]);
+    mocks.unitPrice.mockImplementation(real.unitPrice);
+    mocks.cartTotals.mockImplementation(real.cartTotals);
+    const item = {activityId:PRODUCT_ID,variantId:VARIANT_ID,outletId:OUTLET_ID,qty:1};
+    expect(real.resolveCartLinePrice(activity,item,{now:new Date(),productIds:[PRODUCT_ID]})).toEqual({available:true,unitPrice:40});
+    expect((await POST(request())).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('account_prepare_checkout',expect.objectContaining({p_subtotal:40,p_lines:[expect.objectContaining({outlet_id:OUTLET_ID,unit_price:40,line_total:40})]}));
+  });
+
   it('rejects a shared product when the selected outlet has no active offer', async () => {
     productOutletId = null;
 

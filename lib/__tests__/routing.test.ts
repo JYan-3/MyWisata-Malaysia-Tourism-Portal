@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ORS_PROFILE,
   OSRM_PROFILE,
+  ROUTE_TRAFFIC_COLORS,
   buildMapboxTrafficSegments,
   buildRouteDepartureTime,
   fromOrsCoordinates,
@@ -60,6 +61,16 @@ describe("summarizeRoute", () => {
 });
 
 describe("Mapbox traffic normalization", () => {
+  it("uses the Google Maps-style color scale shared by map and legend", () => {
+    expect(ROUTE_TRAFFIC_COLORS).toEqual({
+      normal: "#2563EB",
+      slow: "#FACC15",
+      congested: "#EF4444",
+      severe: "#B91C1C",
+      unknown: "#2563EB",
+    });
+  });
+
   it("maps provider categories and numeric fallback values to the product traffic scale", () => {
     expect(normalizeMapboxTrafficLevel("low", 80)).toBe("normal");
     expect(normalizeMapboxTrafficLevel("moderate", null)).toBe("slow");
@@ -98,8 +109,8 @@ describe("Mapbox traffic normalization", () => {
 
   it("uses the earliest future Malaysia itinerary time and a noon fallback", () => {
     const now = new Date("2026-09-15T00:00:00.000Z");
-    expect(buildRouteDepartureTime("2026-09-16", ["16:00", "09:30"], now)).toBe("2026-09-16T01:30:00.000Z");
-    expect(buildRouteDepartureTime("2026-09-16", [null, ""], now)).toBe("2026-09-16T04:00:00.000Z");
+    expect(buildRouteDepartureTime("2026-09-16", ["16:00", "09:30"], now)).toBe("2026-09-16T01:30:00Z");
+    expect(buildRouteDepartureTime("2026-09-16", [null, ""], now)).toBe("2026-09-16T04:00:00Z");
     expect(buildRouteDepartureTime("2026-09-14", ["09:30"], now)).toBeUndefined();
   });
 });

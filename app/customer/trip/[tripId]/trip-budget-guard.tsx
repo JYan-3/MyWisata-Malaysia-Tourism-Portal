@@ -20,6 +20,7 @@ import { AlertTriangle, MapPin as MapPinIcon, PiggyBank } from "lucide-react";
 import { formatMYR } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
 import type { ComputedActivity } from "@/backend/core/types";
+import {getTripBudgetEstimate} from "@/lib/customer/trip-planner";
 import type { TripItem } from "@/backend/domains/trips";
 import type { MapPin } from "@/components/map/map-view";
 
@@ -83,11 +84,7 @@ export function TripBudgetGuard({
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BudgetGuardApiResult | null>(null);
 
-  const priceById = useMemo(() => new Map((activities ?? []).map((activity) => [activity.id, activity.price])), [activities]);
-  const total = useMemo(
-    () => items.reduce((sum, item) => (item.experience_id ? sum + (priceById.get(item.experience_id) ?? 0) : sum), 0),
-    [items, priceById],
-  );
+  const {total,unknownCount}=useMemo(()=>getTripBudgetEstimate(items,new Map((activities ?? []).map(activity=>[activity.id,activity]))),[items,activities]);
   const overBudgetByRM = budget !== null ? Math.max(0, total - budget) : 0;
   const isOverBudget = overBudgetByRM > 0;
 
@@ -168,6 +165,7 @@ export function TripBudgetGuard({
         <p className="mt-1 text-[11px] text-muted-foreground">{t("ui.tripBudget.noBudgetSet")}</p>
       )}
 
+      <p className="mt-1 text-[11px] text-muted-foreground">{t("ui.tripBudget.estimate")}{unknownCount > 0 ? ` · ${t("ui.tripBudget.unknownPrices",{count:unknownCount})}` : ""}</p>
       {isOverBudget && (
         <button
           type="button"

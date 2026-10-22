@@ -59,7 +59,7 @@ vi.mock('@/backend/domains/catalogue', () => ({
   getBookingSlots: vi.fn(async () => []),
   getVoucherByCode: vi.fn(async () => undefined),
 }));
-vi.mock('@/backend/core/helpers', () => ({ unitPrice: vi.fn(() => 50) }));
+vi.mock('@/backend/core/helpers', async (original) => await original());
 vi.mock('@/lib/i18n/format', () => ({
   formatMYR: (amount: number) => `RM${amount.toFixed(2)}`,
   formatMYRFromSen: (amount: number) => `RM${(amount / 100).toFixed(2)}`,
@@ -96,6 +96,7 @@ describe('ToyyibPay checkout presentation', () => {
     mocks.cart.mockReturnValue({
       selectedItems: [{ activityId: 'product-1', variantId: 'variant-1', outletId: 'outlet-1', qty: 1 }],
       selectedKeys: new Set(['product-1|variant-1||outlet-1']),
+      activities:[{id:'product-1',outletId:'outlet-1',name:'Rainforest Walk',price:50,variants:[{id:'variant-1',label:'Standard',priceDelta:0}],requiresBooking:false}],
       totals: () => ({ subtotal: 50, discount: 0, total: 50 }),
     });
     mocks.fetch.mockImplementation(async (input: RequestInfo | URL) => {

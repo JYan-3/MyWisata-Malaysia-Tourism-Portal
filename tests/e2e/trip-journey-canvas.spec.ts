@@ -1,25 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
+import {randomUUID} from "node:crypto";
+import {installTripFixtureCleanup,createTestCustomer,signInTestCustomer,rest} from "./helpers/trip-fixture";
 
-const DEMO_PASSWORD = "demo123456";
-
-test.setTimeout(60_000);
+test.setTimeout(120_000);
 test.describe.configure({ retries: 0 });
+installTripFixtureCleanup();
 
 async function signInCustomer(page: Page) {
-  const accountsResponse = await page.request.get("/api/auth/demo-users");
-  expect(accountsResponse.status()).toBe(200);
-  const accounts = await accountsResponse.json() as Array<{ id: string; email: string; role: string }>;
-  const customer = accounts.find((account) => account.role === "customer");
-  if (!customer) throw new Error("No seeded customer demo account is available");
-
-  await page.request.post("/api/auth/demo-signin", { data: { email: customer.email } });
-  await page.goto("/login");
-  const form = page.locator("form").filter({ has: page.locator('input[type="email"]') }).first();
-  await form.locator('input[type="email"]').fill(customer.email);
-  await form.locator('input[type="password"]').fill(DEMO_PASSWORD);
-  await form.getByRole("button", { name: /^(sign in|登录|log masuk)$/i }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
-  return customer;
+  const tripId=randomUUID();
+  const customer=await createTestCustomer(tripId,page.request);
+  await signInTestCustomer(page,customer);
+  return {...customer,tripId};
 }
 
 function malaysiaTodayIsoDate() {
@@ -43,7 +34,7 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
 
   const date = malaysiaTodayIsoDate();
   const trip = {
-    id: "journey-canvas-e2e",
+    id: customer.tripId,
     user_id: customer.id,
     name: "Penang Weather Journey",
     start_date: date,
@@ -66,10 +57,8 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
     label: "George Town",
   };
 
-  await page.context().addCookies([
-    { name: "MOCK_TRIPS", value: encodeURIComponent(JSON.stringify([trip])), domain: "localhost", path: "/" },
-    { name: "MOCK_TRIP_ITEMS", value: encodeURIComponent(JSON.stringify([origin])), domain: "localhost", path: "/" },
-  ]);
+  await rest(page.request,'POST','trips',trip);
+  await rest(page.request,'POST','trip_items',origin);
 
   await page.route("https://tiles.openfreemap.org/styles/liberty", async (route) => route.fulfill({
     status: 200,
@@ -106,6 +95,7 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
             { type: "Feature", properties: { level: "moderate", thresholdMm: 2.5 }, geometry: { type: "MultiPolygon", coordinates: [[[[100.29, 5.38], [100.38, 5.38], [100.38, 5.45], [100.29, 5.45], [100.29, 5.38]]]] } },
           ],
         },
+        conditionContours:{type:"FeatureCollection",features:[]},
         rainBoundary: {
           type: "FeatureCollection",
           features: [{ type: "Feature", properties: { kind: "rain_boundary" }, geometry: { type: "LineString", coordinates: [[100.28, 5.36], [100.37, 5.39], [100.4, 5.45]] } }],
@@ -182,13 +172,15 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
 
   const day = page.locator(`[data-trip-day="${date}"]`);
   await activity.dragTo(day);
-  await expect(day.locator(`[data-itinerary-image="${activityId}"]`)).toBeVisible();
-  await expect(page.locator(`[data-map-pin-image="${activityId}"]`)).toBeVisible();
+  await expect(day.locator("[data-itinerary-image]")).toBeVisible({timeout:30_000});
+  const storedItemId=await day.locator("[data-itinerary-image]").getAttribute("data-itinerary-image");
+  await expect(page.locator(`[data-map-pin-image="${storedItemId}"]`)).toBeVisible();
   await expect.poll(async () => {
     const box = await page.locator('[aria-label="互动地图"]').boundingBox();
     return box?.width ?? 0;
   }).toBeGreaterThan(300);
   await expect(page.locator("[data-weather-overlay-ready]")).toHaveAttribute("data-weather-overlay-ready", "true");
+  await page.locator('button[aria-expanded="false"]').filter({hasText:"路线天气"}).click();
   await expect(page.getByText("实时降雨雷达", { exact: true })).toBeVisible();
   await expect(page.getByText("雷达数据由 RainViewer 提供", { exact: true })).toBeVisible();
   expect(radarMetadataRequests).toBe(1);
@@ -199,6 +191,7 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   await expect(page.locator('[data-weather-band="light"]')).toBeVisible();
   expect(forecastOverlayRequests).toBe(1);
   await expect(page.locator("[data-route-traffic-status]")).toBeVisible();
+  await expect(page.locator("[data-route-traffic-legend]")).toBeVisible();
   await expect(page.getByText("实时路况", { exact: true })).toBeVisible();
   await expect(page.getByText("缓行", { exact: true })).toBeVisible();
   await expect(page.getByText("拥堵", { exact: true })).toBeVisible();
@@ -209,12 +202,24 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   await expect.poll(() => radarMetadataRequests).toBe(2);
 
   const mapRegion = page.locator('[aria-label="互动地图"]');
+  const plannerGrid = page.locator('[style*="--planner-ai-width"]');
+  async function expectSettledPanels() {
+    await expect.poll(() => plannerGrid.evaluate(element => {
+      const style = getComputedStyle(element);
+      const columns = style.gridTemplateColumns.split(" ");
+      return columns[0] === style.getPropertyValue("--planner-ai-width").trim()
+        && columns.at(-1) === style.getPropertyValue("--planner-places-width").trim();
+    })).toBe(true);
+  }
+  await page.getByRole("button", { name: "展开 AI 规划栏" }).click();
+  await expectSettledPanels();
   const initialWidth = (await mapRegion.boundingBox())?.width ?? 0;
 
-  await page.getByRole("button", { name: "最小化行程面板" }).click();
+  await page.getByRole("button", { name: "收起 AI 规划栏" }).click();
   await expect.poll(async () => (await mapRegion.boundingBox())?.width ?? 0)
     .toBeGreaterThan(initialWidth + 250);
 
+  await expectSettledPanels();
   const leftCollapsedWidth = (await mapRegion.boundingBox())?.width ?? 0;
   await page.getByRole("button", { name: "最小化添加地点面板" }).click();
   await expect.poll(async () => (await mapRegion.boundingBox())?.width ?? 0)
@@ -225,19 +230,19 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   expect(canvasBox?.width ?? 0).toBeGreaterThanOrEqual((regionBox?.width ?? 0) - 1);
   expect(canvasBox?.height ?? 0).toBeGreaterThan(600);
 
-  await page.getByRole("button", { name: "展开行程面板" }).click();
+  await page.getByRole("button", { name: "展开 AI 规划栏" }).click();
   await page.getByRole("button", { name: "展开添加地点面板" }).click();
   await expect.poll(async () => Math.round((await mapRegion.boundingBox())?.width ?? 0))
     .toBe(Math.round(initialWidth));
 
-  await page.getByRole("button", { name: "最小化行程面板" }).click();
+  await page.getByRole("button", { name: "收起 AI 规划栏" }).click();
   await page.getByRole("button", { name: "最小化添加地点面板" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(day).toBeVisible();
-  await expect(page.getByRole("button", { name: "展开行程面板" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "展开 AI 规划栏" })).toBeHidden();
   await expect(page.getByRole("button", { name: "展开添加地点面板" })).toBeHidden();
   await page.getByRole("button", { name: "地图", exact: true }).click();
-  await expect(page.getByRole("button", { name: "路线天气" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "路线天气",exact:true }).first()).toBeVisible();
 });
 
 test("journey canvas aligns daily risk time and paginates fixed-height side panels", async ({ page }) => {
@@ -247,7 +252,7 @@ test("journey canvas aligns daily risk time and paginates fixed-height side pane
   const startDate = addCalendarDays(malaysiaTodayIsoDate(), 1);
   const endDate = addCalendarDays(startDate, 5);
   const trip = {
-    id: "journey-canvas-paging-e2e",
+    id: customer.tripId,
     user_id: customer.id,
     name: "Penang Timed Weather Journey",
     start_date: startDate,
@@ -270,10 +275,8 @@ test("journey canvas aligns daily risk time and paginates fixed-height side pane
     label: "George Town",
   };
 
-  await page.context().addCookies([
-    { name: "MOCK_TRIPS", value: encodeURIComponent(JSON.stringify([trip])), domain: "localhost", path: "/" },
-    { name: "MOCK_TRIP_ITEMS", value: encodeURIComponent(JSON.stringify([scheduledOrigin])), domain: "localhost", path: "/" },
-  ]);
+  await rest(page.request,'POST','trips',trip);
+  await rest(page.request,'POST','trip_items',scheduledOrigin);
 
   await page.route("https://tiles.openfreemap.org/styles/liberty", async (route) => route.fulfill({
     status: 200,
@@ -346,6 +349,7 @@ test("journey canvas aligns daily risk time and paginates fixed-height side pane
             geometry: { type: "MultiPolygon", coordinates: [[[[100.25, 5.35], [100.42, 5.35], [100.42, 5.48], [100.25, 5.48], [100.25, 5.35]]]] },
           }] : [],
         },
+        conditionContours:{type:"FeatureCollection",features:[]},
         rainBoundary: { type: "FeatureCollection", features: [] },
         dominantCenter: raining ? [100.33, 5.42] : null,
       } }),
@@ -354,14 +358,16 @@ test("journey canvas aligns daily risk time and paginates fixed-height side pane
 
   await page.goto(`/customer/trip/${trip.id}`);
 
-  const itineraryPanel = page.locator('aside[aria-label="旅程行程表"]');
-  const mapPanel = page.locator('[aria-label="旅程地图"]');
+  const itineraryPanel = page.getByRole("main",{name:"旅程行程表",exact:true});
+  const mapPanel = page.getByRole("region",{name:"地图",exact:true});
   const placesPanel = page.locator('aside[aria-label="可添加的地点"]');
-  await expect(itineraryPanel.locator('[data-trip-day]:not([data-trip-day="unscheduled"])')).toHaveCount(5);
+  await expect(itineraryPanel.locator('[data-trip-day]:not([data-trip-day="unscheduled"])')).toHaveCount(1);
+  await expect(page.locator("#planner-selected-day option")).toHaveCount(6);
   await expect(placesPanel.locator("[data-activity-card]")).toHaveCount(15);
-  await expect.poll(async () => Math.round((await mapPanel.boundingBox())?.height ?? 0)).toBe(680);
-  await expect.poll(async () => Math.round((await itineraryPanel.boundingBox())?.height ?? 0)).toBe(680);
-  await expect.poll(async () => Math.round((await placesPanel.boundingBox())?.height ?? 0)).toBe(680);
+  for (const panel of [mapPanel,itineraryPanel,placesPanel]) {
+    await expect.poll(async()=>(await panel.boundingBox())?.height ?? 0).toBeGreaterThan(400);
+    expect((await panel.boundingBox())!.y+(await panel.boundingBox())!.height).toBeLessThanOrEqual(page.viewportSize()!.height+1);
+  }
 
   await placesPanel.getByRole("button", { name: "更多筛选" }).click();
   await expect(placesPanel.getByRole("heading", { name: "筛选地点" })).toBeVisible();
@@ -373,6 +379,7 @@ test("journey canvas aligns daily risk time and paginates fixed-height side pane
   await placesPanel.getByRole("button", { name: "完成" }).last().click();
   await expect(placesPanel.locator("[data-activity-card]")).toHaveCount(15);
 
+  await mapPanel.locator('button[aria-expanded="false"]').filter({hasText:"路线天气"}).click();
   await expect(mapPanel.getByText("10:00 暂无达到显示门槛的降雨。", { exact: true })).toBeVisible();
   const riskSummary = itineraryPanel.getByLabel(/在地图查看风险时段/);
   await expect(riskSummary).toContainText("15:00–17:00");
@@ -380,7 +387,7 @@ test("journey canvas aligns daily risk time and paginates fixed-height side pane
   await expect(mapPanel.getByText("15:00", { exact: true })).toBeVisible();
   await expect.poll(() => requestedOverlayHours.at(-1)).toBe(15);
 
-  await itineraryPanel.getByRole("button", { name: "下一页天" }).click();
+  await page.locator("#planner-selected-day").selectOption(endDate);
   await expect(itineraryPanel.locator('[data-trip-day]:not([data-trip-day="unscheduled"])')).toHaveCount(1);
   await placesPanel.getByRole("button", { name: "下一页地点" }).press("Enter");
   await expect(placesPanel.getByText("第 2 /", { exact: false })).toBeVisible();

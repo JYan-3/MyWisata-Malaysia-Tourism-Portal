@@ -97,13 +97,13 @@ describe("POST /api/route traffic-aware routing", () => {
     const response = await POST(request({
       mode: "DRIVING",
       points: [[5, 100], [5.2, 100.2]],
-      departureTime: "2026-10-15T04:00:00.000Z",
+      departureTime: "2026-10-15T04:00:00Z",
     }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.data.routes[0].traffic.basis).toBe("predicted");
-    expect(String(providerFetch.mock.calls[0][0])).toContain("depart_at=2026-10-15T04%3A00%3A00.000Z");
+    expect(String(providerFetch.mock.calls[0][0])).toContain("depart_at=2026-10-15T04%3A00%3A00Z");
   });
 
   it("falls back to ORS with a blue route when the traffic provider fails", async () => {

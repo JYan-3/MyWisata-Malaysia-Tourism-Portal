@@ -1,27 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { createTestCustomer, installTripFixtureCleanup, rest, signInTestCustomer } from "./helpers/trip-fixture";
 
-const DEMO_PASSWORD = "demo123456";
-
-test.setTimeout(60_000);
-
-async function signInCustomer(page: Page) {
-  const accountsResponse = await page.request.get("/api/auth/demo-users");
-  expect(accountsResponse.status(), "Demo account list is unavailable").toBe(200);
-  const accounts = await accountsResponse.json() as Array<{ id: string; email: string; role: string }>;
-  const customer = accounts.find((account) => account.role === "customer");
-  if (!customer) throw new Error("No seeded customer demo account is available");
-
-  const probe = await page.request.post("/api/auth/demo-signin", { data: { email: customer.email } });
-  expect(probe.status(), `Demo sign-in probe failed for ${customer.email}`).toBe(200);
-
-  await page.goto("/login");
-  const form = page.locator("form").filter({ has: page.locator('input[type="email"]') }).first();
-  await form.locator('input[type="email"]').fill(customer.email);
-  await form.locator('input[type="password"]').fill(DEMO_PASSWORD);
-  await form.getByRole("button", { name: /^(sign in|登录|log masuk)$/i }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
-  return customer;
-}
+test.setTimeout(180_000);
+installTripFixtureCleanup();
 
 async function switchLanguage(page: Page, locale: "en" | "ms" | "zh-CN") {
   const response = await page.request.post("/api/locale", { data: { locale } });
@@ -37,38 +19,32 @@ function tomorrowIsoDate() {
 }
 
 test("a scheduled trip day shows expandable forecast risk evidence and attribution", async ({ page }) => {
-  const customer = await signInCustomer(page);
-  await switchLanguage(page, "en");
-
+  const tripId = randomUUID();
+  const customer = await createTestCustomer(tripId, page.request);
   const date = tomorrowIsoDate();
-  const trip = {
-    id: "weather-e2e-trip",
+  const trip = (await rest<Array<{id:string}>>(page.request,"POST","trips",{
+    id: tripId,
     user_id: customer.id,
     name: "Weather acceptance trip",
     start_date: date,
     end_date: date,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  }))[0];
   const item = {
-    id: "weather-e2e-item",
+    id: randomUUID(),
     trip_id: trip.id,
     experience_id: null,
     sequence: 0,
     scheduled_date: date,
     scheduled_time: "10:00",
-    created_at: new Date().toISOString(),
     source: "location",
     kind: "custom",
     lat: 5.4141,
     lng: 100.3288,
     label: "George Town",
   };
+  await rest<unknown>(page.request,"POST","trip_items",item);
 
-  await page.context().addCookies([
-    { name: "MOCK_TRIPS", value: encodeURIComponent(JSON.stringify([trip])), domain: "localhost", path: "/" },
-    { name: "MOCK_TRIP_ITEMS", value: encodeURIComponent(JSON.stringify([item])), domain: "localhost", path: "/" },
-  ]);
+  await signInTestCustomer(page, customer);
 
   let weatherRequest: { tripId?: string; targets?: Array<{ key: string; date: string; itemId: string }> } | null = null;
   await page.route("**/api/weather/forecast", async (route) => {
@@ -111,6 +87,7 @@ test("a scheduled trip day shows expandable forecast risk evidence and attributi
   });
 
   await page.goto(`/customer/trip/${trip.id}`);
+  await switchLanguage(page, "en");
 
   const weatherSummary = page.locator("summary").filter({ hasText: "Thunderstorm risk" });
   await expect(weatherSummary).toBeVisible({ timeout: 15_000 });

@@ -124,18 +124,18 @@ export async function POST(request: Request) {
 
   const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
   if (mode === "DRIVING" && mapboxToken) {
-    const routes = await withRouteProviderSlot(() => routeViaMapbox(points, mapboxToken, parsed.data.departureTime));
+    const routes = await withRouteProviderSlot(() => routeViaMapbox(points, mapboxToken, parsed.data.departureTime, request.signal), request.signal);
     if (routes?.length) return privateResponse(apiOk({ routes }));
   }
 
   const key = process.env.ORS_API_KEY;
   if (key) {
-    const routes = await withRouteProviderSlot(() => routeViaOrs(mode, points, key));
+    const routes = await withRouteProviderSlot(() => routeViaOrs(mode, points, key, request.signal), request.signal);
     if (routes && routes.length) return privateResponse(apiOk({ routes }));
   }
 
   if (OSRM_PROFILE[mode]) {
-    const routes = await withRouteProviderSlot(() => routeViaOsrm(mode, points));
+    const routes = await withRouteProviderSlot(() => routeViaOsrm(mode, points, request.signal), request.signal);
     if (routes && routes.length) return privateResponse(apiOk({ routes }));
     return privateResponse(apiFail("no_route", "No route available for this mode.", 502));
   }
@@ -197,7 +197,7 @@ function mapboxAnnotations(route: MapboxRoute, segmentCount: number): MapboxTraf
   }));
 }
 
-async function routeViaMapbox(points: [number, number][], token: string, departureTime?: string): Promise<RouteResult[] | null> {
+async function routeViaMapbox(points: [number, number][], token: string, departureTime?: string, signal?: AbortSignal): Promise<RouteResult[] | null> {
   const params = new URLSearchParams({
     access_token: token,
     alternatives: "true",
@@ -212,7 +212,7 @@ async function routeViaMapbox(points: [number, number][], token: string, departu
     const response = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${path}?${params.toString()}`, {
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(8_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(8_000)]) : AbortSignal.timeout(8_000),
     });
     if (!response.ok) return null;
     const parsed = mapboxResponseSchema.safeParse(await readProviderJson(response));
@@ -250,21 +250,21 @@ function hasTolls(properties: { extras?: { tollways?: { summary?: Array<{ value?
   return (properties.extras?.tollways?.summary ?? []).some((s) => (s.value ?? 0) !== 0 && (s.distance ?? 0) > 0);
 }
 
-async function routeViaOrs(mode: TravelModeId, points: [number, number][], key: string): Promise<RouteResult[] | null> {
+async function routeViaOrs(mode: TravelModeId, points: [number, number][], key: string, signal?: AbortSignal): Promise<RouteResult[] | null> {
   const isDriving = mode === "DRIVING";
   // Alternatives require exactly 2 coordinates (ORS can't alt-route through waypoints).
   const wantsAlternatives = points.length === 2;
 
   if (wantsAlternatives) {
-    const routes = await fetchOrsRoutes(mode, points, key, isDriving, true);
+    const routes = await fetchOrsRoutes(mode, points, key, isDriving, true, signal);
     if (routes) return routes;
     // ORS's alternative_routes option is only reliably documented for driving-car —
     // walk/cycle may reject it outright. Retry without it rather than losing the route.
   }
-  return fetchOrsRoutes(mode, points, key, isDriving, false);
+  return fetchOrsRoutes(mode, points, key, isDriving, false, signal);
 }
 
-async function fetchOrsRoutes(mode: TravelModeId, points: [number, number][], key: string, isDriving: boolean, withAlternatives: boolean): Promise<RouteResult[] | null> {
+async function fetchOrsRoutes(mode: TravelModeId, points: [number, number][], key: string, isDriving: boolean, withAlternatives: boolean, signal?: AbortSignal): Promise<RouteResult[] | null> {
   const body: Record<string, unknown> = { coordinates: toOrsCoordinates(points) };
   if (isDriving) body.extra_info = ["tollways"];
   if (withAlternatives) body.alternative_routes = { target_count: 3, share_factor: 0.6, weight_factor: 1.6 };
@@ -276,7 +276,7 @@ async function fetchOrsRoutes(mode: TravelModeId, points: [number, number][], ke
       body: JSON.stringify(body),
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(8_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(8_000)]) : AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
     const parsed = orsResponseSchema.safeParse(await readProviderJson(res));
@@ -301,13 +301,13 @@ async function fetchOrsRoutes(mode: TravelModeId, points: [number, number][], ke
   }
 }
 
-async function routeViaOsrm(mode: TravelModeId, points: [number, number][]): Promise<RouteResult[] | null> {
+async function routeViaOsrm(mode: TravelModeId, points: [number, number][], signal?: AbortSignal): Promise<RouteResult[] | null> {
   try {
     const path = toOsrmPath(points);
     const res = await fetch(`https://router.project-osrm.org/route/v1/${OSRM_PROFILE[mode]}/${path}?overview=full&geometries=geojson&alternatives=3`, {
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(8_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(8_000)]) : AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
     const parsed = osrmResponseSchema.safeParse(await readProviderJson(res));

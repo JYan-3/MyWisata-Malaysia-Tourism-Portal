@@ -228,3 +228,10 @@ describe("countTripPurchasableItems", () => {
     expect(countTripPurchasableItems(items, activities)).toBe(2);
   });
 });
+
+it("requires explicit variant choice and reports a missing saved listing",()=>{
+  const result=resolveTripCheckoutLines([item("multi"),item("missing")],new Map([["multi",activity("multi",{variants:[{id:"a",label:"Adult",priceDelta:0},{id:"b",label:"Child",priceDelta:-10}]})]]),new Map());
+  expect(result.lines).toEqual([]);
+  expect(result.needsSelection).toEqual([{itemId:"multi",label:"multi"}]);
+  expect(result.unavailable).toEqual([{itemId:"missing",label:"missing"}]);
+});

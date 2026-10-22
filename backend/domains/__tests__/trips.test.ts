@@ -7,7 +7,13 @@ const cookieStore = {
 };
 vi.mock("next/headers", () => ({ cookies: async () => cookieStore }));
 
+const replacementActivity = vi.hoisted(() => ({value: null as unknown}));
+vi.mock("@/backend/domains/catalogue", () => ({getComputedActivity: vi.fn(async()=>replacementActivity.value), getBookingSlots: vi.fn(async()=>[])}));
+
 const {
+  replaceTripItem,
+  clearTripItems,
+  updateTripItemLocation,
   addTripItem,
   createTrip,
   getTripById,
@@ -190,6 +196,34 @@ describe("database-backed customer trips", () => {
     }, createDb({ trips: [{ ...ownedTrip, user_id: OTHER_USER_ID }] }).client)).rejects.toThrow("Trip not found");
   });
 
+  it("inserts a daily origin before that day's stops and preserves the rest of the itinerary", async () => {
+    const existing = [
+      {id:"morning", trip_id:TRIP_ID, experience_id:PRODUCT_ID, sequence:0, scheduled_date:"2026-09-16", scheduled_time:"10:00", created_at:NOW, source:"vendor", kind:null, lat:5.4, lng:100.3, label:"Morning", sublabel:null, outlet_id:"outlet-a"},
+      {id:"lunch", trip_id:TRIP_ID, experience_id:PRODUCT_ID, sequence:1, scheduled_date:"2026-09-16", scheduled_time:"12:00", created_at:NOW, source:"vendor", kind:null, lat:5.4, lng:100.3, label:"Lunch", sublabel:null, outlet_id:"outlet-b"},
+      {id:"next-day", trip_id:TRIP_ID, experience_id:null, sequence:2, scheduled_date:"2026-09-17", scheduled_time:null, created_at:NOW, source:"location", kind:"custom", lat:3, lng:101, label:"Next day", sublabel:null},
+    ];
+    const {client, database} = createDb({trips:[ownedTrip], trip_items:existing});
+
+    const origin = await addTripItem({trip_id:TRIP_ID, source:"location", lat:4, lng:102, label:"Hotel", scheduled_date:"2026-09-16", is_day_origin:true}, client);
+
+    expect(origin.sequence).toBe(0);
+    expect(database.trip_items.sort((a,b)=>Number(a.sequence)-Number(b.sequence)).map(row=>[row.id,row.sequence])).toEqual([
+      [origin.id,0], ["morning",1], ["lunch",2], ["next-day",3],
+    ]);
+    expect(database.trip_items.find(row=>row.id === "morning")).toMatchObject({outlet_id:"outlet-a",created_at:NOW});
+    expect(database.trip_items.find(row=>row.id === "lunch")).toMatchObject({outlet_id:"outlet-b",created_at:NOW});
+  });
+
+  it("rejects reordering a daily origin behind same-day stops without changing the order", async () => {
+    const origin = {id:"origin", trip_id:TRIP_ID, experience_id:null, sequence:0, scheduled_date:"2026-09-16", scheduled_time:null, created_at:NOW, source:"location", kind:"custom", lat:3, lng:101, label:"Hotel", sublabel:null, is_day_origin:true};
+    const stop = {id:"stop", trip_id:TRIP_ID, experience_id:PRODUCT_ID, sequence:1, scheduled_date:"2026-09-16", scheduled_time:"10:00", created_at:NOW, source:"vendor", kind:null, lat:5.4, lng:100.3, label:"Stop", sublabel:null};
+    const {client, database} = createDb({trips:[ownedTrip], trip_items:[origin,stop]});
+    const before = database.trip_items.map(row=>({...row}));
+
+    await expect(reorderTripItems(TRIP_ID,["stop","origin"],client)).rejects.toThrow("Daily starting point must be first on its day");
+    expect(database.trip_items).toEqual(before);
+  });
+
   it("accepts PostgreSQL TIME values when validating the next schedule update", async () => {
     const { client, database } = createDb({
       trips: [ownedTrip],
@@ -257,4 +291,52 @@ describe("database-backed customer trips", () => {
     expect(database.trip_items[0]?.scheduled_time).toBeNull();
     expect(await getTripById(TRIP_ID, client)).toBeNull();
   });
+
+  it("does not allow a daily origin to acquire a scheduled time", async () => {
+    const origin = {id:"daily-origin", trip_id:TRIP_ID, experience_id:null, sequence:0, scheduled_date:"2026-09-16", scheduled_time:null, created_at:NOW, source:"location", kind:"custom", lat:3, lng:101, label:"Hotel", sublabel:null, is_day_origin:true};
+    const {client, database} = createDb({trips:[ownedTrip], trip_items:[origin]});
+
+    await expect(updateTripItem("daily-origin", {scheduled_time:"09:00"}, client)).rejects.toThrow("Invalid daily origin");
+    expect(database.trip_items[0]?.scheduled_time).toBeNull();
+  });
+});
+
+describe("safe trip mutations", () => {
+  const stop = {id:"stop", trip_id:TRIP_ID, experience_id:null, sequence:0, scheduled_date:"2026-09-16", scheduled_time:"10:00", created_at:NOW, source:"location", kind:"custom", lat:3, lng:101, label:"Original", sublabel:null};
+  it("rejects add chronology and out-of-range update without changing data", async () => {
+    const {client, database} = createDb({trips:[ownedTrip], trip_items:[stop]});
+    await expect(addTripItem({trip_id:TRIP_ID, source:"location", lat:3, lng:101, label:"Earlier", scheduled_date:"2026-09-16", scheduled_time:"09:00"}, client)).rejects.toThrow();
+    await expect(updateTripItem("stop", {scheduled_date:"2026-09-18"}, client)).rejects.toThrow();
+    expect(database.trip_items).toEqual([stop]);
+  });
+  it("returns canonical location and reordered records including outlet IDs", async () => {
+    const {client} = createDb({trips:[ownedTrip], trip_items:[{...stop, outlet_id:PRODUCT_ID}]});
+    expect(await updateTripItemLocation("stop", {label:"New", lat:4, lng:102}, client)).toMatchObject({id:"stop", label:"New"});
+    expect(await reorderTripItems(TRIP_ID, ["stop"], client)).toEqual([expect.objectContaining({id:"stop", outlet_id:PRODUCT_ID})]);
+  });
+  it("clears only owned trip items and preserves trip metadata", async () => {
+    const {client, database} = createDb({trips:[ownedTrip], trip_items:[stop, {...stop, id:"other", trip_id:"other-trip"}]});
+    await clearTripItems(TRIP_ID, client);
+    expect(database.trip_items.map(row=>row.id)).toEqual(["other"]);
+    expect(database.trips).toEqual([ownedTrip]);
+    await expect(clearTripItems(TRIP_ID, createDb({trips:[{...ownedTrip,user_id:OTHER_USER_ID}]}).client)).rejects.toThrow();
+  });
+});
+
+it("replaces an owned stop in place and keeps it when the replacement is unavailable", async () => {
+  const original = {id:"same-row", trip_id:TRIP_ID, experience_id:PRODUCT_ID, sequence:3, scheduled_date:"2026-09-16", scheduled_time:null, created_at:NOW, source:"vendor", lat:3, lng:101, label:"Old"};
+  const {client,database}=createDb({trips:[ownedTrip],trip_items:[original]});
+  await expect(replaceTripItem("same-row", {experience_id:PRODUCT_ID}, client)).rejects.toThrow();
+  expect(database.trip_items).toEqual([original]);
+  replacementActivity.value={id:PRODUCT_ID,name:"Replacement",requiresBooking:false, categorySlug:"accommodation", outlet:{id:PRODUCT_ID,lat:4,lng:102,city:"Melaka"}};
+  expect(await replaceTripItem("same-row", {experience_id:PRODUCT_ID, outlet_id:PRODUCT_ID}, client)).toMatchObject({id:"same-row", sequence:3, scheduled_date:"2026-09-16",label:"Replacement"});
+  expect(database.trip_items).toHaveLength(1);
+});
+
+it("keeps the original when a date-only replacement cannot retain its time",async()=>{
+  const original={id:"timed",trip_id:TRIP_ID,experience_id:PRODUCT_ID,sequence:0,scheduled_date:"2026-09-16",scheduled_time:"10:00",created_at:NOW,source:"vendor",lat:3,lng:101,label:"Original"};
+  const {client,database}=createDb({trips:[ownedTrip],trip_items:[original]});
+  replacementActivity.value={id:PRODUCT_ID,name:"Hotel",requiresBooking:false,categorySlug:"accommodation",outlet:{id:PRODUCT_ID,lat:4,lng:102,city:"Melaka"}};
+  await expect(replaceTripItem("timed",{experience_id:PRODUCT_ID},client)).rejects.toThrow();
+  expect(database.trip_items).toEqual([original]);
 });

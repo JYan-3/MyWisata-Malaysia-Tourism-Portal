@@ -1,0 +1,102 @@
+"use client";
+
+import {useRef, useState} from "react";
+import {useTranslation} from "react-i18next";
+import type {TripItem} from "@/backend/domains/trips";
+import type {TripStop} from "./trip-planner-client";
+import {applyTripOrder,resolveTripOrigin} from "@/lib/customer/trip-planner";
+import {useAppDialog} from "@/components/providers/app-dialog";
+import type {TripMutationResult} from "../actions";
+import {addTripItemAction, clearTripItemsAction, deleteTripItemAction, reorderTripItemsAction, replaceTripItemAction, updateTripItemLocationAction, updateTripItemScheduleAction} from "../actions";
+
+function stored<T>(result:TripMutationResult<T>):T {
+  if(!result.ok) throw new Error("Trip mutation rejected");
+  return result.value;
+}
+
+type StopInput = Omit<TripStop, "id"> & {id?: string};
+
+export function useTripItems(tripId: string, initialItems: TripItem[]) {
+  const [items, setItems] = useState(initialItems);
+  const current = useRef(initialItems);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const [pending, setPending] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const {t} = useTranslation("customer");
+  const {alert, confirm} = useAppDialog();
+  function commit(rows: TripItem[]) {current.current = rows; setItems(rows);}
+  function reconcile(row: TripItem) {commit(current.current.map(item=>item.id === row.id ? row : item));}
+  // One queue per mounted Trip: failed earlier writes cannot roll back later saves.
+  function run<T>(operation:()=>Promise<T>):Promise<T | undefined> {
+    setPending(count=>count+1);
+    const task = queue.current.then(async()=>{
+      setError(null);
+      try {return await operation();}
+      catch {
+        const message = t("strictMigration.tripPlanner.scheduleFailed");
+        setError(message);
+        void alert(message);
+        return undefined;
+      } finally {setPending(count=>count-1);}
+    });
+    queue.current = task;
+    return task;
+  }
+  function input(stop:StopInput, date:string | null = null, time:string | null = null) {
+    return {trip_id:tripId, experience_id:stop.source === "vendor" ? stop.id : undefined, source:stop.source, kind:stop.locationKind, lat:stop.lat, lng:stop.lng,label:stop.label,sublabel:stop.sublabel, scheduled_date:date,scheduled_time:date ? time : null,outlet_id:stop.source === "vendor" ? stop.outletId ?? null : null};
+  }
+  const stops:TripStop[] = items.map(item=>({id:item.id,lat:item.lat,lng:item.lng,label:item.label,sublabel:item.sublabel,source:item.source,locationKind:item.kind,outletId:item.outlet_id ?? undefined}));
+  return {
+    items, stops, origin:resolveTripOrigin(items,null), pending:pending>0,error,
+    has:(id:string)=>items.some(item=>item.id === id || item.experience_id === id),
+    add:(stop:StopInput,schedule?:{date:string | null;time?:string | null})=>run(async()=>{
+      const row=stored(await addTripItemAction(input(stop,schedule?.date,schedule?.time)));
+      commit([...current.current,row]);return row;
+    }),
+    remove:(id:string)=>run(async()=>{
+      const target=current.current.find(item=>item.id === id || item.experience_id === id);
+      if (!target) return;
+      stored(await deleteTripItemAction(tripId,target.id));
+      commit(current.current.filter(item=>item.id !== target.id));
+    }),
+    move:(from:number,to:number)=>{
+      const fromId=current.current[from]?.id;
+      const toId=current.current[to]?.id;
+      return run(async()=>{
+        const ordered=[...current.current].sort((a,b)=>a.sequence-b.sequence);
+        const sourceIndex=ordered.findIndex(item=>item.id === fromId);
+        const targetIndex=ordered.findIndex(item=>item.id === toId);
+        if (sourceIndex<0 || targetIndex<0) throw new Error("Trip items changed");
+        const [moved]=ordered.splice(sourceIndex,1);ordered.splice(targetIndex,0,moved);
+        const proposed=applyTripOrder(current.current,ordered.map(item=>item.id));
+        commit(stored(await reorderTripItemsAction(tripId,proposed.map(item=>item.id))));
+      });
+    },
+    setLocation:(stop:Omit<TripStop,"id" | "source">,date:string | null = null)=>run(async()=>{
+      const existing=date ? current.current.find(item=>item.is_day_origin && item.scheduled_date === date) : resolveTripOrigin(current.current,null);
+      const row=stored(existing ? await updateTripItemLocationAction(tripId,existing.id,stop) : await addTripItemAction({...input({...stop,source:"location"},date),...(date ? {is_day_origin:true} : {})}));
+      if (existing) reconcile(row);
+      else if (date) {
+        const ordered = [...current.current].sort((a,b)=>a.sequence-b.sequence);
+        const firstSameDayIndex = ordered.findIndex(item=>item.scheduled_date === date);
+        ordered.splice(firstSameDayIndex < 0 ? ordered.length : firstSameDayIndex,0,row);
+        commit(applyTripOrder([...current.current,row],ordered.map(item=>item.id)));
+      } else commit([...current.current,row]);
+      return row;
+    }),
+    update:(id:string,updates:{label:string;lat:number;lng:number})=>run(async()=>{
+      const row=stored(await updateTripItemLocationAction(tripId,id,updates));reconcile(row);return row;
+    }),
+    schedule:(id:string,date:string | null,time:string | null)=>run(async()=>{
+      const row=stored(await updateTripItemScheduleAction(tripId,id,{scheduled_date:date,scheduled_time:date ? time : null}));reconcile(row);return row;
+    }),
+    replace:(id:string,stop:StopInput)=>run(async()=>{
+      if (!stop.id) throw new Error("Activity required");
+      const row=stored(await replaceTripItemAction(tripId,id,{experience_id:stop.id,outlet_id:stop.outletId}));reconcile(row);return row;
+    }),
+    clear:async()=>{
+      if (!await confirm(t("ui.trip.clearItemsConfirm"))) return;
+      return run(async()=>{stored(await clearTripItemsAction(tripId));commit([]);});
+    },
+  };
+}

@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test, type APIRequestContext } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
+import { expect, test } from '@playwright/test';
 import { isOperatingHoursAtAvailable } from '../../lib/customer/operating-hours';
-import { localEnv, signIn } from './helpers/demo';
+import {confirmTestDatabase, installTripFixtureCleanup,createTestCustomer, signInTestCustomer, rest, cleanupTestCustomers, type TestCustomer} from './helpers/trip-fixture';
 
 // Trip planner fixed times + planned outlet at checkout.
 // Plan: Docs/plans/2026-10-14-0055-trip-time-slots-and-outlet.md
@@ -11,39 +10,10 @@ import { localEnv, signIn } from './helpers/demo';
 
 test.setTimeout(300_000);
 test.describe.configure({ retries: 0 });
+installTripFixtureCleanup();
 test.use({ actionTimeout: 30_000 });
 
-const SUPABASE_URL = localEnv('NEXT_PUBLIC_SUPABASE_URL')!;
-const SERVICE_KEY = localEnv('SUPABASE_SERVICE_ROLE_KEY')!;
-const service = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-const SERVER_HEADERS = { 'User-Agent': 'mywisata-e2e (node)', apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' };
 const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
-
-type TestCustomer = { id: string; email: string; password: string };
-const testCustomerIds = new Set<string>();
-
-async function createTestCustomer(): Promise<TestCustomer> {
-  const email = `trip-time-${randomUUID()}@demo.local`;
-  const password = `Trip-E2E-${randomUUID()}!`;
-  const { data, error } = await service.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: 'Trip time slots E2E' },
-  });
-  if (error) throw new Error(`create a unique Trip E2E customer: ${error.message}`);
-  if (!data.user) throw new Error('Supabase Auth did not return the created Trip E2E customer');
-  // Register immediately so the outer finally can clean it up even if later
-  // setup or assertions fail before this helper returns.
-  testCustomerIds.add(data.user.id);
-  return { id: data.user.id, email, password };
-}
-
-async function rest<T>(request: APIRequestContext, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, data?: unknown): Promise<T> {
-  const res = await request.fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers: { ...SERVER_HEADERS, Prefer: 'return=representation' }, data });
-  expect(res.ok(), `${method} ${path}: ${res.status()} ${await res.text()}`).toBe(true);
-  return (res.status() === 204 ? [] : await res.json()) as T;
-}
 
 function malaysiaDate(offsetDays: number) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date(Date.now() + offsetDays * 86_400_000));
@@ -54,6 +24,7 @@ function malaysiaClock(iso: string) {
 }
 
 test('stops offer only real slots or opening hours, and Buy keeps the planned outlet and slot', async ({ page, request }) => {
+  confirmTestDatabase();
   const date = malaysiaDate(1);
   const weekday = WEEKDAYS[new Date(`${date}T12:00:00+08:00`).getUTCDay()];
 
@@ -87,7 +58,7 @@ test('stops offer only real slots or opening hours, and Buy keeps the planned ou
   const tripId = randomUUID();
   let customer: TestCustomer | null = null;
   try {
-    customer = await createTestCustomer();
+    customer = await createTestCustomer(tripId,request);
     await expect.poll(async () => rest<{ id: string }[]>(request, 'GET', `users?select=id&id=eq.${customer!.id}`), {
       message: 'Auth signup trigger creates the matching public customer row',
     }).toHaveLength(1);
@@ -103,10 +74,7 @@ test('stops offer only real slots or opening hours, and Buy keeps the planned ou
       return rows[0]?.scheduled_time?.slice(0, 5) ?? null;
     };
 
-    // The dev server compiles /login on first hit; typing before hydration is lost.
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
-    await signIn(page, customer.email, customer.password);
+    await signInTestCustomer(page, customer);
     await page.request.post('/api/locale', { data: { locale: 'en' } });
     await page.goto(`/customer/trip/${tripId}`);
 
@@ -121,7 +89,11 @@ test('stops offer only real slots or opening hours, and Buy keeps the planned ou
       .filter((value) => value && value !== '00:26'));
     expect([...new Set(offeredSlotTimes)].sort()).toEqual(expectedSlotTimes);
     await expect(slotSelect.locator(`option[value="${slotTime}"]`)).toHaveCount(1);
+    const activitySaved = page.waitForResponse((response) => response.request().method() === 'POST'
+      && new URL(response.url()).pathname === `/customer/trip/${tripId}`
+      && Boolean(response.request().postData()?.includes('"scheduled_time"')), { timeout: 60_000 });
     await slotSelect.selectOption(slotTime);
+    expect(await (await activitySaved).finished(), 'finish schedule revalidation before the next interaction').toBeNull();
     await expect(activityRow.locator('[data-trip-time-problem]')).toHaveCount(0);
     await expect.poll(() => savedTripTime(slot.product_id), {
       message: 'the selected outlet slot is persisted on the activity trip stop',
@@ -139,14 +111,18 @@ test('stops offer only real slots or opening hours, and Buy keeps the planned ou
     }).filter((value) => isOperatingHoursAtAvailable(value, { [weekday]: foodHours }, [weekday]));
     expect(values).toEqual(expectedHours);
     const lastEnabled = await hoursSelect.locator('option:not([disabled])').last().getAttribute('value');
+    const foodSaved = page.waitForResponse((response) => response.request().method() === 'POST'
+      && new URL(response.url()).pathname === `/customer/trip/${tripId}`
+      && Boolean(response.request().postData()?.includes('"scheduled_time"')), { timeout: 60_000 });
     await hoursSelect.selectOption(lastEnabled!);
+    expect(await (await foodSaved).finished(), 'finish schedule revalidation before navigating to the cart').toBeNull();
     await expect.poll(() => savedTripTime(food!.id), {
       message: 'the selected operational-hours time is persisted on the food trip stop',
       timeout: 30_000,
     }).toBe(lastEnabled);
 
     // Buy: both lines land in the cart at the planned outlet, the activity on the chosen slot.
-    await itinerary.getByRole('button', { name: 'Checkout (2 items)', exact: true }).click();
+    await itinerary.getByRole('button', { name: 'Review planned purchases (2 items)', exact: true }).click();
     await page.waitForURL('**/customer/cart', { timeout: 60_000 });
     await expect(page.getByRole('checkbox', { name: `Select ${slot.products.name}`, exact: true })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: `Select ${food!.name}`, exact: true })).toBeChecked();
@@ -156,30 +132,20 @@ test('stops offer only real slots or opening hours, and Buy keeps the planned ou
     const foodVariantIds = new Set(food!.product_variants.map((variant) => variant.id));
     expect(cartAfter.some((line) => line.variant_id && foodVariantIds.has(line.variant_id) && line.outlet_id === food!.outlet_id)).toBe(true);
 
+    const checkoutDocumentRequests: string[] = [];
+    page.on('request', (request) => {
+      if (request.isNavigationRequest() && request.resourceType() === 'document'
+        && new URL(request.url()).pathname === '/customer/checkout') {
+        checkoutDocumentRequests.push(new URL(request.url()).pathname);
+      }
+    });
     await page.getByRole('link', { name: 'Proceed to checkout (2)', exact: true }).click();
     await page.waitForURL('**/customer/checkout', { timeout: 60_000 });
+    expect(checkoutDocumentRequests, 'checkout preserves the existing cart provider through client navigation').toEqual([]);
     await expect(page.getByRole('heading', { name: 'Items to Reserve (2)' })).toBeVisible();
     await expect(page.getByRole('heading', { name: slot.products.name, exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: food!.name, exact: true })).toBeVisible();
   } finally {
-    for (const customerId of testCustomerIds) {
-      try {
-        await rest(request, 'DELETE', `trips?id=eq.${tripId}`);
-        const carts = await rest<{ id: string }[]>(request, 'GET', `carts?select=id&user_id=eq.${customerId}`);
-        for (const cart of carts) {
-          const items = await rest<{ id: string }[]>(request, 'GET', `cart_items?select=id&cart_id=eq.${cart.id}`);
-          for (const item of items) await rest(request, 'DELETE', `cart_items?id=eq.${item.id}`);
-          await rest(request, 'DELETE', `carts?id=eq.${cart.id}`);
-        }
-      } finally {
-        try {
-          await rest(request, 'DELETE', `users?id=eq.${customerId}`);
-        } finally {
-          const { error } = await service.auth.admin.deleteUser(customerId);
-          expect(error, 'delete temporary Supabase Auth customer').toBeNull();
-          testCustomerIds.delete(customerId);
-        }
-      }
-    }
+    await cleanupTestCustomers(request);
   }
 });

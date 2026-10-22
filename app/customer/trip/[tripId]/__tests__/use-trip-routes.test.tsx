@@ -1,0 +1,31 @@
+import React,{act} from "react";
+import {beforeAll,afterEach,expect,it,vi} from "vitest";
+import {installTestDom} from "@/components/shared/__tests__/render-test-dom";
+import {useTripRoutes} from "../use-trip-routes";
+import type {TravelModeId} from "@/lib/travel-modes";
+let createRoot:typeof import("react-dom/client").createRoot;
+let document:ReturnType<typeof installTestDom>;
+beforeAll(async()=>{document=installTestDom();({createRoot}=await import("react-dom/client"));});
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+it("loads only the selected mode, caches switches and aborts obsolete requests",async()=>{
+  vi.useFakeTimers();
+  const fetcher=vi.fn(async()=>new Response(JSON.stringify({data:{routes:[{durationMin:20,distanceKm:10,geometry:[],hasTolls:false}]}})));
+  vi.stubGlobal("fetch",fetcher);
+  let value!:ReturnType<typeof useTripRoutes>;
+  function Probe({mode,points=[[3,101],[4,102]]}:{mode:TravelModeId;points?:[number,number][]}){value=useTripRoutes(points,mode,undefined,0);return null;}
+  const container=document.createElement("div");const root=createRoot(container as unknown as Element);
+  await act(async()=>root.render(<Probe mode="DRIVING"/>));
+  await act(async()=>vi.advanceTimersByTimeAsync(400));
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(value.routes[0].durationMin).toBe(20);
+  await act(async()=>root.render(<Probe mode="WALKING"/>));
+  await act(async()=>vi.advanceTimersByTimeAsync(400));expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(JSON.parse((fetcher.mock.calls[1] as unknown as [string,RequestInit])[1].body as string).mode).toBe("WALKING");
+  await act(async()=>root.render(<Probe mode="DRIVING"/>));
+  await act(async()=>vi.advanceTimersByTimeAsync(400));expect(fetcher).toHaveBeenCalledTimes(2);
+  await act(async()=>root.render(<Probe mode="TRANSIT"/>));
+  await act(async()=>vi.advanceTimersByTimeAsync(400));expect(fetcher).toHaveBeenCalledTimes(2);
+  const signal=(fetcher.mock.calls[0] as unknown as [string,RequestInit])[1].signal;
+  expect(signal?.aborted).toBe(true);
+  await act(async()=>root.unmount());
+});

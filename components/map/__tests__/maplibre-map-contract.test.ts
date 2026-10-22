@@ -57,9 +57,9 @@ describe("shared MapLibre composition contract", () => {
     expect(mapSource).toContain("function trafficRouteGeoJSON");
     expect(mapSource).toContain("trafficLevel: segment.level");
     expect(mapSource).toContain('"line-color": [');
-    expect(mapSource).toContain('"slow", "#FACC15"');
-    expect(mapSource).toContain('"congested", "#EF4444"');
-    expect(mapSource).toContain('"severe", "#B91C1C"');
+    expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.slow");
+    expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.congested");
+    expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.severe");
     expect(mapSource).toContain('id={`route-traffic-line-${i}`}');
   });
 });

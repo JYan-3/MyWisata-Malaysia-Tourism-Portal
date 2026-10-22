@@ -25,7 +25,7 @@ export type TripTimeChoices =
   | { kind: "loading" }   // slots or outlet hours not loaded yet
   | { kind: "slots" | "hours"; options: TripTimeOption[] }; // empty options: not available / closed that day
 
-export type TripTimeProblem = "full" | "noSlot" | "closed" | "outsideHours";
+export type TripTimeProblem = "full" | "noSlot" | "closed" | "outsideHours" | "orderConflict";
 
 const STEP_MINUTES = 30;
 const MALAYSIA_CLOCK = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -107,18 +107,21 @@ export function getTripTimeChoices(input: {
 }
 
 /** Why a stored time no longer fits the stop's choices, or null when it is fine. */
-export function getTripTimeProblem(choices: TripTimeChoices, time: string | null | undefined, hours?: OperatingHours | null, date?: string | null): TripTimeProblem | null {
+export function getTripTimeProblem(choices: TripTimeChoices, time: string | null | undefined, hours?: OperatingHours | null, date?: string | null, bounds: TripItemTimeBounds = {}): TripTimeProblem | null {
   const value = normalizeTripTime(time);
   if (!value) return null;
   if (choices.kind === "slots") {
     const option = choices.options.find((entry) => entry.value === value);
     if (option?.full) return "full";
-    return option?.available ? null : "noSlot";
+    return option?.available ? (option.disabled ? "orderConflict" : null) : "noSlot";
   }
   if (choices.kind === "hours") {
     if (choices.options.length === 0) return "closed";
-    // Typed times between steps are fine as long as the outlet is open then.
-    return date && isOperatingHoursAtAvailable(value, hours ?? null, [weekdayOf(date)]) ? null : "outsideHours";
+    const option = choices.options.find(entry => entry.value === value);
+    if (option?.available && option.disabled) return "orderConflict";
+    // Typed times between steps must still respect the complete itinerary bounds.
+    if (!date || !isOperatingHoursAtAvailable(value, hours ?? null, [weekdayOf(date)])) return "outsideHours";
+    return outsideBounds(value,bounds) ? "orderConflict" : null;
   }
   return null;
 }
