@@ -260,7 +260,7 @@ describe("POST /api/route traffic-aware routing", () => {
     expect(providerFetch).toHaveBeenCalledTimes(2);
   });
 
-  it("does not claim live traffic when every provider annotation is unknown", async () => {
+  it("preserves an all-unknown route so the map can show no-coverage styling", async () => {
     const providerFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       routes: [{
         geometry: { coordinates: [[100, 5], [100.2, 5.2]] },
@@ -274,7 +274,11 @@ describe("POST /api/route traffic-aware routing", () => {
     const response = await POST(request({ mode: "DRIVING", points: [[5, 100], [5.2, 100.2]] }));
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.data.routes[0].traffic).toBeUndefined();
+    expect(body.data.routes[0].traffic).toMatchObject({
+      provider: "mapbox",
+      basis: "live",
+      segments: [{ level: "unknown", geometry: [[5, 100], [5.2, 100.2]] }],
+    });
   });
 
   it("rate-limits repeated route requests for one authenticated user", async () => {

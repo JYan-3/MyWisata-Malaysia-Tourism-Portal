@@ -222,14 +222,13 @@ async function routeViaMapbox(points: [number, number][], token: string, departu
       const coordinates = route.geometry.coordinates;
       const annotations = mapboxAnnotations(route, coordinates.length - 1);
       const segments = buildMapboxTrafficSegments(coordinates, annotations);
-      const hasKnownTraffic = segments.some((segment) => segment.level !== "unknown");
       return {
         geometry: fromOrsCoordinates(coordinates),
         ...summarizeRoute(route.distance, route.duration),
         ...(route.legs?.length === points.length - 1 && route.legs.every((leg) => leg.distance !== undefined && leg.duration !== undefined)
           ? { legs: route.legs.map((leg) => summarizeRoute(leg.distance!, leg.duration!)) }
           : {}),
-        ...(hasKnownTraffic ? {
+        ...(segments.length ? {
           traffic: {
             provider: "mapbox" as const,
             basis: departureTime ? "predicted" as const : "live" as const,

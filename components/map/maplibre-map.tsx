@@ -418,6 +418,7 @@ export function MaplibreMap({
                       "slow", ROUTE_TRAFFIC_COLORS.slow,
                       "congested", ROUTE_TRAFFIC_COLORS.congested,
                       "severe", ROUTE_TRAFFIC_COLORS.severe,
+                      "unknown", ROUTE_TRAFFIC_COLORS.unknown,
                       ROUTE_TRAFFIC_COLORS.unknown,
                     ],
                     "line-width": 5.5,

@@ -60,6 +60,8 @@ describe("shared MapLibre composition contract", () => {
     expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.slow");
     expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.congested");
     expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.severe");
+    expect(mapSource).toContain('"unknown", ROUTE_TRAFFIC_COLORS.unknown');
+    expect(mapSource).toContain("ROUTE_TRAFFIC_COLORS.unknown");
     expect(mapSource).toContain('id={`route-traffic-line-${i}`}');
   });
 });

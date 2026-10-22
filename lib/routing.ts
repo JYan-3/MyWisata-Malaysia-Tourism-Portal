@@ -49,7 +49,7 @@ export const ROUTE_TRAFFIC_COLORS: Record<RouteTrafficLevel, string> = {
   slow: "#FACC15",
   congested: "#EF4444",
   severe: "#B91C1C",
-  unknown: "#2563EB",
+  unknown: "#6B7280",
 };
 
 export interface RouteTrafficSegment {
@@ -70,6 +70,7 @@ export interface MapboxTrafficAnnotation {
 }
 
 export function normalizeMapboxTrafficLevel(category?: string | null, numeric?: number | null): RouteTrafficLevel {
+  if (category === "unknown") return "unknown";
   if (category === "low") return "normal";
   if (category === "moderate") return "slow";
   if (category === "heavy") return "congested";

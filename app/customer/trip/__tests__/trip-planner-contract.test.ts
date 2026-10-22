@@ -168,6 +168,7 @@ describe("trip planner workspace contract", () => {
     expect(plannerSource).toContain('label: "ui.map.trafficSlow"');
     expect(plannerSource).toContain('label: "ui.map.trafficCongested"');
     expect(plannerSource).toContain('label: "ui.map.trafficSevere"');
+    expect(plannerSource).toContain('label: "ui.map.trafficUnknown"');
     expect(plannerSource).toContain('tCustomer("ui.map.trafficUnavailable")');
     expect(plannerSource).toContain("ROUTE_TRAFFIC_COLORS");
   });

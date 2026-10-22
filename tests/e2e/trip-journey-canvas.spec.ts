@@ -137,7 +137,7 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
       from[0] + ((to[0] - from[0]) * ratio),
       from[1] + ((to[1] - from[1]) * ratio),
     ];
-    const routeGeometry = start && end ? [start, interpolate(start, end, 0.25), interpolate(start, end, 0.5), interpolate(start, end, 0.75), end] : points;
+    const routeGeometry = start && end ? [start, interpolate(start, end, 0.2), interpolate(start, end, 0.4), interpolate(start, end, 0.6), interpolate(start, end, 0.8), end] : points;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -156,6 +156,7 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
               { level: "slow", geometry: routeGeometry.slice(1, 3) },
               { level: "congested", geometry: routeGeometry.slice(2, 4) },
               { level: "severe", geometry: routeGeometry.slice(3, 5) },
+              { level: "unknown", geometry: routeGeometry.slice(4, 6) },
             ],
           },
         } : {}),
@@ -183,7 +184,6 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   await page.locator('button[aria-expanded="false"]').filter({hasText:"路线天气"}).click();
   await expect(page.getByText("实时降雨雷达", { exact: true })).toBeVisible();
   await expect(page.getByText("雷达数据由 RainViewer 提供", { exact: true })).toBeVisible();
-  expect(radarMetadataRequests).toBe(1);
   expect(forecastOverlayRequests).toBe(0);
 
   await page.getByRole("button", { name: "天气预报", exact: true }).click();
@@ -192,10 +192,24 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   expect(forecastOverlayRequests).toBe(1);
   await expect(page.locator("[data-route-traffic-status]")).toBeVisible();
   await expect(page.locator("[data-route-traffic-legend]")).toBeVisible();
+  const trafficSwatchColors = await page.locator("[data-route-traffic-legend] > span").evaluateAll((items) => items.map((item) => {
+    const swatch = item.querySelector<HTMLElement>("[aria-hidden='true']");
+    return swatch ? getComputedStyle(swatch).backgroundColor : "missing";
+  }));
+  expect(trafficSwatchColors).toEqual([
+    "rgb(37, 99, 235)",
+    "rgb(250, 204, 21)",
+    "rgb(239, 68, 68)",
+    "rgb(185, 28, 28)",
+    "rgb(107, 114, 128)",
+  ]);
   await expect(page.getByText("实时路况", { exact: true })).toBeVisible();
   await expect(page.getByText("缓行", { exact: true })).toBeVisible();
   await expect(page.getByText("拥堵", { exact: true })).toBeVisible();
+  await expect(page.getByText("无路况数据", { exact: true })).toBeVisible();
   await expect(page.getByText(/虚线内有雨|虚线外无雨/)).toHaveCount(0);
+  expect(radarMetadataRequests).toBe(1);
+  expect(forecastOverlayRequests).toBe(1);
 
   await page.getByRole("button", { name: "现在", exact: true }).click();
   await expect(page.getByText("实时降雨雷达", { exact: true })).toBeVisible();

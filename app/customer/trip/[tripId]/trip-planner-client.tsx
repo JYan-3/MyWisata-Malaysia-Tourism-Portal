@@ -67,6 +67,7 @@ const ROUTE_TRAFFIC_LEGEND = [
   { level: "slow", label: "ui.map.trafficSlow" },
   { level: "congested", label: "ui.map.trafficCongested" },
   { level: "severe", label: "ui.map.trafficSevere" },
+  { level: "unknown", label: "ui.map.trafficUnknown" },
 ] as const;
 const PLACES_PAGE_SIZE = 15;
 // Travel that makes a day unrealistic: a whole day over 4 h, or one leg over 2 h.

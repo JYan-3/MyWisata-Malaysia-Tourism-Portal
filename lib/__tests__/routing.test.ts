@@ -67,7 +67,7 @@ describe("Mapbox traffic normalization", () => {
       slow: "#FACC15",
       congested: "#EF4444",
       severe: "#B91C1C",
-      unknown: "#2563EB",
+      unknown: "#6B7280",
     });
   });
 
@@ -76,7 +76,7 @@ describe("Mapbox traffic normalization", () => {
     expect(normalizeMapboxTrafficLevel("moderate", null)).toBe("slow");
     expect(normalizeMapboxTrafficLevel("heavy", null)).toBe("congested");
     expect(normalizeMapboxTrafficLevel("severe", null)).toBe("severe");
-    expect(normalizeMapboxTrafficLevel("unknown", 27)).toBe("slow");
+    expect(normalizeMapboxTrafficLevel("unknown", 27)).toBe("unknown");
     expect(normalizeMapboxTrafficLevel(undefined, 62)).toBe("congested");
     expect(normalizeMapboxTrafficLevel(undefined, 91)).toBe("severe");
     expect(normalizeMapboxTrafficLevel(undefined, null)).toBe("unknown");
