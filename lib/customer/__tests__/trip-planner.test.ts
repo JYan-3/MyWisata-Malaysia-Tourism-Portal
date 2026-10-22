@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { Trip, TripItem } from "@/backend/domains/trips";
 import {
+  resolveTripOrigin,
+  getTripBudgetEstimate,
+  applyTripOrder,
+  getTripScheduleIssue,
+  getTripLegFeasibility,
   getTripItemTimeBounds,
   groupTripItemsByDay,
   getTripDayDates,
   hasChronologicalTripTimes,
   isValidTripCoordinate,
   selectTripDayWeatherAnchor,
-  computeSwapTargetOrder,
   getTripActivitySublabel,
 } from "@/lib/customer/trip-planner";
 
@@ -173,35 +177,48 @@ describe("trip planner scheduling helpers", () => {
     expect(isValidTripCoordinate(lat, lng)).toBe(expected);
   });
 
-  describe("computeSwapTargetOrder (Budget Guard swap-in-place)", () => {
-    it("substitutes the new id into the replaced item's exact day-relative slot", () => {
-      const items = [
-        item("morning", { scheduled_date: "2026-08-15", sequence: 0 }),
-        item("midday", { scheduled_date: "2026-08-15", sequence: 1 }),
-        item("evening", { scheduled_date: "2026-08-15", sequence: 2 }),
-      ];
 
-      expect(computeSwapTargetOrder(items, "midday", "new-alt")).toEqual(["morning", "new-alt", "evening"]);
-    });
+});
 
-    it("only reorders the same day, ignoring items scheduled on other days", () => {
-      const items = [
-        item("day1-a", { scheduled_date: "2026-08-15", sequence: 0 }),
-        item("day1-b", { scheduled_date: "2026-08-15", sequence: 1 }),
-        item("day2-a", { scheduled_date: "2026-08-16", sequence: 2 }),
-      ];
-
-      expect(computeSwapTargetOrder(items, "day1-b", "new-alt")).toEqual(["day1-a", "new-alt"]);
-    });
-
-    it("returns null when the item being replaced is unscheduled — nothing to preserve", () => {
-      const items = [item("unscheduled", { scheduled_date: null })];
-
-      expect(computeSwapTargetOrder(items, "unscheduled", "new-alt")).toBeNull();
-    });
-
-    it("returns null when the item being replaced is no longer in the trip", () => {
-      expect(computeSwapTargetOrder([], "gone", "new-alt")).toBeNull();
-    });
+ describe("trip reliability", () => {
+  it("resequences the complete trip and rejects partial or duplicate IDs", () => {
+    const rows = [item("a"), item("b", {sequence: 1})];
+    expect(applyTripOrder(rows, ["b", "a"]).map(row => [row.id, row.sequence])).toEqual([["b", 0], ["a", 1]]);
+    expect(() => applyTripOrder(rows, ["a"])).toThrow();
+    expect(() => applyTripOrder(rows, ["a", "a"])).toThrow();
   });
+  it("validates the same date and time contract for all mutations", () => {
+    expect(getTripScheduleIssue(trip, [item("x", {scheduled_date: "2026-08-18"})])).toBe("date_outside_trip");
+    expect(getTripScheduleIssue(trip, [item("x", {scheduled_time: "12:00"})])).toBe("time_without_date");
+    expect(getTripScheduleIssue(trip, [item("x", {scheduled_date: "2026-08-15", scheduled_time: "25:00"})])).toBe("invalid_time");
+    expect(getTripScheduleIssue(trip, [item("a", {scheduled_date: "2026-08-15", scheduled_time: "10:00:00"}), item("b", {sequence: 1, scheduled_date: "2026-08-15", scheduled_time: "09:00"})])).toBe("non_chronological");
+  });
+  it("requires a daily origin to be the first stop on its day", () => {
+    const stop = item("stop", {sequence: 0, scheduled_date: "2026-08-15", scheduled_time: "10:00"});
+    const origin = item("origin", {sequence: 1, source: "location", experience_id: null, scheduled_date: "2026-08-15", is_day_origin: true});
+    expect(getTripScheduleIssue(trip, [stop, origin])).toBe("daily_origin_order");
+    expect(getTripScheduleIssue(trip, [{...origin, sequence: 0}, {...stop, sequence: 1}])).toBeNull();
+  });
+  it("reports known travel shortages without inventing stay durations", () => {
+    expect(getTripLegFeasibility({previousStart:600, previousEnd:660, nextStart:630, travelMinutes:45})).toEqual({status:"conflict", slackMinutes:-75});
+    expect(getTripLegFeasibility({previousStart:600, previousEnd:null, nextStart:720, travelMinutes:45}).status).toBe("unknown");
+    expect(getTripLegFeasibility({previousStart:600, previousEnd:660, nextStart:720, travelMinutes:45})).toEqual({status:"fits_estimate", slackMinutes:15});
+    expect(getTripLegFeasibility({previousStart:600, previousEnd:null, nextStart:620, travelMinutes:45}).status).toBe("conflict");
+    expect(getTripLegFeasibility({previousStart:600, previousEnd:660, nextStart:720, travelMinutes:null}).status).toBe("unknown");
+  });
+});
+
+it("resolves explicit daily starts without inferring an overnight location",()=>{
+  const global=item("kl",{source:"location",experience_id:null});
+  const daily=item("melaka",{source:"location",experience_id:null,scheduled_date:"2026-08-16",is_day_origin:true});
+  expect(resolveTripOrigin([global,daily],"2026-08-15")?.id).toBe("kl");
+  expect(resolveTripOrigin([global,daily],"2026-08-16")?.id).toBe("melaka");
+  expect(resolveTripOrigin([daily],"2026-08-15")).toBeNull();
+});
+it("distinguishes an unknown outlet price from a real free listing",()=>{
+  expect(getTripBudgetEstimate([item("free"),item("missing")],new Map([["free",{id:"free",outletId:"o",price:0,variants:[]}]]))).toEqual({total:0,unknownCount:1});
+});
+
+it("does not present an unchosen multi-variant price as a complete estimate",()=>{
+  expect(getTripBudgetEstimate([item("multi")],new Map([["multi",{id:"multi",outletId:"o",price:10,variants:[{id:"a",label:"Adult",priceDelta:20},{id:"b",label:"Child",priceDelta:0}]}]]))).toEqual({total:0,unknownCount:1});
 });

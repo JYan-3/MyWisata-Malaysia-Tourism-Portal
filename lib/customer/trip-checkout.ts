@@ -26,6 +26,7 @@ export interface TripCheckoutSkip {
 
 export interface TripCheckoutResolution {
   lines: TripCheckoutLine[];
+  needsSelection: TripCheckoutSkip[];
   /**
    * Requires a real vendor booking slot but none is open on the item's
    * scheduled day — never invented or nudged to a nearby date; left for the
@@ -47,8 +48,8 @@ function vendorActivityFor(item: TripItem, activitiesById: Map<string, ComputedA
 }
 
 /**
- * How many scheduled stops checkout can put in the cart: the button's count.
- * Booking items count here even though their slot is only checked at checkout.
+ * How many scheduled purchase candidates the customer can review: the button's count.
+ * Variants and booking availability are resolved when reviewing, so this is not a promise that all candidates can be added.
  */
 export function countTripPurchasableItems(items: TripItem[], activitiesById: Map<string, ComputedActivity>): number {
   return items.filter((item) => {
@@ -90,10 +91,18 @@ export function resolveTripCheckoutLines(
   const lines: TripCheckoutLine[] = [];
   const needsSlot: TripCheckoutSkip[] = [];
   const unavailable: TripCheckoutSkip[] = [];
+  const needsSelection: TripCheckoutSkip[] = [];
 
   for (const item of scheduledItems) {
     const activity = vendorActivityFor(item, activitiesById);
-    if (!activity) continue;
+    if (!activity) {
+      if (item.scheduled_date && item.experience_id && !activitiesById.has(item.experience_id)) unavailable.push({itemId:item.id,label:item.label});
+      continue;
+    }
+    if (activity.variants.length > 1) {
+      needsSelection.push({itemId:item.id,label:item.label});
+      continue;
+    }
     const variantId = activity.variants[0]?.id ?? "";
     const outletId = tripItemOutletId(item, activity);
 
@@ -120,5 +129,5 @@ export function resolveTripCheckoutLines(
     lines.push({ activityId: activity.id, variantId, outletId, qty: 1 });
   }
 
-  return { lines, needsSlot, unavailable };
+  return { lines, needsSlot, unavailable, needsSelection };
 }

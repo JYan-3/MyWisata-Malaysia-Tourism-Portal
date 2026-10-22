@@ -79,8 +79,8 @@ function voucherEligibleLines(voucher: Voucher, items: CartItem[], activities: A
     if (voucher.vendorId && activity.vendorId !== voucher.vendorId) return [];
     if (voucher.outletId && outletId !== voucher.outletId) return [];
     if (voucher.productId && activity.id !== voucher.productId) return [];
-    const linePrice = cartItem.priceOverride ?? unitPrice(activity, cartItem.variantId, cartItem.qty, now, items.map((item) => item.activityId));
-    return [{ cartItem, activity, linePrice }];
+    const resolved = resolveCartLinePrice(activity, cartItem, {now,productIds:items.map(item=>item.activityId)});
+    return resolved.available ? [{cartItem,activity,linePrice:resolved.unitPrice}] : [];
   });
 }
 
@@ -127,6 +127,18 @@ export function unitPrice(activity: Activity, variantId: string, quantity = 1, n
   return round2(base);
 }
 
+export type CartLinePrice = {available:true; unitPrice:number} | {available:false; reason:"outlet_unavailable" | "invalid_price"};
+
+/** UI estimates and voucher lines share outlet pricing; checkout still re-quotes from the database. */
+export function resolveCartLinePrice(activity: Activity, item: CartItem, context: {now:Date; productIds:string[]; slotPriceOverride?:number}): CartLinePrice {
+  const outletId = item.outletId ?? activity.outletId;
+  const offer = activity.offers?.find(candidate=>candidate.outletId === outletId && candidate.status === "active");
+  if (activity.offers?.length ? !offer : outletId !== activity.outletId) return {available:false,reason:"outlet_unavailable"};
+  const base = offer?.price ?? activity.price;
+  const price = item.priceOverride ?? context.slotPriceOverride ?? unitPrice({...activity,price:base}, item.variantId, item.qty, context.now, context.productIds);
+  return Number.isFinite(base) && base >= 0 && Number.isFinite(price) && price >= 0 ? {available:true,unitPrice:price} : {available:false,reason:"invalid_price"};
+}
+
 export function cartTotals(
   items: CartItem[],
   activities: Activity[],
@@ -138,8 +150,8 @@ export function cartTotals(
       const activity = activities.find((a) => a.id === item.activityId);
       if (!activity) return sum;
       const cartProductIds = items.map((cartItem) => cartItem.activityId);
-      const linePrice = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, now, cartProductIds);
-      return sum + linePrice * item.qty;
+      const resolved = resolveCartLinePrice(activity, item, {now,productIds:cartProductIds});
+      return resolved.available ? sum + resolved.unitPrice * item.qty : sum;
     }, 0),
   );
 

@@ -9,7 +9,7 @@ import { AlertCircle, CalendarClock, ImageOff, ShieldCheck, Ticket } from "lucid
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { getBookingSlots, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
-import { unitPrice } from "@/backend/core/helpers";
+import { resolveCartLinePrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ import { formatStayRange } from "@/lib/customer/booking-view";
 import { useReferenceCurrency } from "@/components/providers/reference-currency";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import {getSelectedOutletStock} from "@/lib/customer/outlet-shop";
+import {getCartLineAvailability,resolveBookingSlotLookupStatus,type BookingSlotLookupState} from "@/lib/customer/cart-availability";
 import { PAYMENT_CHOICES as METHODS, TOYYIBPAY_SANDBOX } from "@/lib/checkout/payment-choices";
 
 // Affiliate attribution remains fire-and-forget and never blocks checkout.
@@ -59,6 +61,7 @@ export default function CheckoutPage() {
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
+  const [bookingSlotsLoad,setBookingSlotsLoad]=useState<BookingSlotLookupState>({requestToken:null,status:"loaded"});
   const [foodModeByOutlet, setFoodModeByOutlet] = useState<Record<string, "dine_in" | "takeaway">>({});
   // null = untouched: a signed-in buyer sees their profile values, a guest starts empty.
   const [typedEmail, setContactEmail] = useState<string | null>(null);
@@ -80,13 +83,18 @@ export default function CheckoutPage() {
   );
   const bookingActivityKey = bookingActivityIds.join(",");
 
+  const bookingRequestToken=useMemo(()=>Symbol(bookingActivityKey),[bookingActivityKey]);
+  const bookingSlotsStatus=resolveBookingSlotLookupStatus(bookingActivityIds.length>0,bookingRequestToken,bookingSlotsLoad);
   useEffect(() => {
-    if (bookingActivityIds.length === 0) return;
-    Promise.all(bookingActivityIds.map((id) => getBookingSlots(id))).then((lists) => {
-      setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingActivityKey]);
+    if (!bookingActivityKey) return;
+    let active=true;
+    Promise.all(bookingActivityKey.split(",").map(id=>getBookingSlots(id))).then(lists=>{
+      if (!active) return;
+      setSlotsById(new Map(lists.flat().map(slot=>[slot.id,slot])));
+      setBookingSlotsLoad({requestToken:bookingRequestToken,status:"loaded"});
+    }).catch(()=>{if(active) setBookingSlotsLoad({requestToken:bookingRequestToken,status:"error"});});
+    return ()=>{active=false;};
+  },[bookingActivityKey,bookingRequestToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -152,9 +160,14 @@ export default function CheckoutPage() {
       });
   }, [checkoutAllowed, currentUser, paying, router]);
 
-  const { subtotal, discount, total } = totals(currentUser ? voucher : undefined);
+  const slotPrices=new Map([...slotsById.values()].flatMap(slot=>slot.priceOverride === undefined ? [] : [[slot.id,slot.priceOverride]]));
+  const pricingReady=bookingSlotsStatus === "loaded" && selectedItems.every(item=>{
+    const activity=activities.find(candidate=>candidate.id === item.activityId);
+    return Boolean(activity && resolveCartLinePrice(activity,item,{now:new Date(),productIds:selectedItems.map(line=>line.activityId),slotPriceOverride:item.slotId ? slotPrices.get(item.slotId) : undefined}).available && getCartLineAvailability({slotId:item.slotId,slot:item.slotId ? slotsById.get(item.slotId) : undefined,slotLookupStatus:bookingSlotsStatus,quantity:item.qty,stockLimit:activity.requiresBooking ? undefined : getSelectedOutletStock(activity,item.outletId ?? activity.outletId)}).available);
+  });
+  const { subtotal, discount, total } = totals(currentUser ? voucher : undefined,slotPrices);
   const totalSen = Math.round(total * 100);
-  const isFreeReservation = total === 0;
+  const isFreeReservation = pricingReady && total === 0;
   const walletSpendableSen = (walletSummary?.topupSen ?? 0) + (walletSummary?.earningsSen ?? 0);
   const walletInsufficient = !isFreeReservation && walletSummaryLoaded && walletSpendableSen < totalSen;
   const selectedMethod = availableMethods.find((choice) => choice.id === methodId) ?? availableMethods[0]!;
@@ -214,7 +227,7 @@ export default function CheckoutPage() {
   }
 
   async function handlePay() {
-    if (paying || !gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout")) return;
+    if (paying || !pricingReady || !gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout")) return;
     if (foodModeMissing) {
       setCheckoutError(tCustomer("ui.checkout.foodServiceModeRequired"));
       return;
@@ -223,7 +236,6 @@ export default function CheckoutPage() {
     setCheckoutError(null);
     try {
       const idempotencyKey = crypto.randomUUID();
-      const isFreeReservation = total === 0;
       const paymentMethod = isFreeReservation ? "free_reservation" : selectedMethod.paymentMethod;
       const paymentProvider = isFreeReservation ? null : selectedMethod.paymentProvider;
 
@@ -373,7 +385,8 @@ export default function CheckoutPage() {
                 const outlet = outlets.find((candidate) => candidate.id === (item.outletId ?? activity?.outletId));
                 const variant = activity?.variants.find((candidate) => candidate.id === item.variantId);
                 const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
-                const price = item.priceOverride ?? (activity ? unitPrice(activity, item.variantId, item.qty) : 0);
+                const resolved=activity ? resolveCartLinePrice(activity,item,{now:new Date(),productIds:selectedItems.map(line=>line.activityId),slotPriceOverride:slot?.priceOverride}) : null;
+                const price=resolved?.available ? resolved.unitPrice : 0;
                 const lineTotal = price * item.qty;
                 return (
                   <div key={`${item.activityId}-${item.variantId}-${item.slotId ?? ""}`} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-secondary/15 transition-colors">
@@ -389,7 +402,7 @@ export default function CheckoutPage() {
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="break-words whitespace-normal text-sm font-bold text-foreground">{activity?.name ?? tCustomer("ui.states.loading")}</h3>
                         <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
-                          {lineTotal === 0 ? "RM0.00" : <ReferencePrice amountMYR={lineTotal} />}
+                          {!resolved?.available || (item.slotId && bookingSlotsStatus !== "loaded") ? tCustomer("ui.cart.checkingAvailability") : <ReferencePrice amountMYR={lineTotal} />}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{outlet?.name ?? ""} {variant?.label ? `· ${variant.label}` : ""}</p>
@@ -414,7 +427,7 @@ export default function CheckoutPage() {
                         <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">
                           {isStayItem(item) ? `${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })} · ${tCustomer("ui.property.roomsCount", { count: item.qty })}` : `${tCustomer('ui.booking.qtyLabel')} ${item.qty}`}
                         </span>
-                        {lineTotal === 0 && (
+                        {pricingReady && lineTotal === 0 && (
                           <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-300">
                             {tCustomer('ui.booking.freeAdmission')}
                           </span>
@@ -510,6 +523,7 @@ export default function CheckoutPage() {
             <h2 className="text-base font-bold text-foreground">
               {tCustomer("ui.checkout.orderSummary", "Order Summary")}
             </h2>
+            {!pricingReady && <p role="status" className="text-sm text-muted-foreground">{tCustomer(bookingSlotsStatus === "loading" ? "ui.cart.checkingAvailability" : "ui.cart.availabilityCheckFailed")}</p>}
             <div className="space-y-2 border-b border-border pb-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
@@ -536,7 +550,7 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || foodModeMissing} onClick={() => void handlePay()}>
+            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || foodModeMissing || !pricingReady} onClick={() => void handlePay()}>
               {paying
                 ? tCustomer("ui.states.preparingPayment")
                 : isFreeReservation

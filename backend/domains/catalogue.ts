@@ -960,6 +960,31 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
   return filterComputedActivities(filters, activities);
 }
 
+/** Keep discovery lean; only itinerary products need purchase variants and stock. */
+export async function searchTripActivities(
+  filters: SearchFilters,
+  productIds: string[],
+  db: SupabaseClient = supabase,
+): Promise<ComputedActivity[]> {
+  const [activities, products] = await Promise.all([
+    searchActivities(filters, db),
+    getActivitiesByIds(productIds, db),
+  ]);
+  const productsById = new Map(products.map((product) => [product.id, product]));
+  return activities.map((activity) => {
+    const product = productsById.get(activity.id);
+    if (!product) return activity;
+    // Preserve the discovery outlet, price, distance and review metrics. Raw
+    // inventory and checkout pricing rules do not belong in the Trip payload.
+    return {
+      ...activity,
+      variants: product.variants,
+      availableStock: product.stockByOutlet?.[activity.outlet.id] ?? product.availableStock,
+      stockByOutlet: product.stockByOutlet,
+    };
+  });
+}
+
 // ─── Vouchers ───────────────────────────────────────────────────────────────
 function mapVoucher(row: {
   id: string; vendor_id: string; outlet_id: string | null; code: string; name?: string | null; voucher_type: string; discount_value: number; min_spend: number | null;

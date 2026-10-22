@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import { countTripPurchasableItems, resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
+import type { TripItem } from "@/backend/domains/trips";
 
 // catalogue.ts builds the browser Supabase singleton at module scope, which
 // needs env vars we don't have in unit tests. Every function under test takes
 // an injected client, so the default export is never actually used here.
 vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
-const { getOutletActivities, getVendorActivities, searchActivities } = await import("@/backend/domains/catalogue");
+const { getOutletActivities, getVendorActivities, searchActivities, searchTripActivities } = await import("@/backend/domains/catalogue");
 
 const OUTLET_FIELDS = {
   address: null,
@@ -161,25 +163,43 @@ const OUTLETS = [
   { ...OUTLET_FIELDS, id: "outlet-sabah", vendor_id: "vendor-1", name: "Sabah outlet", city: "Kota Kinabalu", state: "Sabah", lat: 5.98, lng: 116.07, status: "active" },
 ];
 
-/** Minimal PostgREST stub: replays canned rows per table, no filtering. */
+/** Respect the product projection so lean discovery cannot masquerade as checkout data. */
 function makeDb(
   outletRows: unknown[] = OUTLETS,
   productRows: unknown[] = PRODUCTS,
   selectedFields: Record<string, string[]> = {},
+  options: { productIdBatches?: string[][]; detailError?: Error; metrics?: unknown[] } = {},
 ) {
   return {
     from(table: string) {
-      const rows = table === "products" ? productRows : table === "outlets" ? outletRows : [];
+      let rows = table === "products" ? productRows : table === "outlets" ? outletRows : options.metrics ?? [];
+      let includesDetails = false;
       const builder: Record<string, unknown> = {
         select: (columns?: string) => {
           if (columns) selectedFields[table] = [...(selectedFields[table] ?? []), columns];
+          includesDetails = Boolean(columns?.includes("product_variants("));
+          if (table === "products" && !includesDetails) {
+            rows = rows.map((row) => {
+              const { product_variants: _variants, price_rules: _rules, ...discovery } = row as Record<string, unknown>;
+              return discovery;
+            });
+          }
           return builder;
         },
-        eq: () => builder,
-        in: () => builder,
+        eq: (column: string, value: unknown) => {
+          if (table === "products") rows = rows.filter((row) => (row as Record<string, unknown>)[column] === value);
+          return builder;
+        },
+        in: (column: string, values: string[]) => {
+          if (table === "products" && column === "id") {
+            options.productIdBatches?.push(values);
+            rows = rows.filter((row) => values.includes((row as { id: string }).id));
+          }
+          return builder;
+        },
         maybeSingle: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
-        then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
-          resolve({ data: rows, error: null }),
+        then: (resolve: (value: { data: unknown[]; error: Error | null }) => unknown) =>
+          resolve({ data: rows, error: includesDetails ? options.detailError ?? null : null }),
       };
       return builder;
     },
@@ -243,6 +263,68 @@ describe("searchActivities discovery filters", () => {
     expect(activity.outlet.id).toBe("outlet-kuala-lumpur");
     expect(activity.price).toBe(30);
     expect(activity.distanceKm).toBeCloseTo(0);
+  });
+});
+
+describe("Trip purchase details", () => {
+  const food = {
+    ...SHARED_PRODUCT,
+    product_variants: [{
+      id: "food-variant", name: "Standard", price_offset: 0, is_active: true,
+      inventory: [
+        { outlet_id: "outlet-johor", quantity: 10, reserved: 2, low_stock_threshold: 1 },
+        { outlet_id: "outlet-kuala-lumpur", quantity: 7, reserved: 1, low_stock_threshold: 1 },
+      ],
+    }],
+    price_rules: [{ id: "private-to-pricing", is_active: true }],
+  };
+
+  it("makes the selected in-stock food cartable without hydrating unrelated discovery results", async () => {
+    const batches: string[][] = [];
+    const activities = await searchTripActivities({ near: { lat: 3.14, lng: 101.69 } }, [food.id, food.id],
+      makeDb(OUTLETS, [PRODUCTS[0], food], {}, {
+        productIdBatches: batches,
+        metrics: [{ product_id: food.id, rating: 4.8, reviews: 12 }],
+      }));
+    const foodActivity = activities.find((activity) => activity.id === food.id)!;
+    expect(batches).toEqual([[food.id]]);
+    expect(foodActivity.variants).toEqual([{ id: "food-variant", label: "Standard", priceDelta: 0 }]);
+    expect(foodActivity.stockByOutlet?.["outlet-kuala-lumpur"]).toBe(6);
+    expect(foodActivity.outlet.id).toBe("outlet-kuala-lumpur");
+    expect(foodActivity.price).toBe(30);
+    expect(foodActivity.rating).toBe(4.8);
+    expect(foodActivity.reviews).toBe(12);
+    expect(foodActivity.priceRules).toEqual([]);
+    expect(activities.find((activity) => activity.id === PRODUCTS[0].id)?.variants).toEqual([]);
+
+    const stops: TripItem[] = activities.map((activity, index) => ({
+      id: `stop-${index}`, trip_id: "trip", experience_id: activity.id, sequence: index,
+      scheduled_date: "2026-10-21", scheduled_time: null, created_at: "2026-10-20T00:00:00Z",
+      source: "vendor", lat: activity.outlet.lat, lng: activity.outlet.lng,
+      label: activity.name, outlet_id: activity.outlet.id,
+    }));
+    const byId = new Map(activities.map((activity) => [activity.id, activity]));
+    expect(countTripPurchasableItems(stops, byId)).toBe(2);
+    expect(resolveTripCheckoutLines(stops.filter((stop) => stop.experience_id === food.id), byId, new Map())).toMatchObject({
+      lines: [{ activityId: food.id, variantId: "food-variant", outletId: "outlet-kuala-lumpur" }],
+      unavailable: [],
+    });
+  });
+
+  it("keeps an empty itinerary on the lean query and preserves the product approval filters", async () => {
+    const batches: string[][] = [];
+    const selectedFields: Record<string, string[]> = {};
+    const db = makeDb(OUTLETS, [food, { ...food, id: "pending", review_status: "pending" }], selectedFields, { productIdBatches: batches });
+    expect((await searchTripActivities({}, [], db)).map((activity) => activity.id)).toEqual([food.id]);
+    expect(batches).toEqual([]);
+    expect(selectedFields.products).toHaveLength(1);
+    expect(selectedFields.products[0]).not.toMatch(/product_variants|price_rules/);
+    expect((await searchTripActivities({}, [food.id, "pending"], db)).map((activity) => activity.id)).toEqual([food.id]);
+  });
+
+  it("surfaces failed purchase-detail reads instead of treating them as empty inventory", async () => {
+    const failure = new Error("purchase details unavailable");
+    await expect(searchTripActivities({}, [food.id], makeDb(OUTLETS, [food], {}, { detailError: failure }))).rejects.toThrow(failure);
   });
 });
 

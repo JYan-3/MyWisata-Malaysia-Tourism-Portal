@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const plannerSource = readFileSync(new URL("../[tripId]/trip-planner-client.tsx", import.meta.url), "utf8");
+const hookSource = readFileSync(new URL("../[tripId]/use-trip-items.ts", import.meta.url), "utf8");
+const routeHookSource = readFileSync(new URL("../[tripId]/use-trip-routes.ts", import.meta.url), "utf8");
 const actionsSource = readFileSync(new URL("../actions.ts", import.meta.url), "utf8");
 const planRouteSource = readFileSync(new URL("../../../api/trips/plan/route.ts", import.meta.url), "utf8");
 const mapRendererSource = readFileSync(new URL("../../../../components/map/maplibre-map.tsx", import.meta.url), "utf8");
@@ -33,12 +35,12 @@ describe("trip planner workspace contract", () => {
   });
 
   it("wires schedule changes through the existing server action", () => {
-    expect(plannerSource).toContain("updateTripItemScheduleAction");
+    expect(hookSource).toContain("updateTripItemScheduleAction");
     expect(actionsSource).toContain("export async function updateTripItemScheduleAction");
   });
 
   it("matches persisted vendor stops by their catalogue activity id", () => {
-    expect(plannerSource).toContain("has: (id: string) => items.some((item) => item.id === id || item.experience_id === id),");
+    expect(hookSource).toContain("item.id === id || item.experience_id === id");
     expect(plannerSource).toContain("const stopIdSet = new Set(trip.items.map((item) => item.experience_id ?? item.id));");
   });
 
@@ -136,7 +138,9 @@ describe("trip planner workspace contract", () => {
   it("loads distance-enriched activities around the start or the selected day's last stop", () => {
     expect(plannerSource).toContain("const discoveryNear = near ?? (dayLastStop ?");
     expect(plannerSource).toContain("if (!discoveryNear) return;");
-    expect(plannerSource).toContain('searchActivities({ category: null, near: discoveryNear, sort: discoveryNear ? "distance_asc" : "recommended" })');
+    expect(plannerSource).toContain("/api/trips/${encodeURIComponent(tripData.id)}/activities${query}");
+    expect(plannerSource).not.toContain("getActivitiesByIds");
+    expect(plannerSource).toContain('[tripData.id, discoveryNear?.lat, discoveryNear?.lng, tripProductKey]');
   });
 
   it("reveals the map when a weather risk window is selected", () => {
@@ -146,14 +150,26 @@ describe("trip planner workspace contract", () => {
     expect(plannerSource).toContain("onSelectRiskHour");
   });
 
-  it("retains real route traffic status without a dense color legend", () => {
+  it("retains real route traffic status and explains the shared color legend", () => {
     expect(plannerSource).toContain("buildRouteDepartureTime");
-    expect(plannerSource).toContain("departureTime: routeDepartureTime");
+    expect(plannerSource).toContain("useTripRoutes(selectedRouteCoordinates, mode, routeDepartureTime, routeRefreshTick)");
+    expect(routeHookSource).toContain("departureTime:departure");
     expect(plannerSource).toContain("trafficSegments: route.traffic?.segments");
     expect(plannerSource).toContain("data-route-traffic-status");
     expect(plannerSource).toContain('tCustomer("ui.map.trafficLive")');
     expect(plannerSource).toContain('tCustomer("ui.map.trafficPredicted")');
     expect(plannerSource).toContain("ROUTE_TRAFFIC_REFRESH_MS");
     expect(plannerSource).toContain('document.visibilityState === "visible"');
+  });
+
+  it("shows the traffic color legend only with real segments and explains when traffic is unavailable", () => {
+    expect(plannerSource).toContain("data-route-traffic-legend");
+    expect(plannerSource).toContain('label: "ui.map.trafficNormal"');
+    expect(plannerSource).toContain('label: "ui.map.trafficSlow"');
+    expect(plannerSource).toContain('label: "ui.map.trafficCongested"');
+    expect(plannerSource).toContain('label: "ui.map.trafficSevere"');
+    expect(plannerSource).toContain('label: "ui.map.trafficUnknown"');
+    expect(plannerSource).toContain('tCustomer("ui.map.trafficUnavailable")');
+    expect(plannerSource).toContain("ROUTE_TRAFFIC_COLORS");
   });
 });

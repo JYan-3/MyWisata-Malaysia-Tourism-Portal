@@ -1,5 +1,6 @@
 import React, { act } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getBookingSlots } from '@/backend/domains/catalogue';
 import {
   findElements,
   findOne,
@@ -101,7 +102,7 @@ vi.mock('@/backend/domains/catalogue', () => ({
   getBookingSlots: vi.fn(async () => []),
   getVoucherByCode: vi.fn(async () => undefined),
 }));
-vi.mock('@/backend/core/helpers', () => ({ unitPrice: vi.fn(() => 50) }));
+vi.mock('@/backend/core/helpers', async (original) => await original());
 vi.mock('@/lib/i18n/format', () => ({
   formatMYR: (amount: number) => `RM${amount.toFixed(2)}`,
   formatMYRFromSen: (amount: number) => `RM${(amount / 100).toFixed(2)}`,
@@ -138,6 +139,7 @@ describe('ToyyibPay checkout presentation', () => {
     mocks.cart.mockReturnValue({
       selectedItems: [{ activityId: 'product-1', variantId: 'variant-1', outletId: 'outlet-1', qty: 1 }],
       selectedKeys: new Set(['product-1|variant-1||outlet-1']),
+      activities:[{id:'product-1',outletId:'outlet-1',name:'Rainforest Walk',price:50,variants:[{id:'variant-1',label:'Standard',priceDelta:0}],requiresBooking:false}],
       totals: () => ({ subtotal: 50, discount: 0, total: 50 }),
     });
     mocks.fetch.mockImplementation(async (input: RequestInfo | URL) => {
@@ -184,8 +186,12 @@ describe('ToyyibPay checkout presentation', () => {
     Object.assign(mocks.currentUser, { email: 'guest@example.com', name: 'Aisyah Tan', phone: '+60177143951' });
     const activity = {
       id: 'product-1', name: 'Deluxe Room', image: '', outletId: 'outlet-1', categorySlug: 'accommodation',
-      variants: [{ id: 'variant-1', label: 'Standard' }], requiresBooking: true,
+      price: 50, variants: [{ id: 'variant-1', label: 'Standard', priceDelta: 0 }], requiresBooking: true,
     };
+    vi.mocked(getBookingSlots).mockResolvedValueOnce([{
+      id: 'slot-1', activityId: 'product-1', outletId: 'outlet-1',
+      startsAt: new Date(Date.now() + 86_400_000).toISOString(), capacity: 5, booked: 0,
+    }]);
     mocks.cart.mockReturnValue({
       selectedItems: [{ cartItemId: 'stay-line-1', activityId: 'product-1', variantId: 'variant-1', slotId: 'slot-1', outletId: 'outlet-1', qty: 1, nights: 2, stayDetails: { primaryGuestName: 'Nur Aisyah', adults: 3, estimatedArrival: 'unknown' } }],
       selectedKeys: new Set(['cart-item:stay-line-1']),
@@ -203,6 +209,7 @@ describe('ToyyibPay checkout presentation', () => {
     expect(container.textContent).not.toContain('Estimated arrival time');
     expect(container.textContent).not.toContain('Continue to Payment');
     const payButton = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Continue to Stripe'));
+    expect(payButton.getAttribute('disabled')).toBeNull();
     await act(async () => { payButton.dispatchEvent(new TestEvent('click', { bubbles: true })); await settle(); });
 
     const prepareCall = mocks.fetch.mock.calls.find(([input]) => String(input) === '/api/checkout/prepare');

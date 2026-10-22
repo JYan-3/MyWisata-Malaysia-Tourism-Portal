@@ -794,7 +794,10 @@
       "trafficLive": "Trafik langsung",
       "trafficPredicted": "Ramalan trafik",
       "trafficProviderRetrievedAt": "Mapbox · {{time}}",
+      "trafficLegend": "Warna trafik",
+      "trafficUnavailable": "Hanya laluan biru dipaparkan; data trafik langsung tidak tersedia.",
       "trafficNormal": "Lancar",
+      "trafficUnknown": "Tiada data trafik",
       "trafficSlow": "Perlahan",
       "trafficCongested": "Sesak",
       "trafficSevere": "Sangat sesak",
@@ -1311,19 +1314,27 @@
       "noAlternatives": "Tiada alternatif lebih murah ditemui untuk pilihan termahal anda buat masa ini.",
       "viewAlternative": "Lihat penyenaraian",
       "showOnMap": "Tunjuk pada peta",
-      "savings": "Jimat {{amount}}"
+      "savings": "Jimat {{amount}}",
+      "estimate": "Anggaran harga item; pilihan akhir dan bayaran mungkin berbeza.",
+      "unknownPrices": "{{count}} harga item tidak diketahui",
+      "unknownPrices_one": "{{count}} harga item tidak diketahui",
+      "unknownPrices_other": "{{count}} harga item tidak diketahui"
     },
     "tripCheckout": {
-      "button_one": "Checkout ({{count}} item)",
-      "button_other": "Checkout ({{count}} item)",
+      "button_one": "Semak pembelian dirancang ({{count}} item)",
+      "button_other": "Semak pembelian dirancang ({{count}} item)",
       "nothingToCheckout": "Tiada apa-apa dalam itinerari anda yang boleh dibeli lagi.",
       "allNeedSlot": "Tiada satu pun perhentian berjadual anda mempunyai slot tempahan terbuka pada hari yang dirancang — pilih masa pada halaman setiap aktiviti dahulu.",
       "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka.",
       "unavailable": "{{names}} tidak boleh dibeli dari perancang. Buka halamannya untuk menyemak pilihan yang ada.",
       "stayMustBeBookedFromHotelPage": "Bilik memerlukan maklumat tetamu sebelum boleh ditambah. Tempah penginapan melalui halaman hotel. Item itinerari lain yang layak masih boleh ditambah.",
       "addFailed": "Tidak dapat menambah {{name}} ke troli anda. Item yang ditambah sebelumnya masih dalam troli.",
-      "buy_one": "Beli {{count}}",
-      "buy_other": "Beli {{count}}"
+      "buy_one": "Semak ({{count}})",
+      "buy_other": "Semak ({{count}})",
+      "needsSelection": "Pilih spesifikasi di halaman aktiviti dahulu: {{names}}.",
+      "selectDetails": "Pilih spesifikasi dan kuantiti",
+      "button": "Semak pembelian dirancang ({{count}} item)",
+      "buy": "Semak ({{count}})"
     },
     "preferencesPage": {
       "eyebrow": "Keutamaan",
@@ -2329,7 +2340,23 @@
       "results_other": "{{count}} perjalanan",
       "all": "Semua perjalanan",
       "noMatches": "Tiada perjalanan sepadan dengan penapis ini.",
-      "noMatchesDescription": "Cuba ubah carian atau kosongkan penapis."
+      "noMatchesDescription": "Cuba ubah carian atau kosongkan penapis.",
+      "clearItems": "Kosongkan item jadual perjalanan",
+      "clearItemsConfirm": "Kosongkan semua hentian dan titik mula? Nama dan tarikh perjalanan akan dikekalkan.",
+      "saving": "Menyimpan jadual perjalanan…",
+      "originScope": "Gunakan titik mula untuk",
+      "globalOrigin": "Seluruh perjalanan",
+      "dayOrigin": "Hari ini sahaja",
+      "inheritedOrigin": "Menggunakan titik mula perjalanan",
+      "restoreOrigin": "Gunakan semula titik mula perjalanan",
+      "changeOrigin": "Tukar titik mula",
+      "routeStale": "Mengemas kini laluan; anggaran terdahulu dipaparkan",
+      "continuousRoute": "Anggaran laluan mengandaikan perjalanan berterusan; masa lawatan dan menunggu tidak disertakan.",
+      "feasibility": {
+        "conflict": "Kekurangan kira-kira {{minutes}} min",
+        "fits_estimate": "Sesuai dengan anggaran perjalanan semasa",
+        "unknown": "Tempoh lawatan atau anggaran perjalanan tidak diketahui"
+      }
     },
     "outletPage": {
       "notFound": "Cawangan tidak ditemui",
@@ -3254,7 +3281,8 @@
         "full": "Masa ini sudah penuh. Pilih masa lain.",
         "noSlot": "Masa ini tidak lagi ditawarkan. Pilih masa lain.",
         "closed": "Tutup pada hari ini. Alihkan ke hari lain.",
-        "outsideHours": "Tutup pada masa ini. Pilih masa dalam waktu operasi."
+        "outsideHours": "Tutup pada masa ini. Pilih masa dalam waktu operasi.",
+        "orderConflict": "Masa ini bercanggah dengan susunan jadual. Tukar masa atau susun semula hentian."
       }
     },
     "paymentSimulator": {

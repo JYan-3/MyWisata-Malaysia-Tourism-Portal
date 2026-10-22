@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { getTripDayDates, hasChronologicalTripTimes } from "@/lib/customer/trip-planner";
+import { applyTripOrder, getTripDayDates, getTripScheduleIssue } from "@/lib/customer/trip-planner";
 import { highestDefaultTripNumber } from "@/lib/customer/trip-name";
 
 export type Trip = {
@@ -30,6 +30,7 @@ export type TripItem = {
   sublabel?: string;
   /** Outlet the stop was planned at; null for location stops and stops added before outlets were saved. */
   outlet_id?: string | null;
+  is_day_origin?: boolean;
 };
 
 export type AddTripItemInput = {
@@ -44,6 +45,7 @@ export type AddTripItemInput = {
   scheduled_date?: string | null;
   scheduled_time?: string | null;
   outlet_id?: string | null;
+  is_day_origin?: boolean;
 };
 
 type DbTrip = Trip & { legacy_id?: string | null };
@@ -110,6 +112,7 @@ function toTripItem(row: DbTripItem): TripItem {
     label: row.label,
     sublabel: row.sublabel ?? undefined,
     outlet_id: row.outlet_id ?? null,
+    is_day_origin: row.is_day_origin ?? false,
   };
 }
 
@@ -263,10 +266,12 @@ export async function addTripItem(input: AddTripItemInput, db: SupabaseClient): 
   if (input.outlet_id && (input.source !== "vendor" || !UUID_PATTERN.test(input.outlet_id))) {
     throw new Error("A valid outlet is required");
   }
+  if (input.is_day_origin && (input.source !== "location" || input.experience_id || !input.scheduled_date || input.scheduled_time)) throw new Error("Invalid daily origin");
   const { data: existing, error: existingError } = await db.from("trip_items")
-    .select("sequence").eq("trip_id", trip.id).order("sequence", { ascending: false }).limit(1);
+    .select("*").eq("trip_id", trip.id).order("sequence", { ascending: true });
   throwOnError(existingError, "Could not load trip stops");
-  const sequence = existing?.[0]?.sequence === undefined ? 0 : Number(existing[0].sequence) + 1;
+  if (input.is_day_origin && existing?.some((row: DbTripItem)=>row.is_day_origin && row.scheduled_date === input.scheduled_date)) throw new Error("Daily origin already exists");
+  const sequence = existing?.length ? Math.max(...existing.map((row: DbTripItem) => Number(row.sequence))) + 1 : 0;
   const row = {
     id: randomUUID(), trip_id: trip.id,
     experience_id: input.source === "vendor" ? input.experience_id! : null,
@@ -274,8 +279,27 @@ export async function addTripItem(input: AddTripItemInput, db: SupabaseClient): 
     source: input.source, kind: input.kind ?? null, lat: input.lat, lng: input.lng,
     label: input.label.trim(), sublabel: input.sublabel?.trim() || null,
     ...(input.outlet_id ? { outlet_id: input.outlet_id } : {}),
+    ...(input.is_day_origin ? {is_day_origin:true} : {}),
     created_at: new Date().toISOString(),
   };
+  if (input.is_day_origin) {
+    const existingItems = (existing ?? []).map((item: DbTripItem) => toTripItem(item));
+    const orderedIds = existingItems.map(item => item.id);
+    const firstSameDayIndex = existingItems.findIndex(item => item.scheduled_date === input.scheduled_date);
+    orderedIds.splice(firstSameDayIndex < 0 ? orderedIds.length : firstSameDayIndex, 0, row.id);
+    const proposedItems = applyTripOrder([...existingItems, toTripItem(row as DbTripItem)], orderedIds);
+    assertTripSchedule(trip, proposedItems);
+    const existingById = new Map((existing ?? []).map((item: DbTripItem) => [item.id, item]));
+    const rowsToSave = proposedItems.map(item => item.id === row.id
+      ? {...row, sequence:item.sequence}
+      : {...existingById.get(item.id)!, sequence:item.sequence});
+    const {data, error} = await db.from("trip_items").upsert(rowsToSave, {onConflict:"id"}).select("*");
+    throwOnError(error, "Could not add trip stop");
+    const saved = (data ?? []).find((item: DbTripItem) => item.id === row.id);
+    if (!saved) throw new Error("Could not add trip stop");
+    return toTripItem(saved as DbTripItem);
+  }
+  assertTripSchedule(trip, [...(existing ?? []).map((item: DbTripItem) => toTripItem(item)), toTripItem(row as DbTripItem)]);
   const { data, error } = await db.from("trip_items").insert(row).select("*").single();
   throwOnError(error, "Could not add trip stop");
   if (!data) throw new Error("Could not add trip stop");
@@ -313,7 +337,7 @@ export async function updateTripItem(
   itemId: string,
   updates: { sequence?: number; scheduled_date?: string | null; scheduled_time?: string | null },
   db: SupabaseClient,
-): Promise<void> {
+): Promise<TripItem> {
   const item = await getOwnedTripItem(db, itemId);
   if (!item) throw new Error("Trip not found");
   const currentItems = await getTripItems(item.trip_id, db);
@@ -323,51 +347,53 @@ export async function updateTripItem(
     ...(updates.scheduled_date === undefined ? {} : { scheduled_date: updates.scheduled_date }),
     ...(updates.scheduled_time === undefined ? {} : { scheduled_time: updates.scheduled_time }),
   } : entry);
-  if (!hasChronologicalTripTimes(proposedItems)) throw new Error("Trip times must follow itinerary order");
-  const { error } = await db.from("trip_items").update({
+  const trip = await getTripById(item.trip_id, db);
+  if (!trip) throw new Error("Trip not found");
+  if (updates.sequence !== undefined) throw new Error("Use full-trip reorder to change sequence");
+  assertTripSchedule(trip, proposedItems);
+  const { data, error } = await db.from("trip_items").update({
     ...(updates.sequence === undefined ? {} : { sequence: updates.sequence }),
     ...(updates.scheduled_date === undefined ? {} : { scheduled_date: updates.scheduled_date }),
     ...(updates.scheduled_time === undefined ? {} : { scheduled_time: updates.scheduled_time }),
-  }).eq("id", itemId).eq("trip_id", item.trip_id);
+  }).eq("id", itemId).eq("trip_id", item.trip_id).select("*").single();
   throwOnError(error, "Could not update trip stop");
+  if (!data) throw new Error("Trip stop not found");
+  return toTripItem(data as DbTripItem);
 }
 
-export async function reorderTripItems(tripId: string, reorderedItemIds: string[], db: SupabaseClient): Promise<void> {
+export async function reorderTripItems(tripId: string, reorderedItemIds: string[], db: SupabaseClient): Promise<TripItem[]> {
   const ownerId = await requireOwner(db);
   const trip = await getOwnedTrip(db, tripId, ownerId);
   if (!trip) throw new Error("Trip not found");
-  const currentItems = await getTripItems(trip.id, db);
-  const currentIds = new Set(currentItems.map((item) => item.id));
-  if (reorderedItemIds.length !== currentItems.length || new Set(reorderedItemIds).size !== currentItems.length ||
-      reorderedItemIds.some((id) => !currentIds.has(id))) {
-    throw new Error("Trip items changed; refresh and try again");
-  }
-  const sequenceById = new Map(reorderedItemIds.map((id, index) => [id, index]));
-  const proposedItems = currentItems.map((item) => ({ ...item, sequence: sequenceById.get(item.id)! }));
-  if (!hasChronologicalTripTimes(proposedItems)) throw new Error("Trip times must follow itinerary order");
-  const { error } = await db.from("trip_items").upsert(proposedItems.map((item) => ({
-    id: item.id, trip_id: item.trip_id, experience_id: item.experience_id,
-    sequence: item.sequence, scheduled_date: item.scheduled_date, scheduled_time: item.scheduled_time,
-    source: item.source, kind: item.kind ?? null, lat: item.lat, lng: item.lng,
-    label: item.label, sublabel: item.sublabel ?? null,
-  })), { onConflict: "id" });
+  const {data: rows, error: loadError} = await db.from("trip_items").select("*").eq("trip_id", trip.id);
+  throwOnError(loadError, "Could not load trip stops");
+  const raw = (rows ?? []) as DbTripItem[];
+  const proposedItems = applyTripOrder(raw.map(toTripItem), reorderedItemIds);
+  assertTripSchedule(trip, proposedItems);
+  if (!proposedItems.length) return [];
+  // Keep every stored field, including legacy metadata, outlet and creation time.
+  const storedById = new Map(raw.map(row => [row.id, row]));
+  const {data, error} = await db.from("trip_items").upsert(proposedItems.map(item => ({...storedById.get(item.id)!, sequence:item.sequence})), {onConflict:"id"}).select("*");
   throwOnError(error, "Could not reorder trip stops");
+  return ((data ?? []) as DbTripItem[]).map(toTripItem).sort((a,b)=>a.sequence-b.sequence);
 }
 
 export async function updateTripItemLocation(
   itemId: string,
   updates: { label: string; lat: number; lng: number },
   db: SupabaseClient,
-): Promise<void> {
+): Promise<TripItem> {
   const item = await getOwnedTripItem(db, itemId);
   if (!item || item.source !== "location") throw new Error("Trip stop not found");
   if (!updates.label.trim() || updates.label.length > 200 || !Number.isFinite(updates.lat) ||
       updates.lat < -90 || updates.lat > 90 || !Number.isFinite(updates.lng) ||
       updates.lng < -180 || updates.lng > 180) throw new Error("Trip stop details are invalid");
-  const { error } = await db.from("trip_items").update({
+  const { data, error } = await db.from("trip_items").update({
     label: updates.label.trim(), lat: updates.lat, lng: updates.lng,
-  }).eq("id", itemId).eq("trip_id", item.trip_id).eq("source", "location");
+  }).eq("id", itemId).eq("trip_id", item.trip_id).eq("source", "location").select("*").single();
   throwOnError(error, "Could not update trip stop");
+  if (!data) throw new Error("Trip stop not found");
+  return toTripItem(data as DbTripItem);
 }
 
 export async function deleteTripItem(itemId: string, db: SupabaseClient): Promise<void> {
@@ -383,4 +409,40 @@ export async function deleteTrip(tripId: string, db: SupabaseClient): Promise<vo
   if (!trip) return;
   const { error } = await db.from("trips").delete().eq("id", trip.id).eq("user_id", ownerId);
   throwOnError(error, "Could not delete trip");
+}
+
+function assertTripSchedule(trip: Trip, items: TripItem[]) {
+  if (items.some(item=>item.is_day_origin && (item.source !== "location" || item.experience_id || !item.scheduled_date || item.scheduled_time))) throw new Error("Invalid daily origin");
+  const issue = getTripScheduleIssue(trip, items);
+  if (issue) throw new Error(issue === "non_chronological"
+    ? "Trip times must follow itinerary order"
+    : issue === "daily_origin_order"
+      ? "Daily starting point must be first on its day"
+      : `Invalid trip schedule: ${issue}`);
+}
+
+export async function clearTripItems(tripId: string, db: SupabaseClient): Promise<void> {
+  const trip = await getOwnedTrip(db, tripId, await requireOwner(db));
+  if (!trip) throw new Error("Trip not found");
+  const {error} = await db.from("trip_items").delete().eq("trip_id", trip.id);
+  throwOnError(error, "Could not clear trip stops");
+}
+
+/** Resolve public listing data on the server; never trust a suggested pin's fields. */
+export async function replaceTripItem(itemId: string, replacement: {experience_id: string; outlet_id?: string | null}, db: SupabaseClient): Promise<TripItem> {
+  const item = await getOwnedTripItem(db, itemId);
+  if (!item || item.source !== "vendor") throw new Error("Trip stop not found");
+  if (!UUID_PATTERN.test(replacement.experience_id) || (replacement.outlet_id && !UUID_PATTERN.test(replacement.outlet_id))) throw new Error("Invalid replacement");
+  const {getComputedActivity, getBookingSlots} = await import("@/backend/domains/catalogue");
+  const activity = await getComputedActivity(replacement.experience_id, undefined, db, replacement.outlet_id ?? undefined);
+  if (!activity || (replacement.outlet_id && activity.outlet.id !== replacement.outlet_id)) throw new Error("Replacement is unavailable at this outlet");
+  if (item.scheduled_date) {
+    const {getTripTimeChoices, getTripTimeProblem} = await import("@/lib/customer/trip-time-options");
+    const choices = getTripTimeChoices({activity, date:item.scheduled_date, outletId:activity.outlet.id, slots:activity.requiresBooking ? await getBookingSlots(activity.id, db) : [], hours:activity.outlet.operatingHours ?? null});
+    if ((choices.kind === "none" && item.scheduled_time !== null) || getTripTimeProblem(choices, item.scheduled_time, activity.outlet.operatingHours, item.scheduled_date) || ((choices.kind === "slots" || choices.kind === "hours") && !choices.options.some(option=>option.available))) throw new Error("Replacement does not fit the saved schedule");
+  }
+  const {data, error} = await db.from("trip_items").update({experience_id:activity.id, outlet_id:activity.outlet.id, label:activity.name, sublabel:activity.outlet.city, lat:activity.outlet.lat, lng:activity.outlet.lng}).eq("id", item.id).eq("trip_id", item.trip_id).select("*").single();
+  throwOnError(error, "Could not replace trip stop");
+  if (!data) throw new Error("Trip stop not found");
+  return toTripItem(data as DbTripItem);
 }

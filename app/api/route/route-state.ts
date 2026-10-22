@@ -21,15 +21,20 @@ export function consumeRouteRateLimit(userId: string, now = Date.now()) {
   return true;
 }
 
-export async function withRouteProviderSlot<T>(work: () => Promise<T>): Promise<T | null> {
+export async function withRouteProviderSlot<T>(work: () => Promise<T>, signal?: AbortSignal): Promise<T | null> {
+  if (signal?.aborted) return null;
   if (activeCalls >= 4) {
     if (waiters.length >= MAX_WAITERS) return null;
-    await new Promise<void>((resolve) => waiters.push(resolve));
-  }
-  activeCalls += 1;
-  try {
-    return await work();
-  } finally {
+    const acquired = await new Promise<boolean>((resolve)=>{
+      const start=()=>{signal?.removeEventListener("abort",cancel);activeCalls+=1;resolve(true);};
+      const cancel=()=>{const index=waiters.indexOf(start);if(index>=0)waiters.splice(index,1);resolve(false);};
+      waiters.push(start);
+      signal?.addEventListener("abort",cancel,{once:true});
+    });
+    if (!acquired) return null;
+  } else activeCalls += 1;
+  try {return signal?.aborted ? null : await work();}
+  finally {
     activeCalls -= 1;
     waiters.shift()?.();
   }

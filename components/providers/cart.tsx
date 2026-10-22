@@ -30,7 +30,7 @@ interface CartContextValue {
   removeItem: (index: number) => Promise<void>;
   updateStayDetails: (index: number, details: StayBookingDetails) => Promise<void>;
   clear: () => Promise<void>;
-  totals: (voucher?: Voucher) => ReturnType<typeof cartTotals>;
+  totals: (voucher?: Voucher, slotPrices?: Map<string, number>) => ReturnType<typeof cartTotals>;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -218,7 +218,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const selectedItems = items.filter((item) => selectedKeys.has(cartItemKey(item)));
 
   const totals = useCallback(
-    (voucher?: Voucher) => cartTotals(selectedItems, activities, voucher),
+    (voucher?: Voucher, slotPrices?: Map<string, number>) => cartTotals(selectedItems.map(item => ({...item, priceOverride:item.priceOverride ?? (item.slotId ? slotPrices?.get(item.slotId) : undefined)})), activities, voucher),
     [selectedItems, activities],
   );
 

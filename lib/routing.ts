@@ -44,6 +44,14 @@ export function summarizeRoute(distanceMeters: number, durationSeconds: number):
 
 export type RouteTrafficLevel = "normal" | "slow" | "congested" | "severe" | "unknown";
 
+export const ROUTE_TRAFFIC_COLORS: Record<RouteTrafficLevel, string> = {
+  normal: "#2563EB",
+  slow: "#FACC15",
+  congested: "#EF4444",
+  severe: "#B91C1C",
+  unknown: "#6B7280",
+};
+
 export interface RouteTrafficSegment {
   geometry: [number, number][]; // [lat, lng][]
   level: RouteTrafficLevel;
@@ -62,6 +70,7 @@ export interface MapboxTrafficAnnotation {
 }
 
 export function normalizeMapboxTrafficLevel(category?: string | null, numeric?: number | null): RouteTrafficLevel {
+  if (category === "unknown") return "unknown";
   if (category === "low") return "normal";
   if (category === "moderate") return "slow";
   if (category === "heavy") return "congested";
@@ -106,7 +115,7 @@ export function buildRouteDepartureTime(
     .sort()[0] ?? "12:00";
   const departure = new Date(`${date}T${earliestTime}:00+08:00`);
   if (!Number.isFinite(departure.getTime()) || departure.getTime() <= now.getTime()) return undefined;
-  return departure.toISOString();
+  return departure.toISOString().replace(".000Z", "Z");
 }
 
 export interface RouteResult {

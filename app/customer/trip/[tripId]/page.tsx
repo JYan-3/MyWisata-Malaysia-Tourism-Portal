@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getTripById, getTripItems } from "@/backend/domains/trips";
-import { searchActivities } from "@/backend/domains/catalogue";
+import { searchTripActivities } from "@/backend/domains/catalogue";
 import { MapClient } from "./trip-planner-client";
 import { redirect, notFound } from "next/navigation";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -34,9 +34,14 @@ export default async function TripPlannerPage({ params }: { params: Promise<{ tr
     notFound();
   }
 
+  const itemsPromise = getTripItems(tripId, db);
   const [items, activities, placementsResult, suggestionsResult] = await Promise.all([
-    getTripItems(tripId, db),
-    searchActivities({ category: null, sort: "recommended" }, db),
+    itemsPromise,
+    itemsPromise.then((items) => searchTripActivities(
+      { category: null, sort: "recommended" },
+      items.flatMap((item) => item.experience_id ? [item.experience_id] : []),
+      db,
+    )),
     db.rpc("list_active_sponsored_discovery_placements"),
     db.from("vendor_recommendations")
       .select("converted_vendor_id,created_at")
