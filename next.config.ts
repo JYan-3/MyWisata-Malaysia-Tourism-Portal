@@ -87,6 +87,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfkit'],
   outputFileTracingIncludes: { '/api/**': ['./lib/pdf/fonts/*'] },
   experimental: {
+    cpus: 2,
     optimizePackageImports: [
       'lucide-react',
       'date-fns',
