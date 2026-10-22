@@ -13,7 +13,7 @@ describe('withdrawal receipt provider presentation', () => {
   it('renders customer-safe status guidance and announces loading failures', () => {
     expect(source).toContain('statusGuidanceCode');
     expect(source).toContain('role="alert"');
-    expect(source).toContain('strictMigration.walletReceipt.backToWallet');
+    expect(source).toContain('<BackLink fallbackHref="/customer/wallet"');
   });
 
   it('renders immutable settlement proof and explicit money movement', () => {

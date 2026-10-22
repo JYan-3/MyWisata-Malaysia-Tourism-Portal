@@ -31,7 +31,7 @@ import { DEFAULT_TRIP_PLACE_FILTERS, countActiveTripPlaceFilters, filterAndRankT
 import { buildSimulatedWeatherOverlay, buildSimulatedWeatherResult, simulatedWeatherConditionKeyForHour } from "./trip-weather-simulation";
 import { TripBudgetGuard } from "./trip-budget-guard";
 import { useRouter } from "next/navigation";
-import { useCart, cartItemKey } from "@/components/providers/cart";
+import { useCart } from "@/components/providers/cart";
 import { countTripPurchasableItems, resolveTripCheckoutLines, tripItemOutletId } from "@/lib/customer/trip-checkout";
 import { getTripTimeChoices, getTripTimeProblem, getDaySlots, slotClockTime, normalizeTripTime, type TripTimeChoices } from "@/lib/customer/trip-time-options";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
@@ -579,21 +579,28 @@ export function MapClient({
         return;
       }
 
+      const accommodationLines = lines.filter((line) => activitiesById.get(line.activityId)?.categorySlug === "accommodation");
+      const purchasableLines = lines.filter((line) => activitiesById.get(line.activityId)?.categorySlug !== "accommodation");
+      if (purchasableLines.length === 0) {
+        await showAlert(tCustomer("ui.tripCheckout.stayMustBeBookedFromHotelPage"));
+        return;
+      }
+
       const addedKeys: string[] = [];
-      for (const line of lines) {
+      for (const line of purchasableLines) {
         try {
-          await cart.addItem({ activityId: line.activityId, variantId: line.variantId, outletId: line.outletId, slotId: line.slotId, qty: line.qty });
+          addedKeys.push(await cart.addItem({ activityId: line.activityId, variantId: line.variantId, outletId: line.outletId, slotId: line.slotId, qty: line.qty }));
         } catch {
           const failed = scheduledItems.find((item) => item.experience_id === line.activityId);
           await showAlert(tCustomer("ui.tripCheckout.addFailed", { name: failed?.label ?? "" }));
           return;
         }
-        addedKeys.push(cartItemKey(line));
       }
       cart.setSelectedKeys(addedKeys);
 
       const notes = [
         selectionNote,
+        accommodationLines.length > 0 ? tCustomer("ui.tripCheckout.stayMustBeBookedFromHotelPage") : "",
         needsSlot.length > 0 ? tCustomer("ui.tripCheckout.someNeedSlot", { names: needsSlot.map((entry) => entry.label).join(", ") }) : "",
         unavailableNote,
       ].filter(Boolean);

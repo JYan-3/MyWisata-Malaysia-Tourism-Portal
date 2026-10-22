@@ -28,7 +28,7 @@ describe("activity detail booking layout", () => {
   it("provides a safe in-app return path and clear next steps after adding", () => {
     expect(source).toContain("useSearchParams");
     expect(source).toContain("getCustomerReturnPath");
-    expect(source).toContain('t("ui.actions.backToResults")');
+    expect(source).toContain('<BackLink fallbackHref={returnTo}');
     expect(source).toContain('role="status"');
     expect(source).toContain('t("ui.actions.viewCart")');
     expect(source).toContain('t("ui.actions.continueExploring")');

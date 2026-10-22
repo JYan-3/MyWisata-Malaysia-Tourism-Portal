@@ -95,6 +95,7 @@ export const ADMIN_ROUTE_I18N_FILES = [
 export const ADMIN_I18N_FILES = [
   "components/admin/kyc-mfa.tsx",
   "components/admin/staff-passkey.tsx",
+  "components/admin/hotel-profile-diff.tsx",
   "components/admin/access-control/access-control-tabs.tsx",
   "components/admin/access-control/overview-tab.tsx",
   "components/admin/access-control/capabilities-tab.tsx",
@@ -133,7 +134,7 @@ export const PRIOR_TASK_FILES = [
   "components/admin/withdrawal-review-queue-row.tsx",
 ] as const;
 
-/** Pure presentation helpers are part of the inventory but do not render text directly. */
+/** Wrappers and pure helpers are inventoried but do not bind translations themselves. */
 export const ADMIN_NON_RENDERING_FILES = [
   "components/admin/staff-mfa.tsx",
   "components/admin/access-control/audit-log-presentation.ts",

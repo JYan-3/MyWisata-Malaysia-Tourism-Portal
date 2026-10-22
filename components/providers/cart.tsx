@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import * as guestCart from "@/lib/customer/guest-cart";
 import * as commerce from "@/backend/domains/commerce";
 import { getActivitiesByIds } from "@/backend/domains/catalogue";
-import { cartItemKey, cartTotals } from "@/backend/core/helpers";
+import { canMergeCartItemLines, cartItemKey, cartTotals } from "@/backend/core/helpers";
 import { useAuth } from "@/components/providers/auth";
-import type { Activity, CartItem, Voucher } from "@/backend/core/types";
+import type { Activity, CartItem, StayBookingDetails, Voucher } from "@/backend/core/types";
 
 // Single source of truth lives in backend/core/helpers so the client, the cart
 // domain and the checkout route cannot drift apart. Re-exported here because
@@ -25,9 +25,10 @@ interface CartContextValue {
   setAllSelected: (selected: boolean, keys?: string[]) => void;
   setGroupSelected: (keys: string[], selected: boolean) => void;
   setSelectedKeys: (keys: string[]) => void;
-  addItem: (item: CartItem) => Promise<void>;
+  addItem: (item: CartItem) => Promise<string>;
   updateQty: (index: number, qty: number) => Promise<void>;
   removeItem: (index: number) => Promise<void>;
+  updateStayDetails: (index: number, details: StayBookingDetails) => Promise<void>;
   clear: () => Promise<void>;
   totals: (voucher?: Voucher, slotPrices?: Map<string, number>) => ReturnType<typeof cartTotals>;
 }
@@ -173,19 +174,38 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   const addItem = useCallback(async (item: CartItem) => {
-    const nextItems = currentUser ? await commerce.addToCart(currentUser.id, item) : await guestCart.addGuestCartItem(item);
+    const result = currentUser
+      ? await commerce.addToCart(currentUser.id, item)
+      : { items: await guestCart.addGuestCartItem(item) };
+    const nextItems = result.items;
+    const savedLine = nextItems.find((candidate) => canMergeCartItemLines(candidate, item));
+    if (!savedLine?.cartItemId) throw new Error("cart_line_not_saved");
     if (activeOwner.current === ownerKey) setItems(nextItems);
+    return cartItemKey(savedLine);
   }, [currentUser, ownerKey]);
 
   const updateQty = useCallback(async (index: number, qty: number) => {
     if (!items[index]) return;
-    const nextItems = currentUser ? await commerce.updateCartQty(currentUser.id, index, qty) : await guestCart.updateGuestCartQty(cartItemKey(items[index]), qty);
+    const item = items[index];
+    if (!item.cartItemId) throw new Error("cart_line_not_saved");
+    const nextItems = currentUser ? await commerce.updateCartQty(currentUser.id, item.cartItemId, qty) : await guestCart.updateGuestCartQty(cartItemKey(item), qty);
     if (activeOwner.current === ownerKey) setItems(nextItems);
   }, [currentUser, items, ownerKey]);
 
   const removeItem = useCallback(async (index: number) => {
     if (!items[index]) return;
-    const nextItems = currentUser ? await commerce.removeFromCart(currentUser.id, index) : await guestCart.removeGuestCartItem(cartItemKey(items[index]));
+    const item = items[index];
+    if (!item.cartItemId) throw new Error("cart_line_not_saved");
+    const nextItems = currentUser ? await commerce.removeFromCart(currentUser.id, item.cartItemId) : await guestCart.removeGuestCartItem(cartItemKey(item));
+    if (activeOwner.current === ownerKey) setItems(nextItems);
+  }, [currentUser, items, ownerKey]);
+
+  const updateStayDetails = useCallback(async (index: number, details: StayBookingDetails) => {
+    const item = items[index];
+    if (!item?.cartItemId) throw new Error("cart_line_not_saved");
+    const nextItems = currentUser
+      ? await commerce.updateCartStayDetails(currentUser.id, item.cartItemId, details)
+      : await guestCart.updateGuestCartStayDetails(item.cartItemId, details);
     if (activeOwner.current === ownerKey) setItems(nextItems);
   }, [currentUser, items, ownerKey]);
 
@@ -206,7 +226,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, count, activities, activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, clear, totals }}
+      value={{ items, count, activities, activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, updateStayDetails, clear, totals }}
     >
       {children}
     </CartContext.Provider>

@@ -6,6 +6,10 @@ const source = readFileSync(
   resolve(process.cwd(), 'app/vendor/bookings/page.tsx'),
   'utf8',
 );
+const apiSource = readFileSync(
+  resolve(process.cwd(), 'app/api/vendors/[vendorId]/bookings/route.ts'),
+  'utf8',
+);
 
 describe('vendor reservation details layout', () => {
   it('centers reservation details as a modal instead of a right drawer', () => {
@@ -33,5 +37,11 @@ describe('vendor reservation details layout', () => {
     expect(source).toMatch(
       /src=\{productImageUrl\(\s*selectedBooking\.slot\?\.products\?\.cover_url\s*,?\s*\)\}/,
     );
+  });
+
+  it('uses the product category to show a stay range even for one night', () => {
+    expect(source).toContain('booking.orderItem?.products?.categories?.slug === "accommodation"');
+    expect(source).toContain('selectedBooking.orderItem?.products?.categories?.slug === "accommodation"');
+    expect(apiSource).toContain("categories(slug)");
   });
 });

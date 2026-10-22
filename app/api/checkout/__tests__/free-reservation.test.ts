@@ -68,6 +68,8 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
             slot_id: slotId,
             outlet_id: outletId,
             quantity: 1,
+            nights: 1,
+            stay_details: null,
             product_variants: { id: variantId, product_id: activityId, name: "Standard" },
             booking_slots: { id: slotId, product_id: activityId, outlet_id: outletId, starts_at: "2026-09-10T10:00:00Z", price_override: 0 },
           },
@@ -157,7 +159,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
     });
 
     const res = await POST(req);
-    expect(res.status).toBe(200);
+    expect(res.status, await res.clone().text()).toBe(200);
     const json = await res.json();
 
     expect(json.data.order_id).toBe("order-free-1");

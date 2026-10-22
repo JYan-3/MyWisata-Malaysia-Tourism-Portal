@@ -1,7 +1,11 @@
-// These business-rule fixtures represent a session that has completed staff verification.
-vi.mock("@/lib/auth/staff-assurance", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/staff-assurance")>()), requireStaffAssurance: vi.fn(async () => null) }));
 import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
+// These fixtures represent an already verified staff session; this suite focuses
+// on the affiliate role check itself.
+vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/staff-assurance')>()),
+  requireStaffAssurance: vi.fn(async () => null),
+}));
 import { isSuperAdmin } from '../admin-guard';
 
 const claims = (value: { sub: string; aal: string }) => ({ getClaims: async () => ({ data: { claims: value }, error: null }) });

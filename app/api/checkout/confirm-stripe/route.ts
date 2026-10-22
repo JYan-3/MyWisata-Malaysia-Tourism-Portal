@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         eventKey: `stripe-checkout:${session.id}`,
         reference: session.id,
         amountRm: session.amount_total / 100,
+        orderId,
       });
     } catch (emailError) {
       console.error('[stripe-confirm] checkout email enqueue failed', emailError);

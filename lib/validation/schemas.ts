@@ -198,6 +198,23 @@ export const eventCheckoutSchema = z.object({
   idempotencyKey: idempotencyHeaderSchema,
 }).strict();
 
+/** Guest details are captured per accommodation cart line, never from checkout. */
+export const stayBookingDetailsSchema = z.object({
+  primaryGuestName: z.string().trim().min(1).max(100),
+  additionalGuestNames: z.array(z.string().trim().min(1).max(100)).max(19).optional(),
+  adults: z.number().int().min(1).max(20),
+  estimatedArrival: z.enum(['unknown', '15:00-18:00', '18:00-21:00', 'after-21:00']),
+  specialRequest: z.string().trim().max(500).nullable().optional(),
+}).strict().superRefine((details, context) => {
+  if ((details.additionalGuestNames?.length ?? 0) > details.adults - 1) {
+    context.addIssue({
+      code: 'custom',
+      path: ['additionalGuestNames'],
+      message: 'Additional guest names cannot exceed the remaining adult count.',
+    });
+  }
+});
+
 export const checkoutPrepareSchema = z.object({
   contact: checkoutContactSchema.optional(),
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),

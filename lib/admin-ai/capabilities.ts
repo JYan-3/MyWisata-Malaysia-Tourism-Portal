@@ -200,6 +200,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Approving or rejecting requires a note of at least 10 characters plus a reason category.',
       'Requests at or above the configured dual-approval threshold need two different approvers — the first approval is recorded and waits for a second approver before any payout happens.',
       'The threshold itself is configurable in Wallet Settings.',
+      'Approving, retrying a payout, and overriding a fraud block each need a fresh passkey confirmation tied to that exact withdrawal; if the withdrawal changes before you confirm, refresh and confirm again.',
     ],
     keywords: ['withdrawal', 'payout request', 'approve a payout', 'dual approval', 'fraud override'],
     source:
@@ -468,6 +469,198 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     notes: ['This page is not in the admin sidebar — reach it directly at /admin/rewards.'],
     keywords: ['clear earnings', 'clearing earnings', 'rewards clearing', 'pending earnings clearing'],
     source: 'app/admin/rewards/page.tsx, app/api/admin/clear-earnings/route.ts',
+  },
+  {
+    name: 'event_campaigns',
+    description:
+      'Creating and running pop-up events (vendor-fair campaigns): drafting an event, adding its locations with dates, hours, stall capacity and vendor application deadlines, publishing, pausing, archiving, and cancelling a location.',
+    path: '/admin/promotion-campaigns',
+    role: 'super_admin',
+    actions: [
+      'Create an event draft with a title, web address (slug), summary, description, start and end time, operating hours text, and a poster',
+      'Add, edit or delete locations, each with a name, optional address and map pin, Malaysia dates and opening hours, maximum stalls, and vendor intake: applications open, an applications-close time, an approvals-close time and a setup-start time',
+      'Move the event through submit, approve, reject, pause, resume and archive',
+      'Preview the impact of changing a location before saving it',
+      'Cancel a single location with a reason',
+      'Invite a business to sell only at events from the vendor review page, which emails them a claim link',
+    ],
+    notes: [
+      'Super Admins can always use this section; other staff only if their staff role includes the promotion campaign permission in Access Control.',
+      'Submitting, approving or resuming needs a poster and at least one location; publishing or resuming needs an active location that has not ended, and active locations must stay within the event dates.',
+      'Rejecting needs a reason of 10 to 500 characters.',
+      'Application and approval deadlines must come before setup, and setup must come before the first opening; a location needs a maximum stall count before any stall there can be approved.',
+      'Changing a location that already has stalls or reservations needs a change reason of at least 5 characters, and the preview shows what it would affect.',
+      'Cancelling a location, archiving an event, or removing a stall cancels the uncollected reservations there and starts refunds: automatic for card, wallet and simulator payments before the event starts, otherwise queued for review.',
+      'Every save checks you are editing the latest version; if someone else changed it, refresh and try again.',
+      'The fee per item for event orders is set on /admin/vendors/platform-fees (see platform_fees).',
+      'An event-only vendor invitation cannot go to an email that already owns a vendor, and the invited owner must pass KYC before approval.',
+    ],
+    keywords: ['promotion campaign', 'create an event', 'new event', 'event location', 'publish an event', 'archive an event', 'cancel a location', 'event campaign', 'vendor fair', 'event vendor invite'],
+    source:
+      'app/admin/promotion-campaigns/page.tsx, app/api/admin/promotion-campaigns/{route,[id],[id]/locations,[id]/locations/[locationId],[id]/locations/[locationId]/cancel,[id]/locations/[locationId]/preview}/route.ts, lib/promotion-campaigns/validation.ts, lib/events/cancellations.ts, app/api/admin/vendors/event-invite/route.ts, transition_promotion_campaign, guard_event_location_allocation, cancel_event_reservations',
+  },
+  {
+    name: 'event_registrations',
+    description:
+      'Reviewing vendor stall applications for event locations: approving with a booth number, rejecting, requesting changes, changing an assigned booth, and removing a stall.',
+    path: '/admin/event-registrations',
+    role: 'super_admin',
+    actions: [
+      'Filter registrations by status and open one to see the stall description, image, items with prices and daily quantities, and pickup times',
+      'Approve a pending registration by confirming a booth number',
+      'Reject it, or request changes so the vendor can edit and resubmit',
+      'Change the booth number of an approved stall',
+      'Remove an approved stall from a location with a reason',
+    ],
+    notes: [
+      'Same permission as event campaigns: Super Admins, or staff whose role includes the promotion campaign permission.',
+      'Only pending registrations can be reviewed. Reject and request changes need a note of at least 10 characters.',
+      'Approval needs a booth number and must happen before the location\'s approvals-close time; the location must have a maximum stall count that is not yet full, and two approved stalls at one location cannot share a booth number.',
+      'The vendor\'s preferred booth number is only a preference; an application does not guarantee a booth.',
+      'Changing an approved booth needs a reason of at least 5 characters and is not possible after the location has ended.',
+      'Removing a stall cancels its uncollected reservations and starts refunds for those customers.',
+    ],
+    keywords: ['event registration', 'stall application', 'booth number', 'approve a stall', 'remove a stall', 'stall registration'],
+    source:
+      'app/admin/event-registrations/page.tsx, app/admin/event-registrations/[id]/page.tsx, app/api/admin/event-registrations/{route,[id],[id]/stall,[id]/remove}/route.ts, lib/validation/schemas.ts (campaignRegistrationReviewSchema), lib/promotion-campaigns/validation.ts (campaignStallChangeSchema), guard_event_booth_registration',
+  },
+  {
+    name: 'event_promotions',
+    description:
+      'Reviewing vendor-paid event promotions (outside events vendors advertise on the home page), pausing or resuming paid ones, and setting the promotion price and daily capacity.',
+    path: '/admin/event-promotions',
+    role: 'admin_or_approver',
+    actions: [
+      'Filter promotions by status and open one to see its details, dates and image',
+      'Approve, reject, or request changes; after approval the vendor pays to go live',
+      'Pause or resume a paid promotion',
+      'Change the cost per day and the maximum number of promotions running on the same day',
+    ],
+    notes: [
+      'Reject and request changes need a note of at least 10 characters.',
+      'Only a paid promotion can be paused or resumed.',
+      'Current settings: RM 100 per day and at most 4 promotions on the same day. Cost per day can be RM 0 to RM 100,000 and the daily maximum 1 to 50.',
+      'Vendors pay from their wallet earnings, or by card for the full amount when earnings are not enough; once paid, the vendor can no longer modify it.',
+    ],
+    keywords: ['event promotion', 'promoted event', 'promotion cost per day', 'pause a promotion', 'featured event promotion'],
+    source:
+      'app/admin/event-promotions/page.tsx, app/admin/event-promotions/[id]/page.tsx, app/api/admin/event-promotions/{route,[id]}/route.ts, app/api/admin/event-promotion-settings/route.ts, lib/validation/schemas.ts (eventPromotionReviewSchema, eventPromotionSettingsPatchSchema)',
+  },
+  {
+    name: 'vendor_announcements',
+    description: 'Sending announcements to vendors, including invitations to join a vendor-fair event.',
+    path: '/admin/announcements',
+    role: 'super_admin',
+    actions: [
+      'Write an announcement with a title (3 to 160 characters) and message (10 to 5,000 characters)',
+      'Optionally link it to an event so vendors can open that event from the announcement',
+      'See announcements already sent',
+    ],
+    notes: [
+      'Super Admins can always use this; other staff only if their role includes the vendor announcement permission.',
+      'Vendors read announcements under Announcements in the vendor portal.',
+    ],
+    keywords: ['announcement', 'vendor announcement', 'message all vendors', 'event invitation announcement'],
+    source: 'app/admin/announcements/page.tsx, app/api/admin/announcements/route.ts, lib/validation/schemas.ts (vendorAnnouncementCreateSchema)',
+  },
+  {
+    name: 'orders',
+    description:
+      'Looking up customer orders, recording a fraud outcome on an order, and handling an event stock shortage that cancels reservations for one item on one date.',
+    path: '/admin/orders',
+    role: 'admin_or_approver',
+    actions: [
+      'Browse orders filtered by status (pending payment, paid, completed, cancelled, failed, refunded) and search by a complete order ID',
+      'Open an order to see its items, payment and fulfilment details',
+      'Record that an order was fraud, with a reason of at least 10 characters',
+      'Event shortage: choose an event item, a pickup date and a reason, preview the affected reservations, then confirm to cancel them and start refunds',
+    ],
+    notes: [
+      'Viewing orders needs the orders permission, which the admin role has by default; approvers need it granted. Event shortage uses the promotion campaign permission.',
+      'Recording a fraud outcome needs a passkey-verified session.',
+      'An event shortage needs a reason of at least 5 characters, and it only cancels reservations made up of that item and date that have not been collected; if the affected reservations change, refresh the preview.',
+    ],
+    keywords: ['admin orders', 'order lookup', 'find an order', 'event shortage', 'stock shortage', 'financial outcome', 'mark an order as fraud'],
+    source: 'app/admin/orders/page.tsx, app/api/admin/orders/route.ts, app/api/admin/orders/event-shortage/route.ts, app/api/admin/orders/[orderId]/financial-outcome/route.ts, cancel_event_reservations',
+  },
+  {
+    name: 'refund_review',
+    description: 'Reviewing customer refund requests: checking the pickup and fulfilment evidence, then approving or rejecting.',
+    path: '/admin/refunds',
+    role: 'super_admin',
+    actions: [
+      'See refund requests with the reason, amount and how it was paid',
+      'Check the evidence for each item: whether it was collected, when, at which venue, and the pickup date and window',
+      'Approve or reject a pending refund, with an optional note',
+      'Add a manual payout reference (at least 5 characters) when the refund is paid outside an automatic method',
+    ],
+    notes: [
+      'Super Admin only, and needs a passkey-verified session.',
+      'Only pending refunds can be reviewed. If the pickup evidence changed since you opened it, refresh before deciding.',
+      'Approving a refund for items that were already collected needs an explanation in the note.',
+      'Customers refund the whole order, with one active request per order; approved refunds go back to the original payment method, with the wallet-paid part returned to the wallet, and the vendor\'s earnings for that order are reversed.',
+    ],
+    keywords: ['refund request', 'approve a refund', 'reject a refund', 'refund review', 'refund evidence', 'manual refund'],
+    source: 'app/admin/refunds/page.tsx, app/api/admin/refunds/route.ts, app/api/admin/refunds/[refundId]/route.ts, request_order_refund, sync_paid_order_vendor_settlement',
+  },
+  {
+    name: 'event_exceptions',
+    description:
+      'Handling event order exception cases: missed pickups (pickup overdue), payments that could not be fulfilled, and refunds needing attention.',
+    path: '/admin/reports/reconciliation',
+    role: 'super_admin',
+    actions: [
+      'See open event exception cases, including which are overdue',
+      'Claim a case and set a due date',
+      'Resolve a case once its refund is complete or the pickup is verified',
+      'Confirm a customer no-show on a pickup-overdue case with a verified explanation',
+    ],
+    notes: [
+      'Super Admin only; shown on the reconciliation report page.',
+      'Kinds: pickup overdue (a paid pickup passed its window without being scanned), payment unfulfillable, and refund attention.',
+      'Confirming a no-show needs a note of at least 20 characters and keeps the sale; a refunded or verified-collected case is resolved automatically.',
+      'If the case changed or its refund is not complete, refresh and review it again.',
+    ],
+    keywords: ['event exception', 'pickup overdue', 'no show', 'missed pickup', 'payment unfulfillable', 'refund attention'],
+    source: 'app/admin/reports/reconciliation/page.tsx, app/api/admin/reconciliation/event-exceptions/[caseId]/route.ts, supabase/migrations/20261011194020_event_settlement_pickup_resolution.sql',
+  },
+  {
+    name: 'system_settings',
+    description: 'Emergency platform switches: pausing new customer orders and pausing custom email delivery.',
+    path: '/admin/system-settings',
+    role: 'super_admin',
+    actions: [
+      'Pause or resume the creation of new customer orders, including event reservations',
+      'Pause or resume custom email delivery; queued messages are kept and sent after resuming',
+    ],
+    notes: [
+      'Super Admin only. Every change needs a reason of at least 10 characters and is audited.',
+      'While new orders are paused, customers see that new orders are temporarily unavailable.',
+    ],
+    keywords: ['system settings', 'pause new orders', 'pause orders', 'pause email', 'emergency switch'],
+    source: 'app/admin/system-settings/page.tsx, app/api/admin/system-settings/route.ts, lib/platform/operations-settings.ts, supabase/migrations/20261015062555_platform_operations_settings.sql',
+  },
+  {
+    name: 'staff_sign_in_security',
+    description:
+      'How staff sign in: password, then an authenticator app code, then a passkey; registering a passkey device and recovering access.',
+    path: '/admin/security',
+    role: 'admin_or_approver',
+    actions: [
+      'Enter the 6-digit authenticator app code after your password (/admin/security takes you to this check)',
+      'Verify with your passkey (face, fingerprint or device PIN); a verified session lasts up to 12 hours',
+      'Register a new device with a one-time enrollment code, or add another device from Security and devices after verifying',
+      'Remove a device you no longer use, as long as at least one remains',
+    ],
+    notes: [
+      'Every staff account needs both an authenticator app and a registered passkey before admin pages and data work.',
+      'Enrollment codes are issued by an operator with the server-side enrollment script; they are single use and expire after 15 minutes.',
+      'A passkey works only on the website address it was registered on, so localhost and the live site each need their own registration. Each account can hold up to 5 passkeys.',
+      'Lost every device: an operator runs the enrollment script in recovery mode, which revokes the old passkeys and issues a new code.',
+      'Lost the authenticator app: its factor is removed in the Supabase dashboard (Authentication, Users, MFA) and set up again.',
+    ],
+    keywords: ['staff login', 'passkey', 'authenticator app', 'enrollment code', 'two factor', 'staff verification', 'lost my passkey'],
+    source: 'app/auth/staff-mfa/page.tsx, app/auth/staff-verification/page.tsx, components/admin/staff-passkey.tsx, lib/supabase/proxy.ts, lib/auth/staff-passkey-flow.ts, scripts/staff-passkey-enrollment.mjs, supabase/migrations/20261014194135_staff_passkey_authorization.sql',
   },
 ];
 

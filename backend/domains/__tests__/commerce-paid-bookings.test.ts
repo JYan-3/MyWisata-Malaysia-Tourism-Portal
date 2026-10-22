@@ -12,7 +12,7 @@ vi.mock("@/backend/supabase", async () => {
   };
 });
 
-import { getSettledBookingsForUser } from "../commerce";
+import { getSettledBookingsForUser, mapOrder, ORDER_SELECT } from "../commerce";
 
 function response(rows: object[]) {
   return new Response(JSON.stringify(rows), {
@@ -54,6 +54,22 @@ describe("settled customer bookings", () => {
         ticket_passes: null,
       },
       {
+        id: "booking-stay",
+        status: "confirmed",
+        order_items: {
+          order_id: "order-stay",
+          product_id: "product-stay",
+          product_name: "Hotel Room",
+          outlet_id: "outlet-stay",
+          slot_starts_at: "2026-10-05T07:00:00.000Z",
+          nights: 1,
+          quantity: 1,
+          products: { categories: { slug: "accommodation" } },
+          orders: { status: "paid" },
+        },
+        ticket_passes: null,
+      },
+      {
         id: "booking-pending",
         status: "confirmed",
         order_items: {
@@ -84,6 +100,7 @@ describe("settled customer bookings", () => {
     expect(bookings).toEqual([
       expect.objectContaining({ id: "booking-1", orderId: "order-1", outletId: "outlet-accurate", qty: 2 }),
       expect.objectContaining({ id: "booking-2", orderId: "order-2", outletId: "outlet-completed", qty: 1 }),
+      expect.objectContaining({ id: "booking-stay", categorySlug: "accommodation", nights: 1 }),
     ]);
 
     const query = new URL(String(request.mock.calls[0]?.[0]));
@@ -91,5 +108,37 @@ describe("settled customer bookings", () => {
     expect(query.searchParams.get("customer_id")).toBe("eq.customer-1");
     expect(query.searchParams.get("order_items.orders.status")).toBe("in.(paid,completed)");
     expect(query.searchParams.get("select")).toContain("orders!inner(status)");
+    expect(query.searchParams.get("select")).toContain("products(categories(slug))");
+  });
+});
+
+describe("order item accommodation category mapping", () => {
+  it("preserves the product category so a one-night stay can show its checkout date", () => {
+    const order = mapOrder({
+      id: "order-stay",
+      user_id: "customer-1",
+      status: "paid",
+      subtotal: 100,
+      discount_amount: 0,
+      total_amount: 100,
+      payment_method: "stripe_card",
+      voucher_code: null,
+      created_at: "2026-10-01T00:00:00.000Z",
+      order_items: [{
+        product_id: "product-stay",
+        product_name: "Hotel Room",
+        image_url: null,
+        variant_name: null,
+        slot_starts_at: "2026-10-05T07:00:00.000Z",
+        nights: 1,
+        unit_price: 100,
+        quantity: 1,
+        outlet_id: "outlet-stay",
+        products: { cover_url: null, categories: { slug: "accommodation" } },
+      }],
+    } as Parameters<typeof mapOrder>[0]);
+
+    expect(order.items[0]).toMatchObject({ categorySlug: "accommodation", nights: 1 });
+    expect(ORDER_SELECT).toContain("products(cover_url,categories(slug))");
   });
 });

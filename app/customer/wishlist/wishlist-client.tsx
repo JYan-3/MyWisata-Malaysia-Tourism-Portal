@@ -9,6 +9,7 @@ import { ActivityCard } from "@/components/customer/activity-card";
 import { SavedDestinationCard } from "@/components/customer/saved-destination-card";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import { useWishlist } from "@/components/providers/wishlist";
+import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 
 type SavedDestinationRow = { state: string; savedAt: string };
@@ -32,11 +33,13 @@ function EmptySavedState({ tab }: { tab: SavedTab }) {
   );
 }
 
-export function SavedHubClient({ activities, destinations }: { activities: ComputedActivity[]; destinations: SavedDestinationRow[] }) {
+export function SavedHubClient({ activities, destinations, hotelRooms = [] }: { activities: ComputedActivity[]; destinations: SavedDestinationRow[]; hotelRooms?: ComputedActivity[] }) {
   const { t: tCustomer } = useTranslation("customer");
   const { savedStates, savedAt, loading } = useSavedDestinations();
-  const { savedIds, hydrated: productsHydrated } = useWishlist();
+  const { savedIds, hydrated: productsHydrated, savedOutletIds, loading: wishlistLoading } = useWishlist();
   const [tab, setTab] = useState<SavedTab>("all");
+  // Unsaving a hotel hides its card at once; until the provider loads, trust the server list.
+  const hotels = groupAccommodationByProperty(hotelRooms).filter((hotel) => wishlistLoading || savedOutletIds.has(hotel.outlet.id));
   const initialStates = new Set(destinations.map((destination) => destination.state));
   const effectiveSavedStates = loading ? initialStates : savedStates;
   const initialProductIds = new Set(activities.map((activity) => activity.id));
@@ -49,16 +52,16 @@ export function SavedHubClient({ activities, destinations }: { activities: Compu
       destination: MALAYSIA_DESTINATIONS.find((item) => item.state === record.state),
     }))
     .filter((item): item is { record: SavedDestinationRow; destination: (typeof MALAYSIA_DESTINATIONS)[number] } => Boolean(item.destination));
-  const totalSaved = savedPlaces.length + savedProducts.length;
+  const totalSaved = savedPlaces.length + hotels.length + savedProducts.length;
   const tabs: Array<{ id: SavedTab; label: string; count: number }> = [
     { id: "all", label: tCustomer("ui.wishlist.allSaved"), count: totalSaved },
     { id: "places", label: tCustomer("ui.labels.places"), count: savedPlaces.length },
-    { id: "experiences", label: tCustomer("ui.wishlist.savedExperiences"), count: savedProducts.length },
+    { id: "experiences", label: tCustomer("ui.wishlist.savedExperiences"), count: hotels.length + savedProducts.length },
   ];
 
   const showPlaces = tab === "all" || tab === "places";
   const showExperiences = tab === "all" || tab === "experiences";
-  const hasVisibleContent = (showPlaces && savedPlaces.length > 0) || (showExperiences && savedProducts.length > 0);
+  const hasVisibleContent = (showPlaces && savedPlaces.length > 0) || (showExperiences && (hotels.length > 0 || savedProducts.length > 0));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
@@ -83,7 +86,8 @@ export function SavedHubClient({ activities, destinations }: { activities: Compu
 
       {!hasVisibleContent ? <div className="mt-6"><EmptySavedState tab={tab} /></div> : <div className="mt-8 space-y-10">
         {showPlaces && savedPlaces.length > 0 && <section aria-labelledby="saved-places-heading"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.wishlist.keepClose")}</p><h2 id="saved-places-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedPlaces")}</h2></div><span className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.wishlist.placeCount", { count: savedPlaces.length })}</span></div><div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">{savedPlaces.map(({ record, destination }) => <SavedDestinationCard key={record.state} destination={destination} savedAt={savedAt.get(record.state) ?? record.savedAt} />)}</div></section>}
-        {showExperiences && savedProducts.length > 0 && <section aria-labelledby="saved-experiences-heading"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.wishlist.ready")}</p><h2 id="saved-experiences-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedExperiences")}</h2></div><span className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.wishlist.experienceCount", { count: savedProducts.length })}</span></div><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{savedProducts.map((activity) => <ActivityCard key={activity.id} activity={activity} returnTo="/customer/wishlist" detailsRevealOnHover detailsRevealStyle="caption" />)}</div></section>}
+        {showExperiences && hotels.length > 0 && <section aria-labelledby="saved-hotels-heading"><h2 id="saved-hotels-heading" className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedHotels")}</h2><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{hotels.map((hotel) => <ActivityCard key={hotel.outlet.id} activity={hotel} returnTo="/customer/saved" />)}</div></section>}
+        {showExperiences && savedProducts.length > 0 && <section aria-labelledby="saved-experiences-heading"><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.wishlist.ready")}</p><h2 id="saved-experiences-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{tCustomer("ui.wishlist.savedExperiences")}</h2></div><span className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.wishlist.experienceCount", { count: hotels.length + savedProducts.length })}</span></div><div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">{savedProducts.map((activity) => <ActivityCard key={activity.id} activity={activity} returnTo="/customer/wishlist" detailsRevealOnHover detailsRevealStyle="caption" />)}</div></section>}
       </div>}
     </div>
   );

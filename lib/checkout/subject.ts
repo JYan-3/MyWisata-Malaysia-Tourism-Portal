@@ -36,7 +36,9 @@ export async function resolveCheckoutContact(context: Awaited<ReturnType<typeof 
     const parsed = checkoutContactSchema.safeParse(input);
     return parsed.success ? { email: parsed.data.email, name: parsed.data.name ?? null, phone: parsed.data.phone ?? null, locale: 'emailLocale' in context ? context.emailLocale : 'en' } : null;
   }
+  // A signed-in buyer may book under another name or email; it is stored on this order only, never on the profile.
   const user = context.user;
-  const parsed = checkoutContactSchema.safeParse({ email: user?.email, name: typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null, phone: (input as { phone?: string } | undefined)?.phone ?? (user?.phone || null) });
+  const submitted = (input ?? {}) as { email?: string; name?: string | null; phone?: string | null };
+  const parsed = checkoutContactSchema.safeParse({ email: submitted.email ?? user?.email, name: submitted.name ?? (typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null), phone: submitted.phone ?? (user?.phone || null) });
   return parsed.success ? { email: parsed.data.email, name: parsed.data.name ?? null, phone: parsed.data.phone ?? null } : null;
 }

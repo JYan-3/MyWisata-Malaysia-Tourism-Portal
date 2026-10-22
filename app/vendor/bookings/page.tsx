@@ -40,6 +40,7 @@ import { exportToCsv, type CsvColumn } from "@/lib/export-csv";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { formatMYR } from "@/lib/i18n/format";
 import { getBookingSlotAvailability } from "@/lib/customer/booking-slot-presenter";
+import { formatStayRange } from "@/lib/customer/booking-view";
 import {
   getMalaysiaDateInputValue,
   getMalaysiaDateRangeDefaults,
@@ -95,6 +96,8 @@ interface Booking {
   orderItem?: {
     product_name?: string;
     quantity?: number;
+    nights?: number;
+    products?: { categories?: { slug?: string } | null } | null;
     line_total?: number;
     outlets?: { id?: string; name?: string; city?: string; state?: string };
   };
@@ -1034,7 +1037,9 @@ export default function VendorBookingsPage() {
                             <p className="mt-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
                               {t("ui.bookings.quantityDate", {
                                 quantity: booking.orderItem?.quantity || 1,
-                                date: dateLabel(
+                                date: booking.slot?.starts_at && booking.orderItem?.products?.categories?.slug === "accommodation"
+                                  ? formatStayRange(booking.slot.starts_at, booking.orderItem?.nights ?? 1)
+                                  : dateLabel(
                                   booking.slot?.starts_at,
                                   locale,
                                   t("ui.bookings.noTime"),
@@ -1223,6 +1228,7 @@ export default function VendorBookingsPage() {
                     selectedBooking.slot?.products?.name}
                 </p>
                 <p className="mt-1 text-gray-500 dark:text-muted-foreground">
+                  {selectedBooking.slot?.starts_at && selectedBooking.orderItem?.products?.categories?.slug === "accommodation" ? formatStayRange(selectedBooking.slot.starts_at, selectedBooking.orderItem?.nights ?? 1) : <>
                   {dateLabel(
                     selectedBooking.slot?.starts_at,
                     locale,
@@ -1235,6 +1241,7 @@ export default function VendorBookingsPage() {
                         minute: "2-digit",
                       }).format(new Date(selectedBooking.slot.ends_at))
                     : ""}
+                  </>}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">

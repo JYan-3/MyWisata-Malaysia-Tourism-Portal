@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
@@ -36,9 +36,9 @@ export default function AffiliateEarningsPage() {
 
   return (
     <CustomerPageShell wide>
-      <Link href="/customer/affiliate" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("strictMigration.affiliate.earnings.backToDashboard")}
-      </Link>
+      <BackLink fallbackHref="/customer/affiliate" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("actions.back", { ns: "common" })}
+      </BackLink>
       <h1 className="text-2xl font-bold text-foreground">{tCustomer("strictMigration.affiliate.earnings.allTitle")}</h1>
       <p className="mt-1 mb-6 text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.earnings.allDescription")}</p>
       {commissions === undefined ? (

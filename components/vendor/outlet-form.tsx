@@ -64,7 +64,7 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
         showFeedback('error', result.error?.message ?? t('outletForm.saveFailed'));
         return;
       }
-      showFeedback('success', initialData?.id ? t('outletForm.updated') : t('outletForm.created'));
+      showFeedback('success', res.status === 202 ? t('outletForm.hotelPendingReview') : initialData?.id ? t('outletForm.updated') : t('outletForm.created'));
       onSuccess?.();
     } catch {
       setServerError(tCommon('errors.network'));

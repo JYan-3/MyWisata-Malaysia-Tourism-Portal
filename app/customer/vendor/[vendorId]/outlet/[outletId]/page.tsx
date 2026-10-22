@@ -6,7 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
-import { buildPublicOutletProfile, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
+import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, relationOne, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
@@ -15,11 +15,16 @@ import { productImageUrl } from "@/lib/storage/product-image";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
+import { readRoomDetails } from "@/lib/customer/room-details";
+import { getPublicReviewAuthorNames } from "@/backend/domains/catalogue";
+import { toProductReview } from "@/backend/domains/review-presenter";
+import type { ProductReview } from "@/backend/core/types";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ vendorId: string; outletId: string }>;
+  searchParams?: Promise<{ checkin?: string; checkout?: string; rooms?: string; adults?: string }>;
 }
 
 async function getPublicOutletPage(outletId: string, vendorId: string) {
@@ -27,7 +32,7 @@ async function getPublicOutletPage(outletId: string, vendorId: string) {
   const [{ data: outlet }, { data: page }, { data: outlets }, { data: media }] = await Promise.all([
     db
       .from("outlets")
-      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,vendors(id,name,logo_url)")
+      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,check_in_time,check_out_time,stay_policies,hotel_about,amenity_codes,vendors(id,name,logo_url)")
       .eq("id", outletId)
       .eq("vendor_id", vendorId)
       .eq("status", "active")
@@ -70,11 +75,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function VendorOutletPage({ params }: Props) {
+export default async function VendorOutletPage({ params, searchParams }: Props) {
   const { outletId, vendorId } = await params;
+  const search = (await searchParams) ?? {};
   const { outlet, page, outlets, gallery, logoUrl } = await getPublicOutletPage(outletId, vendorId);
   if (!outlet) notFound();
-  const { t } = await getServerTranslation("customer");
+  const { t, locale } = await getServerTranslation("customer");
 
   const outletNavigation = getOutletNavigationModel(outlets, outlet.id);
 
@@ -138,7 +144,7 @@ export default async function VendorOutletPage({ params }: Props) {
   const featuredIds = publicDocument.featuredIds.filter((id) => sellableSet.has(id));
   const [{ data: products }, { data: offers }, { data: slots }, { data: reviewMetrics }] = sellableIds.length
     ? await Promise.all([
-        db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,categories(name),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
+        db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,attributes,categories(name,slug),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
         db.from("outlet_offers").select("product_id,price").eq("outlet_id", outletId).eq("status", "active").in("product_id", sellableIds),
         db.from("booking_slots").select("id,product_id,starts_at,status").in("product_id", sellableIds).eq("outlet_id", outletId).eq("status", "available").gt("starts_at", new Date().toISOString()).order("starts_at"),
         db.from("product_review_metrics").select("product_id,rating,reviews").in("product_id", sellableIds),
@@ -148,6 +154,45 @@ export default async function VendorOutletPage({ params }: Props) {
   const firstSlotByProduct = new Map<string, string>();
   for (const slot of slots || []) if (!firstSlotByProduct.has(slot.product_id)) firstSlotByProduct.set(slot.product_id, slot.id);
   const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
+  const STAY_SLUG = "accommodation";
+  const stayIds = (products || []).filter((p) => relationOne(p.categories)?.slug === STAY_SLUG).map((p) => p.id);
+  const { data: hotelReviewRows } = stayIds.length
+    ? await db.from("reviews").select("id,rating,title,body,created_at,user_id,product_id").in("product_id", stayIds).eq("outlet_id", outletId).eq("is_visible", true).order("created_at", { ascending: false }).limit(6)
+    : { data: [] };
+  let hotelReviews: ProductReview[] = [];
+  if (hotelReviewRows?.length) {
+    try {
+      const authorNames = await getPublicReviewAuthorNames(db, hotelReviewRows.map((row) => row.user_id ?? ""));
+      hotelReviews = hotelReviewRows.map((row) => toProductReview({
+        ...row,
+        users: { full_name: row.user_id ? authorNames.get(row.user_id) ?? null : null },
+      }));
+    } catch {
+      // Public review text is optional; preserve the hotel page if reviewer names are unavailable.
+      hotelReviews = hotelReviewRows.map((row) => toProductReview({ ...row, users: null }));
+    }
+  }
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  const stay = resolveStaySearch(search, today);
+  const nightDays = Array.from({ length: stay.nights }, (_, k) => addDays(stay.checkIn, k));
+  const nightSlots = stayIds.length
+    ? (await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,status,price_override").in("product_id", stayIds).eq("outlet_id", outletId).in("starts_at", nightDays.map(stayNightStartsAt))).data || []
+    : [];
+  const [{ data: amenityRows }, { data: roomPhotoRows }] = stayIds.length
+    ? await Promise.all([
+        db.from("hotel_amenities").select("code,label_en,label_ms,label_zh,icon,sort_order").eq("is_active", true).order("sort_order"),
+        db.from("media_assets").select("product_id,url,sort_order").in("product_id", stayIds).order("sort_order"),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const amenityLabel = (row: { label_en: string; label_ms: string; label_zh: string }) => (locale === "ms" ? row.label_ms : locale === "zh-CN" ? row.label_zh : row.label_en);
+  const hotelAmenities = (amenityRows || [])
+    .filter((row) => (outlet.amenity_codes ?? []).includes(row.code))
+    .map((row) => ({ code: row.code, label: amenityLabel(row), icon: row.icon }));
+  const stayByProduct = new Map(stayIds.map((id) => {
+    const nights = nightDays.map((day) => nightSlots.find((s) => s.product_id === id && Date.parse(s.starts_at) === Date.parse(stayNightStartsAt(day))));
+    const left = Math.min(...nights.map((s) => (s && s.status === "available" ? Math.max(Number(s.capacity) - Number(s.booked), 0) : 0)));
+    return [id, { left, checkInSlotId: nights[0]?.id ?? null, overrides: nights.map((s) => (s?.price_override == null ? null : Number(s.price_override))) }];
+  }));
   const menuProducts = selectFullOutletMenu(
     (products || []).map((product) => {
       const variants = product.product_variants || [];
@@ -161,7 +206,17 @@ export default async function VendorOutletPage({ params }: Props) {
         name: product.name,
         description: product.description,
         base_price: getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset),
-        category: product.categories?.[0]?.name ?? null,
+        category: relationOne(product.categories)?.name ?? null,
+        ...(stayByProduct.has(product.id) && {
+          stay: {
+            total: stayByProduct.get(product.id)!.overrides.reduce<number>((sum, o) => sum + (o ?? getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset)), 0),
+            left: stayByProduct.get(product.id)!.left,
+            checkInSlotId: stayByProduct.get(product.id)!.checkInSlotId,
+            details: readRoomDetails(product.attributes),
+            photos: [productImageUrl(product.cover_url), ...(roomPhotoRows || []).filter((row) => row.product_id === product.id).map((row) => row.url)]
+              .filter((url, index, all): url is string => Boolean(url) && all.indexOf(url) === index),
+          },
+        }),
         product_type: product.product_type,
         requires_booking: product.requires_booking,
         cover_url: productImageUrl(product.cover_url),
@@ -177,6 +232,25 @@ export default async function VendorOutletPage({ params }: Props) {
     featuredIds
   );
 
+  const stayOutlet = {
+    ...publicOutlet,
+    ...(stayIds.length && {
+      stay: {
+        ...stay,
+        checkInTime: outlet.check_in_time?.slice(0, 5) ?? null,
+        checkOutTime: outlet.check_out_time?.slice(0, 5) ?? null,
+        policies: outlet.stay_policies ?? null,
+        about: outlet.hotel_about ?? null,
+        amenities: hotelAmenities,
+        ...(() => {
+          const roomMetrics = stayIds.map((id) => metricByProduct.get(id)).filter((metric) => metric && metric.reviews > 0) as { rating: number; reviews: number }[];
+          const reviews = roomMetrics.reduce((sum, metric) => sum + metric.reviews, 0);
+          return { reviews, rating: reviews ? Math.round((roomMetrics.reduce((sum, metric) => sum + metric.rating * metric.reviews, 0) / reviews) * 10) / 10 : 0 };
+        })(),
+      },
+    }),
+  };
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -191,7 +265,7 @@ export default async function VendorOutletPage({ params }: Props) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+      {!stayIds.length && <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{vendor ? <a href={`/customer/vendor/${vendorId}`} className="hover:text-primary hover:underline">{vendor.name}</a> : t("ui.labels.mylawatanOutlet")}</p>
@@ -207,8 +281,8 @@ export default async function VendorOutletPage({ params }: Props) {
           <OutletChatButton outletId={outlet.id} />
         </div>
         </div>
-      </div>
-      {outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
+      </div>}
+      {!stayIds.length && outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
         <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("ui.outlet.exploreOutlet")}</p>
@@ -217,7 +291,7 @@ export default async function VendorOutletPage({ params }: Props) {
           <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
         </div>
       </div>}
-      <OutletPageRenderer document={publicDocument} outlet={publicOutlet} products={menuProducts} mode="public" />
+      <OutletPageRenderer document={publicDocument} outlet={stayOutlet} products={menuProducts} reviews={hotelReviews} mode="public" />
     </main>
   );
 }

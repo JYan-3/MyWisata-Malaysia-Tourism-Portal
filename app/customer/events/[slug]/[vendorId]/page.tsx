@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, Clock, MapPin, Store } from "lucide-react";
 import { getServerTranslation } from "@/lib/i18n/server";
@@ -35,6 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EventVendorStallPage({ params }: Props) {
   const { slug, vendorId } = await params;
   const { t, locale } = await getServerTranslation("customer");
+  const { t: tCommon } = await getServerTranslation("common");
   const found = await findVendor(slug, vendorId);
   if (!found) notFound();
   const { campaign, vendor } = found;
@@ -42,9 +43,9 @@ export default async function EventVendorStallPage({ params }: Props) {
 
   return (
     <CustomerPageShell wide>
-      <Link href={`/customer/events/${encodeURIComponent(slug)}`} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden="true" /> {t("ui.promotionCampaigns.backToEvent", { title: campaign.title })}
-      </Link>
+      <BackLink fallbackHref={`/customer/events/${encodeURIComponent(slug)}`} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" aria-hidden="true" /> {tCommon("actions.back")}
+      </BackLink>
 
       <div className="flex items-center gap-3">
         <Store className="text-primary" size={22} aria-hidden="true" />

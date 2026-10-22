@@ -127,6 +127,7 @@ export async function POST(request: Request) {
         eventKey: `toyyibpay-checkout:${refno}:${status}`,
         reference: billcode,
         amountRm: amountSen / 100,
+        orderId: result.order_id,
       });
     } catch (emailError) {
       console.error('[toyyibpay-callback] checkout email enqueue failed', emailError);

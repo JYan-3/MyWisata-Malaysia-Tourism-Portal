@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { LocalizedContent } from "@/components/customer/localized-content";
+import { LocalizedContentHeading } from "@/components/customer/localized-content";
 import type { PublicTranslationEntity, PublicTranslationField } from "@/lib/content-translations/contract";
 
 type PlaceActivityCardProps = {
@@ -63,9 +63,12 @@ export function PlaceActivityCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             {titleTranslation ? (
-              <LocalizedContent {...titleTranslation}>
-                {({ text, control }) => <>{href ? <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{text}</h3></Link> : <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{text}</h3>}{control}</>}
-              </LocalizedContent>
+              <LocalizedContentHeading
+                {...titleTranslation}
+                href={href}
+                linkClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                headingClassName={href ? "break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary" : "break-words whitespace-normal text-lg font-bold leading-tight text-foreground"}
+              />
             ) : href ? (
               <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{title}</h3></Link>
             ) : <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3>}

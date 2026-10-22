@@ -8,6 +8,7 @@ import {
   Info, AlertTriangle, ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -164,10 +165,10 @@ export default function KycPage() {
         icon={<ShieldCheck size={14} />}
         actions={
           <Button asChild variant="outline">
-            <Link href="/customer/profile">
+            <BackLink fallbackHref="/customer/profile">
               <ArrowLeft size={16} />
-              {tCustomer("ui.profile.backToProfile")}
-            </Link>
+              {tCustomer("actions.back", { ns: "common" })}
+            </BackLink>
           </Button>
         }
       />

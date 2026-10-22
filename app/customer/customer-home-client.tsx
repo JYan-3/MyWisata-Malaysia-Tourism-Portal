@@ -6,6 +6,7 @@ import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, MapPin, Sparkles }
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
@@ -210,9 +211,9 @@ export function CustomerHomeClient({
     if (nextPageDestinations[0]) selectDestination(nextPageDestinations[0].state);
   }
 
-  const highlightItems = popular.slice(0, 4);
+  const highlightItems = groupAccommodationByProperty(popular).slice(0, 4);
   const highlightIds = new Set(highlightItems.map((activity) => activity.id));
-  const forYouItems = recommended.filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
+  const forYouItems = groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
   return (
     <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
       <section className="atlas-hero-section relative isolate min-h-[calc(100svh-96px)] overflow-hidden bg-[#061326] text-white lg:min-h-[calc(100svh-64px)]">

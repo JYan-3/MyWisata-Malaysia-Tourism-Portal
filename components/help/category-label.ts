@@ -17,6 +17,8 @@ export function categoryLabel(t: TFunction, category: string): string {
     case 'vendor': return t('customer:help.categories.vendor');
     case 'payment': return t('customer:help.categories.payment');
     case 'general': return t('customer:help.categories.general');
+    case 'events': return t('customer:help.categories.events');
+    case 'vendor-events': return t('customer:help.categories.vendorEvents');
     default: return category;
   }
 }

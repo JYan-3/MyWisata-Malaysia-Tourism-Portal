@@ -10,7 +10,9 @@
 // client-only "Loading…" flash, and is crawlable/shareable.
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getBookingSlots, getComputedActivity, getOutletChoices, getProductReviews, getOutletActivities, getVendorActivities } from "@/backend/domains/catalogue";
 import { buildActivityMetadata } from "@/lib/affiliate/activity-metadata";
 import { ActivityDetailClient } from "./activity-detail-client";
@@ -31,6 +33,8 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
   const requestedOutletId = sp?.outletId;
   const db = await createClient();
   const activity = await getComputedActivity(id, undefined, db, requestedOutletId);
+  // Rooms are booked only from their hotel page; old links to a room land there instead.
+  if (activity?.categorySlug === "accommodation") redirect(getOutletShopHref(requestedOutletId ?? activity.outletId));
   const [slots, reviews, outletChoices] = activity
     ? await Promise.all([
         activity.requiresBooking ? getBookingSlots(activity.id, db) : Promise.resolve([]),
@@ -48,12 +52,13 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
   const returnToParam = sp?.returnTo ? decodeURIComponent(sp.returnTo) : "";
   const isVendorSource = sp?.source === "vendor" || returnToParam.includes("/customer/vendor");
   const vendorId = activity?.outlet.vendorId;
-  const relatedProducts =
+  const relatedProducts = (
     isVendorSource && vendorId
       ? await getVendorActivities(vendorId, activity!.id, db)
       : selectedOutletId && activity
         ? await getOutletActivities(selectedOutletId, activity.id, db)
-        : [];
+        : []
+  ).filter((related) => related.categorySlug !== "accommodation");
   const relatedScope: "vendor" | "outlet" = isVendorSource && vendorId ? "vendor" : "outlet";
 
   return (

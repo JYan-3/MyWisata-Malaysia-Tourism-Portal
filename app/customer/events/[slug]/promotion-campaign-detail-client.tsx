@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { ArrowLeft, CalendarDays, Clock, MapPin, Megaphone, RefreshCw, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
         description={campaign ? undefined : t("ui.promotionCampaigns.detailDescription")}
         icon={<Megaphone size={15} />}
         className="mb-6"
-        actions={<Button asChild variant="outline" className="rounded-full"><Link href="/customer/events"><ArrowLeft size={15} /> {t("ui.promotionCampaigns.backToEvents")}</Link></Button>}
+        actions={<Button asChild variant="outline" className="rounded-full"><BackLink fallbackHref="/customer/events"><ArrowLeft size={15} /> {t("actions.back", { ns: "common" })}</BackLink></Button>}
       />
       {loading ? <p role="status" className="py-12 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.loading")}</p> : error ? (
         <div role="alert" className="rounded-3xl border border-border bg-card p-8 text-center"><CalendarDays size={28} className="mx-auto text-primary" /><h2 className="mt-3 font-bold text-foreground">{t(error === "missing" ? "ui.promotionCampaigns.notFound" : "ui.promotionCampaigns.loadError")}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{t(error === "missing" ? "ui.promotionCampaigns.notFoundDescription" : "ui.promotionCampaigns.tryAgainDescription")}</p><div className="mt-5 flex justify-center gap-2">{error === "load" && <Button variant="outline" className="rounded-full" onClick={() => void refresh()}><RefreshCw size={14} /> {t("ui.actions.retry")}</Button>}<Button asChild className="rounded-full"><Link href="/customer/events">{t("ui.promotionCampaigns.backToEvents")}</Link></Button></div></div>

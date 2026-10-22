@@ -1,4 +1,3 @@
-import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { createHmac } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -6,6 +5,7 @@ import { isSimulatorCheckoutProvider } from '@/lib/payments/providers';
 import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
 import { settleSimulatorEvent } from '@/lib/payments/settle-simulator-event';
 import { signSimulatorWebhookPayload } from '@/lib/payments/simulator-webhook';
+import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 

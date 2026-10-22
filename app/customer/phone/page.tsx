@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { ArrowLeft, CheckCircle2, Phone } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -39,10 +40,10 @@ export default function PhoneVerificationPage() {
         icon={<Phone size={14} />}
         actions={
           <Button asChild variant="outline">
-            <Link href="/customer/profile">
+            <BackLink fallbackHref="/customer/profile">
               <ArrowLeft size={16} />
-              {tCustomer("ui.profile.backToProfile")}
-            </Link>
+              {tCustomer("actions.back", { ns: "common" })}
+            </BackLink>
           </Button>
         }
       />

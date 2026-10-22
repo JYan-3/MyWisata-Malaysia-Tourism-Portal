@@ -13,7 +13,7 @@ vi.mock("@/backend/supabase", async () => {
   };
 });
 
-import { getOrdersForUser } from "../commerce";
+import { getOrdersForUser, mapOrder } from "../commerce";
 
 function orderRow(index: number) {
   return {
@@ -68,5 +68,26 @@ describe("customer order history pagination", () => {
     expect(secondRequest.searchParams.get("user_id")).toBe("eq.customer-1");
     expect(secondRequest.searchParams.get("or")).toContain("created_at.lt.");
     expect(secondRequest.searchParams.get("or")).toContain("id.lt.order-999");
+  });
+});
+
+describe("hotel stay order snapshot", () => {
+  it("maps the guest preferences saved on the order", () => {
+    const order = mapOrder({
+      ...orderRow(1),
+      stay_details: {
+        adults: 2,
+        estimatedArrival: "18:00-21:00",
+        secondGuestName: "Sam Lee",
+        specialRequest: "Quiet room, if available.",
+      },
+    } as Parameters<typeof mapOrder>[0]);
+
+    expect(order.stayDetails).toEqual({
+      adults: 2,
+      estimatedArrival: "18:00-21:00",
+      secondGuestName: "Sam Lee",
+      specialRequest: "Quiet room, if available.",
+    });
   });
 });

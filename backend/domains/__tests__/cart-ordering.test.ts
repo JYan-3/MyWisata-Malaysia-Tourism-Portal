@@ -14,7 +14,7 @@ vi.mock("@/backend/supabase", async () => {
   };
 });
 
-import { addToCart, getCart, updateCartQty } from "../commerce";
+import { addToCart, getCart, updateCartQty, updateCartStayDetails } from "../commerce";
 
 const migrationPath = resolve(
   process.cwd(),
@@ -22,6 +22,7 @@ const migrationPath = resolve(
 );
 
 let persistedRows: object[];
+let productCategory = "food";
 
 function jsonResponse(body: object, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -38,6 +39,7 @@ function cartRow(quantity = 1, id = "line-1") {
     outlet_id: "outlet-1",
     quantity,
     unit_price: 15,
+    stay_details: null,
     product_variants: { product_id: "product-1" },
     booking_slots: null,
   };
@@ -51,12 +53,20 @@ describe("cart recency ordering", () => {
   beforeEach(() => {
     request.mockReset();
     persistedRows = [cartRow()];
+    productCategory = "food";
     request.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const current = await asRequest(input, init);
       const url = new URL(current.url);
       if (url.pathname.endsWith("/carts")) return jsonResponse([{ id: "cart-1" }]);
+      if (url.pathname.endsWith("/products")) return jsonResponse([{ id: "product-1", categories: { slug: productCategory } }]);
       if (current.method === "GET" && url.pathname.endsWith("/cart_items")) {
         return jsonResponse(persistedRows);
+      }
+      if (current.method === "PATCH" && url.pathname.endsWith("/cart_items")) {
+        const body = JSON.parse(await current.clone().text());
+        const id = url.searchParams.get("id")?.replace("eq.", "");
+        persistedRows = persistedRows.map((row) => (row as { id: string }).id === id ? { ...row, stay_details: body.stay_details } : row);
+        return jsonResponse([{ id }]);
       }
       return jsonResponse([]);
     });
@@ -91,7 +101,7 @@ describe("cart recency ordering", () => {
   });
 
   it("does not move a line when its quantity is changed from the cart", async () => {
-    await updateCartQty("alice", 0, 4);
+    await updateCartQty("alice", "line-1", 4);
 
     const updateRequest = request.mock.calls
       .map(([input, init]) => input instanceof Request ? input : new Request(input, init))
@@ -101,23 +111,30 @@ describe("cart recency ordering", () => {
     expect(body).toEqual({ quantity: 4 });
   });
 
-  it("keeps visible indexes aligned when a legacy cart row has no backing product", async () => {
-    persistedRows = [
-      {
-        ...cartRow(1, "orphan-line"),
-        variant_id: null,
-        product_variants: null,
-      },
-      cartRow(1, "visible-line"),
-    ];
-
-    await updateCartQty("alice", 0, 4);
+  it("updates the selected cart row by its persisted UUID", async () => {
+    await updateCartQty("alice", "visible-line", 4);
 
     const updateRequest = request.mock.calls
       .map(([input, init]) => input instanceof Request ? input : new Request(input, init))
       .find((current) => current.method === "PATCH" && new URL(current.url).pathname.endsWith("/cart_items"));
 
     expect(new URL(updateRequest!.url).searchParams.get("id")).toBe("eq.visible-line");
+  });
+
+  it("saves accommodation guest details to the exact account-owned cart row", async () => {
+    productCategory = "accommodation";
+    const stayDetails = { primaryGuestName: "Nur Aisyah", additionalGuestNames: ["Sam Lee"], adults: 2, estimatedArrival: "unknown" as const, specialRequest: "Quiet room" };
+
+    const nextItems = await updateCartStayDetails("alice", "line-1", stayDetails);
+    const updateRequest = request.mock.calls
+      .map(([input, init]) => input instanceof Request ? input : new Request(input, init))
+      .find((current) => current.method === "PATCH" && new URL(current.url).pathname.endsWith("/cart_items"));
+    const body = JSON.parse(await updateRequest!.clone().text());
+
+    expect(body.stay_details).toEqual(stayDetails);
+    expect(new URL(updateRequest!.url).searchParams.get("id")).toBe("eq.line-1");
+    expect(new URL(updateRequest!.url).searchParams.get("cart_id")).toBe("eq.cart-1");
+    expect(nextItems[0]?.stayDetails).toEqual(stayDetails);
   });
 });
 

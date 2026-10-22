@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, MapPinned, Search, Sparkles, X } from "lucide-react";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { MalaysiaDestinationRail } from "@/components/customer/malaysia-destination-rail";
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
@@ -68,13 +69,14 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
 
   // "Recommended For You" is the personalised feed — stable, independent of the
   // filters applied to the grid below. aiTag carries each card's match reason.
-  const picked = initialRecommended;
+  const picked = groupAccommodationByProperty(initialRecommended);
   const personalised = picked.some((a) => Boolean(a.aiTag));
-  const totalPages = Math.max(1, Math.ceil((activities?.length ?? 0) / EXPERIENCES_PER_PAGE));
+  const listedActivities = useMemo(() => groupAccommodationByProperty(activities ?? []), [activities]);
+  const totalPages = Math.max(1, Math.ceil(listedActivities.length / EXPERIENCES_PER_PAGE));
   const pageStart = (currentPage - 1) * EXPERIENCES_PER_PAGE;
   const visibleExperiences = useMemo(
-    () => (activities ?? []).slice(pageStart, pageStart + EXPERIENCES_PER_PAGE),
-    [activities, pageStart],
+    () => listedActivities.slice(pageStart, pageStart + EXPERIENCES_PER_PAGE),
+    [listedActivities, pageStart],
   );
   const pageItems = useMemo(() => getPageItems(currentPage, totalPages), [currentPage, totalPages]);
 

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { AlertCircle, CalendarClock, ImageOff, ShieldCheck, Ticket } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
 import type { BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 import { formatMYRFromSen } from "@/lib/i18n/format";
+import { formatStayRange } from "@/lib/customer/booking-view";
 import { useReferenceCurrency } from "@/components/providers/reference-currency";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -61,9 +63,13 @@ export default function CheckoutPage() {
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
   const [bookingSlotsLoad,setBookingSlotsLoad]=useState<BookingSlotLookupState>({requestToken:null,status:"loaded"});
   const [foodModeByOutlet, setFoodModeByOutlet] = useState<Record<string, "dine_in" | "takeaway">>({});
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  // null = untouched: a signed-in buyer sees their profile values, a guest starts empty.
+  const [typedEmail, setContactEmail] = useState<string | null>(null);
+  const [typedName, setContactName] = useState<string | null>(null);
+  const [typedPhone, setContactPhone] = useState<string | null>(null);
+  const contactEmail = typedEmail ?? currentUser?.email ?? "";
+  const contactName = typedName ?? currentUser?.name ?? "";
+  const contactPhone = typedPhone ?? currentUser?.phone ?? "";
   const checkoutAllowed = !currentUser || capabilities.checkout.allowed;
   const availableMethods = currentUser ? METHODS : METHODS.filter(choice => !["wallet", "wallet_split"].includes(choice.paymentMethod));
 
@@ -176,6 +182,10 @@ export default function CheckoutPage() {
   const foodModeMissing = foodOutletGroups.some(({ outletId, outlet }) =>
     !outlet || !foodModeByOutlet[outletId] || !outlet.foodServiceModes?.includes(foodModeByOutlet[outletId]!),
   );
+  const isStayItem = (item: (typeof selectedItems)[number]) =>
+    Boolean(item.slotId) && activities.find((candidate) => candidate.id === item.activityId)?.categorySlug === "accommodation";
+  const showPhone = selectedMethod.paymentProvider === "toyyibpay";
+  const myDate = (ms: number) => new Date(ms).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
 
   if (toyyibPayReturned) {
     return (
@@ -240,7 +250,7 @@ export default function CheckoutPage() {
           selectedKeys: [...selectedKeys],
           voucherCode: currentUser ? voucherCode : null,
           claimId: currentUser ? claimId : null,
-          contact: currentUser ? (contactPhone ? { email: currentUser.email, phone: contactPhone } : undefined) : { email: contactEmail, name: contactName || null, phone: contactPhone || null },
+          contact: { email: contactEmail.trim() || (currentUser?.email ?? ""), name: contactName.trim() || null, phone: contactPhone || null },
           foodServiceModes: foodOutletGroups.map(({ outletId }) => ({ outletId, mode: foodModeByOutlet[outletId]! })),
           paymentMethod,
           paymentProvider,
@@ -305,9 +315,9 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/customer/cart" className="mb-4 inline-flex items-center text-sm font-semibold text-primary hover:underline">
-        ← {tCustomer("ui.actions.backToCart")}
-      </Link>
+      <BackLink fallbackHref="/customer/cart" sameOriginOnly className="mb-4 inline-flex items-center text-sm font-semibold text-primary hover:underline">
+        ← {tCommon("actions.back")}
+      </BackLink>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground font-[family-name:var(--font-display)]">
           {tCustomer("ui.checkout.title")}
@@ -322,13 +332,11 @@ export default function CheckoutPage() {
       </div>
 
       <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
-        {!currentUser && <>
-          <h2 className="font-semibold">{tCustomer("guestCheckout.title")}</h2>
-          <p className="text-sm text-muted-foreground">{tCustomer("guestCheckout.hint")}</p>
-          <label className="block text-sm">{tCustomer("guestCheckout.email")}<Input type="email" autoComplete="email" required value={contactEmail} onChange={event => setContactEmail(event.target.value)} /></label>
-          <label className="block text-sm">{tCustomer("guestCheckout.name")}<Input autoComplete="name" value={contactName} onChange={event => setContactName(event.target.value)} /></label>
-        </>}
-        {selectedMethod.paymentProvider === "toyyibpay" && <label className="block text-sm">{tCustomer("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>}
+        <h2 className="font-semibold">{!currentUser ? tCustomer("guestCheckout.title") : tCustomer("ui.property.contactDetails")}</h2>
+        <p className="text-sm text-muted-foreground">{currentUser ? tCustomer("ui.property.prefilledHint") : tCustomer("guestCheckout.hint")}</p>
+        <label className="block text-sm">{tCustomer("guestCheckout.email")}<Input type="email" autoComplete="email" required value={contactEmail} onChange={event => setContactEmail(event.target.value)} /></label>
+        <label className="block text-sm">{tCustomer("guestCheckout.name")}<Input autoComplete="name" value={contactName} onChange={event => setContactName(event.target.value)} /></label>
+        {showPhone && <label className="block text-sm">{tCustomer("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>}
       </section>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Main Column */}
@@ -398,15 +406,26 @@ export default function CheckoutPage() {
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{outlet?.name ?? ""} {variant?.label ? `· ${variant.label}` : ""}</p>
-                      {slot && (
+                      {slot && isStayItem(item) ? (
+                        <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-border bg-card p-2.5 text-xs">
+                          <div>
+                            <p className="font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.property.checkIn")}</p>
+                            <p className="font-semibold text-foreground">{myDate(Date.parse(slot.startsAt))}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.property.checkOut")}</p>
+                            <p className="font-semibold text-foreground">{myDate(Date.parse(slot.endsAt ?? slot.startsAt) + ((item.nights ?? 1) - 1) * 86_400_000)}</p>
+                          </div>
+                        </div>
+                      ) : slot && (
                         <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
                           <CalendarClock size={13} className="text-primary" />
-                          <span>{new Date(slot.startsAt).toLocaleString("en-MY", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                          <span>{(item.nights ?? 1) > 1 || activity?.categorySlug === "accommodation" ? `${formatStayRange(slot.startsAt, item.nights ?? 1)} · ${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })}` : new Date(slot.startsAt).toLocaleString("en-MY", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                         </p>
                       )}
                       <div className="mt-2 flex items-center gap-2">
                         <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">
-                          {tCustomer('ui.booking.qtyLabel')} {item.qty}
+                          {isStayItem(item) ? `${tCustomer("ui.property.nightsSummary", { count: item.nights ?? 1 })} · ${tCustomer("ui.property.roomsCount", { count: item.qty })}` : `${tCustomer('ui.booking.qtyLabel')} ${item.qty}`}
                         </span>
                         {pricingReady && lineTotal === 0 && (
                           <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-300">

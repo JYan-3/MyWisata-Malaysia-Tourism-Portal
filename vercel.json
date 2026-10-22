@@ -45,6 +45,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/ensure-stay-nights",
+      "schedule": "0 17 * * *"
+    },
+    {
       "path": "/api/cron/purge-kyc-evidence",
       "schedule": "0 4 * * *"
     }

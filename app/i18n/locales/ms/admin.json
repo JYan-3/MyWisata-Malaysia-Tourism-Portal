@@ -928,7 +928,8 @@
     "entity": {
       "listing": "Senarai",
       "outlet": "Outlet",
-      "voucher": "Baucar"
+      "voucher": "Baucar",
+      "hotelProfile": "Profil hotel"
     },
     "errors": {
       "actionFailed": "Tindakan semakan gagal",
@@ -969,6 +970,25 @@
       "changeReason": "Nyatakan perkara yang perlu diubah (sekurang-kurangnya 10 aksara):",
       "batchRejectReason": "Masukkan sebab menolak semua item dipilih (sekurang-kurangnya 10 aksara):",
       "batchChangeReason": "Nyatakan perubahan untuk semua item dipilih (sekurang-kurangnya 10 aksara):"
+    },
+    "hotelDiff": {
+      "title": "Perubahan dicadangkan (semasa → baharu). Hotel kekal dipaparkan sehingga anda meluluskan.",
+      "noChanges": "Tiada perubahan yang kelihatan.",
+      "photoCount_one": "{{count}} foto dihantar",
+      "photoCount_other": "{{count}} foto dihantar",
+      "fields": {
+        "name": "Nama hotel",
+        "address": "Alamat",
+        "city": "Bandar",
+        "state": "Negeri",
+        "phone": "Telefon",
+        "about": "Tentang hotel ini",
+        "amenities": "Kemudahan",
+        "checkIn": "Masa daftar masuk",
+        "checkOut": "Masa daftar keluar",
+        "policies": "Polisi",
+        "photos": "Foto"
+      }
     }
   },
   "chatbot": {
@@ -3879,5 +3899,58 @@
     "eyebrow": "Keselamatan akaun",
     "title": "Sahkan aplikasi pengesah anda",
     "description": "Akses admin memerlukan kod daripada aplikasi pengesah anda selain kata laluan."
+  },
+  "staffHelp": {
+    "eyebrow": "Bantuan staf",
+    "title": "Bantuan admin",
+    "description": "Cara setiap bahagian panel admin berfungsi, siapa yang boleh menggunakannya, dan peraturan yang perlu diketahui sebelum bertindak.",
+    "searchLabel": "Cari bantuan",
+    "searchPlaceholder": "Cari bahagian, tindakan atau peraturan",
+    "contentLanguage": "Butiran bahagian adalah dalam bahasa Inggeris.",
+    "permissionNote": "Sesetengah bahagian juga bergantung pada kebenaran yang diberikan dalam Kawalan Akses, jadi bahagian yang disenaraikan di sini mungkin belum boleh dibuka untuk akaun anda.",
+    "whoSuperAdmin": "Super Admin sahaja",
+    "whoStaff": "Admin, pelulus dan Super Admin",
+    "whoGranted": "Diberikan kepada akaun anda",
+    "actions": "Apa yang boleh anda lakukan",
+    "notes": "Penting",
+    "empty": "Tiada bahagian sepadan dengan carian anda.",
+    "headerLink": "Bantuan",
+    "otherGroup": "Lain-lain",
+    "backToHelp": "Semua topik bantuan",
+    "openPage": "Buka halaman ini",
+    "notAvailable": "Panduan ini tidak tersedia untuk akaun anda. Kembali untuk melihat topik bantuan yang boleh anda gunakan."
+  },
+  "hotelAmenities": {
+    "eyebrow": "Hotel",
+    "title": "Kemudahan hotel",
+    "description": "Senarai semak yang ditanda oleh hotel dalam profil hotel mereka. Kemudahan yang dimatikan tidak dipaparkan dalam profil baharu dan halaman hotel.",
+    "loading": "Memuatkan kemudahan…",
+    "empty": "Belum ada kemudahan",
+    "manage": "Kemudahan hotel",
+    "form": {
+      "code": "Kod",
+      "labelEn": "Label Bahasa Inggeris",
+      "labelMs": "Label Bahasa Melayu",
+      "labelZh": "Label Bahasa Cina",
+      "icon": "Ikon",
+      "add": "Tambah kemudahan",
+      "codeHint": "Kod: 2–40 huruf kecil, nombor atau garis bawah. Tidak boleh diubah kemudian."
+    },
+    "table": {
+      "code": "Kod",
+      "labels": "Label (EN · MS · ZH)",
+      "status": "Keadaan"
+    },
+    "actions": {
+      "activate": "Hidupkan",
+      "deactivate": "Matikan"
+    },
+    "success": {
+      "added": "Kemudahan ditambah"
+    },
+    "errors": {
+      "add": "Kemudahan tidak dapat ditambah",
+      "update": "Kemudahan tidak dapat dikemas kini"
+    }
   }
 }

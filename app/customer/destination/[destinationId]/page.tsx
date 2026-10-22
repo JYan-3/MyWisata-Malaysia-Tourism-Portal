@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BackLink } from "@/components/shared/back-link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -8,7 +9,8 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { LocalizedContent } from "@/components/customer/localized-content";
+import { LocalizedContentHeading } from "@/components/customer/localized-content";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +98,7 @@ export default async function DestinationPage({ params }: Props) {
 
   const { destination, outlets, products } = result;
   const { t } = await getServerTranslation("customer");
+  const { t: tCommon } = await getServerTranslation("common");
 
   // D7: a state renders the new place-first page only once it has places rows;
   // every other state falls through to this page unchanged. No flag day.
@@ -118,13 +121,13 @@ export default async function DestinationPage({ params }: Props) {
         )}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
-          <Link
-            href="/customer/explore"
+          <BackLink
+            fallbackHref="/customer/explore"
             className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-white/80 hover:text-white"
           >
             <ArrowLeft size={15} />
-            {t("ui.destination.backToExplore")}
-          </Link>
+            {tCommon("actions.back")}
+          </BackLink>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/60 dark:text-white/60">
             {destination.zone}
           </p>
@@ -212,9 +215,7 @@ export default async function DestinationPage({ params }: Props) {
                       )}
                     </div></Link>
                     <div className="flex flex-1 flex-col p-3">
-                      <LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
-                        {({ text, control }) => <><Link href={`/customer/activity/${product.id}`} className="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-sm">{text}</h3></Link>{control}</>}
-                      </LocalizedContent>
+                      <LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={`/customer/activity/${product.id}`} linkClassName="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" headingClassName="break-words whitespace-normal text-sm" />
                       <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
                     </div>
                   </article>
@@ -256,7 +257,7 @@ export default async function DestinationPage({ params }: Props) {
                 return (
                   <Link
                     key={outlet.id}
-                    href={vendor ? `/customer/vendor/${vendor.id}` : `/customer/outlet/${outlet.id}`}
+                    href={getOutletShopHref(outlet.id)}
                     className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
                   >
                     {vendor?.logo_url ? (

@@ -6,6 +6,7 @@ import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
+import type { StayBookingDetails } from '@/backend/core/types';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -42,9 +43,9 @@ export async function GET(request: Request, { params }: Props) {
       id, display_id, user_id, contact_name, contact_email, status, paid_at, completed_at, created_at,
       users(full_name, email),
       order_items!inner(
-        id, order_id, product_name, variant_name, slot_starts_at, quantity, line_total, fulfil_status, food_fulfilment_mode, food_qr_scanned_at, created_at, vendor_id,
+        id, order_id, product_name, variant_name, slot_starts_at, nights, quantity, line_total, fulfil_status, food_fulfilment_mode, food_qr_scanned_at, created_at, vendor_id, stay_details,
         outlets(id, name, city, state),
-        products(cover_url)
+        products(cover_url, categories(slug))
       )
     `, { count: 'exact' })
     .eq('order_items.vendor_id', vendorId)
@@ -86,9 +87,18 @@ export async function GET(request: Request, { params }: Props) {
   const { data, error, count } = await query.range((page - 1) * pageSize, page * pageSize - 1);
   if (error) return apiFail('DB_ERROR', error.message, 500);
 
-  const items = (data ?? []).map((order: { order_items: Array<{ vendor_id: string; fulfil_status: string; line_total: number | string | null; outlets: { name: string; } | { name: string; }[] | null; quantity: number; product_name: string; }>; [key: string]: unknown; }) => {
-    // Ensure we only process this vendor's items
-    const vendorItems = (order.order_items || []).filter((i: { vendor_id: string }) => i.vendor_id === vendorId);
+  const items = (data ?? []).map((order: { order_items: Array<{ vendor_id: string; fulfil_status: string; line_total: number | string | null; outlets: { id?: string; name: string; } | { id?: string; name: string; }[] | null; quantity: number; product_name: string; stay_details?: StayBookingDetails | null; products?: { categories?: { slug: string } | { slug: string }[] | null } | { categories?: { slug: string } | { slug: string }[] | null }[] | null }>; [key: string]: unknown; }) => {
+    // Defense in depth: never return another vendor's item or an outlet outside this user's scope.
+    const vendorItems = (order.order_items || []).filter((item) => {
+      const outlet = Array.isArray(item.outlets) ? item.outlets[0] : item.outlets;
+      return item.vendor_id === vendorId && Boolean(outlet?.id && outletIds.includes(outlet.id));
+    }).map((item) => {
+      const product = Array.isArray(item.products) ? item.products[0] : item.products;
+      const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+      // Guest details are meaningful only for accommodation and must not leak
+      // through malformed non-stay order-item snapshots.
+      return category?.slug === 'accommodation' ? item : { ...item, stay_details: null };
+    });
     const total = vendorItems.reduce((sum: number, item: { line_total: number | string | null }) => sum + Number(item.line_total || 0), 0);
     const uniqueOutlets = [...new Set(vendorItems.map((item: { outlets: { name: string; } | { name: string; }[] | null }) => { const outletName = Array.isArray(item.outlets) ? item.outlets[0]?.name : item.outlets?.name; return outletName ? outletShortName(outletName) : null; }).filter(Boolean))];
 
@@ -101,6 +111,8 @@ export async function GET(request: Request, { params }: Props) {
 
     return {
       ...order,
+      // Do not leak the unfiltered nested relation through the spread above.
+      order_items: vendorItems,
       users: order.users ?? { full_name: order.contact_name ?? "Guest", email: order.contact_email ?? null },
       vendor_total: total,
       vendor_items: vendorItems,

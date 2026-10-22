@@ -1,8 +1,10 @@
 // P2 — Member 2: Single outlet GET/PATCH/DELETE (B2)
 
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
-import { outletUpdateSchema } from '@/lib/validation/vendor-schemas';
+import { hotelProfileSchema, outletUpdateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeOutlet, authorizeVendor } from '@/lib/vendor-authorization';
+import { isHotelOutlet } from '@/lib/customer/hotel-outlet';
+import { getPendingHotelProfile, loadLiveHotelProfile, upsertPendingHotelProfile } from '@/lib/vendor/hotel-profile';
 
 interface Props { params: Promise<{ vendorId: string; outletId: string }> }
 
@@ -39,6 +41,37 @@ export async function PATCH(request: Request, { params }: Props) {
     return apiFail('FORBIDDEN', 'Outlet managers can update operating hours and welcome message only', 403);
   }
 
+  const contentChanged = Object.keys(body).some((key) => !managerEditableFields.includes(key));
+
+  // Hotels (D13): owner edits wait for admin review while the hotel stays live; manager fields still apply directly.
+  if (contentChanged && !access.access.isOutletManager && await isHotelOutlet(supabase, outletId)) {
+    // The outlet form re-sends every field filled from the live outlet, so only values that differ from
+    // live are changes; anything else keeps whatever is already pending.
+    const live = await loadLiveHotelProfile(supabase, outletId);
+    const base = (await getPendingHotelProfile(supabase, outletId))?.payload ?? live;
+    const amenityCodes = new Set(base.amenityCodes);
+    const liveHas = (code: string) => live.amenityCodes.includes(code);
+    if (typeof body.wheelchairAccessible === 'boolean' && body.wheelchairAccessible !== liveHas('accessible')) amenityCodes[body.wheelchairAccessible ? 'add' : 'delete']('accessible');
+    if (typeof body.petFriendly === 'boolean' && body.petFriendly !== liveHas('pets_allowed')) amenityCodes[body.petFriendly ? 'add' : 'delete']('pets_allowed');
+    const merged = hotelProfileSchema.safeParse({
+      ...base,
+      ...Object.fromEntries((['name', 'address', 'city', 'state', 'postcode', 'country', 'phone', 'email', 'lat', 'lng'] as const)
+        .filter((key) => body[key] !== undefined && body[key] !== live[key]).map((key) => [key, body[key]])),
+      amenityCodes: [...amenityCodes],
+    });
+    if (!merged.success) return apiFail('VALIDATION_FAILED', 'Hotel details failed validation', 422, merged.error.flatten());
+    const profile = merged.data;
+    await upsertPendingHotelProfile(supabase, { outletId, vendorId, userId: access.access.userId, profile });
+    const directUpdate: Record<string, unknown> = {};
+    if (body.welcomeMessage !== undefined) directUpdate.welcome_message = body.welcomeMessage || null;
+    if (body.welcomeEnabled !== undefined) directUpdate.welcome_enabled = body.welcomeEnabled;
+    if (Object.keys(directUpdate).length) {
+      const { error } = await supabase.from('outlets').update(directUpdate).eq('id', outletId).eq('vendor_id', vendorId).select().single();
+      if (error) return apiFail('DB_ERROR', error.message, 500);
+    }
+    return apiOk({ pendingReview: true }, { status: 202 });
+  }
+
   const updateData: Record<string, unknown> = {};
   if (body.name !== undefined) updateData.name = body.name;
   if (body.address !== undefined) updateData.address = body.address;
@@ -57,7 +90,6 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.petFriendly !== undefined) updateData.pet_friendly = body.petFriendly;
   if (body.foodServiceModes !== undefined) updateData.food_service_modes = body.foodServiceModes;
 
-  const contentChanged = Object.keys(body).some((key) => !managerEditableFields.includes(key));
   if (contentChanged && !access.access.isOutletManager) {
     updateData.review_status = 'pending_review';
     updateData.review_note = null;

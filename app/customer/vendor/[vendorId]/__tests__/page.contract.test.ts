@@ -61,6 +61,12 @@ describe("customer vendor server module boundaries", () => {
     expect(pageSource).toContain("from '@/lib/customer/operating-hours'");
     expect(pageSource).not.toContain("from '@/components/outlet/outlet-block-renderer'");
   });
+
+  it("passes serializable title props to the localized heading client component", () => {
+    expect(pageSource).toContain("<LocalizedContentHeading");
+    expect(pageSource).toContain("showTitleAttribute");
+    expect(pageSource).not.toContain("{({ text, control }) =>");
+  });
 });
 
 describe("customer vendor template consistency with outlet template", () => {

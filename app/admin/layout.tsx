@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Search } from "lucide-react";
+import { LifeBuoy, LogOut, Search } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { staffVerificationDestination } from "@/lib/auth/staff-route-boundaries";
@@ -61,8 +61,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
   // /admin/security is where unverified staff sessions are sent to enter their
   // authenticator code (lib/supabase/proxy.ts), so it is open to every staff role.
+  // /admin/help and its guides filter their own content to the staff member's menu.
   const outsideAssignedWork = Boolean(currentUser)
     && pathname !== "/admin/security"
+    && pathname !== "/admin/help"
+    && !pathname.startsWith("/admin/help/")
     && !navigationHrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
   const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
@@ -262,6 +265,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <kbd className="ml-1 shrink-0 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{commandShortcutLabel}</kbd>
           </button>}
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/help"
+              aria-label={tAdmin("staffHelp.headerLink")}
+              title={tAdmin("staffHelp.headerLink")}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 text-xs font-semibold text-foreground transition hover:border-primary/30 hover:bg-secondary"
+            >
+              <LifeBuoy size={15} aria-hidden="true" />
+              <span className="hidden sm:inline">{tAdmin("staffHelp.headerLink")}</span>
+            </Link>
             <LanguageSwitcher compact className="w-28" />
             <AppearanceControl />
             {staffPasskeyRequired && <Link href={staffVerificationDestination(pathname)} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-foreground">{tAdmin("passkey.manage")}</Link>}
