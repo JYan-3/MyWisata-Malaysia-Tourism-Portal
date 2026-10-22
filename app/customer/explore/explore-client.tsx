@@ -4,12 +4,14 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
-import { Compass, Map } from "lucide-react";
+import { Compass, Map, SlidersHorizontal } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchActivities } from "@/backend/domains/catalogue";
 import * as catalogueDomain from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { CustomerDiscoveryFilterPanel } from "@/components/customer/discovery-filters";
+import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Button } from "@/components/ui/button";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -19,6 +21,8 @@ import { groupAccommodationByProperty, rankDiscoveryResults } from "@/lib/custom
 import type { DiscoveryResult, SponsoredPlacement } from "@/backend/core/types";
 
 type ExploreTab = "destinations" | "experiences";
+type ExperienceSort = "recommended" | "price_asc" | "rating_desc";
+const EXPERIENCE_PAGE_SIZE = 8;
 
 const ZONE_ORDER = [
   "Federal Territory",
@@ -29,12 +33,36 @@ const ZONE_ORDER = [
   "East Coast Malaysia",
 ];
 
-function buildExploreHref(filters: DiscoveryQuery, tab: ExploreTab) {
+function buildExploreHref(filters: DiscoveryQuery, tab: ExploreTab, sort: ExperienceSort = "recommended", page = 1) {
   const params = serializeDiscoveryQuery(filters);
-  if (tab === "experiences") params.set("tab", "experiences");
-  else params.delete("tab");
+  if (tab === "experiences") {
+    params.set("tab", "experiences");
+    if (sort !== "recommended") params.set("sort", sort);
+    else params.delete("sort");
+    if (page > 1) params.set("page", String(page));
+    else params.delete("page");
+  } else {
+    params.delete("tab");
+    params.delete("sort");
+    params.delete("page");
+  }
   const query = params.toString();
   return query ? `/customer/explore?${query}` : "/customer/explore";
+}
+
+function readExperienceSort(value: string | null): ExperienceSort {
+  return value === "price_asc" || value === "rating_desc" ? value : "recommended";
+}
+
+function normalizeExperienceFilters(filters: DiscoveryQuery): DiscoveryQuery {
+  return {
+    ...filters,
+    categories: filters.categories.filter((category) => category !== "hidden_gem"),
+    types: [],
+    hiddenGemOnly: false,
+    familyFriendlyOnly: false,
+    coupleFriendlyOnly: false,
+  };
 }
 
 export function ExploreClient({
@@ -58,12 +86,33 @@ export function ExploreClient({
   ), []);
   const impressedPlacementIds = useRef(new Set<string>());
   const [tab, setTab] = useState<ExploreTab>(() => searchParams.get("tab") === "experiences" ? "experiences" : "destinations");
-  const [filters, setFilters] = useState<DiscoveryQuery>(() => parseDiscoveryQuery(new URLSearchParams(searchParams.toString())));
+  const [filters, setFilters] = useState<DiscoveryQuery>(() => {
+    const parsed = parseDiscoveryQuery(new URLSearchParams(searchParams.toString()));
+    return searchParams.get("tab") === "experiences" ? normalizeExperienceFilters(parsed) : parsed;
+  });
+  const [sort, setSort] = useState<ExperienceSort>(() => readExperienceSort(searchParams.get("sort")));
+  const activeSort = tab === "experiences" ? sort : "recommended";
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
   const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
-  const [visibleLimit, setVisibleLimit] = useState(8);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const initialCandidatesExpireAt = useRef<number | null>(null);
   const displayActivities = useMemo(() => groupAccommodationByProperty(activities), [activities]);
+  const rawPageParam = searchParams.get("page");
+  const parsedPage = rawPageParam === null ? 1 : Number(rawPageParam);
+  const requestedPage = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const totalExperiencePages = Math.max(1, Math.ceil(displayActivities.length / EXPERIENCE_PAGE_SIZE));
+  const currentExperiencePage = Math.min(requestedPage, totalExperiencePages);
+  const visibleActivities = displayActivities.slice(
+    (currentExperiencePage - 1) * EXPERIENCE_PAGE_SIZE,
+    currentExperiencePage * EXPERIENCE_PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    if (tab !== "experiences") return;
+    const canonicalPage = currentExperiencePage > 1 ? String(currentExperiencePage) : null;
+    if (rawPageParam === canonicalPage) return;
+    router.replace(buildExploreHref(filters, "experiences", activeSort, currentExperiencePage));
+  }, [activeSort, currentExperiencePage, filters, rawPageParam, router, tab]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -101,6 +150,7 @@ export function ExploreClient({
     hiddenGemOnly: filters.hiddenGemOnly,
     familyFriendlyOnly: filters.familyFriendlyOnly,
     coupleFriendlyOnly: filters.coupleFriendlyOnly,
+    ...(activeSort === "recommended" ? {} : { sort: activeSort }),
   }), [
     debouncedQuery,
     filters.state,
@@ -119,6 +169,7 @@ export function ExploreClient({
     filters.hiddenGemOnly,
     filters.familyFriendlyOnly,
     filters.coupleFriendlyOnly,
+    activeSort,
   ]);
   const hasSearchCriteria = Boolean(
     searchQuery.q ||
@@ -137,7 +188,8 @@ export function ExploreClient({
     searchQuery.bookableOnly ||
     searchQuery.hiddenGemOnly ||
     searchQuery.familyFriendlyOnly ||
-    searchQuery.coupleFriendlyOnly,
+    searchQuery.coupleFriendlyOnly ||
+    activeSort !== "recommended",
   );
 
   useEffect(() => {
@@ -216,19 +268,34 @@ export function ExploreClient({
   );
 
   const updateFilters = (patch: Partial<DiscoveryQuery>) => {
-    const next = { ...filters, ...patch };
+    const merged = { ...filters, ...patch };
+    const next = tab === "experiences" ? normalizeExperienceFilters(merged) : merged;
     setFilters(next);
-    router.replace(buildExploreHref(next, tab));
-    setVisibleLimit(8);
+    router.replace(buildExploreHref(next, tab, activeSort));
   };
 
   const changeTab = (nextTab: ExploreTab) => {
+    const nextFilters = nextTab === "experiences" ? normalizeExperienceFilters(filters) : filters;
     setTab(nextTab);
-    router.replace(buildExploreHref(filters, nextTab));
+    setFilters(nextFilters);
+    router.replace(buildExploreHref(nextFilters, nextTab, nextTab === "experiences" ? sort : "recommended"));
+  };
+
+  const changeExperienceSort = (nextSort: ExperienceSort) => {
+    setSort(nextSort);
+    router.replace(buildExploreHref(filters, "experiences", nextSort));
+  };
+
+  const changeExperiencePage = (page: number) => {
+    const nextPage = Math.min(Math.max(page, 1), totalExperiencePages);
+    router.replace(buildExploreHref(filters, "experiences", activeSort, nextPage));
   };
 
   const clearFilters = () => {
-    updateFilters({ q: "", state: null, categories: [], types: [], priceMax: null, operatingDays: [], hoursMode: "during", timeAt: null, timeFrom: null, timeTo: null, overnight: false, openNow: false, freeOnly: false, bookableOnly: false, hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false });
+    const next: DiscoveryQuery = { q: "", state: null, categories: [], types: [], priceMax: null, operatingDays: [], hoursMode: "during", timeAt: null, timeFrom: null, timeTo: null, overnight: false, openNow: false, freeOnly: false, bookableOnly: false, hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false };
+    setFilters(next);
+    setSort("recommended");
+    router.replace(buildExploreHref(next, tab, "recommended"));
   };
 
   return (
@@ -245,7 +312,7 @@ export function ExploreClient({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.eyebrow")}</p>
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
-                {t("ui.explore.title")}
+                {tab === "experiences" ? t("ui.explore.experiencePageTitle") : t("ui.explore.title")}
               </h1>
             </div>
 
@@ -349,62 +416,107 @@ export function ExploreClient({
       {/* Experiences tab */}
       {tab === "experiences" && (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          <section className="mb-8 space-y-6">
-            <CustomerDiscoveryFilterPanel
-              value={filters}
-              hasActiveFilters={hasActiveFilters}
-              onChange={updateFilters}
-              onClear={clearFilters}
-              placeholder={t("ui.map.searchExperience")}
-              category={filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null}
-              onCategoryChange={(category) => updateFilters(
-                category === "hidden_gem"
-                  ? { categories: [], types: [], hiddenGemOnly: true }
-                  : { categories: category ? [category] : [], types: [], hiddenGemOnly: false },
-              )}
-              categoryVariant="cards"
-              includeAllCategories={false}
-              filterButtonAlignment="end"
-            />
-          </section>
+          <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+            <aside
+              id="experience-filter-sidebar"
+              aria-label={t("ui.search.category")}
+              className={`min-w-0 ${mobileFiltersOpen ? "block" : "hidden"} lg:block`}
+            >
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                {mobileFiltersOpen && (
+                  <div className="mb-4 flex justify-end lg:hidden">
+                    <Button type="button" variant="ghost" size="sm" aria-label={t("ui.actions.close")} onClick={() => setMobileFiltersOpen(false)}>
+                      {t("ui.actions.close")}
+                    </Button>
+                  </div>
+                )}
+                <CustomerDiscoveryFilterPanel
+                  layout="sidebar"
+                  value={filters}
+                  hasActiveFilters={hasActiveFilters}
+                  onChange={updateFilters}
+                  onClear={clearFilters}
+                  placeholder={t("ui.map.searchExperience")}
+                  category={filters.categories.length === 1 ? filters.categories[0] : null}
+                  onCategoryChange={(category) => updateFilters({ categories: category ? [category] : [], types: [] })}
+                  categoryVariant="sidebar"
+                  includeAllCategories
+                  excludedCategories={["hidden_gem"]}
+                  showTypeFilters={false}
+                  showTagPreferenceFilters={false}
+                />
+              </div>
+            </aside>
 
-          {/* Experience cards */}
-          <section>
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">
-                  {filters.q
-                    ? t("ui.explore.allExperiences")
-                    : filters.categories.length === 1
-                    ? t("ui.explore.categoryExperiences", { category: filters.categories[0] })
-                    : t("ui.explore.allExperiences")}
-                </h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: displayActivities.length })}</p>
-              </div>
-            </div>
-            {displayActivities.length === 0 ? (
-              dataUnavailable ? null : (
-                <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                  <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
-                  {hasActiveFilters && <p className="mt-2">{t("ui.discovery.adjustFilters")}</p>}
-                  {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-secondary">{t("ui.actions.clearFilters")}</button>}
+            <section className="min-w-0">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">
+                    {filters.q
+                      ? t("ui.explore.allExperiences")
+                      : filters.categories.length === 1
+                      ? t("ui.explore.categoryExperiences", { category: t(`categories.${filters.categories[0]}`) })
+                      : t("ui.explore.allExperiences")}
+                  </h2>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: displayActivities.length })}</p>
                 </div>
-              )
-            ) : (
-              <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
-                {displayActivities.slice(0, visibleLimit).map((a) => (
-                  <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab)} onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
-                ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="lg:hidden"
+                    aria-expanded={mobileFiltersOpen}
+                    aria-controls="experience-filter-sidebar"
+                    onClick={() => setMobileFiltersOpen((open) => !open)}
+                  >
+                    <SlidersHorizontal aria-hidden="true" />
+                    {t("ui.map.moreFilters")}
+                  </Button>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <span>{t("ui.explore.sortBy")}</span>
+                    <select
+                      aria-label={t("ui.explore.sortBy")}
+                      value={sort}
+                      onChange={(event) => changeExperienceSort(readExperienceSort(event.target.value))}
+                      className="min-h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                    >
+                      <option value="recommended">{t("ui.explore.sortRecommended")}</option>
+                      <option value="price_asc">{t("ui.explore.sortPriceAsc")}</option>
+                      <option value="rating_desc">{t("ui.explore.sortRatingDesc")}</option>
+                    </select>
+                  </label>
+                </div>
               </div>
-            )}
-            {displayActivities.length > 8 && visibleLimit < displayActivities.length && (
-              <div className="mt-6 flex justify-end">
-                <button type="button" onClick={() => setVisibleLimit(activities.length)} className="rounded-full border border-border px-5 py-2 text-sm font-bold text-primary hover:bg-secondary">
-                  {t("ui.discovery.showAll", { count: displayActivities.length })}
-                </button>
-              </div>
-            )}
-          </section>
+              {displayActivities.length === 0 ? (
+                dataUnavailable ? null : (
+                  <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+                    <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
+                    {hasActiveFilters && <p className="mt-2">{t("ui.discovery.adjustFilters")}</p>}
+                    {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-secondary">{t("ui.actions.clearFilters")}</button>}
+                  </div>
+                )
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                  {visibleActivities.map((a) => (
+                    <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} detailsRevealOnHover hideDiscoveryBadges onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
+                  ))}
+                </div>
+              )}
+              {displayActivities.length > 0 && (
+                <DirectoryPagination
+                  ariaLabel={t("ui.pagination.experiencePages")}
+                  currentPage={currentExperiencePage}
+                  itemLabel={t("ui.pagination.experienceItems")}
+                  onPageChange={changeExperiencePage}
+                  pageSize={EXPERIENCE_PAGE_SIZE}
+                  totalItems={displayActivities.length}
+                  totalPages={totalExperiencePages}
+                  variant="marketplace"
+                />
+              )}
+            </section>
+          </div>
         </div>
       )}
     </div>

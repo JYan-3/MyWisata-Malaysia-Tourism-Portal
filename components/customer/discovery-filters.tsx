@@ -44,7 +44,8 @@ interface DiscoveryCategoryFilterProps {
   hasActiveFilters: boolean;
   onCategoryChange: (category: string | null) => void;
   onClear: () => void;
-  variant?: "cards" | "compact";
+  excludedCategories?: string[];
+  variant?: "cards" | "compact" | "sidebar";
   showClear?: boolean;
   headingKey?: string;
   includeAll?: boolean;
@@ -55,6 +56,7 @@ export function DiscoveryCategoryFilter({
   hasActiveFilters,
   onCategoryChange,
   onClear,
+  excludedCategories = [],
   variant = "cards",
   showClear = true,
   headingKey = "ui.explore.filterByCategory",
@@ -62,13 +64,15 @@ export function DiscoveryCategoryFilter({
 }: DiscoveryCategoryFilterProps) {
   const { t } = useTranslation("customer");
   const compact = variant === "compact";
-  const categoryOptions = includeAll
+  const sidebar = variant === "sidebar";
+  const excludedCategorySet = new Set(excludedCategories);
+  const categoryOptions = (includeAll
     ? [{ id: "all", labelKey: "ui.map.allCategories" }, ...CATEGORIES]
-    : CATEGORIES;
+    : CATEGORIES).filter((option) => option.id === "all" || !excludedCategorySet.has(option.id));
   return (
     <section aria-labelledby="discovery-category-filter-heading">
       <div className="mb-3 flex items-center justify-between gap-4">
-        <h2 id="discovery-category-filter-heading" className={`font-bold text-foreground ${compact ? "text-xs uppercase tracking-wider text-muted-foreground" : "text-lg"}`}>{t(headingKey)}</h2>
+        <h2 id="discovery-category-filter-heading" className={`font-bold text-foreground ${compact ? "text-xs uppercase tracking-wider text-muted-foreground" : sidebar ? "text-sm" : "text-lg"}`}>{t(headingKey)}</h2>
         {showClear && hasActiveFilters && (
           <button
             type="button"
@@ -79,7 +83,7 @@ export function DiscoveryCategoryFilter({
           </button>
         )}
       </div>
-      <div className={compact ? "flex gap-2 overflow-x-auto pb-1 lg:flex-wrap" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"}>
+      <div className={compact ? "flex gap-2 overflow-x-auto pb-1 lg:flex-wrap" : sidebar ? "flex flex-col gap-1" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"}>
         {/* CATEGORIES.map */}
         {categoryOptions.map((categoryOption) => {
           const selected = categoryOption.id === "all" ? category === null : category === categoryOption.id;
@@ -90,14 +94,16 @@ export function DiscoveryCategoryFilter({
                onClick={() => onCategoryChange(selected ? null : categoryOption.id === "all" ? null : categoryOption.id)}
                aria-label={t(categoryOption.labelKey ?? "ui.map.allCategories")}
                aria-pressed={selected}
-              className={compact
+               className={compact
                 ? `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary bg-primary text-white shadow-xs" : "border-border bg-background text-muted-foreground hover:bg-muted/40"}`
+                : sidebar
+                ? `inline-flex min-h-10 w-full items-center justify-start gap-2.5 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary/20 bg-secondary text-primary" : "border-transparent text-muted-foreground hover:bg-muted/50"}`
                 : `flex min-h-20 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary bg-primary text-white shadow-sm" : "border-transparent bg-card text-foreground shadow-sm"}`}
             >
-              <span className={`flex shrink-0 items-center justify-center ${compact ? "h-5 w-5 rounded-full" : "h-11 w-11 rounded-2xl"} ${selected ? "bg-white/20 dark:bg-card/20 text-white" : "bg-secondary text-primary"}`}>
-                <CategoryIcon category={categoryOption.id} size={compact ? 14 : 22} strokeWidth={compact ? 2 : 1.8} />
+              <span className={`flex shrink-0 items-center justify-center ${compact ? "h-5 w-5 rounded-full" : sidebar ? "h-7 w-7 rounded-lg" : "h-11 w-11 rounded-2xl"} ${selected && !sidebar ? "bg-white/20 dark:bg-card/20 text-white" : "bg-secondary text-primary"}`}>
+                <CategoryIcon category={categoryOption.id} size={compact ? 14 : sidebar ? 16 : 22} strokeWidth={compact ? 2 : 1.8} />
               </span>
-              <span className={compact ? "whitespace-nowrap" : `text-[10px] font-bold leading-tight ${selected ? "text-white" : "text-foreground"}`}>
+              <span className={compact ? "whitespace-nowrap" : sidebar ? "flex-1 text-left" : `text-[10px] font-bold leading-tight ${selected ? "text-white" : "text-foreground"}`}>
                 {t(categoryOption.labelKey ?? "ui.map.allCategories")}
               </span>
             </button>
@@ -111,9 +117,11 @@ export function DiscoveryCategoryFilter({
 type DiscoveryAdvancedFiltersProps = {
   value: Pick<DiscoveryQuery, "state" | "categories" | "types" | "priceMax" | "operatingDays" | "hoursMode" | "timeAt" | "timeFrom" | "timeTo" | "overnight" | "openNow" | "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly">;
   onChange: (patch: Partial<DiscoveryQuery>) => void;
+  showTypeFilters?: boolean;
+  showTagPreferenceFilters?: boolean;
 };
 
-export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedFiltersProps) {
+export function DiscoveryAdvancedFilters({ value, onChange, showTypeFilters = true, showTagPreferenceFilters = true }: DiscoveryAdvancedFiltersProps) {
   const { t } = useTranslation("customer");
   const hasCustomTimeRange = Boolean(value.timeFrom || value.timeTo) && !OPENING_TIME_SEGMENTS.some((segment) => value.timeFrom === segment.from && value.timeTo === segment.to);
   const [customTimeOpen, setCustomTimeOpen] = useState(hasCustomTimeRange);
@@ -166,6 +174,15 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
     });
   };
   const toggleBoolean = (key: "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly") => onChange({ [key]: !value[key] });
+  type PreferenceFilterKey = "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly";
+  const allPreferenceFilters = [
+    { key: "freeOnly", label: "ui.discovery.freeOnly" },
+    { key: "bookableOnly", label: "ui.discovery.bookableOnly" },
+    { key: "hiddenGemOnly", label: "ui.discovery.hiddenGemOnly" },
+    { key: "familyFriendlyOnly", label: "ui.discovery.familyFriendlyOnly" },
+    { key: "coupleFriendlyOnly", label: "ui.discovery.coupleFriendlyOnly" },
+  ] satisfies Array<{ key: PreferenceFilterKey; label: string }>;
+  const preferenceFilters = allPreferenceFilters.filter(({ key }) => showTagPreferenceFilters || key === "freeOnly" || key === "bookableOnly");
 
   return (
     <section aria-label={t("ui.discovery.advancedFilters")} className="space-y-3 rounded-2xl border border-border/70 bg-background/40 p-3 sm:p-4">
@@ -262,7 +279,7 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
         </div>
       </details>
 
-      <details className="group rounded-xl border border-border/70 bg-card p-3 sm:p-4">
+      {showTypeFilters && <details className="group rounded-xl border border-border/70 bg-card p-3 sm:p-4">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
           {t("ui.discovery.experienceTypes")}
           <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
@@ -281,7 +298,7 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
             </div>
           ))}
         </div>
-      </details>
+      </details>}
 
       <details className="group rounded-xl border border-border/70 bg-card p-3 sm:p-4">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
@@ -289,9 +306,7 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
           <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="mt-4 flex flex-wrap gap-2">
-          {([
-            ["freeOnly", "ui.discovery.freeOnly"], ["bookableOnly", "ui.discovery.bookableOnly"], ["hiddenGemOnly", "ui.discovery.hiddenGemOnly"], ["familyFriendlyOnly", "ui.discovery.familyFriendlyOnly"], ["coupleFriendlyOnly", "ui.discovery.coupleFriendlyOnly"],
-          ] as const).map(([key, label]) => <button key={key} type="button" aria-label={t(label)} aria-pressed={value[key]} onClick={() => toggleBoolean(key)} className={`rounded-full border px-3 py-2 text-xs font-bold ${value[key] ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}>{t(label)}</button>)}
+          {preferenceFilters.map(({ key, label }) => <button key={key} type="button" aria-label={t(label)} aria-pressed={value[key]} onClick={() => toggleBoolean(key)} className={`rounded-full border px-3 py-2 text-xs font-bold ${value[key] ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}>{t(label)}</button>)}
         </div>
       </details>
     </section>
@@ -299,6 +314,7 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
 }
 
 export function CustomerDiscoveryFilterPanel({
+  layout = "panel",
   value,
   hasActiveFilters,
   onChange,
@@ -309,7 +325,11 @@ export function CustomerDiscoveryFilterPanel({
   categoryVariant = "compact",
   includeAllCategories = true,
   filterButtonAlignment = "start",
+  excludedCategories = [],
+  showTypeFilters = true,
+  showTagPreferenceFilters = true,
 }: {
+  layout?: "panel" | "sidebar";
   value: DiscoveryQuery;
   hasActiveFilters: boolean;
   onChange: (patch: Partial<DiscoveryQuery>) => void;
@@ -317,49 +337,74 @@ export function CustomerDiscoveryFilterPanel({
   placeholder: string;
   category: string | null;
   onCategoryChange: (category: string | null) => void;
-  categoryVariant?: "cards" | "compact";
+  categoryVariant?: "cards" | "compact" | "sidebar";
   includeAllCategories?: boolean;
   filterButtonAlignment?: "start" | "end";
+  excludedCategories?: string[];
+  showTypeFilters?: boolean;
+  showTagPreferenceFilters?: boolean;
 }) {
   const { t } = useTranslation("customer");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilterCount = [
     Boolean(value.q.trim()),
     Boolean(value.state),
-    value.categories.length > 0 || value.types.length > 0,
+    value.categories.some((item) => !excludedCategories.includes(item)) || (showTypeFilters && value.types.length > 0),
     value.priceMax !== null,
     value.operatingDays.length > 0,
     value.hoursMode !== "during" || Boolean(value.timeAt || value.timeFrom || value.timeTo || value.overnight || value.openNow),
-    value.freeOnly || value.bookableOnly || value.hiddenGemOnly || value.familyFriendlyOnly || value.coupleFriendlyOnly,
+    value.freeOnly || value.bookableOnly || (showTagPreferenceFilters && (value.hiddenGemOnly || value.familyFriendlyOnly || value.coupleFriendlyOnly)),
   ].filter(Boolean).length;
   const clearAllFilters = () => {
     onClear();
     setFiltersOpen(false);
   };
+  const searchField = <DiscoverySearchField value={value.q} onChange={(q) => onChange({ q })} placeholder={placeholder} />;
+  const categoryFilter = (
+    <DiscoveryCategoryFilter
+      variant={categoryVariant}
+      headingKey="ui.search.category"
+      includeAll={includeAllCategories}
+      category={category}
+      hasActiveFilters={false}
+      onCategoryChange={onCategoryChange}
+      onClear={onClear}
+      excludedCategories={excludedCategories}
+      showClear={false}
+    />
+  );
+  const openNowFilter = (
+    <button
+      type="button"
+      aria-pressed={value.openNow}
+      onClick={() => onChange({ openNow: !value.openNow })}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${value.openNow ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
+    >
+      <Clock3 size={14} aria-hidden="true" />
+      {t("ui.labels.openNow")}
+    </button>
+  );
+  const advancedFilters = <DiscoveryAdvancedFilters value={value} onChange={onChange} showTypeFilters={showTypeFilters} showTagPreferenceFilters={showTagPreferenceFilters} />;
+
+  if (layout === "sidebar") {
+    return (
+      <section data-testid="customer-discovery-filter-panel" className="space-y-5">
+        {searchField}
+        <div className="border-b border-border pb-4">{categoryFilter}</div>
+        <div className="border-b border-border pb-4">{openNowFilter}</div>
+        {advancedFilters}
+        {hasActiveFilters && <button type="button" onClick={clearAllFilters} className="text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{t("ui.actions.clearFilters")}</button>}
+      </section>
+    );
+  }
+
   return (
     <section data-testid="customer-discovery-filter-panel" className="space-y-4 rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
-      <DiscoverySearchField value={value.q} onChange={(q) => onChange({ q })} placeholder={placeholder} />
-      <DiscoveryCategoryFilter
-        variant={categoryVariant}
-        headingKey="ui.search.category"
-        includeAll={includeAllCategories}
-        category={category}
-        hasActiveFilters={false}
-        onCategoryChange={onCategoryChange}
-        onClear={onClear}
-        showClear={false}
-      />
+      {searchField}
+      {categoryFilter}
       <div className={`flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center ${filterButtonAlignment === "end" ? "sm:justify-end sm:gap-4" : "sm:justify-between"}`}>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            aria-pressed={value.openNow}
-            onClick={() => onChange({ openNow: !value.openNow })}
-            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${value.openNow ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
-          >
-            <Clock3 size={14} aria-hidden="true" />
-            {t("ui.labels.openNow")}
-          </button>
+          {openNowFilter}
           <button
             type="button"
             aria-expanded={filtersOpen}
@@ -377,7 +422,7 @@ export function CustomerDiscoveryFilterPanel({
         {hasActiveFilters && <button type="button" onClick={clearAllFilters} className="inline-flex items-center gap-1 self-start text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:self-auto">{t("ui.actions.clearFilters")}</button>}
       </div>
       <div id="customer-discovery-advanced-filters" hidden={!filtersOpen}>
-        {filtersOpen && <DiscoveryAdvancedFilters value={value} onChange={onChange} />}
+        {filtersOpen && advancedFilters}
       </div>
     </section>
   );
