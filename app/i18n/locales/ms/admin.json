@@ -3874,6 +3874,7 @@
     "verifyAndConfirm": "Sahkan dan teruskan",
     "working": "Sedang mengesahkan…",
     "grantLabel": "Kod pendaftaran sekali guna",
+    "grantHint": "Menyediakan peranti baharu untuk akaun ini? Masukkan kod pendaftaran sekali guna yang diberikan kepada anda. Untuk menambah peranti sandaran, biarkan kosong dan sahkan dengan kunci laluan sedia ada.",
     "deviceLabel": "Nama peranti",
     "defaultDevice": "Peranti saya",
     "register": "Daftar peranti",
