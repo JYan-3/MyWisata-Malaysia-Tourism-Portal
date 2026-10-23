@@ -6,6 +6,7 @@ import { authorizeVendor, authorizeVendorProductWrite } from '@/lib/vendor-autho
 import { revalidateTag } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getScopedProduct } from '@/lib/vendor/product-scope';
+import { isValidProductTypeSelection } from '@/lib/vendor/taxonomy';
 import {
   DEFAULT_PRODUCT_TICKET_ADMISSION,
   isDefaultProductTicketAdmission,
@@ -57,12 +58,14 @@ export async function PATCH(request: Request, { params }: Props) {
     ticket_entry_policy: TicketEntryPolicy | null;
     ticket_entry_limit: number | null;
     ticket_validity_days: number | null;
+    category_id: string | null;
+    type_slugs: string[] | null;
   }>(
     access.access.serviceDb,
     vendorId,
     productId,
     access.access.outletIds,
-    'id,outlet_id,requires_booking,product_type,ticket_entry_policy,ticket_entry_limit,ticket_validity_days',
+    'id,outlet_id,requires_booking,product_type,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,category_id,type_slugs',
   );
   let existingProduct = scopedTicketProduct.data;
   let productOutlet = scopedTicketProduct.outlet;
@@ -73,12 +76,14 @@ export async function PATCH(request: Request, { params }: Props) {
       outlet_id: string | null;
       requires_booking: boolean;
       product_type: string;
+      category_id: string | null;
+      type_slugs: string[] | null;
     }>(
       access.access.serviceDb,
       vendorId,
       productId,
       access.access.outletIds,
-      'id,outlet_id,requires_booking,product_type',
+      'id,outlet_id,requires_booking,product_type,category_id,type_slugs',
     );
     existingProduct = legacyProduct.data
       ? {
@@ -96,6 +101,19 @@ export async function PATCH(request: Request, { params }: Props) {
   const parsed = await parseBody(request, productUpdateSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+
+  if (body.typeSlugs !== undefined || body.categoryId !== undefined) {
+    const targetCategoryId = body.categoryId ?? existingProduct.category_id;
+    const targetTypeSlugs = body.typeSlugs ?? existingProduct.type_slugs ?? [];
+    const { data: category, error: categoryError } = targetCategoryId
+      ? await access.access.serviceDb.from('categories').select('slug').eq('id', targetCategoryId).maybeSingle()
+      : { data: null, error: null };
+    if (categoryError) return apiFail('DB_ERROR', categoryError.message, 500);
+    if (targetCategoryId && !category) return apiFail('INVALID_CATEGORY', 'Product category was not found', 422);
+    if (!isValidProductTypeSelection(category?.slug, targetTypeSlugs)) {
+      return apiFail('INVALID_PRODUCT_TYPES', 'One or more product types do not match the selected category', 422);
+    }
+  }
 
   const ticketAdmission = resolveProductTicketAdmission({
     requiresBooking: body.requiresBooking ?? existingProduct.requires_booking,
@@ -128,6 +146,7 @@ export async function PATCH(request: Request, { params }: Props) {
   }
   if (body.basePrice !== undefined) updateData.base_price = body.basePrice;
   if (body.categoryId !== undefined) updateData.category_id = body.categoryId;
+  if (body.typeSlugs !== undefined) updateData.type_slugs = body.typeSlugs;
   if (body.coverUrl !== undefined) updateData.cover_url = body.coverUrl || null;
   if (body.tags !== undefined) updateData.tags = body.tags;
   if (body.status !== undefined) updateData.status = body.status;

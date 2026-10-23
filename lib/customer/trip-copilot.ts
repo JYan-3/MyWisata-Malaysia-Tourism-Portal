@@ -82,7 +82,7 @@ export async function getTripCopilotCandidates(
       image: activity.image,
       requiresBooking: activity.requiresBooking,
       state: activity.place?.state ?? activity.outlet.state ?? null,
-      isHiddenGem: activity.isHiddenGem ?? false,
+      isHiddenGem: activity.outlet.badgeSlugs?.includes("hidden_gem") ?? false,
       lat: activity.place?.lat ?? activity.outlet.lat,
       lng: activity.place?.lng ?? activity.outlet.lng,
       weatherSensitivity: classifyWeatherSensitivity(activity),

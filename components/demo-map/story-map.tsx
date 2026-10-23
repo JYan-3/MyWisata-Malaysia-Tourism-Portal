@@ -15,6 +15,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import { buildActivityPath } from "@/lib/customer/navigation-context";
 import type { ComputedActivity } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import type { StateCounts } from "./malaysia-state-map";
@@ -345,7 +346,7 @@ export function StoryMap({
               className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${filters.hiddenGemOnly ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
             >
               {HIDDEN_GEM_SYMBOL} {t("ui.labels.hiddenGem")}
-              <span className={`text-[10px] ${filters.hiddenGemOnly ? "text-white/80" : "text-muted-foreground"}`}>{activities.filter((activity) => activity.isHiddenGem).length}</span>
+              <span className={`text-[10px] ${filters.hiddenGemOnly ? "text-white/80" : "text-muted-foreground"}`}>{activities.filter((activity) => activity.outlet.badgeSlugs?.includes("hidden_gem")).length}</span>
             </button>
             {BADGE_OPTIONS.map((b) => {
               const selected = b.key === "family_friendly" ? filters.familyFriendlyOnly : filters.coupleFriendlyOnly;
@@ -407,7 +408,7 @@ export function StoryMap({
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                   {selectedActivity.categorySlug !== "accommodation" && selectedActivity.outlet.hours && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedActivity.outlet.hours}</span>}
                   <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><ReferencePrice amountMYR={Number(selectedActivity.price)} className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary" /></div>
-                <div className="flex items-center gap-2"><Link href={selectedActivity.categorySlug === "accommodation" ? getOutletShopHref(selectedActivity.outlet.id) : `/customer/activity/${selectedActivity.id}`} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
+                <div className="flex items-center gap-2"><Link href={selectedActivity.categorySlug === "accommodation" ? getOutletShopHref(selectedActivity.outlet.id) : buildActivityPath(selectedActivity.id, undefined, selectedActivity.outlet.id)} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
             </div>

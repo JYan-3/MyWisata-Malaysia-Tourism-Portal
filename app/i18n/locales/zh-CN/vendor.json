@@ -1,4 +1,58 @@
 {
+  "taxonomy": {
+    "productTypes": {
+      "title": "商品类型",
+      "hint": "选择所有准确描述此商品的类型。",
+      "options": {
+        "chinese": "中式",
+        "malay": "马来式",
+        "nyonya": "娘惹 / 土生华人",
+        "indian": "印度式",
+        "mamak": "嘛嘛档 / 街头美食",
+        "western": "西式",
+        "seafood": "海鲜",
+        "cafe-dessert": "咖啡馆 / 甜点",
+        "fusion": "融合料理",
+        "nature": "自然",
+        "adventure": "探险",
+        "cultural": "文化 / 遗产",
+        "nightlife": "夜生活",
+        "wellness": "养生 / 水疗",
+        "water": "水上活动",
+        "sightseeing": "观光 / 导览",
+        "handicrafts": "手工艺品",
+        "souvenirs": "纪念品",
+        "batik-textiles": "蜡染 / 纺织品",
+        "fashion": "时尚",
+        "jewellery": "珠宝",
+        "local-produce": "本地特产 / 食品",
+        "art-prints": "艺术品与版画",
+        "duty-free": "免税商品"
+      }
+    },
+    "outletBadges": {
+      "title": "门店标签",
+      "hint": "选择适用于此门店的特点。",
+      "options": {
+        "hiddenGem": "隐藏宝藏",
+        "familyFriendly": "亲子友好",
+        "coupleFriendly": "情侣友好"
+      }
+    },
+    "accommodationTypes": {
+      "title": "住宿类型",
+      "hint": "选择适用于此住宿门店的类型。",
+      "options": {
+        "5-star": "五星级",
+        "4-star": "四星级",
+        "3-star": "三星级",
+        "boutique": "精品酒店",
+        "homestay": "民宿",
+        "hostel": "青年旅舍",
+        "resort": "度假村"
+      }
+    }
+  },
   "hotelProfile": {
     "eyebrow": "酒店资料",
     "description": "酒店页使用固定版面，请在这里编辑内容。修改经管理员审核后才会上线，审核期间酒店照常显示。",
@@ -2126,6 +2180,10 @@
     "sectionNavigation": "商品详情部分",
     "shownOnListing": "显示在商品页面",
     "status": "状态",
+    "saveTypes": "保存商品类型",
+    "savingTypes": "正在保存类型…",
+    "typeSaveFailed": "无法保存商品类型，请重试。",
+    "typeUpdated": "商品类型已更新。",
     "timeSlots": "由时间段管理",
     "unitsAvailable": "可用 {{count}} 件",
     "variantsHint": "管理选项、价格差额、库存数量和默认变体。",

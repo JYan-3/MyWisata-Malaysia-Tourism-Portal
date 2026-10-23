@@ -188,8 +188,8 @@ describe("selectPartnerAdvertisements", () => {
   });
 
   it("treats Hidden Gem as a collection instead of a database category", () => {
-    const hiddenGem = activity("hidden", { isHiddenGem: true, categorySlug: "food" });
-    const ordinary = activity("ordinary", { isHiddenGem: false, categorySlug: "food" });
+    const hiddenGem = activity("hidden", { outlet: { ...activity("hidden").outlet, badgeSlugs: ["hidden_gem"] }, categorySlug: "food" });
+    const ordinary = activity("ordinary", { outlet: { ...activity("ordinary").outlet, badgeSlugs: [] }, categorySlug: "food" });
 
     expect(selectPartnerAdvertisements({
       activities: [hiddenGem, ordinary],

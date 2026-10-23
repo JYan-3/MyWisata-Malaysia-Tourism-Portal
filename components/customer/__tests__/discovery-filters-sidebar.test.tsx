@@ -28,6 +28,14 @@ vi.mock("react-i18next", () => ({
       "ui.actions.clearFilters": "Clear filters",
       "ui.discovery.searchLabel": "Search",
       "ui.map.allStatesTerritories": "All states and territories",
+      "ui.discovery.types": "Types",
+      "ui.discovery.badges": "Badges",
+      "ui.explore.emptyExperienceFilters": "Try another category or clear your filters.",
+      "ui.map.types.chinese": "Chinese",
+      "ui.map.types.malay": "Malay",
+      "ui.map.types.nature": "Nature",
+      "ui.map.types.resort": "Resort",
+      "ui.map.types.boutique": "Boutique",
     } as Record<string, string>)[key] ?? key,
   }),
 }));
@@ -41,6 +49,26 @@ vi.mock("@/backend/domains/catalogue", () => ({
   STATES_MY: ["All Malaysia", "Sabah"],
 }));
 vi.mock("@/components/customer/category-icon", () => ({ CategoryIcon: () => <span aria-hidden="true">•</span> }));
+vi.mock("@/components/ui/checkbox", () => ({
+  Checkbox: ({
+    id,
+    checked,
+    onCheckedChange,
+    ...props
+  }: {
+    id?: string;
+    checked?: boolean;
+    onCheckedChange?: (checked: boolean) => void;
+    [key: string]: unknown;
+  }) => React.createElement("button", {
+    ...props,
+    id,
+    type: "button",
+    role: "checkbox",
+    "aria-checked": checked ? "true" : "false",
+    onClick: () => onCheckedChange?.(!checked),
+  }),
+}));
 
 import { CustomerDiscoveryFilterPanel, DiscoveryCategoryFilter } from "@/components/customer/discovery-filters";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
@@ -161,6 +189,101 @@ describe("DiscoveryCategoryFilter sidebar presentation", () => {
     }
     expect(findOne(container, (element) => element.getAttribute("aria-label") === "Free entry")).not.toBeNull();
     expect(findOne(container, (element) => element.getAttribute("aria-label") === "Booking required")).not.toBeNull();
+  });
+
+  it("shows Experiences facets as collapsed checkbox groups with only State and Open Now outside them", async () => {
+    await render(
+      <CustomerDiscoveryFilterPanel
+        layout="sidebar"
+        mode="experiences"
+        value={emptyFilters}
+        hasActiveFilters={false}
+        onChange={() => undefined}
+        onClear={() => undefined}
+        placeholder="Search experiences"
+        category={null}
+        onCategoryChange={() => undefined}
+      />,
+    );
+
+    expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("experience-type-toggle-") ?? false).length).toBe(4);
+    expect(findElements(container, (element) => element.getAttribute("aria-expanded") === "true")).toHaveLength(0);
+    expect(findOne(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Food")).not.toBeNull();
+    const openNow = findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-pressed") === "false");
+    expect(openNow.textContent).toContain("Open now");
+    expect(findElements(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Open now")).toHaveLength(0);
+    expect(findOne(container, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "State")).not.toBeNull();
+    const state = findOne(container, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "State");
+    const food = findOne(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Food");
+    expect(findElements(container, (element) => element === state || element === openNow || element === food)).toEqual([state, openNow, food]);
+    expect(findElements(container, (element) => element.getAttribute("role") === "separator")).toHaveLength(2);
+    for (const hiddenLabel of ["Maximum price", "Opening hours", "Free entry", "Booking required"]) {
+      expect(findElements(container, (element) => element.getAttribute("aria-label") === hiddenLabel)).toHaveLength(0);
+    }
+  });
+
+  it("toggles Open Now through the existing pill button", async () => {
+    const onChange = vi.fn();
+    await render(
+      <CustomerDiscoveryFilterPanel
+        layout="sidebar"
+        mode="experiences"
+        value={emptyFilters}
+        hasActiveFilters={false}
+        onChange={onChange}
+        onClear={() => undefined}
+        placeholder="Search experiences"
+        category={null}
+        onCategoryChange={() => undefined}
+      />,
+    );
+
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-pressed") === "false"));
+
+    expect(onChange).toHaveBeenCalledWith({ openNow: true });
+  });
+
+  it("lets selected type checkboxes activate their category and keeps category selection independent", async () => {
+    const onChange = vi.fn();
+    await render(
+      <CustomerDiscoveryFilterPanel
+        layout="sidebar"
+        mode="experiences"
+        value={emptyFilters}
+        hasActiveFilters={false}
+        onChange={onChange}
+        onClear={() => undefined}
+        placeholder="Search experiences"
+        category={null}
+        onCategoryChange={() => undefined}
+      />,
+    );
+
+    await click(findOne(container, (element) => element.getAttribute("data-testid") === "experience-type-toggle-food"));
+    await click(findOne(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Chinese"));
+
+    expect(onChange).toHaveBeenCalledWith({ categories: ["food"], types: ["food:chinese"] });
+  });
+
+  it("clears a category's selected child types when its parent is unchecked", async () => {
+    const onChange = vi.fn();
+    await render(
+      <CustomerDiscoveryFilterPanel
+        layout="sidebar"
+        mode="experiences"
+        value={{ ...emptyFilters, categories: ["food"], types: ["food:chinese"] }}
+        hasActiveFilters
+        onChange={onChange}
+        onClear={() => undefined}
+        placeholder="Search experiences"
+        category="food"
+        onCategoryChange={() => undefined}
+      />,
+    );
+
+    await click(findOne(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Food"));
+
+    expect(onChange).toHaveBeenCalledWith({ categories: [], types: [] });
   });
 
   it("preserves the existing compact and card category presentations", async () => {

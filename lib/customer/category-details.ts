@@ -4,10 +4,18 @@ import {
   Baby, Sun, CreditCard, BadgeCheck, BedDouble, Wifi, FileText, MapPin, Sprout, Ban, CalendarClock, ChefHat,
   Utensils, Wine, Armchair, Layers, PawPrint, Accessibility, DollarSign, Building2, Car, Sparkles, Heart,
 } from "lucide-react";
-import type { ComputedActivity } from "@/backend/core/types";
+import type { ComputedActivity, Outlet } from "@/backend/core/types";
 
 export type DetailChip = { label: string; value: string; icon: typeof Clock; href?: string };
 type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+export type OutletTaxonomyLabel = { slug: string; label: string; kind: "badge" | "propertyType" };
+
+const OUTLET_BADGE_LABEL_KEYS: Record<string, string> = {
+  hidden_gem: "ui.labels.hiddenGem",
+  family_friendly: "strictMigration.activityDetail.familyFriendly",
+  couple_friendly: "strictMigration.activityDetail.coupleFriendly",
+};
 
 type FieldType = "text" | "number" | "select" | "boolean" | "list";
 
@@ -162,8 +170,6 @@ export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
       { slug: "jewellery", label: "Jewellery" },
       { slug: "local-produce", label: "Local Produce / Food" },
       { slug: "art-prints", label: "Art & Prints" },
-      { slug: "shopping-mall", label: "Shopping Mall / Complex" },
-      { slug: "market-bazaar", label: "Market / Bazaar / Night Market" },
       { slug: "duty-free", label: "Duty-Free" },
     ],
     fields: [
@@ -186,6 +192,26 @@ export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
 };
 
 const GENERIC_DETAIL: CategoryDetail = { priceUnit: "each", types: [], fields: [HOURS, TAGS, CONTACT] };
+
+export function getOutletTaxonomyLabels(
+  outlet: Pick<Outlet, "badgeSlugs" | "accommodationTypeSlugs">,
+  translate?: Translate,
+): OutletTaxonomyLabel[] {
+  const badges = (outlet.badgeSlugs ?? []).flatMap((slug): OutletTaxonomyLabel[] => {
+    const labelKey = OUTLET_BADGE_LABEL_KEYS[slug];
+    return labelKey ? [{ slug, kind: "badge", label: translate ? translate(labelKey) : slug.replace(/_/g, " ") }] : [];
+  });
+  const propertyTypes = (outlet.accommodationTypeSlugs ?? []).flatMap((slug): OutletTaxonomyLabel[] => {
+    const option = CATEGORY_DETAILS.accommodation.types.find((type) => type.slug === slug);
+    if (!option) return [];
+    return [{
+      slug: `property:${slug}`,
+      kind: "propertyType",
+      label: translate ? translate(`strictMigration.activityDetail.types.${slug}`) : option.label,
+    }];
+  });
+  return [...badges, ...propertyTypes];
+}
 
 // Types where the place IS the product. A national park trail or a heritage
 // walk is not a branch of a company, so naming an outlet next to it ("Bukit
@@ -256,21 +282,33 @@ function resolveValue(field: AttrField, activity: ComputedActivity, translate?: 
 // cross-cutting badges (family/couple friendly — Hidden Gem already has its
 // own hero badge, so it's not repeated here) are universal, prepended ahead
 // of the category's own fields.
-export function getCategoryChips(activity: ComputedActivity, translate?: Translate): DetailChip[] {
+export function getCategoryChips(
+  activity: ComputedActivity,
+  translate?: Translate,
+  outletTaxonomy?: Pick<Outlet, "badgeSlugs" | "accommodationTypeSlugs">,
+): DetailChip[] {
   const detail = CATEGORY_DETAILS[activity.categorySlug ?? ""] ?? GENERIC_DETAIL;
+  const isAccommodation = activity.categorySlug === "accommodation";
+  const outlet = outletTaxonomy ?? activity.outlet;
   const chips: DetailChip[] = [];
 
   if (activity.outlet.address) {
     chips.push({ label: translate ? translate("strictMigration.activityDetail.fields.address") : "Address", value: activity.outlet.address, icon: MapPin });
   }
-  if (activity.typeSlugs && activity.typeSlugs.length > 0) {
-    const labels = activity.typeSlugs.map((slug) => {
+  const typeSlugs = isAccommodation ? outlet.accommodationTypeSlugs : activity.typeSlugs;
+  if (typeSlugs && typeSlugs.length > 0) {
+    const labels = typeSlugs.map((slug) => {
       const known = detail.types.find((option) => option.slug === slug);
       return known && translate ? translate(`strictMigration.activityDetail.types.${known.slug}`) : known?.label ?? slug;
     });
-    chips.push({ label: translate ? translate("strictMigration.activityDetail.fields.type") : "Type", value: labels.join(" · "), icon: Tag });
+    const label = isAccommodation ? "strictMigration.activityDetail.fields.propertyType" : "strictMigration.activityDetail.fields.type";
+    chips.push({ label: translate ? translate(label) : isAccommodation ? "Property type" : "Type", value: labels.join(" · "), icon: Tag });
   }
-  const badgeLabels = [activity.isFamilyFriendly && (translate ? translate("strictMigration.activityDetail.familyFriendly") : "Family Friendly"), activity.isCoupleFriendly && (translate ? translate("strictMigration.activityDetail.coupleFriendly") : "Couple Friendly")].filter(Boolean) as string[];
+  const badgeSlugs = outlet.badgeSlugs ?? [];
+  const badgeLabels = [
+    badgeSlugs.includes("family_friendly") && (translate ? translate("strictMigration.activityDetail.familyFriendly") : "Family Friendly"),
+    badgeSlugs.includes("couple_friendly") && (translate ? translate("strictMigration.activityDetail.coupleFriendly") : "Couple Friendly"),
+  ].filter(Boolean) as string[];
   if (badgeLabels.length > 0) {
     chips.push({ label: translate ? translate("strictMigration.activityDetail.fields.goodFor") : "Good For", value: badgeLabels.join(" · "), icon: Heart });
   }

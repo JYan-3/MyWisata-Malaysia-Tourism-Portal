@@ -48,14 +48,16 @@ describe("customer discovery filter contract", () => {
   });
 
   it("shares the complete weekly-hours filter surface with Partners", () => {
-    expect(exploreSource).toContain("<CustomerDiscoveryFilterPanel");
-    expect(exploreSource).toContain("operatingDays");
-    expect(exploreSource).toContain("hoursMode");
-    expect(exploreSource).toContain("openNow");
+    expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(searchSource).toContain("operatingDays");
+    expect(searchSource).toContain("hoursMode");
+    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
+    expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
   it("uses the shared sidebar and numbered marketplace pagination on Experiences", () => {
-    expect(exploreSource).toContain('layout="sidebar"');
+    expect(exploreSource).toContain("<DialogContent");
+    expect(exploreSource).toContain("<DialogTrigger asChild>");
     expect(exploreSource).toContain('variant="marketplace"');
     expect(exploreSource).not.toContain("visibleLimit");
     expect(exploreSource).not.toContain("setVisibleLimit");
@@ -88,6 +90,15 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("hoursMode");
     expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
     expect(filterSource).toContain('t("ui.discovery.state")');
+  });
+
+  it("uses an Experiences-only checkbox facet mode and keeps search beside sorting", () => {
+    expect(exploreSource).toContain('mode="experiences"');
+    expect(exploreSource).toContain('data-testid="experience-toolbar"');
+    expect(exploreSource).toContain("DiscoverySearchField");
+    expect(filterSource).toContain('mode === "experiences"');
+    expect(filterSource).toContain("Checkbox");
+    expect(exploreSource).toContain("showSummary={false}");
   });
 
   it("keeps the Explore mode switch on the right with the voucher navy active state", () => {

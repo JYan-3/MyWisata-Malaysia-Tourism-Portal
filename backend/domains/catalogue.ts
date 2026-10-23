@@ -7,6 +7,7 @@ import type { Activity, BookingSlot, ComputedActivity, OperatingHourWeekday, Ope
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
+import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import {
   canonicalCategorySlug,
   DISCOVERY_CATEGORIES,
@@ -24,8 +25,34 @@ export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 const REVIEW_METRICS_BATCH_SIZE = 100;
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
+type VendorWithOutletsRow = {
+  id: string;
+  name: string;
+  status: string;
+  kind: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  outlets: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    status: string | null;
+    review_status: string | null;
+    operating_hours: OperatingHours | null;
+    badge_slugs?: string[] | null;
+  }[] | null;
+};
+
 export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
-  const { data, error } = await db.from("vendors").select("id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
+  const selectVendors = async (includeOutletBadges: boolean) => {
+    const { data, error } = await db.from("vendors").select(includeOutletBadges
+      ? "id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours,badge_slugs)"
+      : "id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
+    return { data: data as unknown as VendorWithOutletsRow[] | null, error };
+  };
+  let { data, error } = await selectVendors(true);
+  if (isMissingOutletColumn(error, "badge_slugs")) ({ data, error } = await selectVendors(false));
   if (error) throw error;
   return (data ?? []).map((v) => ({
     id: v.id,
@@ -46,6 +73,7 @@ export async function getVendors(db: SupabaseClient = supabase): Promise<VendorS
       currentlyOpen: outlet.status === "active" && outlet.operating_hours
         ? isOperatingHoursOpenNow(outlet.operating_hours)
         : false,
+      badgeSlugs: outlet.badge_slugs ?? [],
     })),
   }));
 }
@@ -78,6 +106,8 @@ type OutletRow = {
   wheelchair_accessible: boolean | null;
   pet_friendly: boolean | null;
   food_service_modes?: ("dine_in" | "takeaway")[] | null;
+  badge_slugs?: string[] | null;
+  accommodation_type_slugs?: string[] | null;
   outlet_pages: { hero_url: string | null } | { hero_url: string | null }[] | null;
   vendors: {
     name: string | null;
@@ -97,10 +127,17 @@ function getVendorLogoUrl(slug: string | null | undefined): string | null {
   return vendorImageUrl(path);
 }
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,food_service_modes,outlet_pages(hero_url),vendors(name,slug,status,products(categories(name,slug)))";
-const LEGACY_OUTLET_SELECT = OUTLET_SELECT.replace(",food_service_modes", "");
-const DISCOVERY_OUTLET_SELECT = "id,vendor_id,name,city,state,lat,lng,operating_hours,status,wheelchair_accessible,pet_friendly,food_service_modes,vendors(name,slug,status)";
-const LEGACY_DISCOVERY_OUTLET_SELECT = DISCOVERY_OUTLET_SELECT.replace(",food_service_modes", "");
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,food_service_modes,badge_slugs,accommodation_type_slugs,outlet_pages(hero_url),vendors(name,slug,status,products(categories(name,slug)))";
+const OUTLET_SELECT_WITHOUT_TAXONOMY = OUTLET_SELECT.replace(",badge_slugs,accommodation_type_slugs", "");
+const LEGACY_OUTLET_SELECT = OUTLET_SELECT_WITHOUT_TAXONOMY.replace(",food_service_modes", "");
+const DISCOVERY_OUTLET_SELECT = "id,vendor_id,name,city,state,lat,lng,operating_hours,status,wheelchair_accessible,pet_friendly,food_service_modes,badge_slugs,accommodation_type_slugs,vendors(name,slug,status)";
+const DISCOVERY_OUTLET_SELECT_WITHOUT_TAXONOMY = DISCOVERY_OUTLET_SELECT.replace(",badge_slugs,accommodation_type_slugs", "");
+const LEGACY_DISCOVERY_OUTLET_SELECT = DISCOVERY_OUTLET_SELECT_WITHOUT_TAXONOMY.replace(",food_service_modes", "");
+
+function isMissingOutletColumn(error: { code?: string; message?: string } | null | undefined, column: "food_service_modes" | "badge_slugs" | "accommodation_type_slugs"): boolean {
+  return (error?.code === "42703" || error?.code === "PGRST204")
+    && Boolean(error.message?.includes(`outlets.${column}`) || error.message?.includes(`'${column}'`));
+}
 
 // An outlet's category belongs to its vendor, not to whichever product happens
 // to be pinned to that one outlet. Vendor-wide products carry outlet_id NULL, so
@@ -158,6 +195,8 @@ function mapOutlet(row: OutletRow): Outlet {
     wheelchairAccessible: row.wheelchair_accessible,
     petFriendly: row.pet_friendly,
     foodServiceModes: row.food_service_modes ?? ["dine_in", "takeaway"],
+    badgeSlugs: row.badge_slugs ?? [],
+    accommodationTypeSlugs: row.accommodation_type_slugs ?? [],
   };
 }
 
@@ -168,9 +207,14 @@ export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[
     .eq("status", "active")
     .eq("review_status", "approved");
   const result = await queryOutlets(OUTLET_SELECT);
-  if (result.error?.code === "42703" && result.error.message.includes("outlets.food_service_modes")) {
-    // Keep discovery available while the additive food-mode migration is pending.
-    // mapOutlet supplies the schema default of both modes for these legacy rows.
+  if (isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+    // Keep existing outlet fields available while the additive taxonomy migration is pending.
+    const withoutTaxonomy = await queryOutlets(OUTLET_SELECT_WITHOUT_TAXONOMY);
+    if (!withoutTaxonomy.error) return (withoutTaxonomy.data as unknown as OutletRow[]).map(mapOutlet);
+    if (!isMissingOutletColumn(withoutTaxonomy.error, "food_service_modes")) throw withoutTaxonomy.error;
+  }
+  if (isMissingOutletColumn(result.error, "food_service_modes") || isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+    // The food-service field predates this taxonomy. Retain the pre-existing legacy projection as the final compatibility fallback.
     const legacy = await queryOutlets(LEGACY_OUTLET_SELECT);
     if (legacy.error) throw legacy.error;
     return (legacy.data as unknown as OutletRow[]).map(mapOutlet);
@@ -180,12 +224,12 @@ export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[
 }
 
 type DiscoveryOutletRow = Pick<OutletRow,
-  "id" | "vendor_id" | "name" | "city" | "state" | "lat" | "lng" | "operating_hours" | "status" | "wheelchair_accessible" | "pet_friendly" | "food_service_modes"
+  "id" | "vendor_id" | "name" | "city" | "state" | "lat" | "lng" | "operating_hours" | "status" | "wheelchair_accessible" | "pet_friendly" | "food_service_modes" | "badge_slugs" | "accommodation_type_slugs"
 > & {
   vendors: { name: string | null; slug: string | null; status: string } | null;
 };
 
-async function getDiscoveryOutlets(ids: string[], db: SupabaseClient): Promise<Outlet[]> {
+async function getDiscoveryOutlets(ids: string[], db: SupabaseClient, badgeSlugs: string[] = []): Promise<Outlet[]> {
   const outletIds = [...new Set(ids.filter(Boolean))];
   if (outletIds.length === 0) return [];
 
@@ -194,15 +238,24 @@ async function getDiscoveryOutlets(ids: string[], db: SupabaseClient): Promise<O
     outletIds.slice(index * 200, (index + 1) * 200),
   );
   const batchRows = await Promise.all(batches.map(async (batch) => {
-    const query = (select: string) => db
-      .from("outlets")
-      .select(select)
-      .in("id", batch)
-      .eq("status", "active")
-      .eq("review_status", "approved");
-    const result = await query(DISCOVERY_OUTLET_SELECT);
-    if (result.error?.code === "42703" && result.error.message.includes("outlets.food_service_modes")) {
-      const legacy = await query(LEGACY_DISCOVERY_OUTLET_SELECT);
+    const query = (select: string, includeBadgeFilter: boolean) => {
+      let builder = db
+        .from("outlets")
+        .select(select)
+        .in("id", batch)
+        .eq("status", "active")
+        .eq("review_status", "approved");
+      if (badgeSlugs.length > 0 && includeBadgeFilter) builder = builder.overlaps("badge_slugs", badgeSlugs);
+      return builder;
+    };
+    const result = await query(DISCOVERY_OUTLET_SELECT, true);
+    if (isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+      const withoutTaxonomy = await query(DISCOVERY_OUTLET_SELECT_WITHOUT_TAXONOMY, false);
+      if (!withoutTaxonomy.error) return (withoutTaxonomy.data ?? []) as unknown as DiscoveryOutletRow[];
+      if (!isMissingOutletColumn(withoutTaxonomy.error, "food_service_modes")) throw withoutTaxonomy.error;
+    }
+    if (isMissingOutletColumn(result.error, "food_service_modes") || isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+      const legacy = await query(LEGACY_DISCOVERY_OUTLET_SELECT, false);
       if (legacy.error) throw legacy.error;
       return (legacy.data ?? []) as unknown as DiscoveryOutletRow[];
     }
@@ -236,6 +289,8 @@ export interface OutletChoice {
   /** This product's rating/review count at this outlet specifically. */
   rating: number;
   reviews: number;
+  badgeSlugs: string[];
+  accommodationTypeSlugs: string[];
 }
 
 /**
@@ -270,6 +325,8 @@ export async function getOutletChoices(activity: Activity, db: SupabaseClient = 
         vendorName: outlet.vendorName,
         rating: metric.rating,
         reviews: metric.reviews,
+        badgeSlugs: outlet.badgeSlugs ?? [],
+        accommodationTypeSlugs: outlet.accommodationTypeSlugs ?? [],
       };
     })
     .filter((choice): choice is OutletChoice => choice !== null)
@@ -475,7 +532,7 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
   return rows.map((row) => mapActivity(row, reviewMetrics.get(row.id)));
 }
 
-async function loadDiscoveryActivityData(db: SupabaseClient): Promise<{
+async function loadDiscoveryActivityData(db: SupabaseClient, outletBadgeSlugs: string[] = []): Promise<{
   activities: Activity[];
   outletMap: Map<string, Outlet>;
 }> {
@@ -496,7 +553,7 @@ async function loadDiscoveryActivityData(db: SupabaseClient): Promise<{
   ]).filter((id): id is string => Boolean(id));
   const [reviewMetrics, outlets] = await Promise.all([
     getReviewMetricsForProducts(productIds, db),
-    getDiscoveryOutlets(outletIds, db),
+    getDiscoveryOutlets(outletIds, db, outletBadgeSlugs),
   ]);
 
   return {
@@ -907,9 +964,9 @@ export function filterComputedActivities(filters: SearchFilters, activities: Com
   }
   if (filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) {
     results = results.filter((activity) =>
-      (filters.hiddenGemOnly && activity.isHiddenGem) ||
-      (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
-      (filters.coupleFriendlyOnly && activity.isCoupleFriendly),
+      (filters.hiddenGemOnly && activity.outlet.badgeSlugs?.includes("hidden_gem")) ||
+      (filters.familyFriendlyOnly && activity.outlet.badgeSlugs?.includes("family_friendly")) ||
+      (filters.coupleFriendlyOnly && activity.outlet.badgeSlugs?.includes("couple_friendly")),
     );
   }
   if (filters.state && filters.state !== "All Malaysia") {
@@ -958,9 +1015,145 @@ export function filterComputedActivities(filters: SearchFilters, activities: Com
   return results;
 }
 
+type ExploreTypeSelections = Map<string, Set<string>>;
+
+function getExploreTypeSelections(filters: SearchFilters): ExploreTypeSelections {
+  const selections = new Map<string, Set<string>>();
+  for (const token of filters.types ?? []) {
+    const separator = token.indexOf(":");
+    if (separator < 1) continue;
+    const category = canonicalCategorySlug(token.slice(0, separator));
+    const type = token.slice(separator + 1);
+    if (!category || !type || !CATEGORY_DETAILS[category].types.some((option) => option.slug === type)) continue;
+    const types = selections.get(category) ?? new Set<string>();
+    types.add(type);
+    selections.set(category, types);
+  }
+  return selections;
+}
+
+function getExploreCategorySelections(filters: SearchFilters, typeSelections: ExploreTypeSelections): Set<string> {
+  return new Set([
+    ...(filters.categories ?? []),
+    ...(filters.categorySlug ? [filters.categorySlug] : []),
+    ...(filters.category ? [filters.category] : []),
+    ...typeSelections.keys(),
+  ].map(canonicalCategorySlug).filter((category): category is RealCategorySlug => category !== null));
+}
+
+function getExploreBadgeSelections(filters: SearchFilters): string[] {
+  return [
+    ...(filters.hiddenGemOnly ? ["hidden_gem"] : []),
+    ...(filters.familyFriendlyOnly ? ["family_friendly"] : []),
+    ...(filters.coupleFriendlyOnly ? ["couple_friendly"] : []),
+  ];
+}
+
+function matchesExploreActivity(
+  activity: Activity,
+  outlet: Outlet,
+  filters: SearchFilters,
+  categorySelections: Set<string>,
+  typeSelections: ExploreTypeSelections,
+  badgeSelections: string[],
+): boolean {
+  const category = canonicalCategorySlug(activity.categorySlug);
+  if (categorySelections.size > 0 && (!category || !categorySelections.has(category))) return false;
+
+  if (typeSelections.size > 0) {
+    const selectedTypes = category ? typeSelections.get(category) : undefined;
+    if (!selectedTypes) return false;
+    const availableTypes = category === "accommodation" ? outlet.accommodationTypeSlugs : activity.typeSlugs;
+    if (!availableTypes?.some((type) => selectedTypes.has(type))) return false;
+  }
+
+  const query = filters.q?.trim().toLocaleLowerCase();
+  if (query) {
+    const productMatches = activity.name.toLocaleLowerCase().includes(query)
+      || activity.category.toLocaleLowerCase().includes(query);
+    const outletMatches = outlet.city.toLocaleLowerCase().includes(query)
+      || outlet.state.toLocaleLowerCase().includes(query);
+    if (!productMatches && !outletMatches) return false;
+  }
+
+  if (badgeSelections.length > 0 && !badgeSelections.some((badge) => outlet.badgeSlugs?.includes(badge))) return false;
+  if (filters.state && filters.state !== "All Malaysia" && (activity.place?.state ?? outlet.state) !== filters.state) return false;
+  if (filters.openNow && !(outlet.currentlyOpen ?? outlet.open)) return false;
+  if (filters.vendorId && outlet.vendorId !== filters.vendorId) return false;
+  return true;
+}
+
+function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
+  switch (filters.sort) {
+    case "price_asc":
+      activities.sort((a, b) => a.price - b.price);
+      break;
+    case "rating_desc":
+      activities.sort((a, b) => b.rating - a.rating);
+      break;
+    case "distance_asc":
+      activities.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+      break;
+    default:
+      activities.sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
+  }
+  return activities;
+}
+
+/** Explore's facet groups combine with AND; selections within each group use OR. */
+export function filterExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
+  const typeSelections = getExploreTypeSelections(filters);
+  const categorySelections = getExploreCategorySelections(filters, typeSelections);
+  const badgeSelections = getExploreBadgeSelections(filters);
+  const matching = activities.filter((activity) => matchesExploreActivity(
+    activity,
+    activity.outlet,
+    filters,
+    categorySelections,
+    typeSelections,
+    badgeSelections,
+  ));
+  return sortExploreActivities(filters, matching);
+}
+
+/**
+ * Searches Explore with outlet-scoped filters applied before collapsing a
+ * shared product to its one representative outlet and offer price.
+ */
+export async function searchExploreActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+  const typeSelections = getExploreTypeSelections(filters);
+  const categorySelections = getExploreCategorySelections(filters, typeSelections);
+  const badgeSelections = getExploreBadgeSelections(filters);
+  const { activities, outletMap } = await loadDiscoveryActivityData(db, badgeSelections);
+  const matchingActivities = activities.flatMap((activity) => {
+    const candidateOutletIds = [...new Set([
+      ...(activity.offers ?? []).map((offer) => offer.outletId),
+      activity.outletId,
+    ].filter(Boolean))];
+    const matchingOutlets = new Map<string, Outlet>();
+    for (const outletId of candidateOutletIds) {
+      const outlet = outletMap.get(outletId);
+      if (outlet && matchesExploreActivity(activity, outlet, filters, categorySelections, typeSelections, badgeSelections)) {
+        matchingOutlets.set(outlet.id, outlet);
+      }
+    }
+    const computed = toComputed(activity, matchingOutlets, filters.near);
+    return computed ? [computed] : [];
+  });
+  return sortExploreActivities(filters, matchingActivities);
+}
+
 export async function searchActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const activities = await getDiscoveryActivities(db, filters.near);
-  return filterComputedActivities(filters, activities);
+  const selectedBadgeSlugs = [
+    ...(filters.hiddenGemOnly ? ["hidden_gem"] : []),
+    ...(filters.familyFriendlyOnly ? ["family_friendly"] : []),
+    ...(filters.coupleFriendlyOnly ? ["couple_friendly"] : []),
+  ];
+  const { activities, outletMap } = await loadDiscoveryActivityData(db, selectedBadgeSlugs);
+  const computedActivities = activities
+    .map((activity) => toComputed(activity, outletMap, filters.near))
+    .filter((activity): activity is ComputedActivity => activity !== null);
+  return filterComputedActivities(filters, computedActivities);
 }
 
 // ─── Vouchers ───────────────────────────────────────────────────────────────

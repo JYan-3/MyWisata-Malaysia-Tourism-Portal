@@ -64,6 +64,24 @@ describe("outlet detail edits", () => {
     expect(state.outletUpdates[0]).toEqual({ operating_hours: hours });
     expect(state.upserts).toHaveLength(0);
   });
+
+  it("saves outlet badge-only changes without triggering content review", async () => {
+    expect((await patch({ badgeSlugs: ["hidden_gem", "family_friendly"] })).status).toBe(200);
+    expect(state.outletUpdates[0]).toEqual({ badge_slugs: ["hidden_gem", "family_friendly"] });
+    expect(state.upserts).toHaveLength(0);
+  });
+
+  it("saves accommodation property types directly for hotel outlets", async () => {
+    state.isHotel = true;
+    expect((await patch({ accommodationTypeSlugs: ["resort"] })).status).toBe(200);
+    expect(state.outletUpdates[0]).toEqual({ accommodation_type_slugs: ["resort"] });
+    expect(state.upserts).toHaveLength(0);
+  });
+
+  it("rejects accommodation property types for non-hotel outlets", async () => {
+    expect((await patch({ accommodationTypeSlugs: ["resort"] })).status).toBe(422);
+    expect(state.outletUpdates).toHaveLength(0);
+  });
 });
 
 describe("outlet update schema", () => {

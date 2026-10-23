@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CATEGORIES, STATES_MY } from "@/backend/domains/catalogue";
 import { CategoryIcon } from "@/components/customer/category-icon";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import { PRICE_MAX, type DiscoveryQuery } from "@/lib/customer/discovery-query";
 
@@ -315,6 +316,7 @@ export function DiscoveryAdvancedFilters({ value, onChange, showTypeFilters = tr
 
 export function CustomerDiscoveryFilterPanel({
   layout = "panel",
+  mode = "default",
   value,
   hasActiveFilters,
   onChange,
@@ -330,6 +332,7 @@ export function CustomerDiscoveryFilterPanel({
   showTagPreferenceFilters = true,
 }: {
   layout?: "panel" | "sidebar";
+  mode?: "default" | "experiences";
   value: DiscoveryQuery;
   hasActiveFilters: boolean;
   onChange: (patch: Partial<DiscoveryQuery>) => void;
@@ -346,6 +349,148 @@ export function CustomerDiscoveryFilterPanel({
 }) {
   const { t } = useTranslation("customer");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [expandedExperienceCategories, setExpandedExperienceCategories] = useState<Set<string>>(() => new Set());
+  const [experienceBadgesExpanded, setExperienceBadgesExpanded] = useState(false);
+  const toggleExperienceCategory = (category: string) => {
+    setExpandedExperienceCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
+  const toggleExperienceCategorySelection = (category: string, checked: boolean) => {
+    onChange({
+      categories: checked ? [...value.categories, category] : value.categories.filter((item) => item !== category),
+      types: checked ? value.types : value.types.filter((item) => !item.startsWith(`${category}:`)),
+    });
+  };
+  const toggleExperienceType = (category: string, type: string, checked: boolean) => {
+    const token = `${category}:${type}`;
+    onChange({
+      categories: value.categories.includes(category) ? value.categories : [...value.categories, category],
+      types: checked ? [...value.types, token] : value.types.filter((item) => item !== token),
+    });
+  };
+  const openNowFilter = (
+    <button
+      type="button"
+      aria-label={t("ui.labels.openNow")}
+      aria-pressed={value.openNow}
+      onClick={() => onChange({ openNow: !value.openNow })}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${value.openNow ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
+    >
+      <Clock3 size={14} aria-hidden="true" />
+      {t("ui.labels.openNow")}
+    </button>
+  );
+  const experienceFacetFilters = (
+    <section aria-label={t("ui.discovery.advancedFilters")} className="space-y-4">
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-foreground">
+          <span>{t("ui.discovery.state")}</span>
+          <select aria-label={t("ui.discovery.state")} value={value.state ?? ""} onChange={(event) => onChange({ state: event.target.value || null })} className="mt-2 min-h-10 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal">
+            <option value="">{t("ui.map.allStatesTerritories")}</option>
+            {STATES_MY.filter((state) => state !== "All Malaysia").map((state) => <option key={state} value={state}>{state}</option>)}
+          </select>
+        </label>
+        <div role="separator" aria-orientation="horizontal" className="h-px bg-border" />
+        {openNowFilter}
+        <div role="separator" aria-orientation="horizontal" className="h-px bg-border" />
+      </div>
+
+      <fieldset className="space-y-1">
+        <legend className="sr-only">{t("ui.search.category")}</legend>
+        {Object.entries(CATEGORY_DETAILS).map(([category, detail]) => {
+          const categoryLabel = t(`categories.${category}`);
+          const expanded = expandedExperienceCategories.has(category);
+          const categoryId = `experience-category-${category}`;
+          return (
+            <div key={category} className="border-b border-border/70 py-2 last:border-b-0">
+              <div className="flex min-h-10 items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Checkbox
+                    id={categoryId}
+                    aria-label={categoryLabel}
+                    checked={value.categories.includes(category)}
+                    onCheckedChange={(checked) => toggleExperienceCategorySelection(category, checked === true)}
+                  />
+                  <label htmlFor={categoryId} className="cursor-pointer text-sm font-semibold text-foreground">
+                    {categoryLabel}
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  data-testid={`experience-type-toggle-${category}`}
+                  aria-label={`${t("ui.discovery.types")}: ${categoryLabel}`}
+                  aria-expanded={expanded}
+                  aria-controls={`experience-types-${category}`}
+                  onClick={() => toggleExperienceCategory(category)}
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+              {expanded && (
+                <div id={`experience-types-${category}`} role="group" aria-label={`${categoryLabel} ${t("ui.discovery.types")}`} className="ml-7 mt-2 space-y-2 border-l border-border pl-4">
+                  {detail.types.map((type) => {
+                    const token = `${category}:${type.slug}`;
+                    const typeId = `experience-type-${category}-${type.slug}`;
+                    return (
+                      <label key={token} htmlFor={typeId} className="flex min-h-8 cursor-pointer items-center gap-3 text-sm text-muted-foreground hover:text-foreground">
+                        <Checkbox
+                          id={typeId}
+                          aria-label={t(`ui.map.types.${type.slug}`)}
+                          checked={value.types.includes(token)}
+                          onCheckedChange={(checked) => toggleExperienceType(category, type.slug, checked === true)}
+                        />
+                        <span>{t(`ui.map.types.${type.slug}`)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </fieldset>
+
+      <section className="rounded-xl border border-border/70 bg-card p-3">
+        <button
+          type="button"
+          data-testid="experience-badges-toggle"
+          aria-expanded={experienceBadgesExpanded}
+          aria-controls="experience-badges"
+          onClick={() => setExperienceBadgesExpanded((expanded) => !expanded)}
+          className="flex min-h-8 w-full cursor-pointer list-none items-center justify-between gap-3 text-left text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        >
+          {t("ui.discovery.badges")}
+          <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-muted-foreground transition-transform ${experienceBadgesExpanded ? "rotate-180" : ""}`} />
+        </button>
+        {experienceBadgesExpanded && <fieldset id="experience-badges" className="mt-3 space-y-2">
+          <legend className="sr-only">{t("ui.discovery.badges")}</legend>
+          {([
+            ["hiddenGemOnly", "ui.discovery.hiddenGemOnly"],
+            ["familyFriendlyOnly", "ui.discovery.familyFriendlyOnly"],
+            ["coupleFriendlyOnly", "ui.discovery.coupleFriendlyOnly"],
+          ] as const).map(([key, labelKey]) => {
+            const id = `experience-badge-${key}`;
+            return (
+              <label key={key} htmlFor={id} className="flex min-h-8 cursor-pointer items-center gap-3 text-sm text-foreground">
+                <Checkbox
+                  id={id}
+                  aria-label={t(labelKey)}
+                  checked={value[key]}
+                  onCheckedChange={(checked) => onChange({ [key]: checked === true })}
+                />
+                <span>{t(labelKey)}</span>
+              </label>
+            );
+          })}
+        </fieldset>}
+      </section>
+    </section>
+  );
   const activeFilterCount = [
     Boolean(value.q.trim()),
     Boolean(value.state),
@@ -373,18 +518,11 @@ export function CustomerDiscoveryFilterPanel({
       showClear={false}
     />
   );
-  const openNowFilter = (
-    <button
-      type="button"
-      aria-pressed={value.openNow}
-      onClick={() => onChange({ openNow: !value.openNow })}
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${value.openNow ? "border-primary bg-primary text-white" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary"}`}
-    >
-      <Clock3 size={14} aria-hidden="true" />
-      {t("ui.labels.openNow")}
-    </button>
-  );
   const advancedFilters = <DiscoveryAdvancedFilters value={value} onChange={onChange} showTypeFilters={showTypeFilters} showTagPreferenceFilters={showTagPreferenceFilters} />;
+
+  if (mode === "experiences") {
+    return <section data-testid="customer-discovery-filter-panel" className="space-y-4">{experienceFacetFilters}</section>;
+  }
 
   if (layout === "sidebar") {
     return (

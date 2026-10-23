@@ -61,6 +61,9 @@ interface OutletData {
   welcome_message?: string | null;
   welcome_enabled?: boolean;
   food_service_modes?: ("dine_in" | "takeaway")[] | null;
+  badge_slugs?: string[] | null;
+  accommodation_type_slugs?: string[] | null;
+  isAccommodationOutlet?: boolean;
   operating_hours?: unknown;
   manager?: { id: string; fullName: string; email: string } | null;
   pendingInvitation?: { email: string; expiresAt: string } | null;
@@ -556,6 +559,7 @@ export default function VendorOutletsPage() {
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl">
             <OutletForm
               vendorId={vendorId}
+              showAccommodationTypes={editingOutlet?.isAccommodationOutlet}
               initialData={
                 editingOutlet
                   ? {
@@ -574,6 +578,8 @@ export default function VendorOutletsPage() {
                         editingOutlet.welcome_message || undefined,
                       welcomeEnabled: editingOutlet.welcome_enabled ?? true,
                       foodServiceModes: editingOutlet.food_service_modes ?? ["dine_in", "takeaway"],
+                      badgeSlugs: editingOutlet.badge_slugs ?? [],
+                      accommodationTypeSlugs: editingOutlet.accommodation_type_slugs ?? [],
                     }
                   : undefined
               }

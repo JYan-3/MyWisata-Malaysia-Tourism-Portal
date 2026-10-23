@@ -67,6 +67,7 @@ export interface VendorSummary {
     state: string;
     operatingHours?: OperatingHours | null;
     currentlyOpen?: boolean;
+    badgeSlugs?: string[];
   }[];
 }
 
@@ -96,6 +97,8 @@ export interface Outlet {
   wheelchairAccessible?: boolean | null; // null = vendor hasn't specified
   petFriendly?: boolean | null;
   foodServiceModes?: ("dine_in" | "takeaway")[];
+  badgeSlugs?: string[];
+  accommodationTypeSlugs?: string[];
 }
 
 export const OPERATING_HOUR_WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;

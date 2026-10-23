@@ -83,7 +83,7 @@ function matchesState(activity: ComputedActivity, state: string | null): boolean
 
 function matchesCategory(activity: ComputedActivity, category: string | null): boolean {
   if (!category) return true;
-  if (category === "hidden_gem") return Boolean(activity.isHiddenGem);
+  if (category === "hidden_gem") return Boolean(activity.outlet.badgeSlugs?.includes("hidden_gem"));
 
   const selectedCategory = canonicalCategorySlug(category);
   return selectedCategory !== null && canonicalCategorySlug(activity.categorySlug) === selectedCategory;

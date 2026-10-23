@@ -32,6 +32,7 @@ export function DirectoryPagination({
   totalItems,
   totalPages,
   variant = "default",
+  showSummary = true,
 }: {
   ariaLabel: string;
   currentPage: number;
@@ -43,6 +44,7 @@ export function DirectoryPagination({
   totalItems: number;
   totalPages: number;
   variant?: "default" | "compact" | "marketplace";
+  showSummary?: boolean;
 }) {
   const { t } = useTranslation("customer");
   if (totalPages <= 1) return null;
@@ -65,10 +67,10 @@ export function DirectoryPagination({
 
   if (variant === "marketplace") {
     return (
-      <nav aria-label={ariaLabel} data-pagination-variant="marketplace" className="mt-6 flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p aria-live="polite" className="text-xs text-muted-foreground">
+      <nav aria-label={ariaLabel} data-pagination-variant="marketplace" className={`mt-6 flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center ${showSummary ? "sm:justify-between" : "sm:justify-end"}`}>
+        {showSummary && <p aria-live="polite" className="text-xs text-muted-foreground">
           {t("ui.pagination.showing", { from: pageStart + 1, to: pageEnd, total: totalItems, items: itemLabel })}
-        </p>
+        </p>}
         <div className="flex items-center gap-1.5">
           <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} aria-label={previousPageLabel ?? t("ui.pagination.previousPage", { item: itemLabel })} className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft size={15} /></button>
           {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-muted-foreground">…</span> : <button key={item} type="button" onClick={() => onPageChange(item)} aria-current={currentPage === item ? "page" : undefined} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${currentPage === item ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"}`}>{item}</button>)}

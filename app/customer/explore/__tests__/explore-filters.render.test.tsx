@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   params: new URLSearchParams(),
   replace: vi.fn(),
   searchActivities: vi.fn(),
+  searchExploreActivities: vi.fn(),
   filterComputedActivities: vi.fn((_filters: unknown, candidates: unknown[]) => candidates),
+  filterExploreActivities: vi.fn((_filters: unknown, candidates: unknown[]) => candidates),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -16,12 +18,39 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/link", () => ({ default: (props: { children?: React.ReactNode }) => <a {...props} /> }));
 vi.mock("next/image", () => ({ default: () => null }));
+vi.mock("@/components/ui/dialog", async () => {
+  const React = await import("react");
+
+  return {
+    // The lightweight test DOM does not model Radix portals/open state; this mock keeps assertions focused on drawer content and placement.
+    Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DialogTrigger: ({ children }: { children: React.ReactElement<Record<string, unknown>> }) => React.cloneElement(children, {
+      "aria-haspopup": "dialog",
+      "aria-expanded": "true",
+    }),
+    DialogContent: ({ children, className, ...props }: { children: React.ReactNode; className?: string; [key: string]: unknown }) => {
+      return (
+        <>
+          <div data-testid="experience-dialog-overlay" />
+          <div {...props} role="dialog" aria-modal="true" className={className}>
+            {children}
+          </div>
+        </>
+      );
+    },
+    DialogHeader: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => <div {...props}>{children}</div>,
+    DialogTitle: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => <h2 {...props}>{children}</h2>,
+    DialogDescription: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => <p {...props}>{children}</p>,
+  };
+});
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => ({
       "ui.explore.destinations": "Destinations",
       "ui.explore.experiences": "Experiences",
       "ui.discovery.state": "State",
+      "ui.discovery.types": "Types",
+      "ui.discovery.badges": "Badges",
       "ui.discovery.maximumPrice": "Maximum price",
       "ui.discovery.priceInvalid": "Enter a value between 0 and 10,000.",
       "ui.discovery.freeOnly": "Free entry",
@@ -46,11 +75,18 @@ vi.mock("react-i18next", () => ({
       "ui.discovery.locationAndPrice": "Location and budget",
       "ui.discovery.experienceTypes": "Activity types",
       "ui.discovery.preferences": "Preferences",
+      "ui.explore.emptyExperienceFilters": "Try another category or clear your filters.",
+      "ui.explore.filters": "Filters",
+      "ui.explore.filterDrawerTitle": "Filter experiences",
+      "ui.explore.filterDrawerDescription": "Narrow the listings by state, category, type, and features.",
+      "ui.explore.showExperienceResults": "Show results",
       "ui.labels.openNow": "Open now",
       "ui.map.moreFilters": "More filters",
       "ui.map.activeFilters": "Active filters",
       "ui.actions.close": "Close",
       "ui.map.types.nature": "Nature",
+      "ui.map.types.chinese": "Chinese",
+      "ui.map.types.resort": "Resort",
       "ui.pagination.experiencePages": "Experience pages",
       "ui.pagination.experienceItems": "experiences",
     } as Record<string, string>)[key] ?? key,
@@ -66,10 +102,32 @@ vi.mock("@/backend/domains/catalogue", () => ({
   ],
   STATES_MY: ["All Malaysia", "Sabah"],
   searchActivities: mocks.searchActivities,
+  searchExploreActivities: mocks.searchExploreActivities,
   filterComputedActivities: mocks.filterComputedActivities,
+  filterExploreActivities: mocks.filterExploreActivities,
 }));
 vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, returnTo, detailsRevealOnHover, hideDiscoveryBadges }: { activity: { id: string; name: string }; returnTo?: string; detailsRevealOnHover?: boolean; hideDiscoveryBadges?: boolean }) => <article data-testid={`activity-${activity.id}`} data-details-reveal={detailsRevealOnHover ? "true" : "false"} data-hide-discovery-badges={hideDiscoveryBadges ? "true" : "false"}>{activity.name}|{returnTo}</article> }));
 vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
+vi.mock("@/components/ui/checkbox", () => ({
+  Checkbox: ({
+    id,
+    checked,
+    onCheckedChange,
+    ...props
+  }: {
+    id?: string;
+    checked?: boolean;
+    onCheckedChange?: (checked: boolean) => void;
+    [key: string]: unknown;
+  }) => React.createElement("button", {
+    ...props,
+    id,
+    type: "button",
+    role: "checkbox",
+    "aria-checked": checked ? "true" : "false",
+    onClick: () => onCheckedChange?.(!checked),
+  }),
+}));
 
 import { ExploreClient } from "../explore-client";
 
@@ -100,6 +158,10 @@ function button(container: TestElement, name: string) {
 function labelled(container: TestElement, label: string) {
   const matches = findElements(container, (element) => element.getAttribute("aria-label") === label);
   return matches[matches.length - 1] ?? findOne(container, (element) => element.getAttribute("aria-label") === label);
+}
+
+function checkbox(container: TestElement, label: string) {
+  return findOne(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === label);
 }
 
 async function click(element: TestElement) {
@@ -148,12 +210,14 @@ describe("ExploreClient URL-backed advanced filters", () => {
   });
 
   beforeEach(() => {
-    mocks.params = new URLSearchParams("state=Sabah&category=activity&type=activity%3Anature&priceMax=100&free=1&bookable=1&hiddenGem=1&family=1&couple=1");
+    mocks.params = new URLSearchParams("tab=experiences&state=Sabah&category=activity&type=activity%3Anature&priceMax=100&free=1&bookable=1&hiddenGem=1&family=1&couple=1");
     mocks.replace.mockReset().mockImplementation((href: string) => {
       mocks.params = new URL(href, "https://mylawatan.test").searchParams;
     });
     mocks.searchActivities.mockReset().mockResolvedValue(activities);
+    mocks.searchExploreActivities.mockReset().mockResolvedValue(activities);
     mocks.filterComputedActivities.mockReset().mockImplementation((_filters, candidates) => candidates);
+    mocks.filterExploreActivities.mockReset().mockImplementation((_filters, candidates) => candidates);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
@@ -165,40 +229,41 @@ describe("ExploreClient URL-backed advanced filters", () => {
     document.body.removeChild(container);
   });
 
-  it("keeps Experiences browse controls focused on real categories and hides unsupported type and badge filters", async () => {
+  it("keeps supported facets, removes hidden legacy filters, and presents a compact Experiences toolbar", async () => {
     await render(root, <ExploreClient initialActivities={activities} />);
-    expect(mocks.filterComputedActivities).toHaveBeenCalledWith({
-      q: "", state: "Sabah", categories: ["activity"], types: ["activity:nature"], priceMax: 100,
+    expect(mocks.searchExploreActivities).toHaveBeenCalledWith(expect.objectContaining({
+      q: "", state: "Sabah", categories: ["activity"], types: ["activity:nature"], priceMax: null,
       operatingDays: [], hoursMode: "during", timeAt: null,
       timeFrom: null, timeTo: null,
       overnight: false, openNow: false,
-      freeOnly: true, bookableOnly: true, hiddenGemOnly: true, familyFriendlyOnly: true, coupleFriendlyOnly: true,
-    }, activities);
+      freeOnly: false, bookableOnly: false, hiddenGemOnly: true, familyFriendlyOnly: true, coupleFriendlyOnly: true,
+    }));
     expect(mocks.searchActivities).not.toHaveBeenCalled();
+    expect(mocks.filterComputedActivities).not.toHaveBeenCalled();
 
-    expect(findOne(container, (element) => element.getAttribute("data-testid") === "story-map-ids").textContent).toBe(Array.from({ length: 10 }, (_, index) => `result-${index + 1}`).join(","));
-    await click(button(container, "Experiences"));
     const experiencesUrl = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
     expect(experiencesUrl.searchParams.get("tab")).toBe("experiences");
-    expect(experiencesUrl.searchParams.get("category")).toBe("activity");
-    expect(experiencesUrl.searchParams.has("type")).toBe(false);
-    expect(experiencesUrl.searchParams.has("hiddenGem")).toBe(false);
-    expect(experiencesUrl.searchParams.has("family")).toBe(false);
-    expect(experiencesUrl.searchParams.has("couple")).toBe(false);
-    expect(labelled(container, "State").value).toBe("Sabah");
-    expect(labelled(container, "Maximum price").value).toBe("100");
-    expect(labelled(container, "Activity").getAttribute("aria-pressed")).toBe("true");
-    expect(labelled(container, "Free entry").getAttribute("aria-pressed")).toBe("true");
-    expect(labelled(container, "Booking required").getAttribute("aria-pressed")).toBe("true");
-    for (const label of ["Nature", "Hidden Gem", "Family Friendly", "Couple Friendly"]) {
-      expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
+    expect(experiencesUrl.searchParams.getAll("category")).toEqual(["activity"]);
+    expect(experiencesUrl.searchParams.getAll("type")).toEqual(["activity:nature"]);
+    expect(experiencesUrl.searchParams.get("hiddenGem")).toBe("1");
+    expect(experiencesUrl.searchParams.get("family")).toBe("1");
+    expect(experiencesUrl.searchParams.get("couple")).toBe("1");
+    for (const stale of ["priceMax", "free", "bookable", "hoursDay", "timeAt", "timeFrom", "timeTo", "overnight"]) {
+      expect(experiencesUrl.searchParams.has(stale)).toBe(false);
     }
+    expect(labelled(container, "State").value).toBe("Sabah");
+    expect(checkbox(container, "Activity").getAttribute("aria-checked")).toBe("true");
+    for (const label of ["Hidden Gem", "Family Friendly", "Couple Friendly"]) expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
+    for (const label of ["Maximum price", "Free entry", "Booking required", "Opening hours"]) expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
     const activityCard = findOne(container, (element) => element.getAttribute("data-testid") === "activity-result-1");
     expect(activityCard.getAttribute("data-details-reveal")).toBe("true");
     expect(activityCard.getAttribute("data-hide-discovery-badges")).toBe("true");
-    const categories = findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "Activity").parentNode as TestElement;
-    expect(categories.className).toContain("flex-col");
+    const toolbar = findOne(container, (element) => element.getAttribute("data-testid") === "experience-toolbar");
+    expect(findElements(toolbar, (element) => element.tagName === "INPUT" && element.getAttribute("aria-label") === "Search")).toHaveLength(1);
+    expect(findElements(toolbar, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "Sort by")).toHaveLength(1);
+    expect(findElements(container, (element) => element.textContent === "All Experiences")).toHaveLength(0);
+    expect(findElements(container, (element) => /\b\d+\s+results\b/i.test(element.textContent ?? ""))).toHaveLength(0);
   });
 
   it("restores the Experiences tab from the URL", async () => {
@@ -213,7 +278,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.params = new URLSearchParams("state=Sabah");
     await render(root, <ExploreClient initialActivities={activities} />);
     await click(button(container, "Experiences"));
-    await click(button(container, "Open now"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open now"));
 
     const currentUrl = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
     expect(currentUrl.searchParams.get("tab")).toBe("experiences");
@@ -252,7 +317,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     await render(root, <ExploreClient initialActivities={activities} />);
 
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false).length).toBe(2);
-    await click(button(container, "Open now"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open now"));
     expect(new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test").searchParams.has("page")).toBe(false);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false).length).toBe(8);
 
@@ -271,73 +336,57 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false).length).toBe(2);
   });
 
-  it("shows a mobile filter entry point that opens and closes the shared sidebar", async () => {
+  it("uses one right-side filter dialog at every viewport", async () => {
     mocks.params = new URLSearchParams("tab=experiences");
     await render(root, <ExploreClient initialActivities={activities} />);
 
-    const filterToggle = button(container, "More filters");
-    expect(filterToggle.getAttribute("aria-expanded")).toBe("false");
-    expect(findOne(container, (element) => element.getAttribute("id") === "experience-filter-sidebar").className).toContain("hidden");
+    expect(findElements(container, (element) => element.tagName === "ASIDE")).toHaveLength(0);
+    const toolbar = findOne(container, (element) => element.getAttribute("data-testid") === "experience-toolbar");
+    const filterToggle = findOne(toolbar, (element) => element.getAttribute("data-testid") === "experience-filter-trigger");
+    expect(filterToggle.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(filterToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(filterToggle.getAttribute("class") ?? "").not.toContain("lg:hidden");
+    expect(findElements(toolbar, (element) => element.tagName === "INPUT" && element.getAttribute("aria-label") === "Search")).toHaveLength(1);
+    expect(findElements(toolbar, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "Sort by")).toHaveLength(1);
 
-    await click(filterToggle);
-    expect(button(container, "More filters").getAttribute("aria-expanded")).toBe("true");
-    expect(findOne(container, (element) => element.getAttribute("id") === "experience-filter-sidebar").className).toContain("block");
+    const dialog = findOne(container, (element) => element.getAttribute("role") === "dialog");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.getAttribute("aria-labelledby")).toBe("experience-filter-title");
+    const dialogClassName = dialog.getAttribute("class") ?? "";
+    expect(dialogClassName).toContain("right-0");
+    expect(dialogClassName).toContain("h-dvh");
+    expect(dialogClassName).toContain("max-w-[430px]");
+    expect(dialogClassName).not.toContain("left-1/2");
 
-    await click(button(container, "Close"));
-    expect(button(container, "More filters").getAttribute("aria-expanded")).toBe("false");
+    expect(findOne(container, (element) => element.getAttribute("data-testid") === "experience-dialog-overlay")).not.toBeNull();
   });
 
-  it("keeps Open now at hand and opens opening hours before secondary filter groups", async () => {
+  it("keeps Open Now as a toggle button and starts category/type/badge groups collapsed", async () => {
     mocks.params = new URLSearchParams();
     await render(root, <ExploreClient initialActivities={activities} />);
     await click(button(container, "Experiences"));
+    const openNow = findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "Open now");
+    expect(openNow.textContent).toContain("Open now");
+    expect(findElements(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Open now")).toHaveLength(0);
+    await click(openNow);
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-pressed") === "true").textContent).toContain("Open now");
 
-    expect(button(container, "Open now").getAttribute("aria-pressed")).toBe("false");
-    await click(button(container, "Open now"));
-    expect(button(container, "Open now").getAttribute("aria-pressed")).toBe("true");
-
-    const groups = findElements(container, (element) => element.tagName === "DETAILS");
-    expect(groups).toHaveLength(3);
-    expect(groups[0].hasAttribute("open")).toBe(true);
-    expect(groups.slice(1).every((group) => !group.hasAttribute("open"))).toBe(true);
-    expect(findOne(container, (element) => element.tagName === "SUMMARY" && element.textContent === "Opening hours")).not.toBeNull();
-    expect(findElements(container, (element) => element.tagName === "SUMMARY" && element.textContent === "Activity types")).toHaveLength(0);
-    for (const label of ["Hidden Gem", "Family Friendly", "Couple Friendly"]) {
-      expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
-    }
+    const typeGroups = findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("experience-type-toggle-") ?? false);
+    expect(typeGroups).toHaveLength(4);
+    expect(typeGroups.every((group) => group.getAttribute("aria-expanded") === "false")).toBe(true);
+    expect(findOne(container, (element) => element.getAttribute("data-testid") === "experience-badges-toggle").getAttribute("aria-expanded")).toBe("false");
+    for (const label of ["Hidden Gem", "Family Friendly", "Couple Friendly"]) expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
+    await click(findOne(container, (element) => element.getAttribute("data-testid") === "experience-badges-toggle"));
+    for (const label of ["Hidden Gem", "Family Friendly", "Couple Friendly"]) expect(checkbox(container, label)).not.toBeNull();
   });
 
-  it("rejects invalid maximum prices without applying them, while accepting a valid amount", async () => {
-    mocks.params = new URLSearchParams("priceMax=100");
+  it("keeps type filters visible as checkboxes after opening a category group", async () => {
+    mocks.params = new URLSearchParams("tab=experiences");
     await render(root, <ExploreClient initialActivities={activities} />);
-    await click(button(container, "Experiences"));
-    const priceInput = labelled(container, "Maximum price");
-    mocks.searchActivities.mockClear();
-
-    await setInputValue(priceInput, "-100");
-    expect(priceInput.getAttribute("aria-invalid")).toBe("true");
-    expect(findOne(container, (element) => element.getAttribute("role") === "alert").textContent).toBe("Enter a value between 0 and 10,000.");
-    expect(mocks.searchActivities).not.toHaveBeenCalled();
-    expect(mocks.searchActivities.mock.calls.some(([query]) => query.priceMax === -100)).toBe(false);
-
-    await setInputValue(priceInput, "10001");
-    expect(priceInput.getAttribute("aria-invalid")).toBe("true");
-    expect(mocks.searchActivities.mock.calls.some(([query]) => query.priceMax === 10001)).toBe(false);
-
-    await setInputValue(priceInput, "200");
-    expect(priceInput.getAttribute("aria-invalid")).toBe("false");
-    expect(findElements(container, (element) => element.getAttribute("role") === "alert")).toHaveLength(0);
-    expect(mocks.filterComputedActivities).toHaveBeenLastCalledWith(expect.objectContaining({ priceMax: 200 }), activities);
-  });
-
-  it("does not expose Hidden Gem as an Experience category because it is a badge collection", async () => {
-    mocks.params = new URLSearchParams();
-    await render(root, <ExploreClient initialActivities={activities} />);
-    await click(button(container, "Experiences"));
-
-    expect(findElements(container, (element) => element.tagName === "BUTTON" && element.textContent === "Hidden Gem")).toHaveLength(0);
-    expect(String(mocks.replace.mock.lastCall?.[0])).not.toContain("hiddenGem=1");
-    expect(String(mocks.replace.mock.lastCall?.[0])).not.toContain("category=hidden_gem");
+    await click(findOne(container, (element) => element.getAttribute("data-testid") === "experience-type-toggle-food"));
+    expect(checkbox(container, "Chinese")).not.toBeNull();
+    expect(checkbox(container, "Food")).not.toBeNull();
+    expect(findElements(container, (element) => element.getAttribute("aria-label") === "Hidden Gem")).toHaveLength(0);
   });
 
   it("sorts the product grid and preserves the selected sort when returning from a detail page", async () => {
@@ -348,40 +397,59 @@ describe("ExploreClient URL-backed advanced filters", () => {
 
     const sortedUrl = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
     expect(sortedUrl.searchParams.get("sort")).toBe("price_asc");
-    expect(mocks.filterComputedActivities).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "price_asc", categories: [] }), expect.any(Array));
+    expect(mocks.filterExploreActivities).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "price_asc", categories: [] }), expect.any(Array));
     const activityCard = findOne(container, (element) => element.getAttribute("data-testid") === "activity-result-1");
     const returnTo = new URL(activityCard.textContent?.split("|").at(-1) ?? "", "https://mylawatan.test");
     expect(returnTo.searchParams.get("tab")).toBe("experiences");
     expect(returnTo.searchParams.get("sort")).toBe("price_asc");
   });
 
-  it("ignores stale activity-type and badge filters on direct Experience URLs", async () => {
-    mocks.params = new URLSearchParams("tab=experiences&category=hidden_gem&type=activity%3Anature&hiddenGem=1&family=1&couple=1");
+  it("keeps supported type and badge URL filters on Experiences while removing disabled filters", async () => {
+    mocks.params = new URLSearchParams("tab=experiences&category=hidden_gem&type=activity%3Anature&hiddenGem=1&family=1&couple=1&free=1&bookable=1&priceMax=50&hoursDay=mon&timeAt=10%3A00");
     await render(root, <ExploreClient initialActivities={activities} />);
 
-    expect(mocks.filterComputedActivities).not.toHaveBeenCalled();
+    expect(mocks.searchExploreActivities).toHaveBeenCalledWith(expect.objectContaining({
+      categories: ["activity"],
+      types: ["activity:nature"],
+      hiddenGemOnly: true,
+      familyFriendlyOnly: true,
+      coupleFriendlyOnly: true,
+      freeOnly: false,
+      bookableOnly: false,
+      priceMax: null,
+      operatingDays: [],
+      timeAt: null,
+    }));
+    const experiencesUrl = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
+    expect(experiencesUrl.searchParams.getAll("category")).toEqual(["activity"]);
+    expect(experiencesUrl.searchParams.getAll("type")).toEqual(["activity:nature"]);
+    expect(experiencesUrl.searchParams.get("hiddenGem")).toBe("1");
+    expect(experiencesUrl.searchParams.get("family")).toBe("1");
+    expect(experiencesUrl.searchParams.get("couple")).toBe("1");
+    for (const stale of ["free", "bookable", "priceMax", "hoursDay", "timeAt"]) expect(experiencesUrl.searchParams.has(stale)).toBe(false);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
-    expect(findElements(container, (element) => element.getAttribute("aria-label") === "Nature")).toHaveLength(0);
-    expect(findElements(container, (element) => element.getAttribute("aria-label") === "Hidden Gem")).toHaveLength(0);
   });
 
   it("debounces only text search requests and sends its trimmed value", async () => {
     mocks.params = new URLSearchParams();
     await render(root, <ExploreClient initialActivities={activities} />);
     mocks.searchActivities.mockClear();
+    mocks.searchExploreActivities.mockClear();
     mocks.filterComputedActivities.mockClear();
+    mocks.filterExploreActivities.mockClear();
     await click(button(container, "Experiences"));
     vi.useFakeTimers();
     vi.setSystemTime(Date.now() + 60_001);
 
     await setInputValue(labelled(container, "Search"), "  rain forest  ");
-    expect(mocks.searchActivities).not.toHaveBeenCalled();
+    expect(mocks.searchExploreActivities).not.toHaveBeenCalled();
     await act(async () => { await vi.advanceTimersByTimeAsync(249); });
-    expect(mocks.searchActivities).not.toHaveBeenCalled();
+    expect(mocks.searchExploreActivities).not.toHaveBeenCalled();
     await act(async () => { await vi.advanceTimersByTimeAsync(1); });
-    expect(mocks.searchActivities).toHaveBeenCalledTimes(1);
-    expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ q: "rain forest" }));
+    expect(mocks.searchExploreActivities).toHaveBeenCalledTimes(1);
+    expect(mocks.searchExploreActivities).toHaveBeenLastCalledWith(expect.objectContaining({ q: "rain forest" }));
     expect(mocks.filterComputedActivities).not.toHaveBeenCalled();
+    expect(mocks.filterExploreActivities).not.toHaveBeenCalled();
   });
 
   it("shows the localized loading error instead of claiming the catalogue is empty during an outage", async () => {

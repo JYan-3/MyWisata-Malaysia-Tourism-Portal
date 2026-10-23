@@ -16,8 +16,59 @@ import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/li
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { readRoomDetails } from "@/lib/customer/room-details";
 import { getReviewRatingSummary, getScopedReviewPage } from "@/backend/domains/vendor-reviews";
+import type { OperatingHours } from "@/backend/core/types";
 
 export const dynamic = "force-dynamic";
+
+const PUBLIC_OUTLET_SELECT = "id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,check_in_time,check_out_time,stay_policies,hotel_about,amenity_codes,badge_slugs,accommodation_type_slugs,vendors(id,name,logo_url)";
+const PUBLIC_OUTLET_SELECT_WITHOUT_TAXONOMY = PUBLIC_OUTLET_SELECT.replace(",badge_slugs,accommodation_type_slugs", "");
+
+type PublicOutletRow = {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string | null;
+  operating_hours: OperatingHours | null;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  stay_policies: string | null;
+  hotel_about: string | null;
+  amenity_codes: string[] | null;
+  badge_slugs?: string[] | null;
+  accommodation_type_slugs?: string[] | null;
+  vendors: { id: string; name: string | null; logo_url: string | null } | { id: string; name: string | null; logo_url: string | null }[] | null;
+};
+
+type PublicOutletQueryResult = {
+  data: PublicOutletRow | null;
+  error: { code?: string; message?: string } | null;
+};
+
+function isMissingOutletTaxonomy(error: { code?: string; message?: string } | null | undefined) {
+  return (error?.code === "42703" || error?.code === "PGRST204")
+    && Boolean(error.message?.includes("badge_slugs") || error.message?.includes("accommodation_type_slugs"));
+}
+
+async function selectPublicOutlet(db: Awaited<ReturnType<typeof createClient>>, outletId: string, vendorId: string) {
+  const query = async (columns: string): Promise<PublicOutletQueryResult> => {
+    const result = await db
+      .from("outlets")
+      .select(columns)
+      .eq("id", outletId)
+      .eq("vendor_id", vendorId)
+      .eq("status", "active")
+      .eq("review_status", "approved")
+      .maybeSingle();
+    return result as unknown as PublicOutletQueryResult;
+  };
+  const result = await query(PUBLIC_OUTLET_SELECT);
+  if (isMissingOutletTaxonomy(result.error)) return query(PUBLIC_OUTLET_SELECT_WITHOUT_TAXONOMY);
+  return result;
+}
 
 interface Props {
   params: Promise<{ vendorId: string; outletId: string }>;
@@ -27,14 +78,7 @@ interface Props {
 async function getPublicOutletPage(outletId: string, vendorId: string) {
   const db = await createClient();
   const [{ data: outlet }, { data: page }, { data: outlets }, { data: media }] = await Promise.all([
-    db
-      .from("outlets")
-      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,check_in_time,check_out_time,stay_policies,hotel_about,amenity_codes,vendors(id,name,logo_url)")
-      .eq("id", outletId)
-      .eq("vendor_id", vendorId)
-      .eq("status", "active")
-      .eq("review_status", "approved")
-      .maybeSingle(),
+    selectPublicOutlet(db, outletId, vendorId),
     db.from("public_outlet_pages").select("*").eq("outlet_id", outletId).maybeSingle(),
     db.from("outlets").select("id,name").eq("vendor_id", vendorId).eq("status", "active").eq("review_status", "approved").order("name"),
     db.from("media_assets").select("url,alt_text,media_type,sort_order").eq("outlet_id", outletId).is("product_id", null).order("sort_order"),
@@ -106,6 +150,8 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
     phone: profile.phone,
     email: profile.email,
     operating_hours: profile.operatingHours,
+    badgeSlugs: outlet.badge_slugs ?? [],
+    accommodationTypeSlugs: outlet.accommodation_type_slugs ?? [],
     logoUrl: logoUrl || vendor?.logo_url || null,
   };
   const availableGallery = gallery.length ? gallery : document.gallery;

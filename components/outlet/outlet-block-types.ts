@@ -16,6 +16,8 @@ export interface OutletRendererOutlet {
   operating_hours?: unknown;
   wheelchair_accessible?: boolean | null;
   pet_friendly?: boolean | null;
+  badgeSlugs?: string[];
+  accommodationTypeSlugs?: string[];
   logoUrl?: string | null;
   stay?: {
     checkIn: string;

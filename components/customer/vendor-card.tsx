@@ -19,6 +19,7 @@ export type CustomerVendorCardVendor = {
     name: string;
     city: string | null;
     state: string | null;
+    badgeSlugs?: string[];
   }>;
 };
 
@@ -27,6 +28,7 @@ type VendorCardProps = {
   categories?: readonly string[];
   description?: string | null;
   descriptionFallback?: string;
+  destinationHref?: string;
   distanceLabel?: string;
   index?: number;
   isFeatured?: boolean;
@@ -40,6 +42,7 @@ export function VendorCard({
   categories = [],
   description,
   descriptionFallback,
+  destinationHref,
   distanceLabel,
   index = 0,
   isFeatured = false,
@@ -50,6 +53,7 @@ export function VendorCard({
   const { t } = useTranslation("customer");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const visual = getVendorVisual(vendor);
+  const vendorHref = destinationHref ?? `/customer/vendor/${vendor.id}`;
   const outlet = vendor.outlets[0];
   const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
   const cardDescription = description?.trim() || descriptionFallback || t("ui.search.approvedPartnerDescription");
@@ -71,7 +75,7 @@ export function VendorCard({
   return (
     <article className={`${compactHomeCard ? "mw-card relative" : "relative flex h-full flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-sm"} group`}>
       <div className={compactHomeCard ? "mw-card-media" : "relative aspect-[1.45] overflow-hidden bg-[#eef2ff]"}>
-        <Link href={`/customer/vendor/${vendor.id}`} className="group/vendor-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
+        <Link href={vendorHref} className="group/vendor-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -92,7 +96,7 @@ export function VendorCard({
                 <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>{location}{distanceLabel && <> · {distanceLabel}</>}{categories.length > 0 && <> · {categoryLabel}</>}</span>
               </p>
-              {showExploreAction && <Link href={`/customer/vendor/${vendor.id}`} className="pointer-events-none inline-flex min-h-7 items-center gap-1 text-xs font-bold text-[#ffcc00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffcc00]/60 group-hover:pointer-events-auto group-focus-within:pointer-events-auto">{t("ui.actions.exploreVendor")} <ArrowRight size={13} aria-hidden="true" /></Link>}
+              {showExploreAction && <Link href={vendorHref} className="pointer-events-none inline-flex min-h-7 items-center gap-1 text-xs font-bold text-[#ffcc00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffcc00]/60 group-hover:pointer-events-auto group-focus-within:pointer-events-auto">{t("ui.actions.exploreVendor")} <ArrowRight size={13} aria-hidden="true" /></Link>}
             </CardMediaHoverCaption>
           )}
           <button
@@ -112,7 +116,7 @@ export function VendorCard({
               <span className="inline-flex items-center gap-1.5"><Building2 size={13} aria-hidden="true" /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span>
               <span className="min-w-0 break-words text-right">{categoryLabel}</span>
             </div>
-            {showExploreAction && <Link href={`/customer/vendor/${vendor.id}`} className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-bold text-[#ffcc00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffcc00]/60">{t("ui.actions.exploreVendor")} <ArrowRight size={13} aria-hidden="true" /></Link>}
+            {showExploreAction && <Link href={vendorHref} className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-bold text-[#ffcc00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffcc00]/60">{t("ui.actions.exploreVendor")} <ArrowRight size={13} aria-hidden="true" /></Link>}
           </div>
         </>
       )}
@@ -120,7 +124,7 @@ export function VendorCard({
       <div className={`${compactHomeCard ? "mw-card-body mw-card-body-compact justify-center" : "flex min-h-[220px] flex-1 flex-col"} space-y-3 p-4`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="min-h-10 break-words whitespace-normal text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
+            <Link href={vendorHref} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="min-h-10 break-words whitespace-normal text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
             {!detailsRevealOnHover && <p className="mt-1 min-h-10 break-words whitespace-normal text-xs leading-5 text-muted-foreground">{cardDescription}</p>}
           </div>
           {!detailsRevealOnHover && <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]" title={vendor.name}>
@@ -134,7 +138,7 @@ export function VendorCard({
           </span>}
         </div>
         {!detailsRevealOnHover && <div className="flex flex-wrap items-start justify-between gap-2 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="min-w-0 flex-1 break-words whitespace-normal text-right">{categoryLabel}</span></div>}
-        {!detailsRevealOnHover && showExploreAction && <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">{t("ui.actions.exploreVendor")} <ArrowRight size={13} /></Link>}
+        {!detailsRevealOnHover && showExploreAction && <Link href={vendorHref} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">{t("ui.actions.exploreVendor")} <ArrowRight size={13} /></Link>}
       </div>
       <span className="sr-only">{t("ui.search.vendorCard", { index: index + 1 })}</span>
     </article>

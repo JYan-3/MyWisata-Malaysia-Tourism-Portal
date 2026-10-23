@@ -32,6 +32,8 @@ interface ProductData {
   status: string;
   review_status?: string;
   category_id?: string | null;
+  categories?: { name?: string | null; slug?: string | null } | null;
+  type_slugs?: string[] | null;
   requires_booking: boolean;
   ticket_entry_policy?: 'single_entry' | 'group_entry' | 'multi_entry';
   ticket_entry_limit?: number;
@@ -324,9 +326,11 @@ export default function VendorProductsPage() {
   return (
     <div className="space-y-5">
       {selectedProduct ? <ProductDetailsPage
+        key={selectedProduct.id}
         product={selectedProduct}
         vendorId={vendorId || ''}
         canManageOutlet={canManageOutlet}
+        canEditType={isOwner}
         canViewDetails={canViewProductDetails}
         productTypeLabel={typeLabel(selectedProduct.product_type, t)}
         productImageKind={imageKind(selectedProduct.product_type)}

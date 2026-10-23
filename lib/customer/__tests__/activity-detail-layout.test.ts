@@ -66,9 +66,10 @@ describe("activity detail booking layout", () => {
     expect(source).toContain("getPriceUnit(activity.categorySlug, t)");
   });
 
-  it("shows a Hidden Gem badge driven by activity.isHiddenGem", () => {
-    expect(source).toContain("activity.isHiddenGem");
+  it("shows a Hidden Gem badge driven by the currently selected outlet", () => {
+    expect(source).toContain('selectedOutlet?.badgeSlugs.includes("hidden_gem")');
     expect(source).toContain('t("ui.labels.hiddenGem")');
+    expect(source).toContain("getCategoryChips(activity, t, selectedOutlet ?? undefined)");
   });
 
   it("has no Details/Map toggle or map-only view remnants", () => {

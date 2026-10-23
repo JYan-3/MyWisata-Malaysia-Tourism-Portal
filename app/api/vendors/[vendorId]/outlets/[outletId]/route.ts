@@ -33,6 +33,7 @@ export async function PATCH(request: Request, { params }: Props) {
   const parsed = await parseBody(request, outletUpdateSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+  const taxonomyFields = ['badgeSlugs', 'accommodationTypeSlugs'];
   const managerEditableFields = ['operatingHours', 'welcomeMessage', 'welcomeEnabled'];
   if (body.operatingHours !== undefined && !access.access.isOutletManager) {
     return apiFail('FORBIDDEN', 'Only Outlet Managers can update operating hours', 403);
@@ -41,7 +42,11 @@ export async function PATCH(request: Request, { params }: Props) {
     return apiFail('FORBIDDEN', 'Outlet managers can update operating hours and welcome message only', 403);
   }
 
-  const contentChanged = Object.keys(body).some((key) => !managerEditableFields.includes(key));
+  const contentChanged = Object.keys(body).some((key) => !managerEditableFields.includes(key) && !taxonomyFields.includes(key));
+
+  if (body.accommodationTypeSlugs?.length && !await isHotelOutlet(supabase, outletId)) {
+    return apiFail('INVALID_PROPERTY_TYPES', 'Accommodation property types can only be assigned to an outlet selling accommodation', 422);
+  }
 
   // Hotels (D13): owner edits wait for admin review while the hotel stays live; manager fields still apply directly.
   if (contentChanged && !access.access.isOutletManager && await isHotelOutlet(supabase, outletId)) {
@@ -89,6 +94,8 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.wheelchairAccessible !== undefined) updateData.wheelchair_accessible = body.wheelchairAccessible;
   if (body.petFriendly !== undefined) updateData.pet_friendly = body.petFriendly;
   if (body.foodServiceModes !== undefined) updateData.food_service_modes = body.foodServiceModes;
+  if (body.badgeSlugs !== undefined) updateData.badge_slugs = body.badgeSlugs;
+  if (body.accommodationTypeSlugs !== undefined) updateData.accommodation_type_slugs = body.accommodationTypeSlugs;
 
   if (contentChanged && !access.access.isOutletManager) {
     updateData.review_status = 'pending_review';

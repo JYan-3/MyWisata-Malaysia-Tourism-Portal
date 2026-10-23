@@ -6,12 +6,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { Compass, Map, SlidersHorizontal } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { searchActivities } from "@/backend/domains/catalogue";
 import * as catalogueDomain from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { CustomerDiscoveryFilterPanel } from "@/components/customer/discovery-filters";
+import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -19,6 +19,8 @@ import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } fro
 import { createClient } from "@/lib/supabase/client";
 import { groupAccommodationByProperty, rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
 import type { DiscoveryResult, SponsoredPlacement } from "@/backend/core/types";
+import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
+import { canonicalCategorySlug, type RealCategorySlug } from "@/lib/customer/discovery-categories";
 
 type ExploreTab = "destinations" | "experiences";
 type ExperienceSort = "recommended" | "price_asc" | "rating_desc";
@@ -55,13 +57,33 @@ function readExperienceSort(value: string | null): ExperienceSort {
 }
 
 function normalizeExperienceFilters(filters: DiscoveryQuery): DiscoveryQuery {
+  const types = [...new Set(filters.types.flatMap((token) => {
+    const separator = token.indexOf(":");
+    if (separator < 1) return [];
+    const category = canonicalCategorySlug(token.slice(0, separator));
+    const type = token.slice(separator + 1);
+    return category && CATEGORY_DETAILS[category].types.some((option) => option.slug === type)
+      ? [`${category}:${type}`]
+      : [];
+  }))];
+  const typeCategories = types.map((token) => token.slice(0, token.indexOf(":")));
+  const categories = [...new Set([
+    ...filters.categories.map(canonicalCategorySlug).filter((category): category is RealCategorySlug => category !== null),
+    ...typeCategories,
+  ])];
   return {
     ...filters,
-    categories: filters.categories.filter((category) => category !== "hidden_gem"),
-    types: [],
-    hiddenGemOnly: false,
-    familyFriendlyOnly: false,
-    coupleFriendlyOnly: false,
+    categories,
+    types,
+    priceMax: null,
+    operatingDays: [],
+    hoursMode: "during",
+    timeAt: null,
+    timeFrom: null,
+    timeTo: null,
+    overnight: false,
+    freeOnly: false,
+    bookableOnly: false,
   };
 }
 
@@ -94,7 +116,7 @@ export function ExploreClient({
   const activeSort = tab === "experiences" ? sort : "recommended";
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
   const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [experienceFiltersOpen, setExperienceFiltersOpen] = useState(false);
   const initialCandidatesExpireAt = useRef<number | null>(null);
   const displayActivities = useMemo(() => groupAccommodationByProperty(activities), [activities]);
   const rawPageParam = searchParams.get("page");
@@ -109,10 +131,11 @@ export function ExploreClient({
 
   useEffect(() => {
     if (tab !== "experiences") return;
-    const canonicalPage = currentExperiencePage > 1 ? String(currentExperiencePage) : null;
-    if (rawPageParam === canonicalPage) return;
-    router.replace(buildExploreHref(filters, "experiences", activeSort, currentExperiencePage));
-  }, [activeSort, currentExperiencePage, filters, rawPageParam, router, tab]);
+    const canonicalHref = buildExploreHref(filters, "experiences", activeSort, currentExperiencePage);
+    const canonicalQuery = canonicalHref.split("?")[1] ?? "";
+    if (searchParams.toString() === canonicalQuery) return;
+    router.replace(canonicalHref);
+  }, [activeSort, currentExperiencePage, filters, router, searchParams, tab]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -191,6 +214,11 @@ export function ExploreClient({
     searchQuery.coupleFriendlyOnly ||
     activeSort !== "recommended",
   );
+  const hasOutletCandidateFilter = Boolean(
+    searchQuery.q || searchQuery.state || searchQuery.openNow ||
+    searchQuery.hiddenGemOnly || searchQuery.familyFriendlyOnly || searchQuery.coupleFriendlyOnly ||
+    searchQuery.types.some((type) => type.startsWith("accommodation:")),
+  );
 
   useEffect(() => {
     if (initialCandidatesExpireAt.current === null) {
@@ -203,9 +231,9 @@ export function ExploreClient({
         .rpc("list_active_sponsored_discovery_placements")
       : Promise.resolve({ data: [], error: null });
     const activitiesRequest = hasSearchCriteria
-      ? Date.now() < initialCandidatesExpireAt.current && typeof catalogueDomain.filterComputedActivities === "function"
-        ? Promise.resolve().then(() => catalogueDomain.filterComputedActivities(searchQuery, initialActivities))
-        : searchActivities(searchQuery)
+      ? !hasOutletCandidateFilter && Date.now() < initialCandidatesExpireAt.current && typeof catalogueDomain.filterExploreActivities === "function"
+        ? Promise.resolve().then(() => catalogueDomain.filterExploreActivities(searchQuery, initialActivities))
+        : catalogueDomain.searchExploreActivities(searchQuery)
       : Promise.resolve(initialActivities);
     Promise.all([
       activitiesRequest,
@@ -241,7 +269,7 @@ export function ExploreClient({
       if (!cancelled) setActivities([]);
     });
     return () => { cancelled = true; };
-  }, [db, hasSearchCriteria, initialActivities, searchQuery]);
+  }, [db, hasOutletCandidateFilter, hasSearchCriteria, initialActivities, searchQuery]);
 
   const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
     if (!activity.sponsorship) return;
@@ -415,64 +443,23 @@ export function ExploreClient({
 
       {/* Experiences tab */}
       {tab === "experiences" && (
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
-            <aside
-              id="experience-filter-sidebar"
-              aria-label={t("ui.search.category")}
-              className={`min-w-0 ${mobileFiltersOpen ? "block" : "hidden"} lg:block`}
-            >
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                {mobileFiltersOpen && (
-                  <div className="mb-4 flex justify-end lg:hidden">
-                    <Button type="button" variant="ghost" size="sm" aria-label={t("ui.actions.close")} onClick={() => setMobileFiltersOpen(false)}>
-                      {t("ui.actions.close")}
-                    </Button>
-                  </div>
-                )}
-                <CustomerDiscoveryFilterPanel
-                  layout="sidebar"
-                  value={filters}
-                  hasActiveFilters={hasActiveFilters}
-                  onChange={updateFilters}
-                  onClear={clearFilters}
-                  placeholder={t("ui.map.searchExperience")}
-                  category={filters.categories.length === 1 ? filters.categories[0] : null}
-                  onCategoryChange={(category) => updateFilters({ categories: category ? [category] : [], types: [] })}
-                  categoryVariant="sidebar"
-                  includeAllCategories
-                  excludedCategories={["hidden_gem"]}
-                  showTypeFilters={false}
-                  showTagPreferenceFilters={false}
-                />
-              </div>
-            </aside>
-
+        <Dialog open={experienceFiltersOpen} onOpenChange={setExperienceFiltersOpen}>
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
             <section className="min-w-0">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">
-                    {filters.q
-                      ? t("ui.explore.allExperiences")
-                      : filters.categories.length === 1
-                      ? t("ui.explore.categoryExperiences", { category: t(`categories.${filters.categories[0]}`) })
-                      : t("ui.explore.allExperiences")}
-                  </h2>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: displayActivities.length })}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="lg:hidden"
-                    aria-expanded={mobileFiltersOpen}
-                    aria-controls="experience-filter-sidebar"
-                    onClick={() => setMobileFiltersOpen((open) => !open)}
-                  >
-                    <SlidersHorizontal aria-hidden="true" />
-                    {t("ui.map.moreFilters")}
-                  </Button>
+              <div data-testid="experience-toolbar" className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.map.searchExperience")} />
+                <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid="experience-filter-trigger"
+                    >
+                      <SlidersHorizontal aria-hidden="true" />
+                      {t("ui.explore.filters")}
+                    </Button>
+                  </DialogTrigger>
                   <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                     <span>{t("ui.explore.sortBy")}</span>
                     <select
@@ -492,7 +479,7 @@ export function ExploreClient({
                 dataUnavailable ? null : (
                   <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
                     <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
-                    {hasActiveFilters && <p className="mt-2">{t("ui.discovery.adjustFilters")}</p>}
+                    {hasActiveFilters && <p className="mt-2">{t("ui.explore.emptyExperienceFilters")}</p>}
                     {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-secondary">{t("ui.actions.clearFilters")}</button>}
                   </div>
                 )
@@ -513,11 +500,47 @@ export function ExploreClient({
                   totalItems={displayActivities.length}
                   totalPages={totalExperiencePages}
                   variant="marketplace"
+                  showSummary={false}
                 />
               )}
             </section>
           </div>
-        </div>
+          <DialogContent
+            id="experience-filter-dialog"
+            data-testid="experience-filter-dialog"
+            aria-labelledby="experience-filter-title"
+            aria-describedby="experience-filter-description"
+            className="fixed inset-y-0 right-0 left-auto top-0 z-50 flex h-dvh max-h-dvh w-full max-w-[430px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 p-0 shadow-xl duration-200 data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right sm:max-w-[430px]"
+          >
+            <DialogHeader className="shrink-0 border-b border-border px-5 py-5 pr-14">
+              <DialogTitle id="experience-filter-title">{t("ui.explore.filterDrawerTitle")}</DialogTitle>
+              <DialogDescription id="experience-filter-description" className="text-sm text-muted-foreground">
+                {t("ui.explore.filterDrawerDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                <CustomerDiscoveryFilterPanel
+                  layout="sidebar"
+                  mode="experiences"
+                  value={filters}
+                  hasActiveFilters={hasActiveFilters}
+                  onChange={updateFilters}
+                  onClear={clearFilters}
+                  placeholder={t("ui.map.searchExperience")}
+                  category={null}
+                  onCategoryChange={() => undefined}
+                />
+            </div>
+            <div className="flex shrink-0 gap-3 border-t border-border bg-background px-5 py-4">
+              <Button type="button" variant="outline" className="flex-1" onClick={clearFilters}>
+                {t("ui.actions.clearFilters")}
+              </Button>
+              <Button type="button" className="flex-1" onClick={() => setExperienceFiltersOpen(false)}>
+                {t("ui.explore.showExperienceResults")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

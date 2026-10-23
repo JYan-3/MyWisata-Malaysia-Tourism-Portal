@@ -24,6 +24,7 @@ import { useAppDialog } from "@/components/providers/app-dialog";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { addDays, getMinimumRoomCount, getStayNightCount, MAX_STAY_NIGHTS } from "@/lib/customer/outlet-shop";
+import { getOutletTaxonomyLabels } from "@/lib/customer/category-details";
 
 function RoomCard({ outlet, room, adults, rooms, availabilityStale, onSetRoomCount }: {
   outlet: OutletRendererOutlet;
@@ -161,6 +162,7 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
     }
   })();
   const address = outlet.address || [outlet.city, outlet.state].filter(Boolean).join(", ");
+  const taxonomyLabels = getOutletTaxonomyLabels(outlet, t);
   const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([outlet.name, outlet.address, outlet.city, outlet.state].filter(Boolean).join(", "))}`;
   const lowestRoomPrice = rooms.length ? Math.min(...rooms.map((room) => Number(room.base_price)).filter(Number.isFinite)) : null;
   const hasOverview = Boolean(stay.about || stay.amenities.length || stay.checkInTime || stay.checkOutTime);
@@ -278,6 +280,9 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
       <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-foreground">{outlet.name}</h1>
+          {taxonomyLabels.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label={t("ui.outlet.goodToKnow")}>
+            {taxonomyLabels.map((item) => <Badge key={item.slug} variant="secondary">{item.label}</Badge>)}
+          </div>}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             {stay.reviews > 0 && <span className="inline-flex items-center gap-1 font-semibold text-foreground"><Star size={14} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{stay.rating.toFixed(1)}<span className="font-normal text-muted-foreground">{t("ui.hotel.reviewCount", { count: stay.reviews })}</span></span>}
             {address && <span className="inline-flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{address}</span>}

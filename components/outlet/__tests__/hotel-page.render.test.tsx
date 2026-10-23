@@ -111,6 +111,20 @@ describe("hotel page", () => {
     expect(markup).not.toContain("/customer/activity/");
   });
 
+  it("shows the property's outlet badges and property types", () => {
+    const property = {
+      ...outlet,
+      badgeSlugs: ["hidden_gem", "family_friendly"],
+      accommodationTypeSlugs: ["boutique", "resort"],
+    };
+    const markup = renderToStaticMarkup(<HotelPage outlet={property} rooms={[]} gallery={[]} />);
+
+    expect(markup).toContain("ui.labels.hiddenGem");
+    expect(markup).toContain("strictMigration.activityDetail.familyFriendly");
+    expect(markup).toContain("strictMigration.activityDetail.types.boutique");
+    expect(markup).toContain("strictMigration.activityDetail.types.resort");
+  });
+
   it("lists a room's bed, size and amenities in the popup content", () => {
     const markup = renderToStaticMarkup(<RoomDetailsContent room={full} />);
     expect(markup).toContain("1 king bed");
