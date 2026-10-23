@@ -3874,6 +3874,7 @@
     "verifyAndConfirm": "验证并确认",
     "working": "正在验证…",
     "grantLabel": "一次性设备绑定码",
+    "grantHint": "要为此账号绑定新设备？请输入你收到的一次性绑定码。如要添加备用设备，请留空并使用已有的通行密钥验证。",
     "deviceLabel": "设备名称",
     "defaultDevice": "我的设备",
     "register": "绑定设备",

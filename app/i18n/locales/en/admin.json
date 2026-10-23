@@ -3874,6 +3874,7 @@
     "verifyAndConfirm": "Verify and confirm",
     "working": "Verifying…",
     "grantLabel": "One-time enrollment code",
+    "grantHint": "Setting up a new device for this account? Enter the one-time enrollment code you were given. To add a backup device, leave it blank and verify with an existing passkey.",
     "deviceLabel": "Device name",
     "defaultDevice": "My device",
     "register": "Register a device",
