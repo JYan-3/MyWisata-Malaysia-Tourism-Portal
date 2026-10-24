@@ -42,7 +42,7 @@ describe("customer vendor search contract", () => {
   it("renders vendors as the primary search result", () => {
     expect(clientSource).toContain("filteredVendors");
     expect(clientSource).toContain("recommendedVendors");
-    expect(clientSource).toContain("detailsRevealOnHover");
+    expect(clientSource).not.toContain("detailsRevealOnHover");
     expect(clientSource).not.toContain('t("ui.search.approvedPartnerDescription")');
     expect(clientSource).not.toContain("<ActivityCard");
     expect(clientSource).not.toContain("<PlaceActivityCard");
@@ -150,7 +150,8 @@ describe("customer vendor search contract", () => {
   it("uses vendor media and never turns a destination photo into a vendor cover", () => {
     expect(catalogueSource).toContain('select("id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)")');
     expect(vendorCardSource).toContain("getVendorVisual");
-    expect(vendorCardSource).toContain("visual.logoUrl");
+    // The shared card shows the vendor cover (or initials); the logo tile was dropped with the caption card.
+    expect(vendorCardSource).toContain("visual.coverUrl");
     expect(clientSource).not.toContain("MALAYSIA_DESTINATIONS");
     expect(clientSource).not.toContain("vendorDestination");
     expect(clientSource).not.toContain("destination.image");

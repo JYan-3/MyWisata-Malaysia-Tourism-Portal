@@ -35,7 +35,8 @@ describe("customer activity image handling", () => {
   });
 
   it("keeps only the Sponsored label on the photo; status badges live in the details drawer", () => {
-    const media = cardSource.slice(cardSource.indexOf('<div className="mw-card-media">'), cardSource.indexOf("<SaveToggleButton"));
+    const media = cardSource.slice(cardSource.indexOf("media={<>"), cardSource.indexOf("<SaveToggleButton"));
+    expect(media).toContain("<img");
     expect(media).toContain('t("ui.labels.sponsored")');
     expect(media).not.toContain('t("ui.labels.verified")');
     expect(media).not.toContain('t("ui.labels.closed")');
@@ -50,8 +51,12 @@ describe("customer activity image handling", () => {
   });
 
   it("has one detail style: the drawer under the price, with no caption, overlay or info toggle", () => {
-    expect(cardSource).toContain('className="mw-card mw-card-expand-card group"');
-    expect(cardSource).toContain('<div id={detailsId} data-card-details-inline="true" className="mw-card-details-expand">');
+    const shellSource = readFileSync(resolve(process.cwd(), "components/customer/expand-card.tsx"), "utf8");
+    expect(cardSource).toContain('import { ExpandCard } from "@/components/customer/expand-card"');
+    expect(cardSource).toContain("<ExpandCard");
+    expect(cardSource).toContain("details={detailContent}");
+    expect(shellSource).toContain('className="mw-card mw-card-expand-card group"');
+    expect(shellSource).toContain('<div id={detailsId} data-card-details-inline="true" className="mw-card-details-expand">');
     expect(cardSource).toContain("activity.outlet.hours");
     expect(cardSource).not.toContain("detailsRevealStyle");
     expect(cardSource).not.toContain("CardMediaHoverCaption");

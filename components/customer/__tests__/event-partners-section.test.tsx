@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { EventPartner } from "@/components/customer/event-partners-section";
@@ -27,16 +28,37 @@ const partner: EventPartner = {
   },
 };
 
-describe("Event Featured Partners", () => {
-  it("shows location and event schedule in the shared caption and retains Info details", () => {
-    const markup = renderToStaticMarkup(<EventPartnersSection partners={[partner]} featured />);
+vi.mock("next/link", () => ({ default: ({ href, children, ...props }: { href: string; children: ReactNode } & Record<string, unknown>) => <a href={href} {...props}>{children}</a> }));
 
-    expect(markup).toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
-    expect(markup).toContain("group-focus-within:opacity-100");
-    expect(markup).toContain("George Town");
-    expect(markup).toContain("Heritage Market");
-    expect(markup).toContain('aria-controls="event-partner-details-partner-1"');
-    expect(markup).toContain('id="event-partner-details-partner-1"');
+const drawerOf = (markup: string) => markup.slice(markup.indexOf('data-card-details-inline="true"'));
+
+describe("Event Featured Partners", () => {
+  it("uses the shared expanding card with location, schedule and description in the drawer", () => {
+    const markup = renderToStaticMarkup(<EventPartnersSection partners={[partner]} featured />);
+    const drawer = drawerOf(markup);
+
+    expect(markup).toContain("mw-card-expand-card");
+    expect(markup).toContain("ui.home.eventFeaturedPartnerBadge");
     expect(markup).toContain('id="event-featured-partners-heading" class="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl');
+    expect(markup).toContain('<div id="event-partner-details-partner-1" data-card-details-inline="true"');
+    expect(drawer).toContain("George Town");
+    expect(drawer).toContain("Heritage Market");
+    expect(drawer).toContain("A local craft vendor.");
+    expect(drawer).toMatch(/<a [^>]*href="\/customer\/vendor\/partner-1"[^>]*data-card-primary-cta="true"[^>]*>ui\.eventPartners\.view<\/a>/);
+    expect(markup).not.toContain("aria-expanded");
+    expect(markup).not.toContain("line-clamp");
+  });
+});
+
+describe("Event partners directory", () => {
+  it("uses the same expanding card with the event partner badge and a no-upcoming fallback", () => {
+    const markup = renderToStaticMarkup(<EventPartnersSection partners={[{ ...partner, next: null }]} />);
+    const drawer = drawerOf(markup);
+
+    expect(markup).toContain('id="event-partners-heading"');
+    expect(markup).toContain("mw-card-expand-card");
+    expect(markup).toContain("ui.eventPartners.badge");
+    expect(drawer).toContain("ui.eventPartners.noUpcoming");
+    expect(drawer).toContain("A local craft vendor.");
   });
 });

@@ -6,13 +6,11 @@ const source = readFileSync(resolve(process.cwd(), "components/customer/vendor-c
 const searchSource = readFileSync(resolve(process.cwd(), "app/customer/search/search-client.tsx"), "utf8");
 
 describe("partner vendor card sizing contract", () => {
-  it("uses a fixed-height flex structure with reserved text slots", () => {
-    expect(source).toContain("flex h-full flex-col");
-    expect(source).toContain("shrink-0");
-    expect(source).toContain("flex min-h-[220px] flex-1 flex-col");
-    expect(source).toContain("min-h-10 break-words whitespace-normal");
+  it("takes its sizing from the shared ExpandCard instead of its own fixed heights", () => {
+    expect(source).toContain("<ExpandCard");
+    expect(source).toContain("mw-card-title");
+    expect(source).not.toContain("min-h-[220px]");
     expect(source).not.toContain("line-clamp-2");
-    expect(source).toContain("mt-auto");
   });
 
   it("keeps the vendor grids stretched across each responsive row", () => {

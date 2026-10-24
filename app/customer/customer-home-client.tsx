@@ -433,8 +433,6 @@ export function CustomerHomeClient({
                   descriptionFallback={t("ui.home.vendorDescription", { location })}
                   distanceLabel={t("ui.home.distanceAway", { distance: partner.distanceKm.toFixed(1) })}
                   index={index}
-                  detailsRevealOnHover
-                  detailsRevealStyle="caption"
                 />;
               })}
             </div>
@@ -456,7 +454,7 @@ export function CustomerHomeClient({
             {vendors.slice(0, 4).map((vendor, index) => {
               const primaryOutlet = vendor.outlets[0];
               const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
-              return <VendorCard key={vendor.id} vendor={vendor} description={vendor.description} descriptionFallback={t("ui.home.vendorDescription", { location })} index={index} isFeatured detailsRevealOnHover detailsRevealStyle="caption" />;
+              return <VendorCard key={vendor.id} vendor={vendor} description={vendor.description} descriptionFallback={t("ui.home.vendorDescription", { location })} index={index} isFeatured />;
             })}
           </div>
         </section>

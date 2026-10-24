@@ -10,7 +10,7 @@ import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { AiTag } from "./ai-tag";
 import { ShareButton } from "@/components/shared/share-button";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { Button } from "@/components/ui/button";
+import { ExpandCard } from "@/components/customer/expand-card";
 import type { ComputedActivity, DiscoveryPropertySummary } from "@/backend/core/types";
 import { canonicalCategorySlug, getDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -81,8 +81,8 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
   }
 
   return (
-    <article className="mw-card mw-card-expand-card group">
-      <div className="mw-card-media">
+    <ExpandCard
+      media={<>
         <Link href={activityHref} onClick={onSponsoredClick} className="group/activity-media block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
           {!imageSrc || imageFailed ? (
             <div
@@ -119,9 +119,8 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
         <div className="absolute right-3 top-12 z-20">
           <ShareButton compact shareType={isProperty ? "outlet" : "product"} contentId={isProperty ? activity.outlet.id : activity.id} title={cardName} />
         </div>
-      </div>
-      <div className="mw-card-body mw-card-body-compact space-y-2 p-4">
-        {isProperty ? (
+      </>}
+      title={isProperty ? (
           <Link href={activityHref} onClick={onSponsoredClick} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
             <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={cardName}>{cardName}</h3>
           </Link>
@@ -135,27 +134,17 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
             </>}
           </LocalizedContent>
         )}
-        <div className="mw-card-footer mw-card-footer-stacked pt-1">
-          <div className="mw-card-price-row">
-            <ReferencePrice amountMYR={activity.property?.fromPrice ?? Number(activity.price)} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
-            {categorySlug === "accommodation" ? (
-              <span className="ml-1 text-xs text-muted-foreground">/ {t("ui.activityDetail.priceUnits.perNight")}</span>
-            ) : (activity.categorySlug === "activity" || activity.requiresBooking) && (
-              <span className="ml-1 text-xs text-muted-foreground">/ {t("ui.labels.person")}</span>
-            )}
-          </div>
-          <div className="mw-card-cta-row">
-            <div className="mw-card-cta-drawer">
-              <div id={detailsId} data-card-details-inline="true" className="mw-card-details-expand">
-                <div className="mw-card-details-expand-inner"><div className="space-y-2 border-t border-dashed border-border pb-3 pt-3">{detailContent}</div></div>
-              </div>
-              <Button asChild size="sm" className="h-9 w-full rounded-full px-3 text-center text-xs font-bold">
-                <Link href={activityHref} onClick={onSponsoredClick} data-card-primary-cta="true">{isProperty ? t("ui.property.seeRooms") : activity.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow")}</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </article>
+      price={<>
+        <ReferencePrice amountMYR={activity.property?.fromPrice ?? Number(activity.price)} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
+        {categorySlug === "accommodation" ? (
+          <span className="ml-1 text-xs text-muted-foreground">/ {t("ui.activityDetail.priceUnits.perNight")}</span>
+        ) : (activity.categorySlug === "activity" || activity.requiresBooking) && (
+          <span className="ml-1 text-xs text-muted-foreground">/ {t("ui.labels.person")}</span>
+        )}
+      </>}
+      details={detailContent}
+      detailsId={detailsId}
+      action={{ href: activityHref, label: isProperty ? t("ui.property.seeRooms") : activity.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow"), onClick: onSponsoredClick }}
+    />
   );
 }

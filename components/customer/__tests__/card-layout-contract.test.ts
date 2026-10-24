@@ -38,6 +38,15 @@ describe("shared card layout contract", () => {
     expect(drawerRule).toContain("top: 0");
   });
 
+  it("keeps closed drawer details readable by screen readers (collapsed, not visibility: hidden)", () => {
+    const styles = read("app/globals.css");
+    const closedRule = styles.match(/\.mw-card-details-expand \{([^}]*)\}/)?.[1] ?? "";
+
+    expect(closedRule).toContain("grid-template-rows: 0fr");
+    expect(closedRule).toContain("opacity: 0");
+    expect(closedRule).not.toContain("visibility");
+  });
+
   it("shows the activity-card details in normal flow on touch screens", () => {
     const styles = read("app/globals.css");
     const touch = styles.slice(styles.indexOf("@media (hover: none) {"));
