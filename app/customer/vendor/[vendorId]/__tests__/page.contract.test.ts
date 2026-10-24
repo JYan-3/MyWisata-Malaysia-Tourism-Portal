@@ -17,9 +17,10 @@ describe("customer vendor profile image contract", () => {
     expect(pageSource).toContain("outlet_pages(hero_url)");
   });
 
-  it("keeps outlet cards interactive with an image fallback", () => {
-    expect(pageSource).toContain('return <article className="mw-card group min-w-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">');
-    expect(pageSource).toContain("group-hover:scale-[1.02]");
+  it("keeps outlet cards static with an image fallback", () => {
+    // The outlet card is not one link, so it has no hover lift (coding-standards hover rule).
+    expect(pageSource).toContain('return <article className="mw-card min-w-0">');
+    expect(pageSource).not.toContain("hover:-translate-y-1 hover:border-primary/40");
     expect(pageSource).toContain("location.coverUrl ? <img");
   });
 

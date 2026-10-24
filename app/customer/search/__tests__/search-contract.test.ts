@@ -148,7 +148,9 @@ describe("customer vendor search contract", () => {
   });
 
   it("uses vendor media and never turns a destination photo into a vendor cover", () => {
-    expect(catalogueSource).toContain('select("id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)")');
+    // Vendor cards still read the vendor's own logo and cover (the select also asks for outlet badges when available).
+    expect(catalogueSource).toContain('"id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours,badge_slugs)"');
+    expect(catalogueSource).toContain('"id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)"');
     expect(vendorCardSource).toContain("getVendorVisual");
     // The shared card shows the vendor cover (or initials); the logo tile was dropped with the caption card.
     expect(vendorCardSource).toContain("visual.coverUrl");
