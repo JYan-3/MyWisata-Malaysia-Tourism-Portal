@@ -309,7 +309,7 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
                       </Button>
                       {ratingBuckets.map(({ rating: stars, count }) => (
                         <Button key={stars} type="button" size="sm" variant={selectedRating === stars ? "default" : "outline"} onClick={() => { setSelectedRating(stars); void loadPage(1, stars); }}>
-                          <Star size={13} aria-hidden="true" /> {stars}★ ({count})
+                          <Star size={13} aria-hidden="true" /> {t("ui.reviews.ratingBucketLabel", { rating: stars, reviewCount: count })}
                         </Button>
                       ))}
                     </>

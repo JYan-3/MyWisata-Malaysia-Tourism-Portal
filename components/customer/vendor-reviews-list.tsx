@@ -100,7 +100,7 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
       </Button>
       {ratingBuckets.map(({ rating, count }) => (
         <Button key={rating} type="button" size="sm" variant={selectedRating === rating ? "default" : "outline"} onClick={() => { setSelectedRating(rating); void loadPage(1, rating); }}>
-          <Star size={13} aria-hidden="true" /> {rating}★ ({count})
+          <Star size={13} aria-hidden="true" /> {t("ui.reviews.ratingBucketLabel", { rating, reviewCount: count })}
         </Button>
       ))}
     </>
@@ -119,7 +119,10 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
       {!loading && totalPages > 1 && (
         <nav aria-label={t("ui.reviews.pages")} className="flex items-center justify-between border-t border-border pt-4">
           <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => void loadPage(page - 1)}>{t("actions.previous", { ns: "common" })}</Button>
-          <span className="text-xs text-muted-foreground">{t("ui.reviews.pageOf", { page, total: totalPages })} · {total} {t("ui.reviews.count", { count: total })}</span>
+          <span className="text-xs text-muted-foreground">{t("ui.reviews.paginationSummary", {
+            pageLabel: t("ui.reviews.pageOf", { page, total: totalPages }),
+            reviewCountLabel: t("ui.reviews.count", { count: total }),
+          })}</span>
           <Button type="button" size="sm" variant="outline" disabled={page >= totalPages} onClick={() => void loadPage(page + 1)}>{t("actions.next", { ns: "common" })}</Button>
         </nav>
       )}

@@ -1124,6 +1124,7 @@
     "reviews": {
       "guestReview": "访客评价",
       "ratingOutOfFive": "5 星中获得 {{rating}} 星",
+      "ratingBucketLabel": "{{rating}} 星（{{reviewCount}}）",
       "verifiedPurchase": "已验证购买",
       "eyebrow": "访客评价",
       "summary": "已认证访客的近期反馈",
@@ -1142,6 +1143,7 @@
       "loadError": "无法加载评价",
       "pages": "评价分页",
       "pageOf": "第 {{page}} 页，共 {{total}} 页",
+      "paginationSummary": "{{pageLabel}} · {{reviewCountLabel}}",
       "count_one": "{{count}} 条评价",
       "count_other": "{{count}} 条评价",
       "allReviews_one": "全部 {{count}} 条评价",

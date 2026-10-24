@@ -1124,6 +1124,7 @@
     "reviews": {
       "guestReview": "Guest review",
       "ratingOutOfFive": "{{rating}} out of 5 stars",
+      "ratingBucketLabel": "{{rating}}★ ({{reviewCount}})",
       "verifiedPurchase": "Verified purchase",
       "eyebrow": "What guests say",
       "summary": "Recent feedback from verified visitors",
@@ -1142,6 +1143,7 @@
       "loadError": "Could not load reviews",
       "pages": "Review pages",
       "pageOf": "Page {{page}} of {{total}}",
+      "paginationSummary": "{{pageLabel}} · {{reviewCountLabel}}",
       "count_one": "{{count}} reviews",
       "count_other": "{{count}} reviews",
       "allReviews_one": "All {{count}} reviews",

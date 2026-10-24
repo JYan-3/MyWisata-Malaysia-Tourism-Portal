@@ -263,7 +263,7 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
         <Button key={rating} type="button" size="sm" variant={selectedReviewRating === rating ? "default" : "outline"} onClick={() => {
           setReviewFilter({ outletId: outlet.id, rating });
           void loadHotelReviews(1, rating);
-        }}><Star size={13} aria-hidden="true" /> {rating}★ ({count})</Button>
+        }}><Star size={13} aria-hidden="true" /> {t("ui.reviews.ratingBucketLabel", { rating, reviewCount: count })}</Button>
       ))}
     </>
   );

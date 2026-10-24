@@ -1124,6 +1124,7 @@
     "reviews": {
       "guestReview": "Ulasan tetamu",
       "ratingOutOfFive": "{{rating}} daripada 5 bintang",
+      "ratingBucketLabel": "{{rating}}★ ({{reviewCount}})",
       "verifiedPurchase": "Pembelian disahkan",
       "eyebrow": "Kata tetamu",
       "summary": "Maklum balas terkini daripada pelawat disahkan",
@@ -1142,6 +1143,7 @@
       "loadError": "Tidak dapat memuatkan ulasan",
       "pages": "Halaman ulasan",
       "pageOf": "Halaman {{page}} daripada {{total}}",
+      "paginationSummary": "{{pageLabel}} · {{reviewCountLabel}}",
       "count_one": "{{count}} ulasan",
       "count_other": "{{count}} ulasan",
       "allReviews_one": "Semua {{count}} ulasan",

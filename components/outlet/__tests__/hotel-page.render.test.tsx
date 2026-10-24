@@ -7,7 +7,11 @@ import { findElements, findOne, installTestDom, TestElement, TestEvent, type Tes
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options?.count !== undefined ? `${key}:${options.count}` : key), i18n: { language: "en" } }),
+  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => {
+    if (key === "ui.reviews.ratingBucketLabel") return `${options?.rating}★ (${options?.reviewCount})`;
+    if (key === "ui.reviews.paginationSummary") return `${options?.pageLabel} · ${options?.reviewCountLabel}`;
+    return options?.count !== undefined ? `${key}:${options.count}` : key;
+  }, i18n: { language: "en" } }),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/providers/cart", () => ({ useCart: () => ({ addItem: vi.fn(), selectedKeys: new Set<string>(), setSelectedKeys: vi.fn() }) }));
