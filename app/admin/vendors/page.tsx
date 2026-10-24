@@ -35,6 +35,8 @@ import Link from 'next/link';
 import { formatMYRFromSen } from '@/lib/i18n/format';
 import { feeLabel, type FeeTier } from '@/lib/vendor/fee-tiers';
 import { CreateEventVendorModal } from './create-event-vendor-modal';
+import { Button } from '@/components/ui/button';
+import { useVisibleReviewRefresh } from '@/hooks/use-visible-review-refresh';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 // 'welcomed' is UI-only — not a real vendors.status value. It's a narrower
@@ -144,8 +146,8 @@ export default function AdminVendorsPage() {
   const [eventVendorOpen, setEventVendorOpen] = useState(false);
   const [reasonModal, setReasonModal] = useState<{ vendor: VendorData; action: 'reject' | 'suspend' | 'request_information' } | null>(null);
 
-  const loadVendors = useCallback(async () => {
-    setLoading(true);
+  const loadVendors = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     setError(null);
 
     try {
@@ -156,7 +158,9 @@ export default function AdminVendorsPage() {
         state: stateFilter,
         kyc: kycFilter,
       });
-      const response = await fetch(`/api/admin/vendors?${query}`, { cache: 'no-store' });
+      if (signal) query.set("refresh", "1");
+      const response = await fetch(`/api/admin/vendors?${query}`, { cache: 'no-store', signal });
+      if (response.status === 401 || response.status === 403) { setVendors([]); setSelectedIds([]); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
       const payload = await response.json().catch(() => ({})) as {
         data?: {
           vendors: VendorData[];
@@ -171,16 +175,20 @@ export default function AdminVendorsPage() {
       setVendors(payload.data.vendors);
       setTotal(payload.data.total);
       setCounts(payload.data.counts);
-      setApprovedRecs(payload.data.approvedRecommendations);
-      setSelectedIds([]);
+      if (payload.data.approvedRecommendations) setApprovedRecs(payload.data.approvedRecommendations);
+      const visibleIds = new Set(payload.data.vendors.map((vendor) => vendor.id));
+      setSelectedIds((current) => current.filter((id) => visibleIds.has(id)));
     } catch (reason) {
+      if (signal) throw reason;
       setError(reason instanceof Error ? reason.message : t('ui.vendors.errors.load'));
       setVendors([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
   }, [filter, kycFilter, page, search, stateFilter, t]);
+
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: loadVendors });
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadVendors(), search ? 250 : 0);
@@ -336,6 +344,7 @@ export default function AdminVendorsPage() {
 
   return (
     <AdminPageShell className="text-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
         <AdminPageHeader
           eyebrow={<><Store size={16} /> {t('ui.vendors.eyebrow')}</>}
           title={t('ui.vendors.title')}

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -22,11 +22,12 @@ export async function GET(
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const { data: canReview, error: roleError } = await db.rpc('can_review_recommendation', { uid: user.id });
-  if (roleError || canReview !== true) return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
+  if (roleError || canReview !== true) return apiFail('FORBIDDEN', 'Recommendation review permission required', 403);
   const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
-  const { data: assignmentData, error: assignmentError } = await db.rpc('claim_recommendation_review', {
-    p_recommendation_id: id,
-  });
+  const isRefresh = new URL(request.url).searchParams.get('refresh') === '1';
+  const { data: assignmentData, error: assignmentError } = isRefresh
+    ? await db.rpc('read_staff_review_assignment', { p_domain: 'recommendation', p_id: id })
+    : await db.rpc('claim_recommendation_review', { p_recommendation_id: id });
   if (assignmentError) {
     if (assignmentError.message.includes('recommendation_not_found')) {
       return apiFail('NOT_FOUND', 'Recommendation not found', 404);

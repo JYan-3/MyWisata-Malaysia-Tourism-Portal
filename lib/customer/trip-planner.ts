@@ -1,3 +1,5 @@
+import type {Activity} from "@/backend/core/types";
+import {resolveCartLinePrice} from "@/backend/core/helpers";
 import type { Trip, TripItem } from "@/backend/domains/trips";
 
 export interface TripDayGroup {
@@ -159,25 +161,6 @@ export function getTripItemTimeBounds(items: TripItem[], itemId: string): TripIt
   };
 }
 
-/**
- * Given the trip's full item list, the id of an item being replaced (e.g. a
- * Budget Guard swap), and the new item's id, returns the real day-relative
- * item order with the replacement substituted in place — the target order
- * to pass to a reorder call so the new item lands in the exact slot the old
- * one held. Returns null when the item being replaced isn't found or was
- * never scheduled — nothing to preserve in that case, the caller should
- * just add the new item without a follow-up reorder.
- */
-export function computeSwapTargetOrder(items: TripItem[], existingId: string, newId: string): string[] | null {
-  const existing = items.find((item) => item.id === existingId);
-  if (!existing?.scheduled_date) return null;
-
-  return items
-    .filter((item) => item.scheduled_date === existing.scheduled_date)
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((item) => (item.id === existingId ? newId : item.id));
-}
-
 export function formatTripDay(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-MY", {
     weekday: "short",
@@ -196,4 +179,70 @@ export function formatTripTime(time: string | null) {
     minute: "2-digit",
     timeZone: "UTC",
   });
+}
+
+/** Complete-list ordering keeps the displayed order identical to persisted sequence. */
+export function applyTripOrder(items: TripItem[], orderedIds: string[]): TripItem[] {
+  const byId = new Map(items.map(item => [item.id, item]));
+  if (orderedIds.length !== items.length || new Set(orderedIds).size !== items.length || orderedIds.some(id => !byId.has(id))) {
+    throw new Error("Trip items changed; refresh and try again");
+  }
+  return orderedIds.map((id, sequence) => ({ ...byId.get(id)!, sequence }));
+}
+
+export function getTripScheduleIssue(trip: Pick<Trip, "start_date" | "end_date">, items: TripItem[]): "date_outside_trip" | "invalid_time" | "time_without_date" | "daily_origin_order" | "non_chronological" | null {
+  const dates = new Set(getTripDayDates(trip));
+  for (const item of items) {
+    if (item.scheduled_date !== null && !dates.has(item.scheduled_date)) return "date_outside_trip";
+    if (item.scheduled_time !== null && Number.isNaN(tripTimeToMinutes(item.scheduled_time))) return "invalid_time";
+    if (item.scheduled_time !== null && item.scheduled_date === null) return "time_without_date";
+  }
+  const datesWithDailyOrigins = new Set(items.flatMap(item => item.is_day_origin && item.scheduled_date ? [item.scheduled_date] : []));
+  for (const date of datesWithDailyOrigins) {
+    const firstForDay = items.filter(item => item.scheduled_date === date).sort((a, b) => a.sequence - b.sequence)[0];
+    if (!firstForDay?.is_day_origin) return "daily_origin_order";
+  }
+  return hasChronologicalTripTimes(items) ? null : "non_chronological";
+}
+
+export function getTripLegFeasibility(input: { previousStart: number | null; previousEnd: number | null; nextStart: number | null; travelMinutes: number | null }): {status: "conflict" | "fits_estimate" | "unknown"; slackMinutes: number | null} {
+  const { previousStart, previousEnd, nextStart, travelMinutes } = input;
+  const validTime = (value: number | null): value is number => value !== null && Number.isFinite(value) && value >= 0 && value < 1440;
+  if (!validTime(previousStart) || !validTime(nextStart) || travelMinutes === null || !Number.isFinite(travelMinutes) || travelMinutes < 0 || (previousEnd !== null && (!validTime(previousEnd) || previousEnd < previousStart))) return {status: "unknown", slackMinutes: null};
+  const slackMinutes = nextStart - (previousEnd ?? previousStart) - travelMinutes;
+  if (slackMinutes < 0) return {status: "conflict", slackMinutes};
+  return previousEnd === null ? {status: "unknown", slackMinutes: null} : {status: "fits_estimate", slackMinutes};
+}
+
+export function resolveTripOrigin(items: TripItem[], date: string | null): TripItem | null {
+  const ordered=[...items].sort((a,b)=>a.sequence-b.sequence);
+  return ordered.find(item=>item.is_day_origin && item.scheduled_date === date) ?? ordered.find(item=>item.source === "location" && !item.is_day_origin) ?? null;
+}
+
+export function getTripDiscoveryAnchor(items: TripItem[], date: string | null): { lat: number; lng: number } | undefined {
+  const origin = resolveTripOrigin(items, date);
+  if (origin && isValidTripCoordinate(origin.lat, origin.lng)) return { lat: origin.lat, lng: origin.lng };
+  const lastStop = [...items]
+    .filter((item) => item.scheduled_date === date && !item.is_day_origin && isValidTripCoordinate(item.lat, item.lng))
+    .sort((a, b) => a.sequence - b.sequence)
+    .at(-1);
+  return lastStop ? { lat: lastStop.lat, lng: lastStop.lng } : undefined;
+}
+
+export function getTripDiscoveryFingerprint(items: TripItem[], date: string | null): string {
+  const anchor = getTripDiscoveryAnchor(items, date);
+  const productIds = [...new Set(items.flatMap((item) => item.experience_id ? [item.experience_id] : []))].sort();
+  return JSON.stringify({ date, anchor: anchor ?? null, productIds });
+}
+
+export function getTripBudgetEstimate(items:TripItem[], activities:Map<string, Pick<Activity,"id"|"outletId"|"price"|"variants"> & Partial<Activity>>) {
+  let total=0;let unknownCount=0;
+  for (const item of items) {
+    if (!item.experience_id) continue;
+    const activity=activities.get(item.experience_id);
+    if (!activity || activity.variants.length > 1) {unknownCount++;continue;}
+    const resolved=resolveCartLinePrice(activity as Activity,{activityId:activity.id,variantId:activity.variants.length === 1 ? activity.variants[0].id : "",outletId:item.outlet_id ?? activity.outletId,qty:1},{now:new Date(),productIds:items.flatMap(row=>row.experience_id ? [row.experience_id] : [])});
+    if (resolved.available) total+=resolved.unitPrice;else unknownCount++;
+  }
+  return {total,unknownCount};
 }

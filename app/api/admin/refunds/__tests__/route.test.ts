@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFr
 function queryResult(data: unknown, error: unknown = null) {
   const terminal = Promise.resolve({ data, error });
   const builder: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'order', 'limit']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'eq', 'order', 'limit', 'in']) builder[method] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => terminal);
   builder.then = terminal.then.bind(terminal);
   return builder;
@@ -31,7 +31,7 @@ import { POST } from '../[refundId]/route';
 describe('GET /api/admin/refunds', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.serviceRpc.mockResolvedValue({ data: { items: [], version: 'a'.repeat(32) }, error: null });
+    mocks.serviceRpc.mockImplementation(async (name: string) => ({ data: name === 'list_staff_review_queue' ? { items: [{ id: REFUND_ID }], page: 1, total: 1 } : { items: [], version: 'a'.repeat(32) }, error: null }));
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult([{
@@ -58,7 +58,7 @@ describe('GET /api/admin/refunds', () => {
   });
 
   it('returns a bounded admin-safe refund projection', async () => {
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/admin/refunds"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -85,11 +85,13 @@ describe('GET /api/admin/refunds', () => {
       updatedAt: '2026-08-17T00:01:00.000Z',
     });
     expect(JSON.stringify(body)).not.toContain('provider_payment_id');
+    expect(mocks.serviceFrom.mock.results[0].value.in).toHaveBeenCalledWith('id', [REFUND_ID]);
+    expect(mocks.serviceRpc.mock.calls.filter(([name]) => name === 'get_event_refund_evidence')).toHaveLength(1);
   });
 
   it('rejects non-admin users before using the service client', async () => {
     mocks.authFrom.mockReturnValue(queryResult([]));
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/admin/refunds"));
 
     expect(response.status).toBe(403);
     expect(mocks.serviceFrom).not.toHaveBeenCalled();
@@ -99,7 +101,7 @@ describe('GET /api/admin/refunds', () => {
 describe('POST /api/admin/refunds/[refundId]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.serviceRpc.mockResolvedValue({ data: { items: [], version: 'a'.repeat(32) }, error: null });
+    mocks.serviceRpc.mockImplementation(async (name: string) => ({ data: name === 'list_staff_review_queue' ? { items: [{ id: REFUND_ID }], page: 1, total: 1 } : { items: [], version: 'a'.repeat(32) }, error: null }));
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult({ id: REFUND_ID, status: 'pending' }));

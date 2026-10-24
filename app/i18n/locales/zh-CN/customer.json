@@ -794,7 +794,10 @@
       "trafficLive": "实时路况",
       "trafficPredicted": "预测路况",
       "trafficProviderRetrievedAt": "Mapbox · {{time}}",
+      "trafficLegend": "路况颜色",
+      "trafficUnavailable": "当前仅显示蓝色路线，实时路况暂不可用。",
       "trafficNormal": "畅通",
+      "trafficUnknown": "无路况数据",
       "trafficSlow": "缓行",
       "trafficCongested": "拥堵",
       "trafficSevere": "严重拥堵",
@@ -1317,19 +1320,27 @@
       "noAlternatives": "暂时未找到更便宜的替代选项。",
       "viewAlternative": "查看详情",
       "showOnMap": "在地图上查看",
-      "savings": "节省 {{amount}}"
+      "savings": "节省 {{amount}}",
+      "estimate": "商品价格估算；最终规格及结账价格可能不同。",
+      "unknownPrices": "{{count}} 项价格未知",
+      "unknownPrices_one": "{{count}} 项价格未知",
+      "unknownPrices_other": "{{count}} 项价格未知"
     },
     "tripCheckout": {
-      "button_one": "结账（{{count}} 项）",
-      "button_other": "结账（{{count}} 项）",
+      "button_one": "检查计划购买（{{count}} 项）",
+      "button_other": "检查计划购买（{{count}} 项）",
       "nothingToCheckout": "您的行程中还没有可购买的项目。",
       "allNeedSlot": "您已安排的行程在计划当天都没有可预订的时段 — 请先在各活动页面选择时段。",
       "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。",
       "unavailable": "{{names}} 无法在行程规划中购买，请打开其页面查看可选项。",
       "stayMustBeBookedFromHotelPage": "客房需要先填写入住人资料才能加入购物车，请从酒店页面预订。其他符合条件的行程商品仍可加入。",
       "addFailed": "无法将 {{name}} 加入购物车。之前已加入的项目仍在购物车中。",
-      "buy_one": "购买 {{count}} 项",
-      "buy_other": "购买 {{count}} 项"
+      "buy_one": "检查（{{count}}）",
+      "buy_other": "检查（{{count}}）",
+      "needsSelection": "请先到商品详情选择规格：{{names}}。",
+      "selectDetails": "选择规格和数量",
+      "button": "检查计划购买（{{count}} 项）",
+      "buy": "检查（{{count}}）"
     },
     "preferencesPage": {
       "eyebrow": "偏好",
@@ -1485,7 +1496,13 @@
       },
       "photosSelected_one": "已选择 {{count}} 张照片",
       "pendingReview_one": "待审核（{{count}}）",
-      "pendingReview_other": "待审核（{{count}}）"
+      "pendingReview_other": "待审核（{{count}}）",
+      "historyStatus": "状态",
+      "allStatuses": "全部状态",
+      "historyLoading": "正在读取推荐…",
+      "historyTotal": "共 {{total}} 条推荐",
+      "historyError": "暂时无法读取推荐记录。",
+      "historyRetry": "重试"
     },
     "recommendationEarnings": {
       "title": "推荐收益",
@@ -1843,6 +1860,8 @@
       "retryWallet": "重新加载钱包",
       "confirmingWithdrawal": "请求已超时，系统正在确认是否已收到申请。",
       "withdrawalOutcomeUnknown": "暂时无法确认申请结果。再次尝试前，请先检查提现记录。",
+      "resumeWithdrawalCheck": "查看这笔请求",
+      "retrySameWithdrawal": "重试同一笔请求",
       "tngSecurityHint": "我们会通过付款服务商验证收款方式。切勿输入 TNG PIN。",
       "verifying": "正在验证…",
       "verifySave": "验证并保存",
@@ -2351,7 +2370,23 @@
       "results_other": "{{count}} 个行程",
       "all": "全部行程",
       "noMatches": "没有符合这些筛选条件的行程。",
-      "noMatchesDescription": "可以修改搜索内容或清除筛选条件。"
+      "noMatchesDescription": "可以修改搜索内容或清除筛选条件。",
+      "clearItems": "清空行程项目",
+      "clearItemsConfirm": "清空所有地点和起点？行程名称和日期将保留。",
+      "saving": "正在保存行程…",
+      "originScope": "起点适用范围",
+      "globalOrigin": "整个行程",
+      "dayOrigin": "仅当天",
+      "inheritedOrigin": "沿用行程起点",
+      "restoreOrigin": "恢复沿用行程起点",
+      "changeOrigin": "更改起点",
+      "routeStale": "正在刷新路线，暂显示上次估算",
+      "continuousRoute": "路线估算假设连续行驶，未包含各地点的游览和等待时间。",
+      "feasibility": {
+        "conflict": "预计少了约 {{minutes}} 分钟",
+        "fits_estimate": "按当前交通估算可衔接",
+        "unknown": "游览时长或交通估算未知"
+      }
     },
     "outletPage": {
       "notFound": "未找到门店",
@@ -3124,7 +3159,8 @@
         "budget": "旅程预算",
         "collapse": "收起 AI 规划栏",
         "expand": "展开 AI 规划栏",
-        "resize": "调整 AI 规划栏宽度"
+        "resize": "调整 AI 规划栏宽度",
+        "basicSuggestions": "AI 暂时不可用或繁忙，目前显示基础建议。"
       },
       "timeFor": "{{item}}的时间",
       "editItem": "编辑{{item}}",
@@ -3280,7 +3316,8 @@
         "full": "该时段已满，请选择其他时间。",
         "noSlot": "该时段已不再提供，请选择其他时间。",
         "closed": "当天休息，请移到其他日期。",
-        "outsideHours": "该时间不在营业时间内，请选择营业时间内的时间。"
+        "outsideHours": "该时间不在营业时间内，请选择营业时间内的时间。",
+        "orderConflict": "此时间与行程顺序冲突，请更改时间或调整地点顺序。"
       }
     },
     "paymentSimulator": {

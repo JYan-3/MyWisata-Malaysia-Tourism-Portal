@@ -47,6 +47,11 @@ function makeDb(products: unknown[], metrics: unknown[], outlets: unknown[]) {
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: () => builder,
+        order: () => builder,
+        range: (from: number, to: number) => {
+          if (table === "products") rows = rows.slice(from, to + 1);
+          return builder;
+        },
         in: (column: string, values: string[]) => {
           rows = (tables[table] ?? []).filter((row) => values.includes((row as Record<string, string>)[column]));
           return builder;

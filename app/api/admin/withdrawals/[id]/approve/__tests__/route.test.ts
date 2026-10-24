@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   payoutsRetrieve:      vi.fn(),
   accountsRetrieve:     vi.fn(),
   moderateWalletAction:  vi.fn(),
-  enqueueWithdrawalEmail: vi.fn(),
+  scheduleEmailDelivery: vi.fn(),
   createTngPayout:       vi.fn(),
   tngIsConfigured:       vi.fn(),
   executeApprovedWithdrawalPayout: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('@/lib/stripe', () => ({
 }));
 
 vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderateWalletAction }));
-vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWithdrawalEmail }));
+vi.mock('@/lib/email/events', () => ({ scheduleEmailDelivery: mocks.scheduleEmailDelivery }));
 vi.mock('@/lib/payouts/providers/tng-direct-credit', () => ({
   createTngDirectCreditProvider: vi.fn(() => ({
     isConfigured: mocks.tngIsConfigured,
@@ -113,7 +113,6 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       error: null,
     });
     mocks.requireStaffPermission.mockResolvedValue({ db: db(), user: { id: U2_ID }, response: null });
-    mocks.enqueueWithdrawalEmail.mockResolvedValue(undefined);
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
     mocks.tngIsConfigured.mockReturnValue(true);
     mocks.createTngPayout.mockResolvedValue({
@@ -295,6 +294,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       '2026-08-21T05:00:03.000Z',
     );
+    expect(mocks.scheduleEmailDelivery).toHaveBeenCalledTimes(1);
   });
 
   it('returns 422 when approve note is present but under 10 characters', async () => {

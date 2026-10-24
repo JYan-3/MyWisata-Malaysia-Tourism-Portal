@@ -27,6 +27,7 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
   const [busy, setBusy] = useState(false);
   const [grant, setGrant] = useState('');
   const [label, setLabel] = useState('');
+  // Store message keys, not translated text, so a language switch re-renders them.
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [manage, setManage] = useState(false);
@@ -40,7 +41,7 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
       : code === 'STAFF_PASSKEY_UNSUPPORTED' ? 'unsupported'
       : code === 'STAFF_PASSKEY_RETRY_REQUIRED' ? 'retryRequired'
       : code === 'STAFF_PASSKEY_UNAVAILABLE' ? 'unavailable' : 'failed';
-    setError(t(`passkey.${key}`));
+    setError(key);
   }
 
   async function loadDevices() {
@@ -63,7 +64,6 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
     }).catch(reason => { if (active) { setPasswordAuthenticated(false); displayError(reason); } }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
     // The verification screen owns this single initial credential fetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [financial]);
 
   async function perform(input: StaffPasskeyRequest, done?: (proofId: string | null) => void | Promise<void>) {
@@ -80,9 +80,12 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      if (devices.length) await runStaffPasskey({ operation: 'manage' });
-      await runStaffPasskey({ operation: 'register', label: label.trim() || t('passkey.defaultDevice'), ...(grant ? { grant: grant.trim() } : {}) });
-      setGrant(''); setLabel(''); await loadDevices(); setMessage(t('passkey.registered'));
+      const code = grant.trim();
+      // An enrollment code replaces the fresh-passkey check server-side, so a
+      // new device on an account that already has passkeys can still enroll.
+      if (devices.length && !code) await runStaffPasskey({ operation: 'manage' });
+      await runStaffPasskey({ operation: 'register', label: label.trim() || t('passkey.defaultDevice'), ...(code ? { grant: code } : {}) });
+      setGrant(''); setLabel(''); await loadDevices(); setMessage('registered');
     } catch (reason) { displayError(reason); }
     finally { setBusy(false); }
   }
@@ -102,21 +105,23 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
 
   async function passwordLogin() {
     const { error: signOutError } = await createClient().auth.signOut({ scope: 'local' });
-    if (signOutError) { setError(t('passkey.failed')); return; }
+    if (signOutError) { setError('failed'); return; }
     router.push('/login');
   }
 
   const verifyButton = <Button type="button" disabled={busy || disabled || loading || (!financial && (!passwordAuthenticated || devices.length === 0))} onClick={() => void perform({ operation, ...(financial ? { withdrawalId, expectedVersion, payload } : {}) }, onVerified)} className={embedded ? 'h-12 w-full gap-2 rounded-xl text-sm font-semibold shadow-sm sm:text-base' : 'gap-2'}><ShieldCheck size={16} />{t(busy ? 'passkey.working' : financial ? 'passkey.verifyAndConfirm' : 'passkey.verify')}</Button>;
-  if (financial) return <div className="space-y-2">{error && <p role="alert" className="text-sm text-destructive">{error}</p>}{verifyButton}</div>;
+  if (financial) return <div className="space-y-2">{error && <p role="alert" className="text-sm text-destructive">{t(`passkey.${error}`)}</p>}{verifyButton}</div>;
 
   return <section className={embedded ? 'space-y-4' : 'space-y-4 rounded-2xl border border-border bg-card p-6'}>
     {!embedded && <p className="text-sm text-muted-foreground">{t('passkey.description')}</p>}
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {message && <p role="status" className="text-sm text-nature-green-ink">{message}</p>}
+    {error && <p role="alert" className="text-sm text-destructive">{t(`passkey.${error}`)}</p>}
+    {message && <p role="status" className="text-sm text-nature-green-ink">{t(`passkey.${message}`)}</p>}
     {!passwordAuthenticated && <p className="text-sm text-muted-foreground">{t('passkey.passwordRequired')}</p>}
     {verifyButton}
     {!loading && passwordAuthenticated && (devices.length === 0 || manage) && <div className="space-y-3 border-t border-border pt-4">
-      {devices.length === 0 && <><p className="text-sm text-muted-foreground">{t('passkey.enrollmentRequired')}</p><label className="block text-sm font-medium" htmlFor="staff-passkey-grant">{t('passkey.grantLabel')}</label><Input id="staff-passkey-grant" type="password" autoComplete="off" value={grant} onChange={event => setGrant(event.target.value)} disabled={busy} /></>}
+      <p className="text-sm text-muted-foreground">{t(devices.length === 0 ? 'passkey.enrollmentRequired' : 'passkey.grantHint')}</p>
+      <label className="block text-sm font-medium" htmlFor="staff-passkey-grant">{t('passkey.grantLabel')}</label>
+      <Input id="staff-passkey-grant" type="password" autoComplete="off" value={grant} onChange={event => setGrant(event.target.value)} disabled={busy} />
       <label className="block text-sm font-medium" htmlFor="staff-passkey-label">{t('passkey.deviceLabel')}</label>
       <Input id="staff-passkey-label" maxLength={80} value={label} onChange={event => setLabel(event.target.value)} disabled={busy} />
       <Button type="button" variant="outline" disabled={busy || (devices.length === 0 && !grant.trim())} onClick={() => void register()}>{t('passkey.register')}</Button>

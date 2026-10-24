@@ -83,10 +83,10 @@ export function PromotionCampaignCard({
             >
               <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
             </h2>
-            <Button asChild className="mt-5 min-h-11 w-full shrink-0 rounded-full lg:mt-auto">
+            <Button asChild className="group mt-5 min-h-11 w-full shrink-0 rounded-full hover:-translate-y-0.5 hover:shadow-md lg:mt-auto">
               <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
                 {t("ui.promotionCampaigns.viewAllVendors", { count: campaign.vendors.length })}
-                <ArrowRight size={16} aria-hidden="true" />
+                <ArrowRight size={16} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
           </div>
@@ -125,10 +125,10 @@ export function PromotionCampaignCard({
             <p className="mt-3 break-words text-sm leading-6 text-muted-foreground">
               <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="summary" sourceText={campaign.summary} />
             </p>
-            <Button asChild className="mt-5 min-h-11 w-full shrink-0 rounded-full sm:w-auto lg:mt-auto lg:self-start">
+            <Button asChild className="group mt-5 min-h-11 w-full shrink-0 rounded-full hover:-translate-y-0.5 hover:shadow-md sm:w-auto lg:mt-auto lg:self-start">
               <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
                 {t("ui.promotionCampaigns.viewAllVendors", { count: campaign.vendors.length })}
-                <ArrowRight size={16} aria-hidden="true" />
+                <ArrowRight size={16} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
           </div>

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { requireStaffNotificationAccess } from '@/lib/notifications/staff-access';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
 const VENDOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -10,8 +11,12 @@ export async function POST(request: Request) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope') ?? 'customer';
-  if (scope !== 'customer' && scope !== 'vendor') return apiFail('INVALID_SCOPE', 'Unknown notification scope', 400);
+  if (scope !== 'customer' && scope !== 'vendor' && scope !== 'staff') return apiFail('INVALID_SCOPE', 'Unknown notification scope', 400);
   let queryDb = db;
+  if (scope === 'staff') {
+    const staffResponse = await requireStaffNotificationAccess(db, user.id);
+    if (staffResponse) return staffResponse;
+  }
   const vendorId = url.searchParams.get('vendorId');
   const access = scope === 'vendor'
     ? (vendorId && VENDOR_ID.test(vendorId) ? await authorizeVendor(vendorId, undefined, { allowEventVendor: true }) : null)

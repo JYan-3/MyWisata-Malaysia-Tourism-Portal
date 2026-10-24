@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Optional source main commit requested by successful CI
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: sync-teacher-main
@@ -11,28 +17,53 @@ concurrency:
 
 jobs:
   sync:
-    if: github.repository == 'JYan-3/MyWisata-Malaysia-Tourism-Portal'
+    if: github.repository == 'JYan-3/MyWisata-Malaysia-Tourism-Portal' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
     steps:
       - name: Checkout teacher repository
         uses: actions/checkout@v4
         with:
+          ref: refs/heads/main
           fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
 
       - name: Fast-forward from source main
         shell: bash
+        env:
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           set -euo pipefail
+
+          if [[ -n "$REQUESTED_SOURCE_SHA" && ! "$REQUESTED_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "::error::Invalid requested source commit."
+            exit 1
+          fi
 
           git fetch --no-tags origin main
           target_sha="$(git rev-parse FETCH_HEAD)"
           git fetch --no-tags https://github.com/TanZhengYang0912/MyWisata-Malaysia-Tourism-Portal.git main
           source_sha="$(git rev-parse FETCH_HEAD)"
 
+          if [[ -n "$REQUESTED_SOURCE_SHA" && "$REQUESTED_SOURCE_SHA" != "$source_sha" ]]; then
+            echo "::notice::Source main advanced; skip this stale sync request."
+            exit 0
+          fi
+
           if [[ "$target_sha" == "$source_sha" ]]; then
             echo "Teacher main already matches source main: $source_sha"
+            exit 0
+          fi
+
+          ci_status="$(node scripts/teacher-repo-sync.mjs verify "$source_sha")"
+          if [[ "$ci_status" != "ready" ]]; then
+            echo "::notice::Source main has no successful current push CI; no sync performed."
             exit 0
           fi
 

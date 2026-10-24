@@ -380,6 +380,23 @@ describe("Access Control Audit Log", () => {
     expect(JSON.stringify(sanitized)).not.toMatch(/secret@example|601234|front\.png|sk_live|icHash|payoutSecret/);
   });
 
+  it("allows only bounded typed role snapshots and rejects nested or malformed keys", () => {
+    expect(sanitizeAuditPayload({
+      roleName: "Wallet Approver",
+      moduleKeys: ["wallet", "catalogue_review", "wallet"],
+      permissionKeys: ["admin.withdrawal.approve"],
+      isActive: false,
+      roleNameUnsafe: { nested: "not allowed" },
+    })).toEqual({
+      roleName: "Wallet Approver",
+      moduleKeys: ["catalogue_review", "wallet"],
+      permissionKeys: ["admin.withdrawal.approve"],
+      isActive: false,
+    });
+    expect(sanitizeAuditPayload({ moduleKeys: [{ nested: "secret" }], permissionKeys: ["bad key"] })).toEqual({});
+    expect(sanitizeAuditPayload({ roleName: "x".repeat(101), isActive: "false" })).toEqual({});
+  });
+
   it("returns only sanitized payloads from the Audit Log route", async () => {
     const builder = queryBuilder([{
       id: AUDIT_ID,

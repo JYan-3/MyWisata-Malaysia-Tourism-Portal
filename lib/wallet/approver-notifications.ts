@@ -1,91 +1,78 @@
 import { emailLocale } from '@/lib/email/copy';
 import { createServiceClient } from '@/lib/supabase/service';
-import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
-import { buildWithdrawalNotificationMetadata, buildWithdrawalNotificationReason, type WithdrawalNotificationSnapshot } from './withdrawal-review-projection';
-import { formatMYR } from '@/lib/i18n/format';
+import { enqueueEmail } from '@/lib/email/outbox';
+import { z } from 'zod';
 
 export type ApproverNotificationInput = {
   withdrawalId: string;
-  customerUserId: string;
-  amountRm: number;
   approvalCycle?: number;
-  snapshot?: WithdrawalNotificationSnapshot;
 };
 
-/** Notify every active Wallet Approver and Super Admin after a new review cycle starts. */
+/** The transaction trigger is authoritative; this idempotent nudge also covers
+ * existing callers. Customer requests never enumerate recipients or send SMTP. */
 export async function notifyWithdrawalApprovers(input: ApproverNotificationInput): Promise<void> {
   try {
-    const service = createServiceClient();
-    const { data: roles, error: rolesError } = await service
-      .from('roles')
-      .select('id,name')
-      .in('name', ['approver', 'super_admin']);
-    if (rolesError) throw rolesError;
+    const { error } = await createServiceClient().rpc('enqueue_withdrawal_approvers', {
+      p_id: input.withdrawalId, p_cycle: input.approvalCycle ?? 1,
+    }).abortSignal(AbortSignal.timeout(5_000));
+    if (error) throw new Error('notification_intent_unavailable');
+  } catch { console.error('[wallet] notification intent unavailable'); }
+}
 
-    const roleIds = (roles ?? []).map((role) => role.id as number);
-    if (!roleIds.length) return;
-    let snapshot = input.snapshot;
-    if (!snapshot) {
-      const { data: snapshotData, error: snapshotError } = await service.rpc('get_withdrawal_notification_snapshot', { p_withdrawal_id: input.withdrawalId });
-      if (snapshotError || !snapshotData) throw snapshotError ?? new Error('withdrawal_notification_snapshot_missing');
-      snapshot = snapshotData as WithdrawalNotificationSnapshot;
+const jobSchema = z.object({
+  withdrawalId: z.string().uuid(), cycle: z.number().int().positive(), stage: z.enum(['pending', 'pending_second_approval']), cursor: z.string().uuid().nullable(),
+  token: z.string().uuid(), customerUserId: z.string().uuid(),
+});
+const recipientsSchema = z.array(z.object({
+  id: z.string().uuid(), email: z.string().nullable(), full_name: z.string().nullable(), preferred_locale: z.string().nullable(),
+})).max(25);
+const deliveryBatchSchema = z.object({ stale: z.boolean(), recipients: recipientsSchema });
+
+/** One checkpointed batch per invocation, before the existing mail worker runs. */
+export async function processWithdrawalApproverNotifications() {
+  const db = createServiceClient({ signal: AbortSignal.timeout(45_000) });
+  const { data, error } = await db.rpc('claim_withdrawal_approver_job');
+  if (error) throw new Error('notification_claim_unavailable');
+  if (data === null) return { recipients: 0 };
+  const parsed = jobSchema.safeParse(data);
+  if (!parsed.success) throw new Error('notification_job_invalid');
+  const job = parsed.data;
+  let cursor = job.cursor;
+  let complete = false;
+  let failed = false;
+  let count = 0;
+  try {
+    const result = await db.rpc('deliver_withdrawal_approver_notifications', {
+      p_id: job.withdrawalId,
+      p_cycle: job.cycle,
+      p_stage: job.stage,
+      p_token: job.token,
+      p_cursor: job.cursor,
+    });
+    const batch = deliveryBatchSchema.safeParse(result.data);
+    if (result.error || !batch.success) throw new Error('notification_delivery_unavailable');
+    if (batch.data.stale) return { recipients: 0 };
+    const users = batch.data.recipients;
+    if (users.some((user) => user.id === job.customerUserId)) throw new Error('notification_recipient_invalid');
+    if (users.length) {
+      const stageSuffix = job.stage === 'pending_second_approval' ? ':stage:second' : '';
+      const eventKey = (id: string) => `withdrawal_submitted:${job.withdrawalId}:cycle:${job.cycle}:approver:${id}${stageSuffix}`;
+      const emails = await Promise.allSettled(users.filter((user) => user.email?.trim()).map((user) => enqueueEmail({
+        eventKey: eventKey(user.id), userId: user.id, toEmail: user.email!.trim(),
+        locale: emailLocale(user.preferred_locale), eventType: 'staff_withdrawal_approval', recipientName: user.full_name,
+        reason: 'A withdrawal approval task is waiting in the protected Admin workspace.', occurredAt: new Date().toISOString(),
+      }, db)));
+      if (emails.some((result) => result.status === 'rejected')) throw new Error('notification_email_unavailable');
+      cursor = users[users.length - 1].id;
     }
-    const { data: assignments, error: assignmentsError } = await service
-      .from('user_roles')
-      .select('user_id')
-      .in('role_id', roleIds);
-    if (assignmentsError) throw assignmentsError;
-
-    const recipientIds = [...new Set((assignments ?? []).map((row) => row.user_id as string))]
-      .filter((userId) => userId !== input.customerUserId);
-    if (!recipientIds.length) return;
-
-    const { data: users, error: usersError } = await service
-      .from('users')
-      .select('id,email,full_name,status,preferred_locale')
-      .in('id', recipientIds);
-    if (usersError) throw usersError;
-
-    const cycle = input.approvalCycle ?? 1;
-    const recipientSet = new Set(recipientIds);
-    const recipients = (users ?? []).filter((user) => recipientSet.has(user.id) && user.status === 'active');
-    if (!recipients.length) return;
-    const eventKey = (userId: string) => `withdrawal_submitted:${input.withdrawalId}:cycle:${cycle}:approver:${userId}`;
-    const notificationReason = buildWithdrawalNotificationReason(snapshot);
-    const notificationMetadata = buildWithdrawalNotificationMetadata(snapshot);
-
-    const notificationRows = recipients.map((user) => ({
-      user_id: user.id,
-      type: 'withdrawal_submitted',
-      title: 'New withdrawal requires review',
-      body: `A customer submitted a withdrawal of ${formatMYR(input.amountRm)} for review. ${notificationReason}`,
-      link: `/admin/withdrawals/${input.withdrawalId}`,
-      event_key: eventKey(user.id),
-      category: 'wallet',
-      metadata: { withdrawal_id: input.withdrawalId, approval_cycle: cycle, ...notificationMetadata },
-    }));
-    const { error: notificationError } = await service
-      .from('notifications')
-      .upsert(notificationRows, { onConflict: 'event_key', ignoreDuplicates: true });
-    if (notificationError) throw notificationError;
-
-    const emailJobs = recipients
-      .filter((user) => typeof user.email === 'string' && user.email.trim().length > 0)
-      .map((user) => enqueueEmail({
-        eventKey: eventKey(user.id),
-        userId: user.id,
-        toEmail: user.email.trim(),
-        locale: emailLocale(user.preferred_locale),
-        eventType: 'withdrawal_submitted',
-        recipientName: user.full_name ?? null,
-        amountRm: input.amountRm,
-        reference: input.withdrawalId,
-        reason: buildWithdrawalNotificationReason(snapshot, emailLocale(user.preferred_locale)),
-        occurredAt: new Date().toISOString(),
-      }));
-    await Promise.allSettled(emailJobs);
-    if (emailJobs.length) await processEmailOutbox(emailJobs.length);
-  } catch (error) {
-    console.error('[wallet] approver notification fan-out failed:', error instanceof Error ? error.message : error);
-  }
+    count = users.length;
+    complete = users.length < 25;
+  } catch { failed = true; }
+  // A separate bounded client can checkpoint after the work deadline expired.
+  const saved = await createServiceClient().rpc('finish_withdrawal_approver_job', {
+    p_id: job.withdrawalId, p_cycle: job.cycle, p_stage: job.stage, p_token: job.token,
+    p_cursor: cursor, p_complete: complete, p_failed: failed,
+  }).abortSignal(AbortSignal.timeout(5_000));
+  if (failed || saved.error || saved.data !== true) throw new Error('notification_batch_unconfirmed');
+  return { recipients: count };
 }

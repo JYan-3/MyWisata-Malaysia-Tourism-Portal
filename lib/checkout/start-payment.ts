@@ -1,3 +1,4 @@
+import { scheduleReceiptDelivery } from '@/lib/email/events';
 import { privateCheckoutJson } from '@/lib/checkout/guest-session';
 import type { CheckoutBuyer } from './subject';
 import { NextResponse } from 'next/server';
@@ -384,5 +385,6 @@ export async function startCheckoutPayment({ db, user, prepared, total, plan }: 
     }
     return privateCheckoutJson({ data: { ...response, stripeUrl: stripeSession.url }, error: null });
   }
+  if (prepared.status === 'paid') scheduleReceiptDelivery();
   return privateCheckoutJson({ data: response, error: null });
 }

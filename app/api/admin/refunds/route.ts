@@ -2,6 +2,7 @@ import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { readReviewQueue, reviewQueueQuery } from '@/lib/admin/review-queue';
 import type { Json } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ type RefundQueryRow = {
   orders: { display_id: string | null } | Array<{ display_id: string | null }> | null;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -46,12 +47,19 @@ export async function GET() {
     return apiFail('FORBIDDEN', 'Admin role required', 403);
   }
 
+  const filters = reviewQueueQuery(request, 'refunds');
+  if (!filters.success) return apiFail('VALIDATION_FAILED', 'Invalid refund queue filters', 422);
   const service = createServiceClient();
+  const { data: queue, error: queueError } = await readReviewQueue(service, 'refunds', filters.data);
+  if (queueError) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
+  const ids = (queue?.items ?? []).map((item: { id: string }) => item.id);
+  if (ids.length === 0) return apiOk({ ...queue, refunds: [] });
   const { data, error } = await service
     .from('refunds')
     .select('id,order_id,amount,reason,reason_code,status,provider_refund_id,manual_reference,wallet_topup_sen,wallet_earnings_sen,external_amount_sen,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(display_id)')
+    .in('id', ids)
     .order('created_at', { ascending: false })
-    .limit(200);
+    .order('id', { ascending: false });
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
 
   try {
@@ -84,6 +92,6 @@ export async function GET() {
       };
     }));
 
-    return apiOk({ refunds });
+    return apiOk({ ...queue, refunds });
   } catch { return apiFail('DB_ERROR', 'Unable to load refund evidence', 500); }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { mapProfileSummary, type KycReviewRow, type PreferenceRow, type ProfileRow } from "@/lib/profile/profile-summary";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
 
+  const service = createServiceClient();
   const [profileResult, preferenceResult, kycResult] = await Promise.all([
     supabase
       .from("users")
@@ -20,7 +22,7 @@ export async function GET() {
       .select("interests,budget_range,mobility_needs,preferred_radius_km")
       .eq("user_id", user.id)
       .maybeSingle(),
-    supabase
+    service
       .from("kyc_submissions")
       .select("status,review_reason_code,reviewed_at,created_at")
       .eq("user_id", user.id)

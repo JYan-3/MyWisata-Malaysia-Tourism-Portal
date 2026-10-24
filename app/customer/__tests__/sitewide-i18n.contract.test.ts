@@ -76,6 +76,8 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/trip/[tripId]/trip-weather-simulation.ts",
   "app/customer/trip/[tripId]/trip-planner-client.tsx",
   "app/customer/trip/[tripId]/use-itinerary-weather.ts",
+  "app/customer/trip/[tripId]/use-trip-items.ts",
+  "app/customer/trip/[tripId]/use-trip-routes.ts",
   "app/customer/trip/[tripId]/use-weather-overlay.ts",
   "app/customer/trip/[tripId]/use-weather-radar.ts",
   "app/customer/trip/page.tsx",
@@ -271,6 +273,8 @@ const delegatingFiles = new Set([
   "components/customer/use-customer-capability-gate.ts",
   "components/customer/voucher-barcode.tsx",
   "app/customer/trip/[tripId]/use-itinerary-weather.ts",
+  "app/customer/trip/[tripId]/use-trip-items.ts",
+  "app/customer/trip/[tripId]/use-trip-routes.ts",
 ]);
 
 describe("customer and guest sitewide i18n contract", () => {

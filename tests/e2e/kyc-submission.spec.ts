@@ -1,15 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { signIn } from './helpers/demo';
 
 const CUSTOMER_EMAIL = 'customer@demo.local';
-const CUSTOMER_PASS = 'demo123456';
 const VALID_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL9WAAAAABJRU5ErkJggg==', 'base64');
 
 async function signInAsCustomer(page: import('@playwright/test').Page) {
-  await page.goto('/login');
-  await page.locator('input[type="email"]').fill(CUSTOMER_EMAIL);
-  await page.locator('input[type="password"]').fill(CUSTOMER_PASS);
-  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/customer(?:\/|$)/);
+  await signIn(page, CUSTOMER_EMAIL);
 }
 
 test.describe('KYC submission', () => {

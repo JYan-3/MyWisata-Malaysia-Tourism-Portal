@@ -62,10 +62,14 @@ export async function resolveGuestSession(request: Request): Promise<{ guestSubj
   return !error && data ? { guestSubjectId: data.id as string } : null;
 }
 export async function reserveGuestRateLimit(key: string, maximum: number, seconds: number): Promise<boolean> {
-  const { data, error } = await createServiceClient().rpc("reserve_guest_rate_limit", {
-    p_key_hash: hashGuestCredential(key), p_limit: maximum, p_window_seconds: seconds,
-  });
-  return !error && data === true;
+  try {
+    // Shared admission must fail quickly before a caller can fall back. This
+    // client deadline also bounds rate checks made before acquiring a work slot.
+    const { data, error } = await createServiceClient({ signal: AbortSignal.timeout(5_000) }).rpc("reserve_guest_rate_limit", {
+      p_key_hash: hashGuestCredential(key), p_limit: maximum, p_window_seconds: seconds,
+    });
+    return !error && data === true;
+  } catch { return false; }
 }
 export function guestAddressRateKey(request: Request): string {
   // Hostinger mode requires CDN enabled AND origin access restricted to that

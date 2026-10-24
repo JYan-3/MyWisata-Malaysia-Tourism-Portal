@@ -1,0 +1,10 @@
+export type OcrLine = { text: string; confidence: number | null };
+export type OcrLayoutLine = OcrLine & { bbox: { x0: number; y0: number; x1: number; y1: number } };
+export type OcrLayoutV1 = { schemaVersion: 1; width: number; height: number; lines: OcrLayoutLine[] };
+export type OcrSides = { front: OcrLine[]; back: OcrLine[] };
+export type ExtractedKycFields = { holderName: string | null; documentNumber: string | null; expiryDate: string | null; confidence: number | null; unreadable: boolean };
+export type MykadLayoutFieldsV1 = { holderName: string | null; documentNumber: string | null; layoutStatus: 'unknown' | 'partial' | 'located'; unreadable: boolean };
+export function toOcrLines(data: unknown): OcrLine[];
+export function toOcrLayoutV1(data: unknown, dimensions: { width: number; height: number }): OcrLayoutV1;
+export function extractKycFields(sides: OcrSides, documentType: 'national_id' | 'passport' | 'driving_license'): ExtractedKycFields;
+export function extractMykadLayoutFieldsV1(layout: OcrLayoutV1, options: { layout: 'mykad-front-reference-v1'; alignment: 'manual-card-aligned' }): MykadLayoutFieldsV1;

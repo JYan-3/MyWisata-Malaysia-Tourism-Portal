@@ -16,7 +16,7 @@ import { unstable_cache } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/service';
 import {
   applyDiscoveryReviewMetrics,
-  composeDiscoveryActivities,
+  computeDiscoveryActivities,
   getActivities,
   getDiscoveryOutletIds,
   getDiscoveryOutletsByIds,
@@ -25,6 +25,7 @@ import {
   getOutlets,
 } from '@/backend/domains/catalogue';
 import type { Activity, ComputedActivity, Outlet } from '@/backend/core/types';
+import type { DiscoveryActivityData } from '@/backend/domains/catalogue';
 
 /**
  * Cached getActivities — revalidates every 60 seconds.
@@ -51,10 +52,10 @@ const getCachedDiscoveryProductActivities = unstable_cache(
 const getCachedDiscoveryRelatedData = unstable_cache(
   async (productIds: string[], outletIds: string[]) => {
     const db = createServiceClient();
-    const [metrics, outlets] = await Promise.all([
-      getDiscoveryReviewMetricEntries(productIds, db),
-      getDiscoveryOutletsByIds(outletIds, db),
-    ]);
+    // Keep catalogue refreshes within the bounded query concurrency used by
+    // the discovery loaders: each helper batches internally, so run them in turn.
+    const metrics = await getDiscoveryReviewMetricEntries(productIds, db);
+    const outlets = await getDiscoveryOutletsByIds(outletIds, db);
     return { metrics, outlets };
   },
   ['catalogue-discovery-related-data'],
@@ -66,15 +67,19 @@ const getCachedDiscoveryRelatedData = unstable_cache(
  * review metrics, and shared outlet records in separate entries avoids storing
  * the same outlet metadata once for every product card.
  */
-export async function getCachedComputedActivities(): Promise<ComputedActivity[]> {
+export async function getCachedDiscoveryActivityData(): Promise<DiscoveryActivityData> {
   const activities = await getCachedDiscoveryProductActivities();
-  if (activities.length === 0) return [];
+  if (activities.length === 0) return { activities: [], outlets: [] };
 
   const productIds = [...new Set(activities.map((activity) => activity.id))].sort();
   const outletIds = getDiscoveryOutletIds(activities);
   const { metrics, outlets } = await getCachedDiscoveryRelatedData(productIds, outletIds);
 
-  return composeDiscoveryActivities(applyDiscoveryReviewMetrics(activities, metrics), outlets);
+  return { activities: applyDiscoveryReviewMetrics(activities, metrics), outlets };
+}
+
+export async function getCachedComputedActivities(): Promise<ComputedActivity[]> {
+  return computeDiscoveryActivities(await getCachedDiscoveryActivityData());
 }
 
 /**

@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   generateSuggestions: vi.fn(),
 }));
 
+vi.mock("@/lib/rate-limit/ai", () => ({ reserveAiQuota: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/checkout/guest-session", () => ({ reserveGuestRateLimit: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/operations/workload", async (original) => ({ ...await original<typeof import("@/lib/operations/workload")>(), withPortalWorkload: vi.fn(async (_scope: string, work: (signal: AbortSignal) => Promise<unknown>) => work(new AbortController().signal)) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/auth/customer-capabilities.server", () => ({
   resolveServerCustomerCapability: mocks.resolveCapability,
@@ -119,7 +122,7 @@ describe("POST /api/trips/plan", () => {
       name: "KL weekend",
       startDate: "2026-10-09",
       endDate: "2026-10-11",
-    }, [candidate], "en", "local food");
+    }, [candidate], "en", "local food", { signal: expect.any(AbortSignal) });
     expect(body.data.suggestions).toEqual([{
       productId: "place-1",
       productName: candidate.name,

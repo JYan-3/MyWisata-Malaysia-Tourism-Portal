@@ -16,6 +16,7 @@ function flattenStrings(value: unknown, prefix = "", result: Record<string, stri
 
 const INTENTIONAL_IDENTICAL_VALUES = {
   "zh-CN": new Set([
+    "accessControl.staffRoles.invitationListEntry",
     "affiliate.noLimit",
     "eventPromotions.settings.currencyPrefix",
     "kyc.documents.national_id",
@@ -29,6 +30,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "strictMigration.recommendationPhotoStatus",
   ]),
   ms: new Set([
+    "accessControl.staffRoles.invitationListEntry",
     "accessControl.audit.fieldLabels.status",
     "affiliate.noLimit",
     "navigation.Chatbot",
@@ -116,6 +118,7 @@ export const ADMIN_I18N_FILES = [
 
 /** These shared admin helpers are localized outside the exclusive Task 9 scope. */
 export const PRIOR_TASK_FILES = [
+  "components/admin/access-control/staff-employees-panel.tsx",
   "components/admin/access-control/staff-modules-panel.tsx",
   "components/admin/access-control/staff-roles-tab.tsx",
   "components/admin/access-control/types.ts",

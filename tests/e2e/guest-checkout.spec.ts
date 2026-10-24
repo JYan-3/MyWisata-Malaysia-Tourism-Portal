@@ -24,11 +24,15 @@ for (const booking of [false,true]) {
   const id='1d4057cf-c821-4b05-a454-61dbdc42d32c';
   const variant='2d4057cf-c821-4b05-a454-61dbdc42d32c';
   const slot='3d4057cf-c821-4b05-a454-61dbdc42d32c';
+  const startsAt=new Date(Date.now()+24*60*60*1000).toISOString();
   await page.route('**/rest/v1/**',route=>{
    const resource=new URL(route.request().url()).pathname.split('/').pop();
-   const data=resource==='products'?[{id,vendor_id:id,outlet_id:id,name:'Guest test item',base_price:booking?0:10,requires_booking:booking,status:'active',review_status:'approved',product_variants:[{id:variant,name:'Standard',price_offset:0,inventory:[{quantity:10,reserved:0}]}],price_rules:[]}]:resource==='booking_slots'?[{id:slot,product_id:id,starts_at:'2026-10-10T02:00:00Z',ends_at:'2026-10-10T03:00:00Z',capacity:10,booked:0,status:'available'}]:[];
+   const data=resource==='products'?[{id,vendor_id:id,outlet_id:id,name:'Guest test item',base_price:booking?0:10,requires_booking:booking,status:'active',review_status:'approved',outlet_offers:[],product_variants:[{id:variant,name:'Standard',price_offset:0,is_active:true,inventory:[{outlet_id:id,quantity:10,reserved:0}]}],price_rules:[]}]:resource==='booking_slots'?[{id:slot,product_id:id,outlet_id:id,starts_at:startsAt,ends_at:new Date(Date.parse(startsAt)+60*60*1000).toISOString(),capacity:10,booked:0,status:'available'}]:[];
    return route.fulfill({json:data});
   });
+  if (booking) {
+   await page.route('**/rest/v1/booking_slots**',route=>route.fulfill({json:[{id:slot,product_id:id,outlet_id:id,starts_at:startsAt,ends_at:new Date(Date.parse(startsAt)+60*60*1000).toISOString(),capacity:10,booked:0,status:'available',price_override:null}]}));
+  }
   await page.route('**/api/guest/cart',route=>route.fulfill({json:{data:{items:[{activityId:id,variantId:variant,outletId:id,slotId:booking?slot:undefined,qty:1}]},error:null}}));
   await page.route('**/api/guest/session',route=>route.fulfill({json:{data:{ready:true},error:null}}));
   let prepared=false;

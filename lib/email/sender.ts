@@ -63,7 +63,8 @@ async function sendRenderedEmail(to: string, rendered: { subject: string; html: 
       html: rendered.html,
       ...(delivery ? { messageId: delivery.messageId } : {}),
     });
-    if (delivery && (!result.accepted?.length || result.rejected?.length)) throw new Error('email_delivery_not_confirmed');
+    // Direct invitations need the same recipient acceptance guarantee as queued mail.
+    if (!result.accepted?.length || result.rejected?.length) throw new Error('email_delivery_not_confirmed');
     return { id: result.messageId };
   } catch (error) {
     if (delivery) throw classifyEmailDeliveryError(error, attempted);

@@ -794,7 +794,10 @@
       "trafficLive": "Live traffic",
       "trafficPredicted": "Predicted traffic",
       "trafficProviderRetrievedAt": "Mapbox · {{time}}",
+      "trafficLegend": "Traffic colors",
+      "trafficUnavailable": "Only the blue route is shown; live traffic data is unavailable.",
       "trafficNormal": "Normal",
+      "trafficUnknown": "No traffic data",
       "trafficSlow": "Slow",
       "trafficCongested": "Congested",
       "trafficSevere": "Severe",
@@ -1317,19 +1320,27 @@
       "noAlternatives": "No cheaper alternatives found for your priciest picks right now.",
       "viewAlternative": "View listing",
       "showOnMap": "Show on map",
-      "savings": "Save {{amount}}"
+      "savings": "Save {{amount}}",
+      "estimate": "Estimated item prices; final choices and checkout may differ.",
+      "unknownPrices": "{{count}} item prices unknown",
+      "unknownPrices_one": "{{count}} item price unknown",
+      "unknownPrices_other": "{{count}} item prices unknown"
     },
     "tripCheckout": {
-      "button_one": "Checkout ({{count}} item)",
-      "button_other": "Checkout ({{count}} items)",
+      "button_one": "Review planned purchases ({{count}} item)",
+      "button_other": "Review planned purchases ({{count}} items)",
       "nothingToCheckout": "Nothing in your itinerary is available to purchase yet.",
       "allNeedSlot": "None of your scheduled stops have an open booking slot on their planned day — pick a time on each activity's page first.",
       "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot.",
       "unavailable": "{{names}} can't be bought from the planner. Open their page to check what's available.",
       "stayMustBeBookedFromHotelPage": "Rooms need guest details before they can be added. Book each stay from its hotel page. Other eligible itinerary items can still be added.",
       "addFailed": "Couldn't add {{name}} to your cart. Anything added before it is still in your cart.",
-      "buy_one": "Buy {{count}}",
-      "buy_other": "Buy {{count}}"
+      "buy_one": "Review ({{count}})",
+      "buy_other": "Review ({{count}})",
+      "needsSelection": "Choose a specification on the activity page first: {{names}}.",
+      "selectDetails": "Choose specifications and quantity",
+      "button": "Review planned purchases ({{count}} items)",
+      "buy": "Review ({{count}})"
     },
     "preferencesPage": {
       "eyebrow": "Preferences",
@@ -1485,7 +1496,13 @@
       },
       "photosSelected_one": "{{count}} photo selected",
       "pendingReview_one": "Pending review ({{count}})",
-      "pendingReview_other": "Pending review ({{count}})"
+      "pendingReview_other": "Pending review ({{count}})",
+      "historyStatus": "Status",
+      "allStatuses": "All statuses",
+      "historyLoading": "Loading recommendations…",
+      "historyTotal": "{{total}} recommendations",
+      "historyError": "Unable to load recommendations.",
+      "historyRetry": "Try again"
     },
     "recommendationEarnings": {
       "title": "Recommendation earnings",
@@ -1843,6 +1860,8 @@
       "retryWallet": "Retry Wallet loading",
       "confirmingWithdrawal": "The request timed out. We are confirming whether it was received.",
       "withdrawalOutcomeUnknown": "We could not confirm the request yet. Review your withdrawal list before trying again.",
+      "resumeWithdrawalCheck": "Review this request",
+      "retrySameWithdrawal": "Retry the same request",
       "tngSecurityHint": "We verify the destination with the payout provider. Never enter your TNG PIN.",
       "verifying": "Verifying…",
       "verifySave": "Verify & save",
@@ -2351,7 +2370,23 @@
       "results_other": "{{count}} trips",
       "all": "All trips",
       "noMatches": "No trips match these filters.",
-      "noMatchesDescription": "Try changing your search or clearing a filter."
+      "noMatchesDescription": "Try changing your search or clearing a filter.",
+      "clearItems": "Clear itinerary items",
+      "clearItemsConfirm": "Clear all stops and starting points? The trip name and dates will be kept.",
+      "saving": "Saving itinerary…",
+      "originScope": "Apply starting point to",
+      "globalOrigin": "Whole trip",
+      "dayOrigin": "This day only",
+      "inheritedOrigin": "Using the trip starting point",
+      "restoreOrigin": "Use trip starting point again",
+      "changeOrigin": "Change starting point",
+      "routeStale": "Refreshing route; previous estimate shown",
+      "continuousRoute": "Route estimates assume continuous travel; visits and waiting between stops are not included.",
+      "feasibility": {
+        "conflict": "Short by approximately {{minutes}} min",
+        "fits_estimate": "Fits the current travel estimate",
+        "unknown": "Visit duration or travel estimate unknown"
+      }
     },
     "outletPage": {
       "notFound": "Outlet not found",
@@ -3124,7 +3159,8 @@
         "budget": "Trip budget",
         "collapse": "Collapse AI planner",
         "expand": "Expand AI planner",
-        "resize": "Resize AI planner"
+        "resize": "Resize AI planner",
+        "basicSuggestions": "Showing basic suggestions while AI is unavailable or busy."
       },
       "timeFor": "Time for {{item}}",
       "editItem": "Edit {{item}}",
@@ -3280,7 +3316,8 @@
         "full": "This time is fully booked. Pick another time.",
         "noSlot": "This time is no longer offered. Pick another time.",
         "closed": "Closed on this day. Move it to another day.",
-        "outsideHours": "Closed at this time. Pick a time within opening hours."
+        "outsideHours": "Closed at this time. Pick a time within opening hours.",
+        "orderConflict": "This time conflicts with the itinerary order. Change the time or reorder the stops."
       }
     },
     "paymentSimulator": {

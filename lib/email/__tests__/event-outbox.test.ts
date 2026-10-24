@@ -21,7 +21,7 @@ describe('event notices through the existing durable sender', () => {
       event_type: 'vendor_event_update', payload: { vendorName: 'Kitchen', reason: details.reason,
         occurredAt: '2026-10-07T03:00:00Z', eventChange: details } }], reviewRequired: 0 }, error: null });
     const claim = await mocks.rpc();
-    mocks.rpc.mockImplementation(async name => name === 'claim_email_outbox_delivery' ? claim : { data: true, error: null });
+    mocks.rpc.mockImplementation(async name => name === 'claim_email_outbox_delivery_v2' ? claim : { data: true, error: null });
     mocks.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
     mocks.send.mockImplementation(async (input) => {
       await input.delivery.beforeSend();
@@ -59,7 +59,7 @@ describe('event notices through the existing durable sender', () => {
     await expect(processEmailOutbox()).rejects.toThrow('email_state_unavailable');
   });
   it('delivers an exception using the existing compatible email type and trusted order link', async () => {
-    mocks.rpc.mockImplementation(async name => ({ data: name === 'claim_email_outbox_delivery' ? { rows: [{ id: 'exception-queue', lease_token: 'test-lease', to_email: 'owner@example.test', event_type: 'vendor_order_update',
+    mocks.rpc.mockImplementation(async name => ({ data: name === 'claim_email_outbox_delivery_v2' ? { rows: [{ id: 'exception-queue', lease_token: 'test-lease', to_email: 'owner@example.test', event_type: 'vendor_order_update',
       payload: { vendorName: 'Kitchen', reason: 'Pickup needs verification. ORD-123 · 2 × Cake', reference: 'ORD-123', occurredAt: '2026-10-12T00:00:00Z', actionPath: '/vendor/orders' } }], reviewRequired: 0 } : true, error: null }));
     mocks.send.mockImplementation(async (input) => {
       await input.delivery.beforeSend();
@@ -70,7 +70,7 @@ describe('event notices through the existing durable sender', () => {
     expect(await processEmailOutbox()).toEqual({ sent: 1, failed: 0, reviewRequired: 0 });
   });
   it('does not turn arbitrary stored action paths into email links', async () => {
-    mocks.rpc.mockImplementation(async name => ({ data: name === 'claim_email_outbox_delivery' ? { rows: [{ id: 'exception-queue', lease_token: 'test-lease', to_email: 'owner@example.test', event_type: 'vendor_order_update',
+    mocks.rpc.mockImplementation(async name => ({ data: name === 'claim_email_outbox_delivery_v2' ? { rows: [{ id: 'exception-queue', lease_token: 'test-lease', to_email: 'owner@example.test', event_type: 'vendor_order_update',
       payload: { vendorName: 'Kitchen', reason: 'Needs verification', actionPath: '//evil.example/private' } }], reviewRequired: 0 } : true, error: null }));
     mocks.send.mockResolvedValue(undefined);
     expect(await processEmailOutbox()).toEqual({ sent: 1, failed: 0, reviewRequired: 0 });

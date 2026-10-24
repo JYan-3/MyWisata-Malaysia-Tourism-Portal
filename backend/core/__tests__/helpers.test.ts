@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canMergeCartItemLines, canTransition, cartItemKey, cartTotals, haversineKm, validateVoucher, voucherDiscount } from "../helpers";
+import { resolveCartLinePrice, canMergeCartItemLines, canTransition, cartItemKey, cartTotals, haversineKm, validateVoucher, voucherDiscount } from "../helpers";
 import type { Activity, Voucher } from "../types";
 
 const activity: Activity = {
@@ -154,6 +154,27 @@ describe("order state machine", () => {
     expect(canTransition("DRAFT", "PAID")).toBe(false);
     expect(canTransition("COMPLETED", "CANCELLED")).toBe(false);
     expect(canTransition("CANCELLED", "PAID")).toBe(false);
+  });
+});
+
+describe("selected outlet pricing", () => {
+  const offered = {...activity, offers:[{outletId:"o1",price:10,status:"active"},{outletId:"o2",price:20,status:"active"}]};
+  it("uses the selected outlet in row, totals and scoped vouchers", () => {
+    const line={activityId:"a1",variantId:"adult",outletId:"o2",qty:2};
+    expect(resolveCartLinePrice(offered,line,{now,productIds:["a1"]})).toEqual({available:true,unitPrice:20});
+    const voucher:Voucher={id:"v",code:"TEST",type:"percent",value:10,minSpend:0,usageCap:10,usageCount:0,expiresAt:"2030-01-01",outletId:"o2"};
+    expect(cartTotals([line],[offered],voucher,now)).toMatchObject({subtotal:40,discount:4,total:36});
+  });
+  it("does not substitute another outlet or treat an invalid price as free", () => {
+    expect(resolveCartLinePrice(offered,{activityId:"a1",variantId:"adult",outletId:"missing",qty:1},{now,productIds:[]})).toEqual({available:false,reason:"outlet_unavailable"});
+    expect(resolveCartLinePrice({...activity,price:NaN},{activityId:"a1",variantId:"adult",qty:1},{now,productIds:[]})).toEqual({available:false,reason:"invalid_price"});
+    expect(resolveCartLinePrice({...activity,price:0},{activityId:"a1",variantId:"adult",qty:1},{now,productIds:[]})).toEqual({available:true,unitPrice:0});
+  });
+  it("retains trusted prepared and slot overrides with variant and rounding rules",()=>{
+    const line={activityId:"a1",variantId:"child",outletId:"o2",qty:1};
+    expect(resolveCartLinePrice(offered,line,{now,productIds:[]})).toEqual({available:true,unitPrice:5});
+    expect(resolveCartLinePrice(offered,{...line,priceOverride:7},{now,productIds:[],slotPriceOverride:8})).toEqual({available:true,unitPrice:7});
+    expect(resolveCartLinePrice(offered,line,{now,productIds:[],slotPriceOverride:8})).toEqual({available:true,unitPrice:8});
   });
 });
 

@@ -21,6 +21,10 @@ const AUDIT_PAYLOAD_ALLOWLIST = new Set([
   "traceReference",
   "reasonCode",
   "reason",
+  "roleName",
+  "moduleKeys",
+  "permissionKeys",
+  "isActive",
 ]);
 
 function redactAuditText(value: string) {
@@ -44,6 +48,22 @@ export function sanitizeAuditPayload(value: unknown): Record<string, unknown> | 
   const output: Record<string, unknown> = {};
   for (const [key, nestedValue] of Object.entries(value)) {
     if (!AUDIT_PAYLOAD_ALLOWLIST.has(key)) continue;
+    if (key === "roleName") {
+      if (typeof nestedValue === "string" && nestedValue.length <= 100) output[key] = redactAuditText(nestedValue);
+      continue;
+    }
+    if (key === "isActive") {
+      if (typeof nestedValue === "boolean") output[key] = nestedValue;
+      continue;
+    }
+    if (key === "moduleKeys" || key === "permissionKeys") {
+      const pattern = key === "moduleKeys" ? /^[a-z][a-z0-9_]{0,63}$/ : /^[a-z][a-z0-9_.:-]{0,127}$/;
+      if (Array.isArray(nestedValue) && nestedValue.length <= 100
+        && nestedValue.every((item): item is string => typeof item === "string" && pattern.test(item))) {
+        output[key] = [...new Set(nestedValue)].sort();
+      }
+      continue;
+    }
     const sanitized = sanitizeAllowedValue(nestedValue);
     if (sanitized !== undefined) output[key] = sanitized;
   }

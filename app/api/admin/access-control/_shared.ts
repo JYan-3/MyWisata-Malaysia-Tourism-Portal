@@ -103,16 +103,25 @@ export async function mutationReceipt(
     loadAccessControlStateResponse(),
   ]);
 
-  if (auditError || !auditEvent?.id) {
-    return apiFail("AUDIT_EVENT_UNAVAILABLE", "The mutation completed but its audit event could not be resolved", 500);
-  }
-  if (stateResult.response || !stateResult.state) {
-    return apiFail("POLICY_STATE_UNAVAILABLE", "The mutation completed but the current generation is unavailable", 503);
+  if (auditError || !auditEvent?.id || stateResult.response || !stateResult.state) {
+    return apiOk({
+      ...data,
+      committed: true,
+      entityId,
+      action,
+      auditEventId: auditError ? null : auditEvent?.id ?? null,
+      generation: stateResult.state?.generation ?? null,
+      receiptAvailable: false,
+    }, { status: 202 });
   }
 
   return apiOk({
     ...data,
     auditEventId: auditEvent.id,
     generation: stateResult.state.generation,
+    committed: true,
+    entityId,
+    action,
+    receiptAvailable: true,
   }, { status });
 }

@@ -87,3 +87,13 @@ export function parseStaffModules(value: unknown): StaffModule[] {
     return parsed ? [parsed] : [];
   });
 }
+
+// These workflows retain their explicit system-role boundary.
+const SYSTEM_ONLY_MODULES = new Set([
+  "overview", "access_control", "user_management", "wallet_settings", "wallet_approvers",
+  "payout_reports", "reconciliation", "staff_conduct", "moderation_words", "refunds",
+  "support_tickets", "chat_reports", "affiliate", "chatbot", "ai_assistant", "system_settings",
+]);
+export function canDelegateStaffModule(module: { key: string; permissionKeys: readonly string[] }) {
+  return module.permissionKeys.length > 0 && !SYSTEM_ONLY_MODULES.has(module.key);
+}

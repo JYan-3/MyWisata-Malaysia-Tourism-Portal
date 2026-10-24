@@ -49,6 +49,15 @@ describe('recipient-language system mail', () => {
     expect(recommendation.text).toContain('Cake House');
   });
 
+  it('sends approvers a generic protected-workspace email without review details', () => {
+    const mail = renderAccountEmail({ locale: 'zh-CN', eventType: 'staff_withdrawal_approval', reason: 'ignored private details', occurredAt });
+    expect(mail.subject).toBe('有提现审核任务待处理');
+    expect(mail.text).toContain('受保护的 Admin 工作区');
+    expect(mail.text).toContain('打开提现审批');
+    expect(mail.text).not.toContain('ignored private details');
+    expect(mail.text).not.toContain('RM');
+  });
+
   it('localizes event labels and boolean display values without changing venue names', () => {
     const mail = renderVendorEmail({ locale: 'zh-CN', eventType: 'vendor_event_update', vendorName: 'Craft House', reason: 'Manual note', occurredAt, eventChange: { kind: 'approval', eventTitle: 'Market', locationName: 'Hall A', startsOn: '2026-11-01', endsOn: '2026-11-02', actionPath: '/vendor/events', reason: 'Participation approved', changes: [{ field: 'stallNumber', before: '', after: 'A12' }, { field: 'applicationsOpen', before: 'false', after: 'true' }] } });
     expect(mail.subject).toBe('您的活动参与申请已获批准');

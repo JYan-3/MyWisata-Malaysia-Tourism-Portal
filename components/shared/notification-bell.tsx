@@ -9,7 +9,7 @@ import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { localizeNotification } from "@/lib/notifications/localize";
 
-export type NotificationScope = "customer" | "vendor";
+export type NotificationScope = "customer" | "vendor" | "staff";
 export type NotificationCategoryOption = { value: string; label: string; labelKey?: string };
 export type NotificationBellProps = {
   scope?: NotificationScope;
@@ -38,6 +38,14 @@ const VENDOR_CATEGORIES: NotificationCategoryOption[] = [
   { value: "vendor_account", label: "Account" },
 ];
 
+const STAFF_CATEGORIES: NotificationCategoryOption[] = [
+  { value: "all", label: "All" },
+  { value: "wallet", label: "Wallet" },
+  { value: "support", label: "Support" },
+  { value: "account_security", label: "Account & Security" },
+  { value: "messages", label: "Messages" },
+];
+
 const CATEGORY_LABEL_KEYS: Record<string, string> = {
   all: "notifications.categories.all",
   wallet: "notifications.categories.wallet",
@@ -58,14 +66,14 @@ function paramsFor(props: NotificationBellProps, category = "all", read = "all",
   if (props.scope === "vendor") {
     params.set("scope", "vendor");
     if (props.vendorId) params.set("vendorId", props.vendorId);
-  }
+  } else if (props.scope === "staff") params.set("scope", "staff");
   if (category !== "all") params.set("category", category);
   if (read !== "all") params.set("read", read);
   return params;
 }
 
 export function NotificationBell({ scope = "customer", vendorId = null, allHref, categories }: NotificationBellProps) {
-  const props = { scope, vendorId, allHref: allHref ?? "/customer/notifications", categories: categories ?? (scope === "vendor" ? VENDOR_CATEGORIES : CUSTOMER_CATEGORIES) };
+  const props = { scope, vendorId, allHref: allHref ?? (scope === "staff" ? "/admin/notifications" : "/customer/notifications"), categories: categories ?? (scope === "vendor" ? VENDOR_CATEGORIES : scope === "staff" ? STAFF_CATEGORIES : CUSTOMER_CATEGORIES) };
   const { t, i18n } = useTranslation("common");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [open, setOpen] = useState(false);
@@ -144,7 +152,7 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
     document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close);
   }, [open]);
   async function markRead(id: string) {
-    const response = await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
+    const response = await fetch(`/api/notifications/${id}/read${scope === "staff" ? "?scope=staff" : ""}`, { method: "PATCH" });
     if (!response.ok) return;
     setItems((current) => current.map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item));
     setUnread((current) => Math.max(0, current - 1));
@@ -152,6 +160,7 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
   async function markAll() {
     const markAllParams = new URLSearchParams();
     if (scope === "vendor") { markAllParams.set("scope", "vendor"); if (vendorId) markAllParams.set("vendorId", vendorId); }
+    if (scope === "staff") markAllParams.set("scope", "staff");
     const response = await fetch(`/api/notifications/read-all${markAllParams.toString() ? `?${markAllParams}` : ""}`, { method: "POST" });
     if (!response.ok) return;
     setItems((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? new Date().toISOString() })));

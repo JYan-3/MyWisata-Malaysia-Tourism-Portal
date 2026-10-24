@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import type { NormalizedForecast } from "@/lib/weather/types";
+import { withWeatherForecastProviderSlot } from "@/lib/weather/provider-slot";
 
 export const OPEN_METEO_PROVIDER = "open_meteo" as const;
 export const FORECAST_TTL_SECONDS = 30 * 60;
@@ -118,7 +119,7 @@ export function __resetOpenMeteoCacheForTests() {
 
 export async function getOpenMeteoForecast(
   input: { latitude: number; longitude: number; date: string },
-  options?: { fetcher?: typeof fetch; now?: () => Date },
+  options?: { fetcher?: typeof fetch; now?: () => Date; signal?: AbortSignal },
 ): Promise<NormalizedForecast> {
   const now = options?.now?.() ?? new Date();
   const fetchedAt = now.toISOString();
@@ -167,13 +168,17 @@ export async function getOpenMeteoForecast(
         "precipitation_probability",
       ].join(","));
 
-      const providerResponse = await (options?.fetcher ?? fetch)(url, {
+      const signal = options?.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal;
+      const text = await withWeatherForecastProviderSlot(async () => {
+        const providerResponse = await (options?.fetcher ?? fetch)(url, {
         cache: "no-store",
         redirect: "error",
-        signal: controller.signal,
+        signal,
       });
       if (!providerResponse.ok) throw new Error(`Open-Meteo returned ${providerResponse.status}`);
-      const text = await readResponseTextWithLimit(providerResponse);
+        return readResponseTextWithLimit(providerResponse);
+      }, signal);
+      if (text === null) throw new Error('Weather provider busy');
       const parsed = payloadSchema.safeParse(JSON.parse(text));
       if (!parsed.success || parsed.data.daily.time[0] !== input.date) {
         throw new Error("Open-Meteo response did not match the requested date");

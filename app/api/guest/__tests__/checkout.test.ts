@@ -4,6 +4,8 @@ vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:mock
 vi.mock('@/lib/supabase/service',()=>({createServiceClient:()=>({from:mocks.from,rpc:mocks.rpc})}));
 vi.mock('@/lib/entitlements/server',()=>({resolveEffectiveCapability:mocks.capability}));
 vi.mock('@/lib/stripe',()=>({stripe:{checkout:{sessions:{create:vi.fn()}}}}));
+vi.mock('next/server', async (importOriginal) => ({ ...await importOriginal<typeof import('next/server')>(), after: vi.fn() }));
+vi.mock('next/headers', async (importOriginal) => ({ ...await importOriginal<typeof import('next/headers')>(), cookies: vi.fn(async () => ({ get: () => undefined })) }));
 import {POST} from '@/app/api/customer/event-reservations/route';
 const ID='1d4057cf-c821-4b05-a454-61dbdc42d32c';
 function request(extra:Record<string,unknown>={}){return new Request('https://mylawatan.example/api/customer/event-reservations',{method:'POST',headers:{origin:'https://mylawatan.example',cookie:`__Host-mywisata-guest=${'A'.repeat(43)}`,'content-type':'application/json'},body:JSON.stringify({listingId:ID,pickupDate:'2026-10-03',slotId:ID,quantity:1,paymentMethod:'free_reservation',idempotencyKey:'guest-reservation-key-123456',contact:{email:'same.email+trip@gmail.com'},...extra})});}

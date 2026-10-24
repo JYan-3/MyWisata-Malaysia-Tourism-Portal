@@ -1,89 +1,43 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const mocks = vi.hoisted(() => ({
-  getUser: vi.fn(),
-  insert: vi.fn(),
-  select: vi.fn(),
-  single: vi.fn(),
-  moderateAccountText: vi.fn(),
-  classifyTicketSmart: vi.fn(),
-}));
-
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: { getUser: mocks.getUser },
-    from: () => ({
-      insert: mocks.insert,
-    }),
-  }),
-}));
-vi.mock("@/lib/moderation", () => ({ moderateAccountText: mocks.moderateAccountText }));
-vi.mock("@/lib/chatbot/classify-ai", () => ({ classifyTicketSmart: mocks.classifyTicketSmart }));
-
-const { POST } = await import("../route");
-
-const user = { id: "11111111-1111-4111-8111-111111111111" };
-
-function request(body: unknown) {
-  return new Request("http://localhost/api/account-suspended/appeal", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), insert: vi.fn(), clean: vi.fn(), external: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser }, from: () => ({ insert: mocks.insert }) }) }));
+vi.mock("@/lib/supabase/service", () => ({ createServiceClient: () => ({}) }));
+vi.mock("@/lib/moderation/clean", () => ({ cleanUserContent: mocks.clean }));
+vi.mock("@/lib/moderation", () => ({ moderateAccountText: mocks.external }));
+vi.mock("@/lib/chatbot/classify-ai", () => ({ classifyTicketSmart: mocks.external }));
+import { POST } from "../route";
+import { redactPII } from "@/lib/chatbot/pii";
+const request = (body: string) => new Request("http://localhost/api/account-suspended/appeal", { method: "POST", body: JSON.stringify({ body }) });
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.getUser.mockResolvedValue({ data: { user: { id: "customer-1" } } });
+  mocks.clean.mockImplementation(async (body: string) => ({ display: redactPII(body).clean }));
+  mocks.insert.mockReturnValue({ select: () => ({ single: async () => ({ data: { id: "ticket-1" }, error: null }) }) });
+});
+describe("private suspension appeals", () => {
+  it("rejects unauthenticated and short inputs before processing", async () => {
+    expect((await POST(request("short"))).status).toBe(422);
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    expect((await POST(request("Please review my account"))).status).toBe(401);
+    expect(mocks.clean).not.toHaveBeenCalled();
   });
-}
-
-describe("POST /api/account-suspended/appeal", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getUser.mockResolvedValue({ data: { user } });
-    mocks.moderateAccountText.mockResolvedValue({ flagged: false });
-    mocks.classifyTicketSmart.mockResolvedValue({ category: "general", method: "keyword" });
-    mocks.single.mockResolvedValue({ data: { id: "ticket-1" }, error: null });
-    mocks.select.mockReturnValue({ single: mocks.single });
-    mocks.insert.mockReturnValue({ select: mocks.select });
-  });
-
-  it("rejects an appeal shorter than 10 characters", async () => {
-    const response = await POST(request({ body: "too short" }));
-
-    expect(response.status).toBe(422);
-    expect(mocks.moderateAccountText).not.toHaveBeenCalled();
-    expect(mocks.insert).not.toHaveBeenCalled();
-  });
-
-  it("rejects flagged appeals without creating a ticket", async () => {
-    mocks.moderateAccountText.mockResolvedValue({ flagged: true, categories: ["harassment"] });
-
-    const response = await POST(request({ body: "A sufficiently long appeal" }));
-
-    expect(response.status).toBe(422);
-    expect(mocks.insert).not.toHaveBeenCalled();
-  });
-
-  it("fails closed when moderation is unavailable", async () => {
-    mocks.moderateAccountText.mockResolvedValue({ error: "api_unavailable" });
-
-    const response = await POST(request({ body: "A sufficiently long appeal" }));
-
-    expect(response.status).toBe(503);
-    expect(mocks.insert).not.toHaveBeenCalled();
-  });
-
-  it("creates the fixed suspension-appeal ticket after clean moderation", async () => {
-    const body = "A sufficiently long appeal";
-    const response = await POST(request({ body }));
-
+  it("cleans and locally classifies a private ticket without external AI", async () => {
+    const response = await POST(request("Please review my identity 900101-14-5678 and email me@example.test"));
     expect(response.status).toBe(201);
-    expect(mocks.moderateAccountText).toHaveBeenCalledWith(body, "suspension_appeal");
-    expect(mocks.classifyTicketSmart).toHaveBeenCalledWith("Account suspension appeal", body);
-    expect(mocks.insert).toHaveBeenCalledWith({
-      user_id: user.id,
-      session_id: null,
-      subject: "Account suspension appeal",
-      body,
-      category: "general",
-      classification_method: "keyword",
-      status: "open",
-    });
+    expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
+      body: "Please review my identity [IC] and email [EMAIL]", session_id: null,
+      classification_method: "keyword", category: "kyc", user_id: "customer-1",
+    }));
+    expect(mocks.external).not.toHaveBeenCalled();
+  });
+  it("fails safely before storage if local cleaning is unavailable", async () => {
+    mocks.clean.mockRejectedValue(new Error("private original evidence"));
+    const response = await POST(request("Please review my account"));
+    expect(response.status).toBe(503); expect(await response.text()).not.toContain("private original");
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+  it("bounds JSON before local processing", async () => {
+    expect((await POST(request("a".repeat(17000)))).status).toBe(413);
+    expect(mocks.clean).not.toHaveBeenCalled();
   });
 });

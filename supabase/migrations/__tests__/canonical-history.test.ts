@@ -6,6 +6,25 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261024051428_staff_role_audit_snapshots.sql",
+  "20261024051246_durable_withdrawal_customer_mail.sql",
+  "20261024051033_complete_portal_runtime_dependencies.sql",
+  "20261024041622_preserve_legacy_guest_receipt_delivery.sql",
+  "20261024041354_durable_order_receipts.sql",
+  "20261023174745_demo_taxonomy_backfill.sql",
+  "20261023173500_wallet_access_reliability.sql",
+  "20261023134038_wallet_approver_alert_resolution.sql",
+  "20261023130642_wallet_approver_notification_jobs.sql",
+  "20261023141512_approver_state_consistency.sql",
+  "20261023071800_trial_capacity_boundaries.sql",
+  "20261023011427_complete_staff_access_governance.sql",
+  "20261023100000_close_outlet_and_commission_client_writes.sql",
+  "20261023000636_atomic_affiliate_commission_clearing.sql",
+  "20261022143000_restrict_public_outlet_and_commission_columns.sql",
+  "20261021041200_kyc_ocr_engine_provenance.sql",
+  "20261020192613_kyc_safe_profile_metadata_columns.sql",
+  "20261020192407_kyc_client_read_boundary.sql",
+  "20261021055834_trip_day_origins.sql",
   "20260830133000_disable_production_demo_purchase.sql",
   "20260830134000_chat_auto_archive.sql",
   "20260904210000_place_comments.sql",
@@ -281,7 +300,6 @@ const approvedForwardMigrations = [
   "20261019180100_hotel_data_fill.sql",
   "20261020085328_review_rating_metrics_by_scope.sql",
   "20261022195929_vendor_managed_product_types_outlet_badges.sql",
-  "20261023174745_demo_taxonomy_backfill.sql",
 ];
 
 function migrationFiles() {

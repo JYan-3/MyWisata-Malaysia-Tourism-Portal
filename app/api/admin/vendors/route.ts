@@ -12,6 +12,7 @@ const EMPTY_ID = '00000000-0000-0000-0000-000000000000';
 const FILTER_STATUSES = ['all', 'pending', 'approved', 'welcomed', 'rejected', 'suspended'] as const;
 
 const querySchema = z.object({
+  refresh: z.enum(["1"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   filter: z.enum(FILTER_STATUSES).default('all'),
   search: z.string().trim().max(200).default(''),
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
 
     const [vendorResult, recommendationResult, ...statusResults] = await Promise.all([
       vendorQuery,
-      service.from('vendor_recommendations').select('id,vendor_name').eq('status', 'approved').order('vendor_name'),
+      parsed.data.refresh === '1' ? Promise.resolve({ data: null, error: null }) : service.from('vendor_recommendations').select('id,vendor_name').eq('status', 'approved').order('vendor_name'),
       ...FILTER_STATUSES.map(async (status) => {
         let countQuery = service.from('vendors').select('id', { count: 'exact', head: true });
         if (status === 'approved') countQuery = countQuery.eq('status', 'approved').is('approval_email_sent_at', null);
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
       page,
       pageSize: PAGE_SIZE,
       counts: Object.fromEntries(statusResults.map((result) => [result.status, result.count])),
-      approvedRecommendations: recommendationResult.data ?? [],
+      ...(parsed.data.refresh === "1" ? {} : { approvedRecommendations: recommendationResult.data ?? [] }),
     });
   } catch {
     return apiFail('VENDORS_UNAVAILABLE', 'Unable to load vendors', 503);

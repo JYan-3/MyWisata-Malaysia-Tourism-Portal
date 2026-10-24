@@ -2,18 +2,19 @@
 
 import { formatStayRange } from "@/lib/customer/booking-view";
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, ImageOff, Info, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
 import { getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
-import { unitPrice } from "@/backend/core/helpers";
+import { getSelectedOutletStock } from "@/lib/customer/outlet-shop";
+import { resolveCartLinePrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Button } from "@/components/ui/button";
-import type { Activity, BookingSlot, Outlet, StayBookingDetails, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, CartItem, Outlet, StayBookingDetails, Voucher } from "@/backend/core/types";
 import { formatDate, formatMYRNumber } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import {
@@ -148,14 +149,20 @@ export default function CartPage() {
     return () => { active = false; };
   }, [bookingActivityKey, bookingActivityRequestToken]);
 
-  const { subtotal, discount, total } = totals(currentUser ? appliedVoucher ?? undefined : undefined);
+  const linePriceFor=useCallback((activity: Activity, item: CartItem) => {
+    const resolved=resolveCartLinePrice(activity,item,{now:new Date(),productIds:items.map(line=>line.activityId),slotPriceOverride:item.slotId ? slotsById.get(item.slotId)?.priceOverride : undefined});
+    return resolved.available ? resolved.unitPrice : 0;
+  },[items,slotsById]);
+
+  const { subtotal, discount, total } = totals(currentUser ? appliedVoucher ?? undefined : undefined, new Map([...slotsById.values()].flatMap(slot=>slot.priceOverride === undefined ? [] : [[slot.id, slot.priceOverride]])));
   const selectAllRef = useRef<HTMLInputElement>(null);
   const selectableKeys = useMemo(
     () => items.flatMap((item) => {
       const activity = activities.find((candidate) => candidate.id === item.activityId);
       if (!activity) return [];
       if (activity.categorySlug === "accommodation" && !item.stayDetails) return [];
-      const stockLimit = !activity.requiresBooking ? activity.availableStock : undefined;
+      if (!resolveCartLinePrice(activity,item,{now:new Date(),productIds:items.map(line=>line.activityId)}).available) return [];
+      const stockLimit = !activity.requiresBooking ? getSelectedOutletStock(activity, item.outletId ?? activity.outletId) : undefined;
       const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
       const availability = getCartLineAvailability({
         slotId: item.slotId,
@@ -199,7 +206,7 @@ export default function CartPage() {
         if (!selectedKeys.has(cartItemKey(item))) return sum;
         const activity = activities.find((candidate) => candidate.id === item.activityId);
         if (!activity) return sum;
-        const price = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId));
+        const price = linePriceFor(activity, item);
         return sum + price * item.qty;
       }, 0);
       return {
@@ -211,7 +218,7 @@ export default function CartPage() {
         partiallySelected: selectedCount > 0 && selectedCount < groupSelectableKeys.length,
       };
     });
-  }, [items, activities, outlets, selectableKeys, selectedKeys]);
+  }, [items, activities, outlets, selectableKeys, selectedKeys, linePriceFor]);
 
   const voucherValidationItems = useMemo(
     () => items
@@ -222,10 +229,10 @@ export default function CartPage() {
           productId: item.activityId,
           outletId: item.outletId ?? activity?.outletId,
           quantity: item.qty,
-          unitPrice: item.priceOverride ?? (activity ? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId)) : 0),
+          unitPrice: activity ? linePriceFor(activity, item) : 0,
         };
       }),
-    [activities, items, selectedKeys],
+    [activities, items, selectedKeys, linePriceFor],
   );
 
   const selectedVendorIds = useMemo(() => new Set(
@@ -452,9 +459,9 @@ export default function CartPage() {
           const variant = activity.variants.find((v) => v.id === item.variantId);
           const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
           const confirmedSlot = bookingSlotsStatus === "loaded" ? slot : undefined;
-          const price = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId));
+          const price = linePriceFor(activity, item);
           const lineTotal = price * item.qty;
-          const stockLimit = !activity.requiresBooking ? activity.availableStock : undefined;
+          const stockLimit = !activity.requiresBooking ? getSelectedOutletStock(activity, item.outletId ?? activity.outletId) : undefined;
           const availability = getCartLineAvailability({
             slotId: item.slotId,
             slot,
@@ -462,7 +469,7 @@ export default function CartPage() {
             quantity: item.qty,
             stockLimit,
           });
-          const available = availability.available;
+          const available = availability.available && resolveCartLinePrice(activity,item,{now:new Date(),productIds:items.map(line=>line.activityId)}).available;
           const isAccommodation = activity.categorySlug === "accommodation";
           const missingStayDetails = isAccommodation && !item.stayDetails;
           const availabilityLabel = availability.status === "checking"
@@ -686,12 +693,12 @@ export default function CartPage() {
       </div>
 
       {selectedKeys.size > 0 ? (
-        <a
+        <Link
           href={appliedVoucher ? `/customer/checkout?voucher=${encodeURIComponent(appliedVoucher.code)}${appliedClaimId ? `&claim=${encodeURIComponent(appliedClaimId)}` : ""}` : "/customer/checkout"}
           className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-base font-medium text-primary-foreground transition-all hover:bg-primary/90"
         >
           {tCustomer("strictMigration.cart.proceedSelected", { count: selectedKeys.size })}
-        </a>
+        </Link>
       ) : (
         <Button type="button" className="h-12 w-full rounded-full text-base" disabled>
           {tCustomer("ui.actions.proceedCheckout")}

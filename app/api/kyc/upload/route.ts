@@ -4,6 +4,9 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
+import { readBoundedFormData, RequestBodyError } from '@/lib/validation/request-body';
+import { withPortalWorkload, WorkloadUnavailableError } from '@/lib/operations/workload';
+import { reserveGuestRateLimit } from '@/lib/checkout/guest-session';
 
 const IC_PATTERNS: Record<string, RegExp> = {
   national_id: /^\d{6}-?\d{2}-?\d{4}$/,
@@ -37,23 +40,12 @@ function safeSubmissionFailure(error: unknown) {
   return apiFail('SUBMIT_FAILED', 'Unable to submit KYC documents', 500);
 }
 
-export async function POST(request: Request) {
-  const authenticated = await createClient();
-  const { data: { user } } = await authenticated.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  // Read-only fast path. begin also supersedes old info_requested cases, so it
-  // must remain after image validation. Its atomic check still fences races.
-  const service = createServiceClient();
-  const { data: activeCases, error: availabilityError } = await service.from('kyc_submissions')
-    .select('id').eq('user_id', user.id).in('status', ['draft', 'pending']).limit(1);
-  if (availabilityError || !Array.isArray(activeCases)) return apiFail('KYC_UNAVAILABLE', 'KYC submission is temporarily unavailable', 503);
-  if (activeCases.length) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
-
-
+async function prepareUpload(request: Request, signal: AbortSignal) {
   let formData: FormData;
-  try { formData = await request.formData(); }
-  catch { return apiFail('INVALID_FORM', 'Could not parse form data', 400); }
+  try { formData = await readBoundedFormData(request, 10 * 1024 * 1024 + 64 * 1024, signal); }
+  catch (error) {
+    return apiFail('INVALID_FORM', 'Could not parse form data within upload limits', error instanceof RequestBodyError && error.code === 'too_large' ? 413 : error instanceof RequestBodyError && error.code === 'timeout' ? 408 : 400);
+  }
 
   if (formData.get('ocrConsent') !== 'true') {
     return apiFail('OCR_CONSENT_REQUIRED', 'Consent is required for private document processing', 422);
@@ -79,13 +71,46 @@ export async function POST(request: Request) {
 
   let images: Awaited<ReturnType<typeof prepareKycEvidenceImage>>[];
   try {
-    images = await Promise.all([
-      prepareKycEvidenceImage(Buffer.from(front.buffer), frontFile.type),
-      prepareKycEvidenceImage(Buffer.from(back.buffer), backFile.type),
-    ]);
+    images = [];
+    // Sequential bounded transforms prevent two full-resolution decodes per slot.
+    signal.throwIfAborted();
+    images.push(await prepareKycEvidenceImage(Buffer.from(front.buffer), frontFile.type));
+    signal.throwIfAborted();
+    images.push(await prepareKycEvidenceImage(Buffer.from(back.buffer), backFile.type));
+    signal.throwIfAborted();
   } catch {
     return apiFail('INVALID_FILE_CONTENT', 'Documents must be decodable photos under the image limits', 422);
   }
+
+  return { icNumber, docType, frontFile, backFile, images: images.map((image) => image.stored) };
+}
+
+export async function POST(request: Request) {
+  const authenticated = await createClient();
+  const { data: { user } } = await authenticated.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  // Read-only fast path. begin also supersedes old info_requested cases, so it
+  // must remain after image validation. Its atomic check still fences races.
+  const service = createServiceClient();
+  const { data: activeCases, error: availabilityError } = await service.from('kyc_submissions')
+    .select('id').eq('user_id', user.id).in('status', ['draft', 'pending']).limit(1);
+  if (availabilityError || !Array.isArray(activeCases)) return apiFail('KYC_UNAVAILABLE', 'KYC submission is temporarily unavailable', 503);
+  if (activeCases.length) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
+
+
+  if (!await reserveGuestRateLimit(`kyc-upload:${user.id}`, 3, 600)) {
+    return apiFail('RATE_LIMITED', 'Too many upload attempts; please try again later', 429);
+  }
+  let prepared: Awaited<ReturnType<typeof prepareUpload>>;
+  try { prepared = await withPortalWorkload('kyc_upload', (signal) => prepareUpload(request, signal), request.signal); }
+  catch (error) {
+    const response = apiFail('KYC_BUSY', 'Document processing is busy; please keep your files and try again shortly', error instanceof WorkloadUnavailableError && error.code === 'busy' ? 429 : 503);
+    response.headers.set('Retry-After', '10');
+    return response;
+  }
+  if (prepared instanceof Response) return prepared;
+  const { icNumber, docType, frontFile, backFile, images } = prepared;
 
   let fingerprint: { algorithm: 'hmac_sha256_v1'; value: string };
   try { fingerprint = await hashICWithHmac(icNumber.trim()); }
@@ -114,7 +139,7 @@ export async function POST(request: Request) {
   };
 
   try {
-    const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, images[0].stored, {
+    const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, images[0], {
       contentType: frontFile.type, upsert: false,
     });
     if (frontUpload.error) {
@@ -122,7 +147,7 @@ export async function POST(request: Request) {
       return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
     }
 
-    const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1].stored, {
+    const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1], {
       contentType: backFile.type, upsert: false,
     });
     if (backUpload.error) {

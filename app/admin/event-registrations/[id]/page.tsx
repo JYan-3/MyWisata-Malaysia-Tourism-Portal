@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/ui/badge";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 interface AdminCampaignProduct {
   id: string;
@@ -81,6 +83,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
           ...(stallReason.trim() ? { reason: stallReason.trim() } : {}) }),
       });
       const body = await response.json();
+      if (response.status === 401 || response.status === 403) { setDetail(null); setPendingAction(null); }
       if (!response.ok) throw new Error(t(`promotionCampaigns.locations.errors.${body.error?.code || "SAVE_FAILED"}`));
       showFeedback("success", t(body.data?.notificationQueued ? "eventRegistrations.notificationQueued" : "eventRegistrations.stallUnchanged"));
       setStallEditOpen(false);
@@ -90,22 +93,33 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
   }
 
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const snapshot = useRef<string | null>(null);
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     try {
-      const response = await fetch(`/api/admin/event-registrations/${id}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/event-registrations/${id}${signal ? "?refresh=1" : ""}`, { cache: "no-store", signal });
       const body = await response.json().catch(() => ({}));
+      if (response.status === 401 || response.status === 403) { setDetail(null); setPendingAction(null); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
       if (!response.ok) throw new Error(body.error?.message ?? (response.status === 404 ? t("eventRegistrations.errors.notFound") : t("eventRegistrations.errors.load")));
-      setDetail(body.data?.registration ?? null);
+      const next = body.data?.registration ?? null;
+      const version = JSON.stringify(next);
+      if (signal && snapshot.current && snapshot.current !== version) {
+        setPendingAction(null);
+        showFeedback("info", t("reviewRefresh.changed"));
+      }
+      snapshot.current = version;
+      setDetail(next);
       setError(null);
     } catch (err) {
+      if (signal) throw err;
       setError(err instanceof Error ? err.message : t("eventRegistrations.errors.load"));
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
-  }, [id, t]);
+  }, [id, t, showFeedback]);
 
   useEffect(() => { void load(); }, [load]);
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: load });
 
   async function removeFromLocation() {
     const reason = await prompt(t("eventRegistrations.removePrompt"));
@@ -156,6 +170,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
           ...(action === "approve" ? { stallNumber: confirmedStall.trim(), expectedUpdatedAt: detail?.updatedAt } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
+      if (response.status === 409) await load();
       if (!response.ok) throw new Error(t(`promotionCampaigns.locations.errors.${body.error?.code || "SAVE_FAILED"}`));
       showFeedback("success", t(body.data?.notificationQueued ? "eventRegistrations.notificationQueued" : `eventRegistrations.actions.${action}Success`));
       setNote("");
@@ -176,6 +191,7 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
 
   return (
     <AdminPageShell>
+      <div className="col-span-full flex flex-wrap items-center gap-3 py-2 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <Link href="/admin/event-registrations" className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft size={16} aria-hidden="true" />
         {t("eventRegistrations.backToQueue")}

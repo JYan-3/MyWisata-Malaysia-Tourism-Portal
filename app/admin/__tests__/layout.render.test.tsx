@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
 }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }) }));
 // Toolbar controls have their own providers; this test exercises the real role-filtered layout.
 vi.mock("@/components/shared/appearance-control", () => ({ AppearanceControl: () => null }));
 vi.mock("@/components/shared/language-switcher", () => ({ LanguageSwitcher: () => null }));

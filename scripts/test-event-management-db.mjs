@@ -27,6 +27,12 @@ if (env.EVENT_TEST_DATABASE_URL || env.DATABASE_URL || env.SUPABASE_DB_URL) {
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('Refusing event DB test: invalid loopback port.');
 }
+if (env.EVENT_TEST_COMMERCE_RISK === '1'
+  && (!env.EVENT_TEST_GUARANTEES || env.EVENT_TEST_GUARANTEES === 'baseline'
+    || !env.EVENT_TEST_SETTLEMENT || env.EVENT_TEST_SETTLEMENT === 'baseline'
+    || !env.EVENT_TEST_FILTERS)) {
+  throw new Error('Commerce risk verification requires patched event guarantees, settlement and filter fixtures.');
+}
 
 const baseConfig = {
   host,
@@ -466,6 +472,10 @@ try {
     if (!env.EVENT_TEST_GUARANTEES || env.EVENT_TEST_CHECKOUT_LAYOUT !== 'guest') throw new Error('Buyer guards require guarantees and Guest fixture layout');
     const { verifyCheckoutEligibility } = await import('./lib/checkout-eligibility-db.mjs');
     await verifyCheckoutEligibility({ db: dbClient, query, config: { ...baseConfig, database } });
+  }
+  if (env.EVENT_TEST_COMMERCE_RISK === '1') {
+    const { verifyCommerceRisk } = await import('./lib/commerce-risk-db.test.mjs');
+    await verifyCommerceRisk({ db: dbClient, query });
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

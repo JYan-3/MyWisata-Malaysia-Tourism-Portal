@@ -120,6 +120,7 @@
   "notifications": {
     "title": "Pemberitahuan",
     "label": "Pemberitahuan",
+    "adminDescription": "Tugasan dan kemas kini baharu yang diberikan kepada akaun kakitangan anda.",
     "all": "Semua",
     "unread": "Belum dibaca",
     "markAllAsRead": "Tandakan semua sebagai dibaca",
@@ -160,6 +161,26 @@
       "withdrawalSubmitted": {
         "title": "Permohonan pengeluaran dihantar",
         "body": "Pengeluaran anda sedang menunggu semakan. Kami akan memaklumkan anda apabila status berubah."
+      },
+      "withdrawalApprovalTask": {
+        "title": "Pengeluaran menunggu semakan",
+        "body": "Tugasan semakan pengeluaran sedang menunggu. Buka halaman Admin yang dilindungi untuk menyemaknya."
+      },
+      "withdrawalApprovalStepCompleted": {
+        "title": "Semakan pertama pengeluaran selesai",
+        "body": "Kelulusan pertama diselesaikan oleh {{resolved_by_name}} pada {{resolved_at_label}}. Pengesah kedua masih perlu menyemak pengeluaran ini."
+      },
+      "withdrawalApprovalResolved": {
+        "title": "Semakan pengeluaran selesai",
+        "body": "Semakan ini diselesaikan oleh {{resolved_by_name}} pada {{resolved_at_label}}."
+      },
+      "withdrawalApprovalCycleRestarted": {
+        "title": "Semakan pengeluaran terdahulu ditutup",
+        "body": "Kitaran semakan ini digantikan oleh {{resolved_by_name}} pada {{resolved_at_label}}. Kitaran semakan baharu tersedia."
+      },
+      "withdrawalApprovalUnavailable": {
+        "title": "Tugasan semakan pengeluaran tidak tersedia",
+        "body": "Rekod pengeluaran untuk tugasan semakan ini tidak lagi tersedia."
       },
       "withdrawalPaid": {
         "title": "Bayaran dihantar ke akaun anda",

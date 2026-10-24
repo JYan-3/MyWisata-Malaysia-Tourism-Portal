@@ -1,3 +1,4 @@
+vi.mock('@/lib/email/events', () => ({ scheduleReceiptDelivery: vi.fn() }));
 import { describe, expect, it, vi } from "vitest";
 import type { Activity } from "@/backend/core/types";
 import { POST } from "../prepare/route";

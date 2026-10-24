@@ -7,6 +7,9 @@ import { generateTripSuggestions, getTripCopilotCandidates } from "@/lib/custome
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { consumeTripPlanRateLimit } from "./route-state";
+import { reserveAiQuota } from "@/lib/rate-limit/ai";
+import { reserveGuestRateLimit } from "@/lib/checkout/guest-session";
+import { withPortalWorkload, WorkloadUnavailableError } from "@/lib/operations/workload";
 
 export const dynamic = "force-dynamic";
 
@@ -51,11 +54,22 @@ export async function POST(request: Request) {
       excludeProductIds: tripItems.flatMap((item) => item.experience_id ? [item.experience_id] : []),
     }, db);
     const language: ChatLanguage = parsed.data.locale === "ms" ? "bm" : parsed.data.locale === "zh-CN" ? "zh" : "en";
-    const result = await generateTripSuggestions({
+    const tripInfo = {
       name: trip.name,
       startDate: trip.start_date,
       endDate: trip.end_date,
-    }, candidates, language, parsed.data.preference);
+    };
+    const allowExternal = await reserveAiQuota(request, 'trip-plan', user.id, 8)
+      && await reserveGuestRateLimit('ai:trip-plan:all', 20, 60);
+    let result;
+    try {
+      result = allowExternal
+        ? await withPortalWorkload('trip_ai', (signal) => generateTripSuggestions(tripInfo, candidates, language, parsed.data.preference, { signal }), request.signal)
+        : await generateTripSuggestions(tripInfo, candidates, language, parsed.data.preference, { allowExternal: false });
+    } catch (error) {
+      if (!(error instanceof WorkloadUnavailableError)) throw error;
+      result = await generateTripSuggestions(tripInfo, candidates, language, parsed.data.preference, { allowExternal: false });
+    }
     const candidatesById = new Map(candidates.map((candidate) => [candidate.productId, candidate]));
 
     return privateResponse(apiOk({

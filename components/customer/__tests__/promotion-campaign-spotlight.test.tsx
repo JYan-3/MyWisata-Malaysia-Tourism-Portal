@@ -40,6 +40,8 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).toContain("shadow-sm");
     expect(markup).toContain("md:grid-cols-[52%_48%]");
     expect(markup).toContain("md:min-h-[410px]");
+    // Fixed panel height keeps every slide the same size so the arrows don't jump.
+    expect(markup).toMatch(/data-slot="promotion-campaign-content"[^>]*\bh-\[420px\][^>]*md:h-\[410px\]/);
     expect(markup).toContain("aspect-[16/9]");
     expect(markup).toContain("md:aspect-auto");
     expect(markup).toContain("ui.home.campaigns");

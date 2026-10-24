@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { ACCOUNTS, DEMO_PASSWORD } from './helpers/demo';
+import { ACCOUNTS, signIn } from './helpers/demo';
 import { auditTheme, type ThemeAudit } from './helpers/theme-audit';
 import { POSTCARD } from './helpers/shop';
 
@@ -20,7 +20,9 @@ const EVENT_ORDER = 'c68f2df1-26fe-4c24-a573-1b015fb53732'; // paid event reserv
 const ROLES: Record<string, { email: string | null; pages: string[] }> = {
   public: {
     email: null,
-    pages: ['/login', '/help', '/legal/about', '/legal/data', '/legal/privacy', '/legal/terms', '/guest/explore', '/reset-password', '/vendor-invite', '/account-suspended', '/account-restore', '/staff'],
+    // Reset-password requires a valid recovery session; an anonymous visit is
+    // expected to redirect and cannot prove the reset form's appearance.
+    pages: ['/login', '/help', '/legal/about', '/legal/data', '/legal/privacy', '/legal/terms', '/guest/explore', '/vendor-invite', '/account-suspended', '/account-restore', '/staff'],
   },
   customer: {
     email: ACCOUNTS.customer2,
@@ -58,13 +60,7 @@ async function newContext(browser: Browser, { dark, email }: { dark: boolean; em
   const context = await browser.newContext({ colorScheme: 'light' });
   if (dark) await context.addInitScript(() => { try { localStorage.setItem('theme', 'dark'); } catch { /* storage blocked */ } });
   const page = await context.newPage();
-  if (email) {
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill(email);
-    await page.locator('input[type="password"]').fill(DEMO_PASSWORD);
-    await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 120_000 });
-  }
+  if (email) await signIn(page, email);
   return { context, page };
 }
 
@@ -136,27 +132,32 @@ for (const [role, config] of Object.entries(ROLES)) {
     test.setTimeout(1_800_000);
     const { context, page } = await newContext(browser, { dark: true, email: config.email });
     findings[role] = [];
-    for (const path of config.pages) {
-      await page.goto(path, { waitUntil: 'domcontentloaded' }).catch(() => null);
-      await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
-      await page.waitForTimeout(1200);
-      // A page that redirects while loading destroys the page context mid-check; settle and retry once.
-      const audit = await auditTheme(page).catch(async () => { await page.waitForLoadState('load').catch(() => undefined); await page.waitForTimeout(2000); return auditTheme(page); });
-      audit.url = `${path}  ->  ${new URL(page.url()).pathname}`;
-      findings[role].push(audit);
-      const bad = audit.lightSurfaces.length + audit.lowContrast.filter((c) => c.ratio < 2).length;
-      if (bad > 0) {
-        mkdirSync(`${OUT}/theme`, { recursive: true });
-        await page.screenshot({ path: `${OUT}/theme/${role}${path.replaceAll('/', '_')}.png`, fullPage: true }).catch(() => undefined);
+    try {
+      for (const path of config.pages) {
+        await page.goto(path, { waitUntil: 'domcontentloaded' }).catch(() => null);
+        // Theme styles are available at DOMContentLoaded. Waiting for networkidle
+        // makes this route audit stall on polling and other background requests.
+        // Wait for Next's route loading boundary to resolve before measuring the rendered page.
+        await expect(page.getByText('Loading…', { exact: true })).toHaveCount(0, { timeout: 90_000 });
+        // A page that redirects while loading destroys the page context mid-check; settle and retry once.
+        const audit = await auditTheme(page).catch(async () => { await page.waitForLoadState('load').catch(() => undefined); await page.waitForTimeout(2000); return auditTheme(page); });
+        audit.url = `${path}  ->  ${new URL(page.url()).pathname}`;
+        findings[role].push(audit);
+        const bad = audit.lightSurfaces.length + audit.lowContrast.filter((c) => c.ratio < 2).length;
+        if (bad > 0) {
+          mkdirSync(`${OUT}/theme`, { recursive: true });
+          await page.screenshot({ path: `${OUT}/theme/${role}${path.replaceAll('/', '_')}.png`, fullPage: true }).catch(() => undefined);
+        }
+        expect.soft(audit.htmlIsDark, `${path}: <html> has the dark class`).toBe(true);
+        expect.soft(audit.bodyLuminance, `${path}: page background is dark`).toBeLessThan(0.2);
+        expect.soft(audit.lightSurfaces.length, `${path}: light surfaces left in dark mode`).toBe(0);
+        expect.soft(audit.lowContrast.filter((c) => c.ratio < 2).length, `${path}: text with contrast below 2:1`).toBe(0);
       }
-      expect.soft(audit.htmlIsDark, `${path}: <html> has the dark class`).toBe(true);
-      expect.soft(audit.bodyLuminance, `${path}: page background is dark`).toBeLessThan(0.2);
-      expect.soft(audit.lightSurfaces.length, `${path}: light surfaces left in dark mode`).toBe(0);
-      expect.soft(audit.lowContrast.filter((c) => c.ratio < 2).length, `${path}: text with contrast below 2:1`).toBe(0);
+      // One file per role: a failed test restarts the worker, so shared state would be lost.
+      mkdirSync(OUT, { recursive: true });
+      writeFileSync(`${OUT}/theme-findings-${role}.json`, JSON.stringify(findings[role], null, 2));
+    } finally {
+      await context.close();
     }
-    // One file per role: a failed test restarts the worker, so shared state would be lost.
-    mkdirSync(OUT, { recursive: true });
-    writeFileSync(`${OUT}/theme-findings-${role}.json`, JSON.stringify(findings[role], null, 2));
-    await context.close();
   });
 }

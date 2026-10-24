@@ -6,50 +6,41 @@ const state = vi.hoisted(() => ({
     vendor_id: "4f774340-2bce-de7d-dc27-8208f1286b59",
     review_status: "pending_review",
     status: "inactive",
+    updated_at: "2026-10-22T00:00:00.000Z",
   },
-  reviewRecord: null as Record<string, unknown> | null,
-  insertError: null as { message: string } | null,
+  rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
+  rpcError: null as { message: string } | null,
   revalidateTag: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidateTag: state.revalidateTag }));
 
 vi.mock("@/lib/staff-permissions/server", () => ({
-  requireStaffPermission: vi.fn(async () => ({ user: { id: "aaaaaaaa-0000-0000-0000-000000000001" } })),
+  requireStaffPermission: vi.fn(async () => ({
+    user: { id: "aaaaaaaa-0000-0000-0000-000000000001" },
+    db: { rpc: async (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args });
+      return state.rpcError
+        ? { data: null, error: state.rpcError }
+        : { data: { reviewId: "review-1", entityId: state.entity.id, entityType: "product", status: args.p_action === "approve" ? "approved" : args.p_action === "reject" ? "rejected" : "change_requested", vendorId: state.entity.vendor_id }, error: null };
+    } },
+  })),
 }));
 
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(() => ({
-    from: (table: string) => ({
-      select: () => ({
-        eq: () => ({
-          single: async () => ({ data: table === "products" ? state.entity : null, error: null }),
-        }),
-      }),
-      update: (values: Record<string, unknown>) => ({
-        eq: () => ({
-          select: () => ({
-            single: async () => ({ data: { ...state.entity, ...values }, error: null }),
-          }),
-        }),
-      }),
-      insert: (record: Record<string, unknown>) => {
-        state.reviewRecord = record;
-        return Promise.resolve({ error: state.insertError });
-      },
-    }),
+    from: () => ({}),
   })),
 }));
 
-vi.mock("@/lib/audit", () => ({ auditAndNotify: vi.fn(async () => undefined) }));
 vi.mock("@/lib/vendor-notifications/emit", () => ({ emitVendorNotification: vi.fn(async () => undefined) }));
 
 import { POST } from "@/app/api/admin/catalogue/reviews/route";
 
 describe("POST /api/admin/catalogue/reviews", () => {
   beforeEach(() => {
-    state.reviewRecord = null;
-    state.insertError = null;
+    state.rpcCalls = [];
+    state.rpcError = null;
     state.revalidateTag.mockClear();
   });
 
@@ -65,6 +56,7 @@ describe("POST /api/admin/catalogue/reviews", () => {
         entityType: "product",
         entityId: state.entity.id,
         action,
+        expectedVersion: state.entity.updated_at,
         ...(action === "approve" ? {} : { note: "Please update the submitted listing." }),
       }),
     }));
@@ -73,12 +65,21 @@ describe("POST /api/admin/catalogue/reviews", () => {
     expect(response.status).toBe(200);
     const payload = await response.json() as { data: { review_status: string } };
     expect(payload.data.review_status).toBe(expectedStoredAction);
-    expect(state.reviewRecord?.action).toBe(expectedStoredAction);
+    expect(state.rpcCalls).toEqual([{
+      name: "review_catalogue_item",
+      args: {
+        p_entity_type: "product",
+        p_entity_id: state.entity.id,
+        p_expected_updated_at: state.entity.updated_at,
+        p_action: action,
+        p_note: action === "approve" ? null : "Please update the submitted listing.",
+      },
+    }]);
     expect(state.revalidateTag).toHaveBeenCalledWith("activities", { expire: 0 });
   });
 
-  it("does not report a complete review when the review history insert fails", async () => {
-    state.insertError = { message: "history insert failed" };
+  it("returns a conflict when another reviewer has already changed the task", async () => {
+    state.rpcError = { message: "catalogue_item_changed" };
     const response = await POST(new Request("http://localhost/api/admin/catalogue/reviews", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -86,11 +87,12 @@ describe("POST /api/admin/catalogue/reviews", () => {
         entityType: "product",
         entityId: state.entity.id,
         action: "approve",
+        expectedVersion: state.entity.updated_at,
       }),
     }));
 
     if (!response) throw new Error("The catalogue review route did not return a response");
-    expect(response.status).toBe(500);
-    expect(await response.json()).toMatchObject({ error: { code: "DB_ERROR" } });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "REVIEW_CONFLICT" } });
   });
 });

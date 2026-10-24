@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { processEmailOutbox } from '@/lib/email/outbox';
 import { checkKycSecurityHealth } from '@/lib/kyc/security-monitor';
+import { processWithdrawalApproverNotifications } from '@/lib/wallet/approver-notifications';
+import { recordPortalDispatch } from '@/lib/operations/queue-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +12,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   let monitorFailed = false;
+  try { await recordPortalDispatch('email', 'started'); }
+  catch { monitorFailed = true; }
   try { await checkKycSecurityHealth(); }
+  catch { monitorFailed = true; }
+  try { await processWithdrawalApproverNotifications(); }
   catch { monitorFailed = true; }
   try {
     const result = await processEmailOutbox(20);
+    try { await recordPortalDispatch('email', monitorFailed || result.reviewRequired > 0 || result.failed > 0 ? 'failed' : 'succeeded'); }
+    catch { monitorFailed = true; }
     if (result.reviewRequired > 0) return NextResponse.json({ ...result, error: 'email_delivery_review_required' }, { status: 503 });
     return NextResponse.json(monitorFailed ? { ...result, error: 'kyc_monitor_unavailable' } : result, { status: monitorFailed ? 503 : 200 });
   }

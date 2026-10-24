@@ -67,6 +67,7 @@ describe('contentReviewSchema', () => {
     const result = contentReviewSchema.safeParse({
       entityType: 'product',
       entityId: validId,
+      expectedVersion: '2026-10-22T00:00:00.000Z',
       action: 'change_requested',
       note: 'Please add a clearer product image and update the availability details.',
     });
@@ -74,11 +75,28 @@ describe('contentReviewSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('requires the version the reviewer opened for every entity type', () => {
+    for (const entityType of ['outlet', 'product', 'voucher', 'hotel_profile'] as const) {
+      expect(contentReviewSchema.safeParse({
+        entityType,
+        entityId: validId,
+        action: 'approve',
+      }).success).toBe(false);
+      expect(contentReviewSchema.safeParse({
+        entityType,
+        entityId: validId,
+        action: 'approve',
+        expectedVersion: '2026-10-22T00:00:00.000Z',
+      }).success).toBe(true);
+    }
+  });
+
   it('requires a meaningful note when requesting changes or rejecting', () => {
     for (const action of ['change_requested', 'reject'] as const) {
       const result = contentReviewSchema.safeParse({
         entityType: 'product',
         entityId: validId,
+        expectedVersion: '2026-10-22T00:00:00.000Z',
         action,
         note: 'no',
       });

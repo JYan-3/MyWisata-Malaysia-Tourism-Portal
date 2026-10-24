@@ -87,3 +87,11 @@ describe("getTripTimeProblem", () => {
     expect(getTripTimeProblem(hourChoices, null, HOURS, MONDAY)).toBeNull();
   });
 });
+
+it("distinguishes a full slot from itinerary order conflict", () => {
+  expect(getTripTimeProblem({kind: "slots", options: [{value: "10:00", available: true, disabled: true}]}, "10:00")).toBe("orderConflict");
+});
+
+it("flags typed opening-hours times that violate itinerary bounds",()=>{
+  expect(getTripTimeProblem({kind:"hours",options:[{value:"10:00",available:true,disabled:true}]},"10:15",HOURS,MONDAY,{min:"11:00"})).toBe("orderConflict");
+});

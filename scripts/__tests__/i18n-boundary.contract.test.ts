@@ -23,7 +23,7 @@ describe("strict localization boundary", () => {
     expect(outletRenderer).toContain("title: block.title ||");
     expect(outletRenderer).toContain("model.body &&");
     expect(ticketThread).toContain("{item.body}");
-    expect(notificationCenter).toContain("localizeNotification(item");
+    expect(notificationCenter).toContain("localizeNotification({ ...item, metadata }");
     expect(notificationCenter).toContain("{localized.title}");
     expect(notificationCenter).toContain("{localized.body}");
     expect(notificationBell).toContain("localizeNotification(item");

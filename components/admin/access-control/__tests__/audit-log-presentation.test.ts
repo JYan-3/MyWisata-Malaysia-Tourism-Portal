@@ -94,6 +94,18 @@ describe("human-readable audit presentation", () => {
     ]);
   });
 
+  it("shows canonical role module and permission list changes while rejecting nested values", () => {
+    expect(deriveAuditChanges(
+      { roleName: "Wallet Approver", moduleKeys: ["wallet", "kyc"], permissionKeys: ["admin.withdrawal.approve"], isActive: true },
+      { roleName: "Wallet Reviewer", moduleKeys: ["kyc", "wallet"], permissionKeys: ["admin.withdrawal.approve", "admin.withdrawal.review"], isActive: false },
+    )).toEqual([
+      { field: "isActive", before: true, after: false },
+      { field: "permissionKeys", before: ["admin.withdrawal.approve"], after: ["admin.withdrawal.approve", "admin.withdrawal.review"] },
+      { field: "roleName", before: "Wallet Approver", after: "Wallet Reviewer" },
+    ]);
+    expect(deriveAuditChanges({ moduleKeys: [{ private: true }] }, { moduleKeys: ["wallet"] })).toEqual([]);
+  });
+
   it("detects whether sanitized technical evidence exists", () => {
     expect(hasTechnicalAuditPayload(null, null)).toBe(false);
     expect(hasTechnicalAuditPayload(null, {})).toBe(true);

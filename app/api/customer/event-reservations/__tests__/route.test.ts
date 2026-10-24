@@ -22,6 +22,8 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.rpc })),
 }));
 vi.mock('@/lib/stripe', () => ({ stripe: { checkout: { sessions: { create: mocks.stripeCreate } } } }));
+vi.mock('next/server', async (importOriginal) => ({ ...await importOriginal<typeof import('next/server')>(), after: vi.fn() }));
+vi.mock('next/headers', async (importOriginal) => ({ ...await importOriginal<typeof import('next/headers')>(), cookies: vi.fn(async () => ({ get: () => undefined })) }));
 
 import { POST } from '../route';
 

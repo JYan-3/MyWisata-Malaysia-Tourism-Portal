@@ -7,7 +7,7 @@ import { Fragment, type ReactNode } from "react";
 import Map, { Layer, Marker, Popup, Source, type MapRef, type MarkerDragEvent } from "react-map-gl/maplibre";
 import type { GeoJSONSource, MapMouseEvent } from "maplibre-gl";
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from "geojson";
-import type { RouteTrafficSegment } from "@/lib/routing";
+import { ROUTE_TRAFFIC_COLORS, type RouteTrafficSegment } from "@/lib/routing";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export interface MapPin {
@@ -206,7 +206,12 @@ export function MaplibreMap({
   const mapRef = useRef<MapRef | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState("grab");
-  const routeCoordinates = useMemo(() => fitCoordinates ?? [], [fitCoordinates]);
+  // Re-fit only when the coordinates really change. A parent that passes a new
+  // array with the same values on each render must not snap the map back to the
+  // route while the user is zooming or panning.
+  const routeKey = fitCoordinates?.map(([lat, lng]) => `${lat},${lng}`).join("|") ?? "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const routeCoordinates = useMemo(() => fitCoordinates ?? [], [routeKey]);
 
   // Trip-stop and suggested pins render as DOM markers below, not the GL dot layer.
   const dotPins = useMemo(
@@ -414,10 +419,12 @@ export function MaplibreMap({
                     "line-color": [
                       "match",
                       ["get", "trafficLevel"],
-                      "slow", "#FACC15",
-                      "congested", "#EF4444",
-                      "severe", "#B91C1C",
-                      "#2563EB",
+                      "normal", ROUTE_TRAFFIC_COLORS.normal,
+                      "slow", ROUTE_TRAFFIC_COLORS.slow,
+                      "congested", ROUTE_TRAFFIC_COLORS.congested,
+                      "severe", ROUTE_TRAFFIC_COLORS.severe,
+                      "unknown", ROUTE_TRAFFIC_COLORS.unknown,
+                      ROUTE_TRAFFIC_COLORS.unknown,
                     ],
                     "line-width": 5.5,
                     "line-opacity": 0.98,

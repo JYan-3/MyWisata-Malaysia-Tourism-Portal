@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
@@ -20,6 +20,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatMYR } from "@/lib/i18n/format";
+
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 type RefundRow = {
   id: string;
@@ -92,73 +94,53 @@ export default function AdminRefundsPage() {
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
   const [referenceNow, setReferenceNow] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [summary, setSummary] = useState({ pendingCount: 0, pendingValue: 0, processedCount: 0, failedCount: 0, oldestCreatedAt: null as string | null });
+
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/refunds", { cache: "no-store" });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search });
+      if (status) params.set("status",status);
+      const response = await fetch(`/api/admin/refunds?${params}`, { cache: "no-store", signal });
+      if (response.status === 401 || response.status === 403) { setRefunds([]); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
+      if (response.status === 403 || response.status === 401) setRefunds([]);
       const body = await response.json().catch(() => ({}));
       if (!response.ok)
         throw new Error(
           body.error?.message ?? t("refunds.errors.loadRequests"),
         );
       setRefunds(body.data?.refunds ?? []);
+      setTotal(body.data?.total ?? 0);
+      setTotalPages(Math.max(1,body.data?.totalPages ?? 0));
+      setSummary(body.data?.summary ?? { pendingCount: 0, pendingValue: 0, processedCount: 0, failedCount: 0, oldestCreatedAt: null });
+      if (body.data?.page && body.data.page !== page) setPage(body.data.page);
       setReferenceNow(new Date().getTime());
     } catch (loadError) {
+      if (signal) throw loadError;
       setError(
         loadError instanceof Error
           ? loadError.message
           : t("refunds.errors.loadRequests"),
       );
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
-  }, [t]);
+  }, [t, page, pageSize, search, status]);
 
   useEffect(() => {
     // Initial loading is already active; this effect starts the request and the later result updates the view.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
-  const filteredRefunds = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return refunds.filter((refund) => {
-      const matchesStatus = !status || refund.status === status;
-      const haystack = [
-        refund.orderNumber,
-        refund.orderId,
-        refund.provider,
-        refund.reason,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return matchesStatus && (!query || haystack.includes(query));
-    });
-  }, [refunds, search, status]);
-  const totalPages = Math.max(1, Math.ceil(filteredRefunds.length / pageSize));
-  const visibleRefunds = filteredRefunds.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
-  const visiblePending = filteredRefunds.filter(
-    (refund) => refund.status === "pending" || refund.status === "approved",
-  );
-  const visiblePendingValue = visiblePending.reduce(
-    (total, refund) => total + refund.amountRm,
-    0,
-  );
-  const processedCount = filteredRefunds.filter(
-    (refund) => refund.status === "processed",
-  ).length;
-  const failedCount = filteredRefunds.filter(
-    (refund) => refund.status === "failed",
-  ).length;
-  const oldestRefund = filteredRefunds.reduce<RefundRow | null>(
-    (oldest, refund) =>
-      !oldest || refund.createdAt < oldest.createdAt ? refund : oldest,
-    null,
-  );
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: load });
+  const visibleRefunds = refunds;
+  const visiblePendingValue = summary.pendingValue;
+  const processedCount = summary.processedCount;
+  const failedCount = summary.failedCount;
+  const oldestRefund = summary.oldestCreatedAt ? { createdAt: summary.oldestCreatedAt } : null;
 
   function formatAge(createdAt: string) {
     const createdAtTime = new Date(createdAt).getTime();
@@ -203,6 +185,7 @@ export default function AdminRefundsPage() {
         body: JSON.stringify({ action, evidenceVersion: refund.evidence?.version, ...(note ? { note } : {}), ...(manualReference ? { manualReference } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
+      if (response.status === 409) await load();
       if (!response.ok)
         throw new Error(
           body.error?.message ?? t("refunds.errors.reviewFailed"),
@@ -252,6 +235,7 @@ export default function AdminRefundsPage() {
 
   return (
     <AdminPageShell>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
         <AdminPageHeader
           eyebrow={<><RotateCcw size={14} /> {t("refunds.header.eyebrow")}</>}
           title={t("refunds.header.title")}
@@ -261,7 +245,7 @@ export default function AdminRefundsPage() {
               {t("refunds.header.reviewPriority")}
             </p>
             <p className="mt-1 text-sm font-semibold text-foreground">
-              {filteredRefunds.length > 0
+              {total > 0
                 ? t("refunds.header.oldestFirst")
                 : t("refunds.header.queueClear")}
             </p>
@@ -270,7 +254,7 @@ export default function AdminRefundsPage() {
         <AdminMetricGrid items={[
             {
               label: t("refunds.metrics.needsAction"),
-              value: visiblePending.length,
+              value: summary.pendingCount,
               detail: t("refunds.metrics.requestsInQueue"),
             },
             {
@@ -362,7 +346,7 @@ export default function AdminRefundsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
             <div>
               <h2 className="font-bold text-foreground">
-                {t("refunds.queue.title", { count: filteredRefunds.length })}
+                {t("refunds.queue.title", { count: total })}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("refunds.queue.description")}

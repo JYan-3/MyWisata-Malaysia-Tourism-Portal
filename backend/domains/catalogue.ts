@@ -237,7 +237,7 @@ async function getDiscoveryOutlets(ids: string[], db: SupabaseClient, badgeSlugs
   const batches = Array.from({ length: Math.ceil(outletIds.length / 200) }, (_, index) =>
     outletIds.slice(index * 200, (index + 1) * 200),
   );
-  const batchRows = await Promise.all(batches.map(async (batch) => {
+  const batchRows = await mapWithConcurrencyTwo(batches, async (batch) => {
     const query = (select: string, includeBadgeFilter: boolean) => {
       let builder = db
         .from("outlets")
@@ -261,7 +261,7 @@ async function getDiscoveryOutlets(ids: string[], db: SupabaseClient, badgeSlugs
     }
     if (result.error) throw result.error;
     return (result.data ?? []) as unknown as DiscoveryOutletRow[];
-  }));
+  });
 
   return batchRows.flat().map((row) => mapOutlet({
     ...row,
@@ -278,6 +278,20 @@ export async function getDiscoveryOutletsByIds(
   badgeSlugs: string[] = [],
 ): Promise<Outlet[]> {
   return getDiscoveryOutlets(ids, db, badgeSlugs);
+}
+
+async function mapWithConcurrencyTwo<T, R>(items: T[], mapper: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(2, items.length) }, () => worker()));
+  return results;
 }
 
 /** One buyable choice on the product page: which outlet, at what price. */
@@ -448,10 +462,9 @@ export interface DiscoveryReviewMetricEntry extends ReviewMetric {
 }
 
 async function getReviewMetricsForProducts(productIds: string[], db: SupabaseClient): Promise<Map<string, ReviewMetric>> {
-  const metricRows = (await Promise.all(
-    Array.from({ length: Math.ceil(productIds.length / REVIEW_METRICS_BATCH_SIZE) }, (_, index) => {
+  const metricBatches: Array<() => PromiseLike<{ product_id: string; rating: number | string; reviews: number | string }[]>> = Array.from({ length: Math.ceil(productIds.length / REVIEW_METRICS_BATCH_SIZE) }, (_, index) => {
       const batch = productIds.slice(index * REVIEW_METRICS_BATCH_SIZE, (index + 1) * REVIEW_METRICS_BATCH_SIZE);
-      return db
+      return () => db
         .from("product_review_metrics")
         .select("product_id,rating,reviews")
         .in("product_id", batch)
@@ -459,8 +472,8 @@ async function getReviewMetricsForProducts(productIds: string[], db: SupabaseCli
           if (error) throw error;
           return (data ?? []) as { product_id: string; rating: number | string; reviews: number | string }[];
         });
-    }),
-  )).flat();
+    });
+  const metricRows = (await mapWithConcurrencyTwo<typeof metricBatches[number], { product_id: string; rating: number | string; reviews: number | string }[]>(metricBatches, (load) => Promise.resolve(load()))).flat();
 
   return new Map(metricRows.map((row) => [
     row.product_id,
@@ -553,34 +566,49 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
   return rows.map((row) => mapActivity(row, reviewMetrics.get(row.id)));
 }
 
-async function loadDiscoveryActivityData(db: SupabaseClient, outletBadgeSlugs: string[] = []): Promise<{
+export type DiscoveryActivityData = {
   activities: Activity[];
-  outletMap: Map<string, Outlet>;
-}> {
+  outlets: Outlet[];
+};
+
+async function loadDiscoveryActivityData(
+  db: SupabaseClient,
+  outletBadgeSlugs: string[] = [],
+): Promise<DiscoveryActivityData & { outletMap: Map<string, Outlet> }> {
   const activities = await getDiscoveryProductActivities(db);
-  if (activities.length === 0) return { activities: [], outletMap: new Map() };
+  if (activities.length === 0) return { activities: [], outlets: [], outletMap: new Map() };
 
   const productIds = activities.map((activity) => activity.id);
   const outletIds = getDiscoveryOutletIds(activities);
-  const [reviewMetrics, outlets] = await Promise.all([
-    getDiscoveryReviewMetricEntries(productIds, db),
-    getDiscoveryOutletsByIds(outletIds, db, outletBadgeSlugs),
-  ]);
+  // Keep the refresh-wide query ceiling at two: the metric and outlet query
+  // families each batch internally and run in turn rather than concurrently.
+  const reviewMetrics = await getDiscoveryReviewMetricEntries(productIds, db);
+  const outlets = await getDiscoveryOutletsByIds(outletIds, db, outletBadgeSlugs);
 
   return {
     activities: applyDiscoveryReviewMetrics(activities, reviewMetrics),
+    outlets,
     outletMap: new Map(outlets.map((outlet) => [outlet.id, outlet])),
   };
 }
 
 export async function getDiscoveryProductActivities(db: SupabaseClient = supabase): Promise<Activity[]> {
-  const { data, error } = await db
-    .from("products")
-    .select(DISCOVERY_ACTIVITY_SELECT)
-    .eq("status", "active")
-    .eq("review_status", "approved");
-  if (error) throw error;
-  return ((data ?? []) as unknown as ProductRow[]).map((row) => mapActivity(row));
+  const rows: ProductRow[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db
+      .from("products")
+      .select(DISCOVERY_ACTIVITY_SELECT)
+      .eq("status", "active")
+      .eq("review_status", "approved")
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as unknown as ProductRow[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return rows.map((row) => mapActivity(row));
 }
 
 export function getDiscoveryOutletIds(activities: Activity[]): string[] {
@@ -605,6 +633,22 @@ export function applyDiscoveryReviewMetrics(
   }));
 }
 
+export async function getDiscoveryActivityData(db: SupabaseClient = supabase): Promise<DiscoveryActivityData> {
+  const { activities, outlets } = await loadDiscoveryActivityData(db);
+  return { activities, outlets };
+}
+
+export function computeDiscoveryActivities(
+  data: DiscoveryActivityData,
+  from?: { lat: number; lng: number },
+): ComputedActivity[] {
+  const outletMap = new Map(data.outlets.map((outlet) => [outlet.id, outlet]));
+  return data.activities
+    .map((activity) => toComputed(activity, outletMap, from))
+    .filter((activity): activity is ComputedActivity => activity !== null)
+    .sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
+}
+
 /**
  * Public discovery searches need card, map, and ranking fields, not checkout
  * inventory or product-page pricing rules. Keep those full relations in
@@ -615,8 +659,7 @@ export async function getDiscoveryActivities(
   db: SupabaseClient = supabase,
   from?: { lat: number; lng: number },
 ): Promise<ComputedActivity[]> {
-  const { activities, outletMap } = await loadDiscoveryActivityData(db);
-  return composeDiscoveryActivities(activities, [...outletMap.values()], from);
+  return computeDiscoveryActivities(await loadDiscoveryActivityData(db), from);
 }
 
 /**
@@ -1206,6 +1249,34 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
     .map((activity) => toComputed(activity, outletMap, filters.near))
     .filter((activity): activity is ComputedActivity => activity !== null);
   return filterComputedActivities(filters, computedActivities);
+}
+
+/** Keep discovery lean; only itinerary products need purchase variants and stock. */
+export async function searchTripActivities(
+  filters: SearchFilters,
+  productIds: string[],
+  db: SupabaseClient = supabase,
+  discoveryData?: DiscoveryActivityData,
+): Promise<ComputedActivity[]> {
+  const [activities, products] = await Promise.all([
+    discoveryData
+      ? Promise.resolve(filterComputedActivities(filters, computeDiscoveryActivities(discoveryData, filters.near)))
+      : searchActivities(filters, db),
+    getActivitiesByIds(productIds, db),
+  ]);
+  const productsById = new Map(products.map((product) => [product.id, product]));
+  return activities.map((activity) => {
+    const product = productsById.get(activity.id);
+    if (!product) return activity;
+    // Preserve the discovery outlet, price, distance and review metrics. Raw
+    // inventory and checkout pricing rules do not belong in the Trip payload.
+    return {
+      ...activity,
+      variants: product.variants,
+      availableStock: product.stockByOutlet?.[activity.outlet.id] ?? product.availableStock,
+      stockByOutlet: product.stockByOutlet,
+    };
+  });
 }
 
 // ─── Vouchers ───────────────────────────────────────────────────────────────

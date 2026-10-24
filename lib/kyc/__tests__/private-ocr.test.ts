@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runKycOcr } from '../ocr';
+import { runKycOcr, kycOcrRuntimeConfiguration } from '../ocr';
 
 const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
 const input = () => ({ documentType: 'national_id' as const, enteredDocumentNumber: '900101-14-1234',
@@ -65,5 +65,19 @@ describe('bounded OCR failure categories', () => {
   it('does not retry readable responses whose document is unreadable', async () => {
     configure(); vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({unreadable:true}));
     expect(await runKycOcr(input())).toMatchObject({status:'unreadable'});
+  });
+});
+
+
+describe('explicit local engine configuration', () => {
+  it('does not require a private URL/token for the local engine', () => {
+    vi.stubEnv('KYC_OCR_ENGINE', 'tesseract-js'); vi.stubEnv('KYC_NODE_OCR_TIMEOUT_MS', '20000');
+    expect(kycOcrRuntimeConfiguration()).toEqual({ engine: 'tesseract-js', timeoutMs: 20000 });
+  });
+  it('never falls back when an engine is misspelled', async () => {
+    configure(); vi.stubEnv('KYC_OCR_ENGINE', 'typo');
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    expect(await runKycOcr(input())).toMatchObject({ status: 'unavailable' });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

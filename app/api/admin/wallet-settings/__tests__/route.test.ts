@@ -69,8 +69,24 @@ describe('/api/admin/wallet-settings', () => {
     const response = await PATCH(request({ escalationHours: 72, reason: 'Updated after reviewing payout queue.' }));
     expect(response.status).toBe(200);
     expect(mocks.moderateWalletAction).toHaveBeenCalled();
-    expect(mocks.serviceFrom).toHaveBeenCalledWith('platform_settings');
-    expect(mocks.serviceFrom).toHaveBeenCalledWith('audit_logs');
+    expect(mocks.rpc).toHaveBeenCalledWith('update_wallet_settings_with_audit', {
+      p_settings: { 'withdrawal.escalation_hours': 72 },
+      p_reason: 'Updated after reviewing payout queue.',
+    });
     expect(mocks.serviceFrom).toHaveBeenCalledWith('notifications');
+  });
+
+  it('does not report success if the atomic settings and audit transaction fails', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce({ data: null, error: new Error('audit failed') });
+    const response = await PATCH(request({ escalationHours: 72, reason: 'Updated after reviewing payout queue.' }));
+    expect(response.status).toBe(500);
+  });
+
+  it('reports the committed settings when the best-effort notification fails', async () => {
+    mocks.serviceFrom.mockReturnValue({ insert: vi.fn().mockResolvedValue({ error: new Error('notification unavailable') }) });
+    const response = await PATCH(request({ escalationHours: 72, reason: 'Updated after reviewing payout queue.' }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { notificationSent: false } });
   });
 });

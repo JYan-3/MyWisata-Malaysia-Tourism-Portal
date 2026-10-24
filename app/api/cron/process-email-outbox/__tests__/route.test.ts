@@ -3,6 +3,8 @@ const process = vi.hoisted(() => vi.fn());
 const monitor = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/email/outbox', () => ({ processEmailOutbox: process }));
 vi.mock('@/lib/kyc/security-monitor', () => ({ checkKycSecurityHealth: monitor }));
+vi.mock('@/lib/operations/queue-health', () => ({ recordPortalDispatch: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/lib/wallet/approver-notifications', () => ({ processWithdrawalApproverNotifications: vi.fn().mockResolvedValue({ recipients: 0 }) }));
 import { GET } from '@/app/api/cron/process-email-outbox/route';
 describe('scheduled durable mail processing', () => {
   beforeEach(() => { vi.resetAllMocks(); monitor.mockResolvedValue(undefined); vi.stubEnv('CRON_SECRET', 'fixture-cron'); });

@@ -367,8 +367,8 @@ export const contentReviewSchema = z.object({
   entityId: uuid,
   action: z.enum(['approve', 'change_requested', 'reject']),
   note: z.string().trim().max(500).optional(),
-  /** Hotel profiles only: the submission version (updated_at) the admin reviewed. */
-  expectedVersion: z.string().trim().min(1).max(64).optional(),
+  /** Snapshot version the reviewer saw; all catalogue entities are guarded by this token. */
+  expectedVersion: z.string().trim().datetime({ offset: true }).max(64),
 }).strict().superRefine((data, context) => {
   if (data.action !== 'approve' && (!data.note || data.note.length < 10)) {
     context.addIssue({

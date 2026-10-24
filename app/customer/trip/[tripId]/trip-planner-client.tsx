@@ -3,16 +3,18 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent as ReactFormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
+import Link from "next/link";
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
-import { CATEGORIES, getBookingSlots, getOutlet, searchActivities } from "@/backend/domains/catalogue";
+import { CATEGORIES, getBookingSlots, getOutlet } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
-import { ORS_PROFILE, buildRouteDepartureTime, type GeoHit, type RouteResult } from "@/lib/routing";
+import { ROUTE_TRAFFIC_COLORS, buildRouteDepartureTime, type GeoHit } from "@/lib/routing";
 import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
-import { getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, computeSwapTargetOrder } from "@/lib/customer/trip-planner";
-import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
+import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate } from "@/lib/customer/trip-planner";
+import { useTripRoutes } from "./use-trip-routes";
+import { useTripItems } from "./use-trip-items";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
 import { useAppDialog } from "@/components/providers/app-dialog";
@@ -31,7 +33,7 @@ import { TripBudgetGuard } from "./trip-budget-guard";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/providers/cart";
 import { countTripPurchasableItems, resolveTripCheckoutLines, tripItemOutletId } from "@/lib/customer/trip-checkout";
-import { getTripTimeChoices, getTripTimeProblem, normalizeTripTime, type TripTimeChoices } from "@/lib/customer/trip-time-options";
+import { getTripTimeChoices, getTripTimeProblem, getDaySlots, slotClockTime, normalizeTripTime, type TripTimeChoices } from "@/lib/customer/trip-time-options";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 
 export interface TripStop {
@@ -58,178 +60,15 @@ interface TripPlanSuggestion {
   category: string;
 }
 
-// local sync hook matching useTrip API
-function useSyncTrip(tripId: string, initialItems: TripItem[]) {
-  const { alert } = useAppDialog();
-  const { t } = useTranslation("customer");
-  const [items, setItems] = useState<TripItem[]>(initialItems);
-
-  const stops: TripStop[] = items.map(i => ({
-    id: i.id, // using the item id (which matches experience_id or loc-xxx)
-    lat: i.lat,
-    lng: i.lng,
-    label: i.label,
-    sublabel: i.sublabel,
-    source: i.source,
-    locationKind: i.kind
-  }));
-
-  const origin = stops.find(s => s.source === "location") || null;
-
-  return {
-    items,
-    origin,
-    stops,
-    has: (id: string) => items.some((item) => item.id === id || item.experience_id === id),
-    add: async (stop: Omit<TripStop, "id"> & { id?: string }, schedule?: { date: string | null; time?: string | null }) => {
-      const tempId = stop.id || ("temp-" + Date.now());
-      const newItem: TripItem = {
-        id: tempId,
-        trip_id: tripId,
-        experience_id: stop.source === "vendor" ? tempId : null,
-        sequence: items.length,
-        scheduled_date: schedule?.date ?? null,
-        scheduled_time: schedule?.time ?? null,
-        created_at: new Date().toISOString(),
-        source: stop.source,
-        kind: stop.locationKind,
-        lat: stop.lat,
-        lng: stop.lng,
-        label: stop.label,
-        sublabel: stop.sublabel,
-        outlet_id: stop.outletId ?? null,
-      };
-      setItems(prev => [...prev, newItem]);
-      try {
-        const stored = await addTripItemAction({
-          trip_id: tripId,
-          experience_id: stop.source === "vendor" ? stop.id : undefined,
-          source: stop.source,
-          kind: stop.locationKind,
-          lat: stop.lat,
-          lng: stop.lng,
-          label: stop.label,
-          sublabel: stop.sublabel,
-          scheduled_date: schedule?.date ?? null,
-          scheduled_time: schedule?.time ?? null,
-          outlet_id: stop.source === "vendor" ? stop.outletId ?? null : null,
-        });
-        setItems((current) => current.map((item) => item.id === tempId ? stored : item));
-        return stored;
-      } catch {
-        setItems((current) => current.filter((item) => item.id !== tempId));
-        await alert(t("strictMigration.tripPlanner.addFailed"));
-        throw new Error("Unable to add trip item");
-      }
-    },
-    remove: async (id: string) => {
-      setItems(prev => prev.filter(i => i.id !== id && i.experience_id !== id));
-      const target = items.find(i => i.id === id || i.experience_id === id);
-      if (target) await deleteTripItemAction(tripId, target.id);
-    },
-    move: async (from: number, to: number) => {
-      const previousItems = items;
-      const newItems = [...items];
-      const [moved] = newItems.splice(from, 1);
-      newItems.splice(to, 0, moved);
-      setItems(newItems);
-      try {
-        await reorderTripItemsAction(tripId, newItems.map(i => i.id));
-      } catch {
-        setItems(previousItems);
-        await alert(t("strictMigration.tripPlanner.scheduleFailed"));
-      }
-    },
-    // Resequences exactly the given ids, in the given order — unlike move()
-    // this doesn't need a flat-array index (which would require reading
-    // fresh state right after an await, unreliable from a stale closure).
-    // Used to put a swapped-in item back into the same day-relative slot the
-    // item it replaced held, without touching any other day's ordering.
-    reorderIds: async (orderedIds: string[]) => {
-      const previousItems = items;
-      setItems((prev) => {
-        const sequenceById = new Map(orderedIds.map((id, index) => [id, index]));
-        return prev.map((item) => (sequenceById.has(item.id) ? { ...item, sequence: sequenceById.get(item.id)! } : item));
-      });
-      try {
-        await reorderTripItemsAction(tripId, orderedIds);
-      } catch {
-        setItems(previousItems);
-        await alert(t("strictMigration.tripPlanner.scheduleFailed"));
-      }
-    },
-    setLocation: async (stop: Omit<TripStop, "id" | "source">) => {
-      const locIndex = items.findIndex(i => i.source === "location");
-      const tempId = "loc-" + Date.now();
-      const newLoc: TripItem = {
-        id: tempId,
-        trip_id: tripId,
-        experience_id: null,
-        sequence: locIndex >= 0 ? items[locIndex].sequence : 0,
-        scheduled_date: null,
-        scheduled_time: null,
-        created_at: new Date().toISOString(),
-        source: "location",
-        kind: stop.locationKind,
-        lat: stop.lat,
-        lng: stop.lng,
-        label: stop.label,
-        sublabel: stop.sublabel
-      };
-      
-      const newItems = [...items];
-      if (locIndex >= 0) {
-        const oldLocId = items[locIndex].id;
-        newItems[locIndex] = newLoc;
-        setItems(newItems);
-        await deleteTripItemAction(tripId, oldLocId);
-      } else {
-        newItems.unshift(newLoc); // origin is always top conceptually, or just add it
-        setItems(newItems);
-      }
-      
-      await addTripItemAction({
-        trip_id: tripId,
-        source: "location",
-        kind: stop.locationKind,
-        lat: stop.lat,
-        lng: stop.lng,
-        label: stop.label,
-        sublabel: stop.sublabel
-      });
-      // if we replaced, we should reorder to ensure sequences match
-      if (locIndex >= 0) {
-        await reorderTripItemsAction(tripId, newItems.map(i => i.id));
-      }
-    },
-    update: async (id: string, updates: { label: string; lat: number; lng: number }) => {
-      setItems(prev => prev.map(i => {
-        if (i.id === id || i.experience_id === id) {
-          return { ...i, label: updates.label, lat: updates.lat, lng: updates.lng };
-        }
-        return i;
-      }));
-      await updateTripItemLocationAction(tripId, id, updates);
-    },
-    schedule: async (id: string, scheduledDate: string | null, scheduledTime: string | null) => {
-      const previous = items.find((item) => item.id === id);
-      setItems((current) => current.map((item) => item.id === id ? { ...item, scheduled_date: scheduledDate, scheduled_time: scheduledTime } : item));
-      try {
-        await updateTripItemScheduleAction(tripId, id, { scheduled_date: scheduledDate, scheduled_time: scheduledTime });
-      } catch {
-        if (previous) setItems((current) => current.map((item) => item.id === id ? previous : item));
-        await alert(t("strictMigration.tripPlanner.scheduleFailed"));
-      }
-    },
-    clear: async () => {
-      // not implemented for db for safety, just stub
-      await alert(t("ui.trip.deleteFromTripHub"));
-    }
-  };
-}
-
 const KL_CENTER: [number, number] = [3.139, 101.6869];
 const ROUTE_TRAFFIC_REFRESH_MS = 5 * 60 * 1000;
+const ROUTE_TRAFFIC_LEGEND = [
+  { level: "normal", label: "ui.map.trafficNormal" },
+  { level: "slow", label: "ui.map.trafficSlow" },
+  { level: "congested", label: "ui.map.trafficCongested" },
+  { level: "severe", label: "ui.map.trafficSevere" },
+  { level: "unknown", label: "ui.map.trafficUnknown" },
+] as const;
 const PLACES_PAGE_SIZE = 15;
 // Travel that makes a day unrealistic: a whole day over 4 h, or one leg over 2 h.
 const LONG_DAY_TRAVEL_MIN = 4 * 60;
@@ -248,16 +87,18 @@ export function MapClient({
   tripData,
   initialItems,
   initialActivities,
+  initialDiscoveryFingerprint,
   sponsoredPlacements,
   suggestedAtByVendor,
 }: {
   tripData: Trip;
   initialItems: TripItem[];
   initialActivities: ComputedActivity[];
+  initialDiscoveryFingerprint: string;
   sponsoredPlacements: SponsoredPlacement[];
   suggestedAtByVendor: Record<string, string>;
 }) {
-  const trip = useSyncTrip(tripData.id, initialItems);
+  const trip = useTripItems(tripData.id, initialItems);
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { alert: showAlert } = useAppDialog();
   const router = useRouter();
@@ -266,10 +107,12 @@ export function MapClient({
   const [placeFilters, setPlaceFilters] = useState<TripPlaceFilters>(DEFAULT_TRIP_PLACE_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
+  const [discoveryFailed, setDiscoveryFailed] = useState(false);
   const [mode, setMode] = useState<TravelModeId>("DRIVING");
   const [urlPreview, setUrlPreview] = useState<string | null>(null);
 
   // Start editor + real-time geocoding autocomplete
+  const [startScope,setStartScope] = useState<"trip" | "day">("trip");
   const [editingStart, setEditingStart] = useState(false);
   const [startInput, setStartInput] = useState("");
   const [suggestions, setSuggestions] = useState<GeoHit[]>([]);
@@ -294,10 +137,8 @@ export function MapClient({
   const [showAllVendors, setShowAllVendors] = useState(false);
 
   // Per-mode route options (may be several alternatives for a 2-point drive).
-  const [routes, setRoutes] = useState<Partial<Record<TravelModeId, RouteResult[]>>>({});
-  const [routesLoading, setRoutesLoading] = useState(false);
   const [routeRefreshTick, setRouteRefreshTick] = useState(0);
-  const [selectedRouteIdx, setSelectedRouteIdx] = useState(0);
+  const [routeChoice,setRouteChoice]=useState<{key:string;index:number} | null>(null);
 
   const [dragPayload, setDragPayload] = useState<{ kind: "item"; itemId: string } | { kind: "catalogue"; activityId: string } | null>(null);
   const [activePanel, setActivePanel] = useState<"ai" | "itinerary" | "map" | "places">("itinerary");
@@ -305,10 +146,13 @@ export function MapClient({
   const [placesCollapsed, setPlacesCollapsed] = useState(false);
   const [aiWidth, setAiWidth] = useState(320);
   const aiResizeRef = useRef(false);
+  const aiRequestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { aiRequestRef.current?.abort(); aiRequestRef.current = null; }, [tripData.id]);
   const [timeEditingId, setTimeEditingId] = useState<string | null>(null);
   const [aiPreference, setAiPreference] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<TripPlanSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiMode, setAiMode] = useState("");
   const [aiError, setAiError] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
@@ -363,7 +207,8 @@ export function MapClient({
   const activeWeatherMapMode: WeatherMapMode = simulationActive ? "forecast" : weatherMapMode === "now" && !liveRadarAvailable ? "forecast" : weatherMapMode;
 
   // Route origin = the top item of the unified stop list.
-  const origin = trip.origin && isValidTripCoordinate(trip.origin.lat, trip.origin.lng) ? trip.origin : null;
+  const resolvedOrigin = useMemo(()=>resolveTripOrigin(trip.items,selectedDate),[trip.items,selectedDate]);
+  const origin = resolvedOrigin && isValidTripCoordinate(resolvedOrigin.lat,resolvedOrigin.lng) ? resolvedOrigin : null;
   const near = origin ? { lat: origin.lat, lng: origin.lng } : undefined;
   const selectedRouteStops = useMemo(() => {
     const datedStops = trip.items
@@ -375,27 +220,32 @@ export function MapClient({
   // Places to add are searched around the starting point, or else around the
   // selected day's last stop — where the traveller will be when they add more.
   const dayLastStop = selectedRouteStops.filter((stop) => stop.id !== origin?.id).at(-1);
-  const discoveryNear = near ?? (dayLastStop ? { lat: dayLastStop.lat, lng: dayLastStop.lng } : undefined);
+  const discoveryNear = getTripDiscoveryAnchor(trip.items, selectedDate) ?? (near ?? (dayLastStop ? { lat: dayLastStop.lat, lng: dayLastStop.lng } : undefined));
   const selectedRouteCoordinates = useMemo(
     () => selectedRouteStops.map((stop): [number, number] => [stop.lat, stop.lng]),
     [selectedRouteStops],
   );
 
   const isFirstRender = useRef(true);
+  const discoveryFingerprint = getTripDiscoveryFingerprint(trip.items, selectedDate);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      if (!discoveryNear) return;
+      if (discoveryFingerprint === initialDiscoveryFingerprint) return;
     }
-    let cancelled = false;
-    searchActivities({ category: null, near: discoveryNear, sort: discoveryNear ? "distance_asc" : "recommended" }).then((result) => {
-      if (!cancelled) setActivities(result);
-    });
-    return () => {
-      cancelled = true;
-    };
+    const controller = new AbortController();
+    const query = discoveryNear ? `?${new URLSearchParams({lat:String(discoveryNear.lat),lng:String(discoveryNear.lng)})}` : "";
+    fetch(`/api/trips/${encodeURIComponent(tripData.id)}/activities${query}`,{signal:controller.signal,cache:"no-store"})
+      .then(async response => {
+        if(!response.ok) throw new Error("Trip discovery unavailable");
+        const result = await response.json() as {data:ComputedActivity[]};
+        if(!controller.signal.aborted) {setActivities(result.data);setDiscoveryFailed(false);}
+      }).catch(() => {
+        if(!controller.signal.aborted) setDiscoveryFailed(true);
+      });
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discoveryNear?.lat, discoveryNear?.lng]);
+  }, [tripData.id, discoveryFingerprint, discoveryNear?.lat, discoveryNear?.lng, initialDiscoveryFingerprint]);
 
   // Route fetch (debounced): all ORS-supported modes → routes[mode] = options.
   // A route needs at least two points (origin + one more).
@@ -405,47 +255,16 @@ export function MapClient({
     trip.items.filter((item) => item.scheduled_date === selectedDate).map((item) => item.scheduled_time),
   );
   useEffect(() => {
-    if (selectedRouteStops.length < 2) return;
+    if (mode !== "DRIVING" || selectedRouteStops.length < 2) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") setRouteRefreshTick((current) => current + 1);
     }, ROUTE_TRAFFIC_REFRESH_MS);
     return () => window.clearInterval(interval);
-  }, [pointsKey, selectedRouteStops.length]);
-  const routeRequestKey = `${pointsKey}|${routeDepartureTime ?? "live"}|${routeRefreshTick}`;
-  useEffect(() => {
-    if (selectedRouteStops.length < 2) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRoutes({});
-      setRoutesLoading(false);
-      return;
-    }
-    const points: [number, number][] = selectedRouteStops.map((s): [number, number] => [s.lat, s.lng]);
-    let cancelled = false;
-    setRoutesLoading(true);
-    setSelectedRouteIdx(0);
-    const timer = setTimeout(async () => {
-      const supported = TRAVEL_MODES.filter((m) => ORS_PROFILE[m.id]);
-      const entries = await Promise.all(
-        supported.map(async (m) => {
-          try {
-            const res = await fetch("/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: m.id, points, departureTime: routeDepartureTime }) });
-            const body = (await res.json()) as { data: { routes: RouteResult[] } | null };
-            return [m.id, res.ok && body.data ? body.data.routes : []] as const;
-          } catch {
-            return [m.id, [] as RouteResult[]] as const;
-          }
-        }),
-      );
-      if (cancelled) return;
-      setRoutes(Object.fromEntries(entries));
-      setRoutesLoading(false);
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeRequestKey]);
+  }, [mode, pointsKey, selectedRouteStops.length]);
+  const routeState = useTripRoutes(selectedRouteCoordinates, mode, routeDepartureTime, routeRefreshTick);
+  const routesLoading = routeState.loading;
+  const routeChoiceKey = `${pointsKey}|${routeDepartureTime ?? "live"}|${mode}`;
+  const selectedRouteIdx = routeChoice?.key === routeChoiceKey ? routeChoice.index : 0;
 
   // Real-time geocoding as the user types the start location.
   useEffect(() => {
@@ -531,18 +350,20 @@ export function MapClient({
     };
   }, [editStopInput, editingStopId]);
 
-  const activeRoutes = ORS_PROFILE[mode] ? routes[mode] ?? [] : [];
+  const activeRoutes = routeState.routes;
   const activeRoute = activeRoutes[selectedRouteIdx] ?? activeRoutes[0];
 
-  const locationStop = trip.stops.find((s) => s.source === "location") ?? null;
+  const locationStop = origin ? {...origin,locationKind:origin.kind} : null;
   function openStartEditor() {
+    setStartScope(origin?.is_day_origin ? "day" : "trip");
     setStartInput(locationStop?.locationKind === "custom" ? locationStop.label : "");
     setSuggestions([]);
     setLocError("");
     setEditingStart(true);
   }
-  function chooseSuggestion(hit: GeoHit) {
-    trip.setLocation({ label: hit.label, lat: hit.lat, lng: hit.lng, locationKind: "custom" });
+  async function chooseSuggestion(hit: GeoHit) {
+    const saved = await trip.setLocation({ label: hit.label, lat: hit.lat, lng: hit.lng, locationKind: "custom" }, startScope === "day" ? selectedDate : null);
+    if (!saved) return;
     setEditingStart(false);
     setStartInput("");
     setSuggestions([]);
@@ -555,10 +376,10 @@ export function MapClient({
     setLocating(true);
     setLocError("");
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        trip.setLocation({ label: "Your location", lat: pos.coords.latitude, lng: pos.coords.longitude, locationKind: "gps" });
+      async (pos) => {
+        const saved=await trip.setLocation({ label: tCustomer("ui.map.yourLocation"), lat: pos.coords.latitude, lng: pos.coords.longitude, locationKind: "gps" }, startScope === "day" ? selectedDate : null);
         setLocating(false);
-        setEditingStart(false);
+        if (saved) setEditingStart(false);
       },
       () => {
         setLocating(false);
@@ -568,8 +389,9 @@ export function MapClient({
     );
   }
 
-  function chooseStopSuggestion(hit: GeoHit) {
-    trip.add({ lat: hit.lat, lng: hit.lng, label: hit.label, source: "location", locationKind: "custom" });
+  async function chooseStopSuggestion(hit: GeoHit) {
+    const saved = await trip.add({ lat: hit.lat, lng: hit.lng, label: hit.label, source: "location", locationKind: "custom" });
+    if (!saved) return;
     setAddingStop(false);
     setStopSearchInput("");
     setStopSuggestions([]);
@@ -579,8 +401,8 @@ export function MapClient({
     setEditStopInput(stop.label);
     setEditStopSuggestions([]);
   }
-  function chooseStopEditSuggestion(hit: GeoHit) {
-    if (editingStopId) trip.update(editingStopId, { label: hit.label, lat: hit.lat, lng: hit.lng });
+  async function chooseStopEditSuggestion(hit: GeoHit) {
+    if (!editingStopId || !await trip.update(editingStopId, { label: hit.label, lat: hit.lat, lng: hit.lng })) return;
     setEditingStopId(null);
     setEditStopInput("");
     setEditStopSuggestions([]);
@@ -731,14 +553,7 @@ export function MapClient({
       if (!trip.has(pin.id)) trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id });
       return;
     }
-    const schedule = { date: existing.scheduled_date, time: existing.scheduled_time };
-    // Captured BEFORE mutating — the day's real item order with the removed
-    // item's slot replaced by the new one, used to reorder into place after.
-    const targetOrder = computeSwapTargetOrder(trip.items, existing.id, pin.id);
-
-    await trip.remove(existing.id);
-    await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id }, schedule);
-    if (targetOrder && targetOrder.length > 1) await trip.reorderIds(targetOrder);
+    await trip.replace(existing.id, { id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id });
   }
   // Checks out every scheduled stop in one go: real vendor items go straight
   // into the cart, a stop that requires booking is only ever matched to a
@@ -760,11 +575,12 @@ export function MapClient({
       const slotLists = await Promise.all(bookingActivityIds.map((id) => getBookingSlots(id)));
       const slotsByActivityId = new Map(bookingActivityIds.map((id, index) => [id, slotLists[index]]));
 
-      const { lines, needsSlot, unavailable } = resolveTripCheckoutLines(scheduledItems, activitiesById, slotsByActivityId);
+      const { lines, needsSlot, unavailable, needsSelection } = resolveTripCheckoutLines(scheduledItems, activitiesById, slotsByActivityId);
+      const selectionNote = needsSelection.length ? tCustomer("ui.tripCheckout.needsSelection", {names:needsSelection.map(entry=>entry.label).join(", ")}) : "";
       const unavailableNote = unavailable.length > 0 ? tCustomer("ui.tripCheckout.unavailable", { names: unavailable.map((entry) => entry.label).join(", ") }) : "";
       if (lines.length === 0) {
         const reason = needsSlot.length > 0 ? tCustomer("ui.tripCheckout.allNeedSlot") : tCustomer("ui.tripCheckout.nothingToCheckout");
-        await showAlert(unavailableNote ? `${reason} ${unavailableNote}` : reason);
+        await showAlert([reason, unavailableNote, selectionNote].filter(Boolean).join(" "));
         return;
       }
 
@@ -788,6 +604,7 @@ export function MapClient({
       cart.setSelectedKeys(addedKeys);
 
       const notes = [
+        selectionNote,
         accommodationLines.length > 0 ? tCustomer("ui.tripCheckout.stayMustBeBookedFromHotelPage") : "",
         needsSlot.length > 0 ? tCustomer("ui.tripCheckout.someNeedSlot", { names: needsSlot.map((entry) => entry.label).join(", ") }) : "",
         unavailableNote,
@@ -799,8 +616,11 @@ export function MapClient({
     }
   }
   const weatherPlan = useMemo(
-    () => buildItineraryWeatherPlan(groupedItems.days, activitiesById),
-    [activitiesById, groupedItems.days],
+    () => buildItineraryWeatherPlan(groupedItems.days.map(day=>{
+      const start=resolveTripOrigin(trip.items,day.date);
+      return {...day,items:start ? [{...start,sequence:-1,scheduled_date:day.date},...day.items.filter(item=>item.id !== start.id)] : day.items};
+    }), activitiesById),
+    [activitiesById, groupedItems.days, trip.items],
   );
   const weatherState = useItineraryWeather(tripData.id, weatherPlan.targets);
   const simulatedWeatherResult = simulationActive && selectedDate
@@ -883,6 +703,10 @@ export function MapClient({
   async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (aiLoading) return;
+    const controller = new AbortController();
+    aiRequestRef.current?.abort();
+    aiRequestRef.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 50_000);
     setAiLoading(true);
     setAiError("");
     try {
@@ -892,9 +716,11 @@ export function MapClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
+        signal: controller.signal,
         body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale }),
       });
-      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[] }; error?: { code?: string } };
+      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string }; error?: { code?: string } };
+      if (controller.signal.aborted || aiRequestRef.current !== controller) return;
       if (!response.ok || !body.data) {
         setAiSuggestions([]);
         setAiError(body.error?.code === "PHONE_VERIFICATION_REQUIRED"
@@ -902,12 +728,15 @@ export function MapClient({
           : tCustomer("strictMigration.tripPlanner.ai.error"));
         return;
       }
+      setAiMode(body.data.mode ?? "");
       setAiSuggestions(body.data.suggestions ?? []);
     } catch {
+      if (controller.signal.aborted || aiRequestRef.current !== controller) return;
       setAiSuggestions([]);
       setAiError(tCustomer("strictMigration.tripPlanner.ai.error"));
     } finally {
-      setAiLoading(false);
+      window.clearTimeout(timeout);
+      if (aiRequestRef.current === controller) setAiLoading(false);
     }
   }
 
@@ -929,12 +758,22 @@ export function MapClient({
     const leg = activeRoute?.legs?.[index];
     const ModeIcon = TRAVEL_MODES.find((travelMode) => travelMode.id === mode)?.icon ?? Navigation;
     const longLeg = Boolean(leg && leg.durationMin > LONG_LEG_TRAVEL_MIN);
+    const from=trip.items.find(item=>item.id === fromId);
+    const to=trip.items.find(item=>item.id === toId);
+    const toMinutes=(time:string | null | undefined)=>time ? Number(time.slice(0,2))*60+Number(time.slice(3,5)) : null;
+    const activity=from?.experience_id ? activitiesById.get(from.experience_id) : undefined;
+    const slot=activity && from?.scheduled_date && from.scheduled_time ? getDaySlots(slotsByProduct.get(activity.id) ?? [],tripItemOutletId(from,activity),from.scheduled_date).find(slot=>slotClockTime(slot.startsAt) === normalizeTripTime(from.scheduled_time)) : undefined;
+    const endDate=slot?.endsAt ? new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kuala_Lumpur"}).format(new Date(slot.endsAt)) : null;
+    const end=slot?.endsAt && endDate === from?.scheduled_date ? toMinutes(slotClockTime(slot.endsAt)) : null;
+    const feasibility=getTripLegFeasibility({previousStart:toMinutes(from?.scheduled_time),previousEnd:end,nextStart:toMinutes(to?.scheduled_time),travelMinutes:leg?.durationMin ?? null});
+
     return (
-      <li key={`leg-${fromId}-${toId}`} data-trip-leg data-long-leg={longLeg || undefined} className={"flex items-center gap-2 pl-4 text-[11px] " + (longLeg ? "font-semibold text-destructive" : "text-muted-foreground")}>
+      <li key={`leg-${fromId}-${toId}`} data-trip-leg data-long-leg={longLeg || undefined} className={"flex flex-wrap items-center gap-2 pl-4 text-[11px] " + (longLeg ? "font-semibold text-destructive" : "text-muted-foreground")}>
         <span className="h-5 border-l border-dashed border-border" aria-hidden="true" />
         {longLeg ? <AlertTriangle size={12} className="shrink-0" aria-label={tCustomer("strictMigration.tripPlanner.longLeg")} /> : <ModeIcon size={12} className="shrink-0 text-primary" />}
         <span className="font-semibold">{travelModeLabel(mode)}</span>
         {leg && <span>· {formatDurationShort(leg.durationMin)} · {leg.distanceKm.toFixed(1)} {DISTANCE_UNIT_KM}</span>}
+        {from?.scheduled_time && to?.scheduled_time && <span data-trip-feasibility={feasibility.status} className={feasibility.status === "conflict" ? "text-destructive" : "text-muted-foreground"}>{tCustomer(`ui.trip.feasibility.${feasibility.status}`,{minutes:Math.ceil(Math.abs(feasibility.slackMinutes ?? 0))})}{feasibility.status === "conflict" && <button className="ml-2 underline" onClick={()=>setTimeEditingId(to.id)}>{tCustomer("strictMigration.tripPlanner.addTime")}</button>}</span>}
         {!leg && routesLoading && mode !== "TRANSIT" && <span>· {tCustomer("strictMigration.tripPlanner.ai.calculating")}</span>}
         {!leg && mode === "TRANSIT" && <span>· {tCustomer("ui.map.maps")}</span>}
       </li>
@@ -986,8 +825,8 @@ export function MapClient({
   function renderStopRow(item: TripItem) {
     const stopNumber = selectedRouteStops.findIndex((stop) => stop.id === item.id) + 1;
     const isLocation = item.source === "location";
-    const isCustom = isLocation && item.id !== trip.origin?.id;
-    const editing = editingStopId === item.id || (isLocation && editingStart);
+    const isCustom = isLocation && item.id !== origin?.id;
+    const editing = editingStopId === item.id;
     const weatherTargetKey = weatherPlan.itemTargetKeyById[item.id];
     const weatherResult = weatherTargetKey ? weatherState.results[weatherTargetKey] ?? null : null;
     const activity = activitiesById.get(item.experience_id ?? item.id);
@@ -1003,7 +842,7 @@ export function MapClient({
     const timeChoices: TripTimeChoices = isLocation
       ? { kind: "free" }
       : getTripTimeChoices({ activity, date: item.scheduled_date, outletId, slots: activity ? slotsByProduct.get(activity.id) : undefined, hours: outletHours, bounds: timeBounds });
-    const timeProblem = getTripTimeProblem(timeChoices, item.scheduled_time, outletHours, item.scheduled_date);
+    const timeProblem = getTripTimeProblem(timeChoices, item.scheduled_time, outletHours, item.scheduled_date, timeBounds);
 
     return (
       <li
@@ -1021,16 +860,16 @@ export function MapClient({
               <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
               <input
                 autoFocus
-                value={isLocation ? startInput : editStopInput}
-                onChange={(event) => isLocation ? setStartInput(event.target.value) : setEditStopInput(event.target.value)}
+                value={editStopInput}
+                onChange={(event) => setEditStopInput(event.target.value)}
                 placeholder={tCustomer("strictMigration.tripPlanner.searchNewLocation")}
                 className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
-              <button onClick={() => isLocation ? setEditingStart(false) : setEditingStopId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={tCustomer("ui.map.cancelEdit")}>
+              <button onClick={() => setEditingStopId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={tCustomer("ui.map.cancelEdit")}>
                 <X size={14} />
               </button>
             </div>
-            {isLocation ? locationSuggestions() : (
+            {(
               <div className="mt-2">
                 {editStopLoading && <p className="text-xs text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
                 {editStopSuggestions.length > 0 && (
@@ -1086,7 +925,7 @@ export function MapClient({
             {item.scheduled_date && <span className="sr-only">{tCustomer("strictMigration.tripPlanner.scheduledFor", { date: item.scheduled_date })}</span>}
             {(isLocation || isCustom) && (
               <button
-                onClick={() => isLocation ? openStartEditor() : openStopEditor({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind })}
+                onClick={() => item.id === origin?.id ? openStartEditor() : openStopEditor({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind })}
                 className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-primary"
                 aria-label={tCustomer("strictMigration.tripPlanner.editItem", { item: item.label })}
               >
@@ -1098,6 +937,7 @@ export function MapClient({
             </button>
           </div>
         )}
+        {!editing && activity && activity.variants.length > 1 && <Link href={`/customer/activity/${activity.id}?outletId=${tripItemOutletId(item,activity)}`} className="text-xs font-semibold text-primary underline">{tCustomer("ui.tripCheckout.selectDetails")}</Link>}
         {!editing && timeProblem && (
           <p data-trip-time-problem className="mt-1 flex items-center gap-1 pl-6 text-[11px] font-semibold text-destructive">
             <AlertTriangle size={12} className="shrink-0" />{tCustomer(`strictMigration.tripPlanner.timeProblem.${timeProblem}`)}
@@ -1231,7 +1071,8 @@ export function MapClient({
 
   return (
     <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]">
-          <div className="flex h-full w-full flex-col overflow-hidden bg-card">
+          <div className="flex h-full w-full flex-col overflow-hidden bg-card" aria-busy={trip.pending}>
+      {(trip.pending || trip.error) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error}</p>}
             <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 xl:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
               {(["ai", "itinerary", "map", "places"] as const).map((panel) => (
                 <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-full px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
@@ -1285,10 +1126,11 @@ export function MapClient({
                   </article>;
                 })}
               </section>}
+              {aiMode === "rule-based" && <p role="status" className="text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.basicSuggestions")}</p>}
               {!aiLoading && !aiError && aiSuggestions.length === 0 && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
               <details className="rounded-xl border border-border bg-background px-3 py-2">
                 <summary className="cursor-pointer list-none text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.budget")}</summary>
-                <div className="pt-3"><TripBudgetGuard tripId={tripData.id} items={trip.items} activities={activities} onShowOnMap={(pin) => { setSuggestedPins((current) => current.some((existing) => existing.id === pin.id) ? current : [...current, pin]); focusPin(pin); }} /></div>
+                <div className="pt-3"><TripBudgetGuard tripId={tripData.id} items={trip.items} activities={[...activitiesById.values()]} onShowOnMap={(pin) => { setSuggestedPins((current) => current.some((existing) => existing.id === pin.id) ? current : [...current, pin]); focusPin(pin); }} /></div>
               </details>
             </div>
           </div>
@@ -1316,7 +1158,8 @@ export function MapClient({
               </button>
             </div>
 
-            {!locationStop && (
+            {origin && !editingStart && <div className="mb-3 rounded-xl border border-border p-3 text-xs"><p>{tCustomer(origin.is_day_origin ? "ui.trip.dayOrigin" : "ui.trip.inheritedOrigin")} · {origin.label}</p><button className="mt-1 text-primary underline" onClick={openStartEditor}>{tCustomer("ui.trip.changeOrigin")}</button>{origin.is_day_origin && <button className="ml-3 text-primary underline" onClick={()=>trip.remove(origin.id)}>{tCustomer("ui.trip.restoreOrigin")}</button>}</div>}
+            {(!locationStop || editingStart) && (
               <div className="mb-3 rounded-2xl border border-dashed border-primary/30 bg-secondary/60 p-3">
                 <div className="flex items-center gap-2">
                   <LocateFixed size={16} className="shrink-0 text-primary" />
@@ -1324,6 +1167,7 @@ export function MapClient({
                   <button onClick={() => editingStart ? setEditingStart(false) : openStartEditor()} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label={tCustomer("ui.map.typeAddress")}>{editingStart ? <X size={14} /> : <Pencil size={14} />}</button>
                   <button onClick={useGps} disabled={locating} className="rounded-lg p-1 text-primary hover:bg-background disabled:opacity-50" aria-label={tCustomer("ui.map.useCurrentLocation")}>{locating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}</button>
                 </div>
+                {editingStart && <label className="block text-xs">{tCustomer("ui.trip.originScope")}<select value={startScope} onChange={event=>setStartScope(event.target.value as "trip" | "day")} className="ml-2 rounded border border-border bg-background p-1"><option value="trip">{tCustomer("ui.trip.globalOrigin")}</option>{selectedDate && <option value="day">{tCustomer("ui.trip.dayOrigin")}</option>}</select></label>}
                 {editingStart && locationSuggestions()}
                 {locError && <p className="mt-1 text-xs text-destructive">{locError}</p>}
               </div>
@@ -1384,12 +1228,34 @@ export function MapClient({
             <div className="flex flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor="planner-travel-mode">{tCustomer("strictMigration.tripPlanner.buildRoute")}</label>
               <select id="planner-travel-mode" value={mode} onChange={(event) => setMode(event.target.value as TravelModeId)} className="min-w-36 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">{TRAVEL_MODES.map((travelMode) => <option key={travelMode.id} value={travelMode.id}>{travelModeLabel(travelMode.id)}</option>)}</select>
-              {hasRouteInputs && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer("ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
-              {activeRoutes.length > 1 && <label className="ml-auto flex items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span>{tCustomer("ui.map.routeOptions")}</span><select aria-label={tCustomer("ui.map.routeOptions")} value={selectedRouteIdx} onChange={(event) => setSelectedRouteIdx(Number(event.target.value))} className="max-w-52 rounded-lg border border-border bg-background px-2 py-2 text-[11px] text-foreground">{activeRoutes.map((route, index) => <option key={index} value={index}>{formatDurationShort(route.durationMin)} · {route.distanceKm} {DISTANCE_UNIT_KM}{route.hasTolls ? ` · ${tCustomer("ui.map.toll")}` : ""}</option>)}</select></label>}
+              {hasRouteInputs && <p className="text-[11px] text-muted-foreground">{tCustomer("ui.trip.continuousRoute")}</p>}
+              {hasRouteInputs && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer(routeState.status === "stale" ? "ui.trip.routeStale" : "ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
+              {activeRoutes.length > 1 && <label className="ml-auto flex items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span>{tCustomer("ui.map.routeOptions")}</span><select aria-label={tCustomer("ui.map.routeOptions")} value={selectedRouteIdx} onChange={(event) => setRouteChoice({key:routeChoiceKey,index:Number(event.target.value)})} className="max-w-52 rounded-lg border border-border bg-background px-2 py-2 text-[11px] text-foreground">{activeRoutes.map((route, index) => <option key={index} value={index}>{formatDurationShort(route.durationMin)} · {route.distanceKm} {DISTANCE_UNIT_KM}{route.hasTolls ? ` · ${tCustomer("ui.map.toll")}` : ""}</option>)}</select></label>}
             </div>
-            {mode === "DRIVING" && activeRoute?.traffic && <details data-route-traffic-status className="mt-2 text-[10px] text-muted-foreground"><summary className="cursor-pointer font-semibold">{activeRoute.traffic.basis === "live" ? tCustomer("ui.map.trafficLive") : tCustomer("ui.map.trafficPredicted")}</summary><p className="pt-1">{tCustomer("ui.map.trafficProviderRetrievedAt", { time: new Date(activeRoute.traffic.retrievedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p></details>}
+            {mode === "DRIVING" && activeRoute && (
+              <div className="mt-2 rounded-lg bg-muted/60 px-2 py-1.5">
+                {activeRoute.traffic?.segments.length ? (
+                  <>
+                    <div data-route-traffic-legend role="group" aria-label={tCustomer("ui.map.trafficLegend")} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {ROUTE_TRAFFIC_LEGEND.map(({ level, label }) => (
+                        <span key={level} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <span aria-hidden="true" className="h-1 w-4 rounded-full" style={{ backgroundColor: ROUTE_TRAFFIC_COLORS[level] }} />
+                          {tCustomer(label)}
+                        </span>
+                      ))}
+                    </div>
+                    <details data-route-traffic-status className="mt-1 text-[10px] text-muted-foreground">
+                      <summary className="cursor-pointer font-semibold">{activeRoute.traffic.basis === "live" ? tCustomer("ui.map.trafficLive") : tCustomer("ui.map.trafficPredicted")}</summary>
+                      <p className="pt-1">{tCustomer("ui.map.trafficProviderRetrievedAt", { time: new Date(activeRoute.traffic.retrievedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</p>
+                    </details>
+                  </>
+                ) : (
+                  <p data-route-traffic-unavailable role="status" className="text-[10px] text-muted-foreground">{tCustomer("ui.map.trafficUnavailable")}</p>
+                )}
+              </div>
+            )}
             <button onClick={() => directionsUrl && window.open(directionsUrl, "_blank")} disabled={!directionsUrl} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-bold text-foreground transition hover:border-primary/40 disabled:opacity-40"><Navigation size={14} className="text-primary" /> {tCustomer("ui.map.getDirectionsGoogle")}</button>
-            <div className="mt-2 flex items-center justify-between"><button onClick={() => setUrlPreview((current) => current ? null : directionsUrl)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? tCustomer("ui.map.hideHandoffUrl") : tCustomer("ui.map.showHandoffUrl")}</button><button onClick={trip.clear} className="text-[10px] font-bold text-muted-foreground hover:text-destructive">{tCustomer("ui.map.clearTrip")}</button></div>
+            <div className="mt-2 flex items-center justify-between"><button onClick={() => setUrlPreview((current) => current ? null : directionsUrl)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? tCustomer("ui.map.hideHandoffUrl") : tCustomer("ui.map.showHandoffUrl")}</button><button onClick={trip.clear} className="text-[10px] font-bold text-muted-foreground hover:text-destructive">{tCustomer("ui.trip.clearItems")}</button></div>
             {trip.stops.length > 9 && <p className="mt-1 text-[10px] font-semibold text-destructive">{tCustomer("ui.map.maxStops")}</p>}
             {urlPreview && <code className="mt-2 block max-h-16 overflow-auto break-all rounded-lg bg-muted p-2 text-[10px]">{urlPreview}</code>}
           </footer>
@@ -1423,6 +1289,7 @@ export function MapClient({
             ) : <ChevronRight size={15} />}
           </button>
           <div className={(placesCollapsed ? "flex xl:hidden" : "flex") + " min-h-0 flex-1 flex-col"}>
+          {discoveryFailed && <p role="status" className="border-b border-border px-4 py-2 text-xs text-muted-foreground">{tCustomer("ui.states.loadingError")}</p>}
           {filtersOpen ? (
             <TripPlaceFilterPanel
               filters={placeFilters}

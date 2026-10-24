@@ -84,9 +84,20 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
-  serverExternalPackages: ['pdfkit'],
-  outputFileTracingIncludes: { '/api/**': ['./lib/pdf/fonts/*'] },
+  serverExternalPackages: ['pdfkit', 'tesseract.js', 'tesseract.js-core'],
+  outputFileTracingIncludes: {
+    '/api/**': ['./lib/pdf/fonts/*'],
+    '/api/cron/process-kyc-prescreening': [
+      './lib/kyc/runtime/*.cjs', './node_modules/tesseract.js/src/**/*', './node_modules/tesseract.js/package.json',
+      './node_modules/tesseract.js-core/**/*',
+      './node_modules/@tesseract.js-data/{eng,msa,chi_sim}/4.0.0_best_int/*.traineddata.gz',
+      './node_modules/@tesseract.js-data/{eng,msa,chi_sim}/package.json',
+      // forked CJS is not traversed by webpack: trace the pinned Node dependencies too.
+      './node_modules/{bmp-js,idb-keyval,is-url,node-fetch,whatwg-url,tr46,webidl-conversions,regenerator-runtime,wasm-feature-detect,zlibjs}/**/*',
+    ],
+  },
   experimental: {
+    cpus: 2,
     optimizePackageImports: [
       'lucide-react',
       'date-fns',

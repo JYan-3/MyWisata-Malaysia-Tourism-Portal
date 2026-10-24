@@ -46,6 +46,7 @@ function staffRoleFailure(message: string) {
   if (message.includes("super_admin_required")) {
     return apiFail("FORBIDDEN", "Super Admin access required", 403);
   }
+  if (message.includes("staff_module_not_delegable")) return apiFail("MODULE_NOT_DELEGABLE", "This module is reserved for its existing system role", 422);
   if (message.includes("staff_reason_required") || message.includes("staff_role_name_required")
       || message.includes("staff_role_description_too_long")
       || message.includes("invalid_module_key") || message.includes("duplicate_module_key")) {
@@ -58,30 +59,12 @@ export async function GET() {
   const { db, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
 
-  const [rolesResult, permissionsResult, modulesResult, assignmentsResult] = await Promise.all([
-    db.from("staff_roles")
-      .select("id,name,description,is_system,is_active,created_by,created_at,updated_at")
-      .order("name", { ascending: true }),
-    db.from("staff_role_permissions")
-      .select("role_id,staff_permissions(key)"),
-    db.from("staff_role_modules")
-      .select("role_id,staff_modules(key)"),
-    db.from("staff_role_assignments")
-      .select("id,role_id,user_id,assigned_by,revoked_at,created_at")
-      .order("created_at", { ascending: false }),
+  const [rolesResult, permissionsResult, modulesResult] = await Promise.all([
+    db.from("staff_roles").select("id,name,description,is_system,is_active,created_by,created_at,updated_at").order("name", { ascending: true }),
+    db.from("staff_role_permissions").select("role_id,staff_permissions(key)"),
+    db.from("staff_role_modules").select("role_id,staff_modules(key)"),
   ]);
-
-  if (rolesResult.error || permissionsResult.error || modulesResult.error || assignmentsResult.error) {
-    return apiFail("STAFF_ROLES_UNAVAILABLE", "Unable to load staff roles", 503);
-  }
-
-  const assignedUserIds = [...new Set((assignmentsResult.data ?? []).map((assignment) => assignment.user_id))];
-  const usersResult = assignedUserIds.length === 0
-    ? { data: [], error: null }
-    : await db.from("users")
-      .select("id,email,full_name,display_name,status")
-      .in("id", assignedUserIds);
-  if (usersResult.error) {
+  if (rolesResult.error || permissionsResult.error || modulesResult.error) {
     return apiFail("STAFF_ROLES_UNAVAILABLE", "Unable to load staff roles", 503);
   }
 
@@ -98,7 +81,6 @@ export async function GET() {
     moduleKeysByRole.set(row.role_id, [...(moduleKeysByRole.get(row.role_id) ?? []), key]);
   }
 
-  const activeAssignments = (assignmentsResult.data ?? []).filter((assignment) => assignment.revoked_at === null);
 
   return apiOk({
     roles: (rolesResult.data ?? []).map((role) => ({
@@ -113,23 +95,8 @@ export async function GET() {
       moduleKeys: moduleKeysByRole.get(role.id) ?? [],
       permissionKeys: keysByRole.get(role.id) ?? [],
     })),
-    assignments: (assignmentsResult.data ?? []).map((assignment) => ({
-      id: assignment.id,
-      roleId: assignment.role_id,
-      userId: assignment.user_id,
-      assignedBy: assignment.assigned_by,
-      revokedAt: assignment.revoked_at,
-      createdAt: assignment.created_at,
-    })),
-    employees: (usersResult.data ?? []).map((employee) => ({
-      id: employee.id,
-      email: employee.email,
-      name: employee.full_name ?? employee.display_name ?? employee.email,
-      status: employee.status,
-      assignments: activeAssignments
-        .filter((assignment) => assignment.user_id === employee.id)
-        .map((assignment) => ({ id: assignment.id, roleId: assignment.role_id, createdAt: assignment.created_at })),
-    })),
+    assignments: [],
+    employees: [],
   });
 }
 

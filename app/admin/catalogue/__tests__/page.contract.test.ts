@@ -34,3 +34,10 @@ describe('catalogue review modal layout', () => {
     expect(batchActionBarSource).not.toContain('bg-white');
   });
 });
+
+describe('catalogue queue refresh state', () => {
+  it('clamps an emptied last page after another reviewer resolves its tasks', () => {
+    expect(pageSource).toContain('page > Math.max(1, nextTotalPages)');
+    expect(pageSource).toContain('setPage(Math.max(1, nextTotalPages))');
+  });
+});

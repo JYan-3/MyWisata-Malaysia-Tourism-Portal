@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import { Button } from "@/components/ui/button";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 const PAGE_SIZE = 10;
 
@@ -57,24 +58,28 @@ export default function AdminRecommendationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadRecommendations = useCallback(async () => {
-    setLoading(true);
+  const loadRecommendations = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), status });
       if (search.trim()) params.set("search", search.trim());
       if (categoryId) params.set("categoryId", categoryId);
       if (state) params.set("state", state);
-      const response = await fetch(`/api/admin/recommendations?${params.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/recommendations?${params.toString()}`, { cache: "no-store", signal });
+      if (response.status === 401 || response.status === 403) { setData((current) => ({ ...current, items: [], total: 0, totalPages: 0 })); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
       const body = await response.json() as { data?: RecommendationListResponse; error?: { message?: string } };
       if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("ui.recommendations.loadError"));
       setData(body.data);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("ui.recommendations.loadError"));
+      if (signal) throw loadError;
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
   }, [categoryId, page, search, state, status, t]);
+
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: loadRecommendations });
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadRecommendations(); }, 250);
@@ -95,6 +100,7 @@ export default function AdminRecommendationsPage() {
 
   return (
     <AdminPageShell>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><CheckCircle2 size={14} /> {t("ui.recommendations.eyebrow")}</span>}
         title={t("ui.recommendations.title")}

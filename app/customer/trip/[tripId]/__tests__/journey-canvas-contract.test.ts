@@ -3,12 +3,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = fs.readFileSync(path.resolve(process.cwd(), "app/customer/trip/[tripId]/trip-planner-client.tsx"), "utf8");
+const hookSource = fs.readFileSync(path.resolve(process.cwd(), "app/customer/trip/[tripId]/use-trip-items.ts"), "utf8");
 const pageSource = fs.readFileSync(path.resolve(process.cwd(), "app/customer/trip/[tripId]/page.tsx"), "utf8");
 
 describe("journey canvas integration contract", () => {
   it("allows real catalogue activities to be dragged or keyboard-assigned directly to a day", () => {
     expect(source).toContain('kind: "catalogue"');
-    expect(source).toContain("scheduled_date: schedule?.date");
+    expect(hookSource).toContain("scheduled_date:date");
     expect(source).toContain("draggable={!added}");
     expect(source).toContain("chooseDayForActivity");
   });
@@ -37,7 +38,8 @@ describe("journey canvas integration contract", () => {
   });
 
   it("rolls schedule changes back with an accessible error", () => {
-    expect(source).toContain('alert(t("strictMigration.tripPlanner.scheduleFailed"))');
+    expect(hookSource).toContain('t("strictMigration.tripPlanner.scheduleFailed")');
+    expect(source).toContain('role={trip.error ? "alert" : "status"}');
   });
 
   it("constrains stop times by itinerary order and rolls rejected reorders back", () => {
@@ -45,8 +47,7 @@ describe("journey canvas integration contract", () => {
     expect(source).toContain("min={timeBounds.min}");
     expect(source).toContain("max={timeBounds.max}");
     expect(source).toContain("disabled={timeBounds.disabled}");
-    expect(source).toContain("const previousItems = items;");
-    expect(source).toContain("setItems(previousItems);");
+    expect(hookSource).toContain("commit(stored(await reorderTripItemsAction");
   });
 
   it("projects only public sponsored fields and vendor suggestion timestamps into the canvas", () => {

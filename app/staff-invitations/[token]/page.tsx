@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { CheckCircle2, Eye, EyeOff, Globe, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useAuth } from "@/components/providers/auth";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
@@ -25,6 +26,7 @@ type Invitation = {
 export default function StaffInvitationPage() {
   const params = useParams<{ token: string }>();
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const { t, i18n } = useTranslation("auth");
   const supabase = useMemo(() => createClient(), []);
   const [invitation, setInvitation] = useState<Invitation | null>(null);
@@ -132,13 +134,21 @@ export default function StaffInvitationPage() {
   }
 
   async function acceptInvitation() {
+    if (busy) return;
     setBusy(true); setError("");
-    const response = await fetch(`/api/staff-invitations/${encodeURIComponent(params.token)}`, { method: "POST" });
-    const body = await response.json().catch(() => ({}));
-    setBusy(false);
-    if (!response.ok) { setError(body.error?.message || t("staffInvitation.errors.accept")); return; }
-    router.push("/staff");
-    router.refresh();
+    let accepted = false;
+    try {
+      const response = await fetch(`/api/staff-invitations/${encodeURIComponent(params.token)}`, { method: "POST" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) { setError(body.error?.message || t("staffInvitation.errors.accept")); return; }
+      accepted = true;
+      setInvitation((current) => current ? { ...current, status: "accepted" } : current);
+      await refreshUser();
+      router.push("/staff");
+      router.refresh();
+    } catch {
+      setError(t(accepted ? "staffInvitation.errors.refreshAfterAcceptance" : "staffInvitation.errors.accept"));
+    } finally { setBusy(false); }
   }
 
   if (loading) return <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">{t("staffInvitation.loading")}</main>;

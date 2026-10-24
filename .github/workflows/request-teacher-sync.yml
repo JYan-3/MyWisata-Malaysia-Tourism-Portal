@@ -1,0 +1,41 @@
+name: Request teacher repository sync
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: request-teacher-main-sync
+  cancel-in-progress: false
+
+jobs:
+  request-sync:
+    if: >-
+      github.repository == 'TanZhengYang0912/MyWisata-Malaysia-Tourism-Portal' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == 'TanZhengYang0912/MyWisata-Malaysia-Tourism-Portal'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@v7
+        with:
+          ref: refs/heads/main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Request target sync after source CI
+        run: node scripts/teacher-repo-sync.mjs dispatch
+        env:
+          TEACHER_SYNC_DISPATCH_TOKEN: ${{ secrets.TEACHER_SYNC_DISPATCH_TOKEN }}
