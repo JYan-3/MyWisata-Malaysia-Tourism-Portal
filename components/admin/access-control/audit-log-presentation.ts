@@ -60,9 +60,11 @@ export type AuditPrimitive = string | number | boolean | null;
 
 export type AuditChange = {
   field: string;
-  before: AuditPrimitive | undefined;
-  after: AuditPrimitive | undefined;
+  before: AuditChangeValue | undefined;
+  after: AuditChangeValue | undefined;
 };
+
+export type AuditChangeValue = AuditPrimitive | string[];
 
 function isAuditPrimitive(value: unknown): value is AuditPrimitive {
   return value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean";
@@ -81,18 +83,37 @@ export function deriveAuditChanges(
     ...Object.keys(after ?? {}),
   ])].sort();
 
-  return fields.flatMap((field) => {
+  const changes: AuditChange[] = [];
+  for (const field of fields) {
     const previous = before?.[field];
     const next = after?.[field];
+    if (field === "moduleKeys" || field === "permissionKeys") {
+      const normalizedPrevious = normalizeAuditKeyList(previous, field);
+      const normalizedNext = normalizeAuditKeyList(next, field);
+      if (normalizedPrevious === undefined && previous !== undefined) continue;
+      if (normalizedNext === undefined && next !== undefined) continue;
+      if (JSON.stringify(normalizedPrevious) === JSON.stringify(normalizedNext)) continue;
+      changes.push({ field, before: normalizedPrevious, after: normalizedNext });
+      continue;
+    }
     if ((!isAuditPrimitive(previous) && previous !== undefined)
       || (!isAuditPrimitive(next) && next !== undefined)
-      || Object.is(previous, next)) return [];
-    return [{
+      || Object.is(previous, next)) continue;
+    changes.push({
       field,
       before: previous as AuditPrimitive | undefined,
       after: next as AuditPrimitive | undefined,
-    }];
-  });
+    });
+  }
+  return changes;
+}
+
+function normalizeAuditKeyList(value: unknown, field: "moduleKeys" | "permissionKeys"): string[] | undefined {
+  if (value === undefined) return undefined;
+  const pattern = field === "moduleKeys" ? /^[a-z][a-z0-9_]{0,63}$/ : /^[a-z][a-z0-9_.:-]{0,127}$/;
+  if (!Array.isArray(value) || value.length > 100
+    || !value.every((item): item is string => typeof item === "string" && pattern.test(item))) return undefined;
+  return [...new Set(value)].sort();
 }
 
 export function hasTechnicalAuditPayload(

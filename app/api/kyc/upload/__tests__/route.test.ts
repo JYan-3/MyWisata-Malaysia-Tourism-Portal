@@ -3,6 +3,8 @@ import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { abandonAndRemoveKycEvidence } from '@/lib/kyc/submission';
 import { runKycOcr } from '@/lib/kyc/ocr';
 
+vi.mock('@/lib/operations/workload', () => ({ withPortalWorkload: async (_scope: string, work: (signal: AbortSignal) => Promise<unknown>) => work(new AbortController().signal), WorkloadUnavailableError: class extends Error {} }));
+vi.mock('@/lib/checkout/guest-session', () => ({ reserveGuestRateLimit: vi.fn().mockResolvedValue(true) }));
 vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn().mockResolvedValue({ ocr: Buffer.from('clean'), stored: Buffer.from('watermarked') }) }));
 
 const getUser = vi.fn();

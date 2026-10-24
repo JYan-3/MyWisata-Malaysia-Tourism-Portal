@@ -3,6 +3,7 @@ import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { withdrawalProofFailure, withdrawalSessionId } from '@/lib/wallet/withdrawal-authorization';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
 import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
+import { scheduleEmailDelivery } from '@/lib/email/events';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createClient } from '@/lib/supabase/server';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
@@ -98,6 +99,7 @@ export async function POST(
     amountRm: Number(withdrawal.amount),
   });
   if (!execution.ok) return execution.response;
+  scheduleEmailDelivery();
   const { callbackJobId, callbackAvailableAt, ...publicResult } = execution.data;
   if (callbackJobId && callbackAvailableAt) {
     scheduleTngMockCallbackAcceleration(callbackJobId, callbackAvailableAt);

@@ -11,7 +11,7 @@ import {
   auditActionSummaryKey,
   deriveAuditChanges,
   hasTechnicalAuditPayload,
-  type AuditPrimitive,
+  type AuditChangeValue,
 } from "@/components/admin/access-control/audit-log-presentation";
 import { buildAccessControlQuery, errorMessage, focusTargetForAuditEvent } from "@/components/admin/access-control/types";
 import type { ApiEnvelope, AuditFocus, AuditRecord, EntityFocus, PageResult } from "@/components/admin/access-control/types";
@@ -105,6 +105,10 @@ const AUDIT_FIELD_LABELS: Readonly<Record<string, string>> = {
   manuallyAssignable: "manuallyAssignable",
   manually_assignable: "manuallyAssignable",
   generation: "generation",
+  roleName: "roleName",
+  moduleKeys: "moduleKeys",
+  permissionKeys: "permissionKeys",
+  isActive: "isActive",
 };
 
 const AUDIT_VALUE_LABELS = new Set([
@@ -137,8 +141,9 @@ function auditFieldLabel(t: (key: string) => string, fieldName: string) {
   return key ? t(`accessControl.audit.fieldLabels.${key}`) : fieldName;
 }
 
-function auditValueLabel(t: (key: string) => string, value: AuditPrimitive | undefined) {
+function auditValueLabel(t: (key: string) => string, value: AuditChangeValue | undefined) {
   if (value === undefined) return t("accessControl.audit.valueLabels.missing");
+  if (Array.isArray(value)) return value.length ? value.join(", ") : t("accessControl.audit.valueLabels.emptyList");
   if (value === null) return t("accessControl.audit.valueLabels.null");
   if (typeof value === "boolean") return t(`accessControl.audit.valueLabels.${value}`);
   if (typeof value === "string" && AUDIT_VALUE_LABELS.has(value)) return t(`accessControl.audit.valueLabels.${value}`);

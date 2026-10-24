@@ -9,14 +9,15 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import {
-  getMyWithdrawals,
+  getMyActiveWithdrawals,
+  getMyWithdrawalById,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
-import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@/lib/stripe/jit-visibility";
+import { shouldExposeStripePayoutSetup } from "@/lib/stripe/jit-visibility";
 import { STRIPE_TOP_UP_MAXIMUM_RM, STRIPE_TOP_UP_MINIMUM_RM } from "@/lib/stripe/top-up-limits";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -45,9 +46,31 @@ function walletSummaryEndpoint(destinationId: string) {
     : "/api/wallet/summary";
 }
 
+function readPendingWithdrawal(userId: string | undefined) {
+  if (!userId || typeof window === "undefined") return null;
+  try {
+    const stored = sessionStorage.getItem(`my-lawatan:pending-withdrawal:${userId}`);
+    if (!stored) return null;
+    const parsed: unknown = JSON.parse(stored);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const pending = parsed as { requestId?: unknown; amountRm?: unknown; destinationId?: unknown };
+    if (typeof pending.requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(pending.requestId)
+        || typeof pending.amountRm !== "string" || !Number.isFinite(Number(pending.amountRm))
+        || (pending.destinationId !== null && typeof pending.destinationId !== "string")) return null;
+    return {
+      requestId: pending.requestId,
+      amountRm: pending.amountRm,
+      destinationId: pending.destinationId as string | null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function WalletContent() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { currentUser, capabilities } = useAuth();
+  const currentUserId = currentUser?.id;
   const isActiveRef = useRef(true);
   const gate = useCustomerCapabilityGate();
   const searchParams     = useSearchParams();
@@ -61,6 +84,9 @@ function WalletContent() {
   const [walletLoadError, setWalletLoadError] = useState("");
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
   const [readiness, setReadiness] = useState<CustomerWalletCapabilities | null>(null);
+  const [minimumWithdrawalRm, setMinimumWithdrawalRm] = useState(50);
+  const pendingWithdrawalRequest = useRef<{ requestId: string; amountRm: string; destinationId: string | null } | null>(null);
+  const [withdrawalOutcomePending, setWithdrawalOutcomePending] = useState(false);
 
   // Withdrawal form
   const [showWithdraw, setShowWithdraw]   = useState(false);
@@ -107,6 +133,7 @@ function WalletContent() {
     availableEarningsRm: resolvedAvailableEarnings,
     withdrawRequested: withdrawSetupRequested,
     returningFromOnboarding,
+    minimumWithdrawalRm,
   });
   const usesStripeDestination = readiness?.destinationSummary?.type !== "e_wallet";
   const topUpMaximumAmountLabel = STRIPE_TOP_UP_MAXIMUM_RM.toLocaleString(
@@ -167,11 +194,13 @@ function WalletContent() {
           pendingEarningsSen: number;
           reservedEarningsSen: number;
           withdrawnEarningsSen: number;
+          minimumWithdrawalSen: number;
         } & CustomerWalletCapabilities;
       };
       if (!summaryResponse.ok || !body.data) throw new Error("wallet_summary_unavailable");
       const summary = body.data;
       if (!isActiveRef.current) return null;
+      setMinimumWithdrawalRm(summary.minimumWithdrawalSen / 100);
       setBuckets({
         topup: summary.topupSen / 100,
         earnings: summary.earningsSen / 100,
@@ -200,7 +229,7 @@ function WalletContent() {
     const withdrawalsTimeout = window.setTimeout(() => withdrawalsController.abort(), WALLET_READ_TIMEOUT_MS);
     const [summaryResult, withdrawalsResult] = await Promise.allSettled([
       refreshWalletSummary(destinationId),
-      getMyWithdrawals(currentUser.id, withdrawalsController.signal)
+      getMyActiveWithdrawals(currentUser.id, withdrawalsController.signal)
         .finally(() => window.clearTimeout(withdrawalsTimeout)),
     ]);
     if (!isActiveRef.current) return;
@@ -272,11 +301,11 @@ function WalletContent() {
 
   useEffect(() => {
     if (!currentUser) return;
-    if (!returningFromOnboarding && (!walletReady || resolvedAvailableEarnings < CUSTOMER_WITHDRAWAL_MINIMUM_RM)) return;
+    if (!returningFromOnboarding && (!walletReady || resolvedAvailableEarnings < minimumWithdrawalRm)) return;
     // Refresh the external Stripe account state after onboarding or when the balance becomes eligible.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshConnectStatus();
-  }, [currentUser, refreshConnectStatus, resolvedAvailableEarnings, returningFromOnboarding, walletReady]);
+  }, [currentUser, refreshConnectStatus, resolvedAvailableEarnings, returningFromOnboarding, walletReady, minimumWithdrawalRm]);
 
   async function handleConnectOnboard() {
     if (!gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
@@ -314,8 +343,13 @@ function WalletContent() {
     if (!gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
     setWithdrawalSubmitted(false);
     setShowTopUp(false);
-    setWithdrawError("");
+    if (!pendingWithdrawalRequest.current) setWithdrawError("");
     setWithdrawSetupRequested(true);
+
+    if (pendingWithdrawalRequest.current) {
+      setShowWithdraw(true);
+      return;
+    }
 
     if (!walletReady || !readiness) {
       setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
@@ -360,7 +394,7 @@ function WalletContent() {
       if (!isActiveRef.current) return;
 
       const destination = body.data.destination;
-      setDestinations((current) => [destination, ...current.filter((item) => item.id !== destination.id)]);
+      setDestinations((current) => [destination, ...(current ?? []).filter((item) => item.id !== destination.id)]);
       setSelectedDestinationId(destination.id);
       await refreshWalletSummary(destination.id);
       setShowAddTngDestination(false);
@@ -373,8 +407,8 @@ function WalletContent() {
     }
   }
 
-  async function reconcileWithdrawalRequest(requestId: string) {
-    if (!currentUser) return false;
+  const reconcileWithdrawalRequest = useCallback(async (requestId: string) => {
+    if (!currentUserId) return false;
 
     for (const delayMs of WITHDRAWAL_RECONCILIATION_DELAYS_MS) {
       if (delayMs > 0) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
@@ -383,10 +417,10 @@ function WalletContent() {
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), WALLET_READ_TIMEOUT_MS);
       try {
-        const latestWithdrawals = await getMyWithdrawals(currentUser.id, controller.signal);
+        const accepted = await getMyWithdrawalById(currentUserId, requestId, controller.signal);
         if (!isActiveRef.current) return false;
-        setWithdrawals(latestWithdrawals);
-        if (latestWithdrawals.some((withdrawal) => withdrawal.id === requestId)) {
+        if (accepted) {
+          setWithdrawals((current) => [accepted, ...(current ?? []).filter((item) => item.id !== accepted.id)]);
           setHistoryRefreshKey((key) => key + 1);
           return true;
         }
@@ -398,9 +432,9 @@ function WalletContent() {
     }
 
     return false;
-  }
+  }, [currentUserId]);
 
-  function completeWithdrawalSubmission() {
+  const completeWithdrawalSubmission = useCallback(() => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.delete("topup");
     window.history.replaceState(
@@ -412,23 +446,63 @@ function WalletContent() {
     setShowWithdraw(false);
     setWithdrawAmount("");
     setWithdrawError("");
-  }
+  }, []);
+
+  const clearPendingWithdrawal = useCallback((userId: string) => {
+    pendingWithdrawalRequest.current = null;
+    setWithdrawalOutcomePending(false);
+    try { sessionStorage.removeItem(`my-lawatan:pending-withdrawal:${userId}`); } catch { /* Best effort cleanup. */ }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const timeoutId = window.setTimeout(() => {
+      const pending = readPendingWithdrawal(currentUserId);
+      if (!pending || !isActiveRef.current) return;
+      pendingWithdrawalRequest.current = pending;
+      setWithdrawalOutcomePending(true);
+      setWithdrawAmount(pending.amountRm);
+      setSelectedDestinationId(pending.destinationId ?? "");
+      setWithdrawError(tCustomer("ui.wallet.withdrawalOutcomeUnknown"));
+      setConfirmingWithdrawal(true);
+      void reconcileWithdrawalRequest(pending.requestId).then((accepted) => {
+        if (!accepted || pendingWithdrawalRequest.current?.requestId !== pending.requestId) return;
+        clearPendingWithdrawal(currentUserId);
+        completeWithdrawalSubmission();
+        void refreshWalletState(pending.destinationId ?? "");
+      }).finally(() => {
+        if (isActiveRef.current && pendingWithdrawalRequest.current?.requestId === pending.requestId) {
+          setConfirmingWithdrawal(false);
+        }
+      });
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [clearPendingWithdrawal, completeWithdrawalSubmission, currentUserId, reconcileWithdrawalRequest, refreshWalletState, tCustomer]);
 
   async function handleWithdraw(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentUser || !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
-    if (showAddTngDestination) return;
+    if (!currentUser) return;
+    const existingPending = pendingWithdrawalRequest.current;
+    if (!existingPending && !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
+    if (!existingPending && showAddTngDestination) return;
     setWithdrawError("");
-    if (!readiness?.canWithdraw) {
+    if (!existingPending && !readiness?.canWithdraw) {
       setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
       return;
     }
-    const amount    = parseFloat(withdrawAmount);
-    const available = availableEarnings;
-    if (!amount || amount <= 0) { setWithdrawError(tCustomer("ui.wallet.validAmount")); return; }
-    if (amount > available)     { setWithdrawError(tCustomer("ui.wallet.amountExceedsEarnings")); return; }
-    if (amount < CUSTOMER_WITHDRAWAL_MINIMUM_RM) { setWithdrawError(tCustomer("ui.wallet.minimumWithdrawal", { amount: formatMYRNumber(CUSTOMER_WITHDRAWAL_MINIMUM_RM) })); return; }
-    const requestId = crypto.randomUUID();
+    if (!existingPending) {
+      const amount = parseFloat(withdrawAmount);
+      const available = availableEarnings;
+      if (!amount || amount <= 0) { setWithdrawError(tCustomer("ui.wallet.validAmount")); return; }
+      if (amount > available) { setWithdrawError(tCustomer("ui.wallet.amountExceedsEarnings")); return; }
+      if (amount < minimumWithdrawalRm) { setWithdrawError(tCustomer("ui.wallet.minimumWithdrawal", { amount: formatMYRNumber(minimumWithdrawalRm) })); return; }
+    }
+    const requestId = existingPending?.requestId ?? crypto.randomUUID();
+    const requestAmount = existingPending?.amountRm ?? withdrawAmount;
+    const requestDestinationId = existingPending ? existingPending.destinationId : selectedDestinationId || null;
+    const pendingRequest = { requestId, amountRm: requestAmount, destinationId: requestDestinationId };
+    pendingWithdrawalRequest.current = pendingRequest;
+    try { sessionStorage.setItem(`my-lawatan:pending-withdrawal:${currentUser.id}`, JSON.stringify(pendingRequest)); } catch { /* In-memory idempotency remains active for this page session. */ }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), WITHDRAWAL_ACTION_TIMEOUT_MS);
     setConfirmingWithdrawal(false);
@@ -438,25 +512,45 @@ function WalletContent() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ requestId, amountRm: withdrawAmount, ...(selectedDestinationId ? { destinationId: selectedDestinationId } : {}) }),
+        body: JSON.stringify({ requestId, amountRm: requestAmount, ...(requestDestinationId ? { destinationId: requestDestinationId } : {}) }),
       });
-      if (await gate.handleResponse(response, "/customer/wallet")) return;
-      const body = await response.json() as { error?: { message?: string } | string };
+      if (await gate.handleResponse(response, "/customer/wallet")) {
+        if (!existingPending) clearPendingWithdrawal(currentUser.id);
+        return;
+      }
       if (!response.ok) {
+        if (response.status >= 500) {
+          setConfirmingWithdrawal(true);
+          const reconciled = await reconcileWithdrawalRequest(requestId);
+          if (reconciled) {
+            clearPendingWithdrawal(currentUser.id);
+            completeWithdrawalSubmission();
+            void refreshWalletState(requestDestinationId ?? "");
+          } else if (isActiveRef.current) {
+            setWithdrawalOutcomePending(true);
+            setWithdrawError(tCustomer("ui.wallet.withdrawalOutcomeUnknown"));
+          }
+          return;
+        }
+        clearPendingWithdrawal(currentUser.id);
+        const body = await response.json().catch(() => ({})) as { error?: { message?: string } | string };
         throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? tCustomer("ui.wallet.submitWithdrawalError"));
       }
+      clearPendingWithdrawal(currentUser.id);
       completeWithdrawalSubmission();
-      void refreshWalletState(selectedDestinationId);
+      void refreshWalletState(requestDestinationId ?? "");
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
+      if (error instanceof Error && (error.name === "AbortError" || error instanceof TypeError)) {
         setConfirmingWithdrawal(true);
         const reconciled = await reconcileWithdrawalRequest(requestId);
         if (reconciled) {
+          clearPendingWithdrawal(currentUser.id);
           completeWithdrawalSubmission();
-          void refreshWalletSummary(selectedDestinationId).catch(() => {
+          void refreshWalletSummary(requestDestinationId ?? "").catch(() => {
             if (isActiveRef.current) setWalletLoadError(tCustomer("ui.wallet.walletLoadError"));
           });
         } else if (isActiveRef.current) {
+          setWithdrawalOutcomePending(true);
           setWithdrawError(tCustomer("ui.wallet.withdrawalOutcomeUnknown"));
         }
         return;
@@ -545,6 +639,15 @@ function WalletContent() {
         onWithdraw={() => void openWithdraw()}
       />
 
+      {withdrawalOutcomePending && !showWithdraw && (
+        <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          <span>{confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : tCustomer("ui.wallet.withdrawalOutcomeUnknown")}</span>
+          <Button type="button" size="sm" variant="outline" disabled={confirmingWithdrawal} onClick={() => setShowWithdraw(true)}>
+            {tCustomer("ui.wallet.resumeWithdrawalCheck")}
+          </Button>
+        </div>
+      )}
+
       {/* Stripe payout setup is intentionally hidden until a withdrawal-related JIT trigger. */}
       {showPayoutSetup && (!readiness?.canWithdraw || usesStripeDestination) && (
         <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
@@ -607,7 +710,7 @@ function WalletContent() {
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.wallet.amountRm")}</label>
             <input
-              type="number" min="50" step="0.01" required
+              type="number" min={minimumWithdrawalRm} step="0.01" required disabled={withdrawalOutcomePending}
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               placeholder={tCustomer("ui.wallet.amountPlaceholder")}
@@ -620,6 +723,7 @@ function WalletContent() {
             {destinations.length > 0 ? (
               <select
                 value={selectedDestinationId}
+                disabled={withdrawalOutcomePending}
                 onChange={(e) => {
                   const nextDestinationId = e.target.value;
                   setSelectedDestinationId(nextDestinationId);
@@ -706,10 +810,10 @@ function WalletContent() {
             </p>
           )}
           {confirmingWithdrawal && <p role="status" className="text-xs text-amber-700 dark:text-amber-200">{tCustomer("ui.wallet.confirmingWithdrawal")}</p>}
-          {withdrawError && <p role="alert" className="text-xs text-red-500">{withdrawError}</p>}
+          {(withdrawError || withdrawalOutcomePending) && <p role="alert" className="text-xs text-red-500">{withdrawError || tCustomer("ui.wallet.withdrawalOutcomeUnknown")}</p>}
           <div className="flex gap-2">
-            <Button type="submit" disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw} className="flex-1">
-              {confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : withdrawing ? tCustomer("ui.states.submitting") : tCustomer("ui.wallet.submitRequest")}
+            <Button type="submit" disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || (!withdrawalOutcomePending && (!walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw))} className="flex-1">
+              {confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : withdrawing ? tCustomer("ui.states.submitting") : withdrawalOutcomePending ? tCustomer("ui.wallet.retrySameWithdrawal") : tCustomer("ui.wallet.submitRequest")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setShowWithdraw(false)}>{tCustomer("ui.wallet.cancel")}</Button>
           </div>

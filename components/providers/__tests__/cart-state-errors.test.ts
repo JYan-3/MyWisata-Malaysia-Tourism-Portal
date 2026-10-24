@@ -37,10 +37,10 @@ describe("cart provider catalogue error handling", () => {
 
   it("handles a failed authenticated cart load without an unhandled rejection", () => {
     const source = readFileSync(resolve(process.cwd(), "components/providers/cart.tsx"), "utf8");
-    const cartLoadStart = source.indexOf("if (currentUser)");
+    const cartLoadStart = source.indexOf("if (userId)");
     const cartLoad = source.slice(cartLoadStart, source.indexOf("else { setItems([]);", cartLoadStart));
 
-    expect(cartLoad).toMatch(/commerce\.getCart\(currentUser\.id\)[\s\S]+\.catch\(/);
+    expect(cartLoad).toMatch(/commerce\.getCart\(userId\)[\s\S]+\.catch\(/);
     expect(cartLoad).toContain("setItems([])");
     expect(cartLoad).toContain("setMounted(true)");
   });

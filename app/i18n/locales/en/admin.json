@@ -230,7 +230,9 @@
       "policyUpdated": "Policy action completed.",
       "assignmentUpdated": "Assignment action completed.",
       "staffRoleUpdated": "Staff role action completed.",
-      "staffRoleGranted": "{{role}} was granted to {{employee}}."
+      "staffModuleUpdated": "Staff module settings saved.",
+      "staffRoleGranted": "{{role}} was granted to {{employee}}.",
+      "committedReceiptUnavailable": "The change was saved, but its audit receipt or refreshed status is temporarily unavailable. Refresh this page before making another change."
     },
     "filters": {
       "searchCapabilities": "Search capability key",
@@ -408,12 +410,14 @@
       "invitationRevoked": "Invitation revoked.",
       "invitationError": "Unable to process the staff invitation.",
       "joinedEmployees": "Joined employees",
+      "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
       "delivery": {
         "pending": "Waiting",
         "sending": "Sending",
         "sent": "Email sent",
         "failed": "Delivery failed"
-      }
+      },
+      "systemOnlyModule": "Uses its existing system-role rules; unavailable for custom-role delegation."
     },
     "staffModules": {
       "title": "Module management",
@@ -450,7 +454,9 @@
       "assignmentDescription": "Assignments can restrict access but cannot bypass hard security guards.",
       "revokeTitle": "Confirm assignment revocation",
       "revokeDescription": "The assignment will stop applying and remain preserved in history.",
-      "confirm": "Confirm governed action"
+      "confirm": "Confirm governed action",
+      "typePhrase": "Type {{phrase}} to confirm this change.",
+      "typePhraseLabel": "Type the confirmation phrase"
     },
     "capabilities": {
       "key": "Capability",
@@ -569,7 +575,7 @@
       "before": "Before",
       "after": "After",
       "changeSummary": "Key changes",
-      "noChangeSummary": "No primitive field changes were recorded.",
+      "noChangeSummary": "No supported field changes were recorded.",
       "technicalDetails": "Technical details",
       "actionSummaries": {
         "unknown": "Unknown audit action",
@@ -638,10 +644,15 @@
         "riskLevel": "Risk level",
         "customerVisible": "Customer visible",
         "manuallyAssignable": "Manually assignable",
-        "generation": "Generation"
+        "generation": "Generation",
+        "roleName": "Role name",
+        "moduleKeys": "Modules",
+        "permissionKeys": "Permissions",
+        "isActive": "Role active"
       },
       "valueLabels": {
         "missing": "Not recorded",
+        "emptyList": "None",
         "null": "None",
         "true": "Yes",
         "false": "No",
@@ -665,6 +676,45 @@
     },
     "pagination": {
       "pageOf": "Page {{page}} of {{total}}"
+    },
+    "staffEmployees": {
+      "title": "Employees and access",
+      "help": "Review each employee’s current permissions and revoke an individual role assignment.",
+      "loadError": "Unable to verify employee access. Refresh and try again.",
+      "revokeError": "Unable to revoke this assignment. Refresh access before retrying.",
+      "revoked": "The assignment was revoked. Historical approvals and audit records are retained.",
+      "search": "Search employees by name or email",
+      "status": "Account status",
+      "pageSize": "Records per page",
+      "total": "{{count}} records",
+      "total_one": "{{count}} record",
+      "total_other": "{{count}} records",
+      "viewAccess": "View access",
+      "empty": "No employees match these filters.",
+      "currentAccess": "Current access",
+      "assignments": "Assigned roles",
+      "inactiveRole": "Inactive role",
+      "revoke": "Revoke this assignment",
+      "remainingAccess": "Permissions remaining after this assignment is revoked",
+      "noPermissions": "No active module permissions remain.",
+      "legacySource": "Existing system role",
+      "legacyHelp": "An existing Admin, Wallet Approver or Super Admin identity may provide additional access. Revoke that identity through its governed management page.",
+      "preserveHistory": "This removes only this employee’s role assignment. Their account, historical approvals and audit records are retained. Other employees keep their assignments.",
+      "revokeReason": "Reason for revoking this assignment",
+      "confirmTitle": "Confirm individual access revocation",
+      "invitationStatus": "Invitation status",
+      "invitationStatuses": {
+        "pending": "Pending",
+        "expired": "Expired",
+        "accepted": "Accepted",
+        "revoked": "Revoked",
+        "all": "All invitations"
+      },
+      "statuses": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "deleted": "Deleted"
+      }
     }
   },
   "accessibility": {
@@ -937,7 +987,16 @@
       "batchReviewFailed": "Batch review failed",
       "loadQueue": "Unable to load review queue",
       "reasonLength": "A reason of at least 10 characters is required.",
+      "reviewConflict": "This item changed while you were reviewing it. Check the current version before deciding.",
       "reviewActionFailed": "Review action failed"
+    },
+    "pagination": {
+      "pageSize": "Catalogue page size",
+      "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
+      "range": "Showing {{first}}–{{last}} of {{total}} items",
+      "pageOf": "Page {{page}} of {{totalPages}}"
     },
     "eyebrow": "Marketplace governance",
     "fallback": {
@@ -2294,6 +2353,7 @@
         "loadGovernance": "Unable to load wallet governance settings",
         "loadSettings": "Unable to load wallet settings",
         "negative": "Values cannot be negative.",
+        "minimumWithdrawal": "Minimum withdrawal must be at least RM1.00.",
         "reasonBeforeSave": "Add a change reason of at least 10 characters before saving.",
         "roleReason": "Add a role-change reason of at least 10 characters before continuing.",
         "save": "Unable to save settings"
@@ -2338,6 +2398,7 @@
       },
       "roleChanged": "Wallet approver access changed: {{action}}.",
       "saved": "Wallet governance settings saved.",
+      "savedNotificationFailed": "Wallet settings and audit were saved, but the notification could not be sent.",
       "title": "Wallet settings",
       "units": {
         "days": "days",
@@ -2416,7 +2477,8 @@
     "approve": "Approve",
     "reject": "Reject",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "refresh": "Refresh"
   },
   "email": {
     "draft": {
@@ -3953,5 +4015,10 @@
       "add": "Could not add the amenity",
       "update": "Could not update the amenity"
     }
+  },
+  "reviewRefresh": {
+    "changed": "This task changed. Review the current details before confirming.",
+    "stale": "Refresh failed. Showing the last loaded data.",
+    "denied": "Your review access is no longer available."
   }
 }

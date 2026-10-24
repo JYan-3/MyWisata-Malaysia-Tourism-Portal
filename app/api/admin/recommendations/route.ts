@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     uid: user.id,
   });
   if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
+    return apiFail('FORBIDDEN', 'Recommendation review permission required', 403);
   }
   const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
 

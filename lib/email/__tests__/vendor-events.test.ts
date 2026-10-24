@@ -37,7 +37,7 @@ vi.mock('@/lib/supabase/service', () => ({
       }
       throw new Error(`Unexpected table ${table}`);
     },
-    rpc: async (name: string) => ({ data: name === 'claim_email_outbox_delivery' ? { rows: mocks.claimed, reviewRequired: 0 } : true, error: null }),
+    rpc: async (name: string) => ({ data: name === 'claim_email_outbox_delivery_v2' ? { rows: mocks.claimed, reviewRequired: 0 } : true, error: null }),
   }),
 }));
 

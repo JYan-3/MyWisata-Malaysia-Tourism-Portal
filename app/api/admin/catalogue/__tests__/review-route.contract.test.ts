@@ -3,12 +3,14 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(resolve(process.cwd(), "app/api/admin/catalogue/reviews/route.ts"), "utf8");
+const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20261023141512_approver_state_consistency.sql"), "utf8");
 
 describe("Admin voucher review gate", () => {
   it("only queues and approves vouchers after Vendor Owner approval", () => {
-    expect(source).toContain("vendor_review_status");
-    expect(source).toContain("vendor_review_status === 'approved'");
-    expect(source).toContain("vendor_review_status !== 'approved'");
+    expect(migration).toContain("vendor_review_status = 'approved'");
+    expect(source).toContain("list_catalogue_review_queue");
+    expect(source).toContain("review_catalogue_item");
+    expect(source).not.toContain(".update(update)");
   });
 
   it("uses the dynamic Catalogue Review permission guard", () => {

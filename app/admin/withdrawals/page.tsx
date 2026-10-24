@@ -12,6 +12,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { WithdrawalListItem } from "@/lib/wallet/withdrawal-review";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 const PAGE_SIZES = [15, 25, 50, 100] as const;
 const STATUS_OPTIONS = [
@@ -51,14 +52,15 @@ export default function AdminWithdrawalsPage() {
   const [loading, setLoading] = useState(false);
   const [referenceNow, setReferenceNow] = useState<number | null>(null);
 
-  const loadList = useCallback(async () => {
-    setLoading(true);
+  const loadList = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
       if (status) params.set("status", status);
       if (risk) params.set("risk", risk);
       if (search.trim()) params.set("search", search.trim());
-      const response = await fetch(`/api/admin/withdrawals?${params.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/withdrawals?${params.toString()}`, { cache: "no-store", signal });
+      if (response.status === 401 || response.status === 403) { setItems([]); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
       const body = await response.json() as { data?: { items: WithdrawalListItem[]; total: number; totalPages: number }; error?: { message?: string } };
       if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("withdrawals.errors.loadRequests"));
       setItems(body.data.items);
@@ -66,11 +68,14 @@ export default function AdminWithdrawalsPage() {
       setTotalPages(body.data.totalPages);
       setReferenceNow(Date.now());
     } catch (loadError) {
+      if (signal) throw loadError;
       showFeedback("error", loadError instanceof Error ? loadError.message : t("withdrawals.errors.loadRequests"));
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
   }, [page, pageSize, risk, search, showFeedback, status, t]);
+
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: loadList });
 
   useEffect(() => { queueMicrotask(() => { void loadList(); }); }, [loadList]);
 
@@ -92,6 +97,7 @@ export default function AdminWithdrawalsPage() {
 
   return (
     <AdminPageShell>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <AdminPageHeader
         eyebrow={<><ShieldCheck size={14} /> {t("withdrawals.header.eyebrow")}</>}
         title={t("withdrawals.header.title")}

@@ -65,4 +65,20 @@ describe("cart state after completed checkout", () => {
     act(() => root.unmount());
     document.body.removeChild(container);
   });
+  it("keeps selected items when auth refresh returns the same account", async()=>{
+    const values=new Map<string,string>();
+    vi.stubGlobal("sessionStorage",{getItem:(key:string)=>values.get(key) ?? null,setItem:(key:string,value:string)=>values.set(key,value)});
+    state.getCart.mockReset().mockResolvedValueOnce([{activityId:"product-1",variantId:"variant-1",outletId:"outlet-1",qty:1}]).mockImplementationOnce(()=>new Promise(()=>{}));
+    let cart!:ReturnType<typeof useCart>;
+    function Probe(){const value=useCart();React.useLayoutEffect(()=>{cart=value;});return null;}
+    const container=document.createElement("div");const root=createRoot(container as unknown as Element);
+    await act(async()=>{root.render(<CartProvider><Probe/></CartProvider>);await settle();});
+    await act(async()=>cart.setSelectedKeys(["product-1|variant-1||outlet-1"]));
+    state.currentUser={...state.currentUser};
+    await act(async()=>{root.render(<CartProvider><Probe/></CartProvider>);await settle();});
+    expect(cart.selectedItems).toHaveLength(1);
+    expect(state.getCart).toHaveBeenCalledTimes(1);
+    await act(async()=>root.unmount());vi.unstubAllGlobals();
+  });
+
 });

@@ -46,6 +46,7 @@ export type TransactionEmailType =
   | 'recommendation_reward_reversed';
 
 export type AccountEmailType =
+  | 'staff_withdrawal_approval'
   | 'account_suspended'
   | 'account_unsuspended'
   | 'account_deleted'
@@ -196,6 +197,12 @@ export function renderTransactionEmail(input: TransactionEmailInput): RenderedEm
 
 export function renderAccountEmail(input: AccountEmailInput): RenderedEmail {
   const copy = emailCopy(input.locale);
+  if (input.eventType === 'staff_withdrawal_approval') {
+    return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+      greeting(input), copy.withdrawalReviewNotice,
+      `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.automated,
+    ], { label: copy.reviewWithdrawals, url: `${resolvePaymentAppUrl()}/admin/withdrawals` });
+  }
   return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
     greeting(input), copy.account, `${copy.reason}: ${emailReason(input.reason.trim(), input.locale)}`,
     `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.support,

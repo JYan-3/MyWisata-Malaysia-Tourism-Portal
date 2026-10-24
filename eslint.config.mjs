@@ -3,7 +3,10 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
+  // Next's default source glob omits CJS; the isolated OCR runtime requires it.
+  ...nextVitals.map((config) => config.name === "next"
+    ? { ...config, files: [...config.files, "lib/kyc/runtime/*.cjs"] }
+    : config),
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([

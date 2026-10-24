@@ -76,6 +76,7 @@ const updateBody = {
   ...createBody,
   name: "Campaign Managers",
   active: true,
+  updatedAt: "2026-10-23T10:00:00.000Z",
   reason: "Update the campaign operations role",
 };
 
@@ -145,7 +146,7 @@ describe("staff role management API", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it("lists permissions and roles from read-only Task 3 tables", async () => {
+  it("lists role definitions without downloading employee assignment history", async () => {
     const permissions = await permissionsRoute.GET();
     const roles = await rolesRoute.GET();
 
@@ -156,7 +157,7 @@ describe("staff role management API", () => {
     expect(await roles.json()).toMatchObject({
       data: {
         roles: [{ id: ROLE_ID, moduleKeys: ["sponsored_placements"], permissionKeys: ["admin.map_campaign.manage"] }],
-        assignments: [{ id: ASSIGNMENT_ID, roleId: ROLE_ID, userId: USER_ID }],
+        assignments: [],
       },
       error: null,
     });
@@ -192,8 +193,19 @@ describe("staff role management API", () => {
       p_description: updateBody.description,
       p_module_keys: updateBody.moduleKeys,
       p_active: true,
+      p_expected_updated_at: updateBody.updatedAt,
       p_reason: updateBody.reason,
     });
+  });
+
+  it("returns a conflict when the role changed after the form was loaded", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: new Error("staff_role_version_conflict") });
+    const response = await roleRoute.PATCH(request("PATCH", updateBody), {
+      params: Promise.resolve({ roleId: ROLE_ID }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "CONFLICT" } });
   });
 
   it("assigns and revokes a custom role through governed RPCs", async () => {
@@ -301,6 +313,13 @@ describe("staff role management API", () => {
     expect(response.status).toBe(409);
     expect(body.error.code).toBe(code);
     expect(JSON.stringify(body)).not.toContain(message);
+  });
+
+  it("refuses an assignment from a different role URL before calling revoke", async () => {
+    mocks.from.mockReturnValue(queryBuilder([{ role_id: "99999999-9999-4999-8999-999999999999" }]));
+    const response = await assignmentsRoute.DELETE(request("DELETE", { assignmentId: ASSIGNMENT_ID, reason: "Remove only this employee assignment" }), { params: Promise.resolve({ roleId: ROLE_ID }) });
+    expect(response.status).toBe(404);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("does not directly mutate staff RBAC tables", async () => {

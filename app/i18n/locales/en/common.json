@@ -120,6 +120,7 @@
   "notifications": {
     "title": "Notifications",
     "label": "Notifications",
+    "adminDescription": "New tasks and updates assigned to your staff account.",
     "all": "All",
     "unread": "Unread",
     "markAllAsRead": "Mark all as read",
@@ -160,6 +161,26 @@
       "withdrawalSubmitted": {
         "title": "Withdrawal request submitted",
         "body": "Your withdrawal is pending review. You will receive an update when its status changes."
+      },
+      "withdrawalApprovalTask": {
+        "title": "Withdrawal awaiting review",
+        "body": "A withdrawal review task is waiting. Open the protected Admin page to review it."
+      },
+      "withdrawalApprovalStepCompleted": {
+        "title": "First withdrawal review completed",
+        "body": "The first approval was completed by {{resolved_by_name}} at {{resolved_at_label}}. A second approver still needs to review this withdrawal."
+      },
+      "withdrawalApprovalResolved": {
+        "title": "Withdrawal review completed",
+        "body": "This review was completed by {{resolved_by_name}} at {{resolved_at_label}}."
+      },
+      "withdrawalApprovalCycleRestarted": {
+        "title": "Earlier withdrawal review closed",
+        "body": "This review cycle was replaced by {{resolved_by_name}} at {{resolved_at_label}}. A new review cycle is available."
+      },
+      "withdrawalApprovalUnavailable": {
+        "title": "Withdrawal review task unavailable",
+        "body": "The withdrawal record for this review task is no longer available."
       },
       "withdrawalPaid": {
         "title": "Payout sent to your account",

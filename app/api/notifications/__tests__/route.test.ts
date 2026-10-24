@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), staffAccess: vi.fn() }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })),
+}));
+
+vi.mock('@/lib/notifications/staff-access', () => ({
+  requireStaffNotificationAccess: mocks.staffAccess,
 }));
 
 import { GET } from '../route';
@@ -18,6 +22,7 @@ describe('GET /api/notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    mocks.staffAccess.mockResolvedValue(null);
     const query = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
@@ -53,6 +58,22 @@ describe('GET /api/notifications', () => {
     await GET(request('?category=messages'));
     const query = mocks.from.mock.results[0]?.value;
     expect(query.eq).toHaveBeenCalledWith('category', 'messages');
+  });
+
+  it('authorizes staff scope and keeps the feed limited to the current user', async () => {
+    const response = await GET(request('?scope=staff&category=wallet'));
+    const query = mocks.from.mock.results[0]?.value;
+    expect(response.status).toBe(200);
+    expect(mocks.staffAccess).toHaveBeenCalledWith(expect.any(Object), userId);
+    expect(query.eq).toHaveBeenCalledWith('user_id', userId);
+    expect(query.eq).toHaveBeenCalledWith('category', 'wallet');
+  });
+
+  it('does not query staff notifications when staff authorization fails', async () => {
+    mocks.staffAccess.mockResolvedValue(Response.json({ error: 'staff verification required' }, { status: 403 }));
+    const response = await GET(request('?scope=staff'));
+    expect(response.status).toBe(403);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it('ignores unknown category filters instead of returning an empty feed', async () => {

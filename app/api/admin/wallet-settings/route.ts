@@ -54,7 +54,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const { user, response } = await requireSuperAdmin();
+  const { db, user, response } = await requireSuperAdmin();
   if (response) return response;
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const parsed = await parseBody(request, walletSettingsPatchSchema);
@@ -64,21 +64,26 @@ export async function PATCH(request: Request) {
   const moderation = await moderateWalletAction({ actorId: user.id, action: 'settings', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
   if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
-  const service = createServiceClient();
   const changes = (Object.keys(KEYS) as SettingName[]).filter((key) => parsed.data[key] !== undefined);
-  const { error: settingsError } = await service.from('platform_settings').upsert(
-    changes.map((key) => ({ key: KEYS[key], value: String(parsed.data[key]), updated_by: user.id })),
-    { onConflict: 'key' },
-  );
-  if (settingsError) return apiFail('SETTINGS_UPDATE_FAILED', 'Unable to update wallet settings', 500);
   const changed = Object.fromEntries(changes.map((key) => [KEYS[key], parsed.data[key]]));
-  await service.from('audit_logs').insert({
-    actor_id: user.id, action: 'wallet.settings_updated', entity_type: 'platform_settings',
-    entity_id: user.id, after_data: changed, note: parsed.data.reason,
+  const { data: committed, error: settingsError } = await db.rpc('update_wallet_settings_with_audit', {
+    p_settings: Object.fromEntries(changes.map((key) => [KEYS[key], parsed.data[key]])),
+    p_reason: parsed.data.reason,
   });
-  await service.from('notifications').insert({
+  if (settingsError || !committed) return apiFail('SETTINGS_UPDATE_FAILED', 'Unable to update wallet settings and audit record', 500);
+  let notificationSent = true;
+  try {
+    const { error: notificationError } = await createServiceClient().from('notifications').insert({
     user_id: user.id, type: 'wallet_settings_updated', title: 'Wallet settings updated',
     body: 'Your wallet governance settings change was recorded.', link: '/admin/wallet/settings',
-  });
-  return apiOk({ settings: changed, updatedAt: new Date().toISOString() });
+    });
+    if (notificationError) {
+      notificationSent = false;
+      console.error('Wallet settings notification failed after commit', notificationError);
+    }
+  } catch (error) {
+    notificationSent = false;
+    console.error('Wallet settings notification failed after commit', error);
+  }
+  return apiOk({ settings: changed, updatedAt: new Date().toISOString(), notificationSent });
 }

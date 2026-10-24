@@ -30,4 +30,10 @@ describe('wallet summary readiness contract', () => {
     expect(source).toContain('payoutDestinationDisplayLabel');
     expect(source).not.toContain('displayLabel: destination.label');
   });
+
+  it('returns the configured withdrawal minimum and rejects values below the admin policy minimum', () => {
+    expect(source).toContain(".eq('key', 'withdrawal.min_amount_sen')");
+    expect(source).toContain('minimumWithdrawalSen: configuredMinimum');
+    expect(source).toContain('configuredMinimum < 100');
+  });
 });

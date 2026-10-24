@@ -21,11 +21,12 @@ export async function performGlobalSearch(query: string, db: SupabaseClient): Pr
     state.toLowerCase().includes(normalizedQuery) && state !== "All Malaysia"
   );
 
-  // 2. Experiences
-  const experiences = await searchActivities({ q: query }, db);
-
-  // 3. Vendors
-  const allVendors = await getVendors(db);
+  // Independent reads share the caller's permissions and need not wait for
+  // each other. Keep the existing projection and result ordering unchanged.
+  const [experiences, allVendors] = await Promise.all([
+    searchActivities({ q: query }, db),
+    getVendors(db),
+  ]);
   const vendors = allVendors.filter(vendor => vendor.kind !== "event" && (
     vendor.name.toLowerCase().includes(normalizedQuery) ||
     vendor.outlets.some(outlet => 

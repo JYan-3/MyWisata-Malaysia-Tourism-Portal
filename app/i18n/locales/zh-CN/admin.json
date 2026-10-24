@@ -230,7 +230,9 @@
       "policyUpdated": "策略操作已完成。",
       "assignmentUpdated": "分配操作已完成。",
       "staffRoleUpdated": "员工角色操作已完成。",
-      "staffRoleGranted": "已将“{{role}}”授予 {{employee}}。"
+      "staffModuleUpdated": "员工模块设置已保存。",
+      "staffRoleGranted": "已将“{{role}}”授予 {{employee}}。",
+      "committedReceiptUnavailable": "更改已保存，但审计回执或最新状态暂时无法读取。请先刷新页面，再进行其他更改。"
     },
     "filters": {
       "searchCapabilities": "搜索能力键",
@@ -408,12 +410,14 @@
       "invitationRevoked": "邀请已撤销。",
       "invitationError": "无法处理员工邀请。",
       "joinedEmployees": "已加入员工",
+      "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
       "delivery": {
         "pending": "等待中",
         "sending": "发送中",
         "sent": "邮件已发送",
         "failed": "发送失败"
-      }
+      },
+      "systemOnlyModule": "沿用现有系统身份规则，暂不支持通过自定义角色委派。"
     },
     "staffModules": {
       "title": "模块管理",
@@ -450,7 +454,9 @@
       "assignmentDescription": "分配可以限制访问，但不能绕过硬性安全保护。",
       "revokeTitle": "确认撤销分配",
       "revokeDescription": "该分配将停止生效，但仍会保留在历史记录中。",
-      "confirm": "确认治理操作"
+      "confirm": "确认治理操作",
+      "typePhrase": "输入 {{phrase}} 以确认此更改。",
+      "typePhraseLabel": "输入确认短语"
     },
     "capabilities": {
       "key": "能力",
@@ -569,7 +575,7 @@
       "before": "变更前",
       "after": "变更后",
       "changeSummary": "关键变更",
-      "noChangeSummary": "未记录基础字段变更。",
+      "noChangeSummary": "未记录受支持字段的变更。",
       "technicalDetails": "技术详情",
       "actionSummaries": {
         "unknown": "未知审计操作",
@@ -638,10 +644,15 @@
         "riskLevel": "风险等级",
         "customerVisible": "客户可见",
         "manuallyAssignable": "可手动分配",
-        "generation": "代次"
+        "generation": "代次",
+        "roleName": "角色名称",
+        "moduleKeys": "模块",
+        "permissionKeys": "权限",
+        "isActive": "角色已启用"
       },
       "valueLabels": {
         "missing": "未记录",
+        "emptyList": "无",
         "null": "无",
         "true": "是",
         "false": "否",
@@ -665,6 +676,45 @@
     },
     "pagination": {
       "pageOf": "第 {{page}} 页，共 {{total}} 页"
+    },
+    "staffEmployees": {
+      "title": "员工与权限",
+      "help": "查看员工目前的权限，并单独撤销某一项角色授权。",
+      "loadError": "无法确认员工权限，请刷新后重试。",
+      "revokeError": "无法撤销此授权，请刷新权限后再重试。",
+      "revoked": "此授权已撤销，历史审批和审计记录已保留。",
+      "search": "按姓名或邮箱搜索员工",
+      "status": "账号状态",
+      "pageSize": "每页记录数",
+      "total": "共 {{count}} 条记录",
+      "total_one": "共 {{count}} 条记录",
+      "total_other": "共 {{count}} 条记录",
+      "viewAccess": "查看权限",
+      "empty": "没有符合筛选条件的员工。",
+      "currentAccess": "目前权限",
+      "assignments": "已分配角色",
+      "inactiveRole": "角色已停用",
+      "revoke": "撤销此授权",
+      "remainingAccess": "撤销这项授权后仍保留的权限",
+      "noPermissions": "没有剩余的有效模块权限。",
+      "legacySource": "现有系统身份",
+      "legacyHelp": "原有 Admin、钱包审批员或 SuperAdmin 身份可能仍提供权限。请到对应的管理页面撤销该身份。",
+      "preserveHistory": "仅解除这名员工与角色的关联，保留账号、历史审批和审计记录。其他员工的授权保留。",
+      "revokeReason": "撤销此授权的原因",
+      "confirmTitle": "确认撤销个人授权",
+      "invitationStatus": "邀请状态",
+      "invitationStatuses": {
+        "pending": "待接受",
+        "expired": "已过期",
+        "accepted": "已接受",
+        "revoked": "已撤销",
+        "all": "全部邀请"
+      },
+      "statuses": {
+        "active": "正常",
+        "suspended": "已暂停",
+        "deleted": "已删除"
+      }
     }
   },
   "accessibility": {
@@ -937,7 +987,16 @@
       "batchReviewFailed": "批量审核失败",
       "loadQueue": "无法加载审核队列",
       "reasonLength": "必须填写至少 10 个字符的原因。",
+      "reviewConflict": "你审核期间，此项目已发生变化。请检查最新版本后再决定。",
       "reviewActionFailed": "审核操作失败"
+    },
+    "pagination": {
+      "pageSize": "目录每页数量",
+      "perPage": "每页 {{count}} 条",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
+      "range": "显示第 {{first}}–{{last}} 条，共 {{total}} 条",
+      "pageOf": "第 {{page}} / {{totalPages}} 页"
     },
     "eyebrow": "市场治理",
     "fallback": {
@@ -2294,6 +2353,7 @@
         "loadGovernance": "无法加载钱包治理设置",
         "loadSettings": "无法加载钱包设置",
         "negative": "数值不能为负数。",
+        "minimumWithdrawal": "最低提款金额必须至少为 RM1.00。",
         "reasonBeforeSave": "保存前，请添加至少 10 个字符的更改理由。",
         "roleReason": "继续前，请添加至少 10 个字符的角色更改理由。",
         "save": "无法保存设置"
@@ -2338,6 +2398,7 @@
       },
       "roleChanged": "钱包审批人权限已{{action}}。",
       "saved": "钱包治理设置已保存。",
+      "savedNotificationFailed": "钱包设置和审计记录已保存，但通知未能发送。",
       "title": "钱包设置",
       "units": {
         "days": "天",
@@ -2416,7 +2477,8 @@
     "approve": "批准",
     "reject": "拒绝",
     "previous": "上一个",
-    "next": "下一个"
+    "next": "下一个",
+    "refresh": "刷新"
   },
   "email": {
     "draft": {
@@ -3953,5 +4015,10 @@
       "add": "无法新增设施",
       "update": "无法更新设施"
     }
+  },
+  "reviewRefresh": {
+    "changed": "此任务已变更，请查看最新资料后再确认。",
+    "stale": "刷新失败，当前显示上次读取的资料。",
+    "denied": "你目前已没有此审批权限。"
   }
 }

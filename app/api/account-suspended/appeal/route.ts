@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { moderateAccountText } from "@/lib/moderation";
-import { classifyTicketSmart } from "@/lib/chatbot/classify-ai";
+import { createServiceClient } from "@/lib/supabase/service";
+import { cleanUserContent } from "@/lib/moderation/clean";
+import { classifyTicket } from "@/lib/chatbot/classify";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { z } from "zod";
 
@@ -13,19 +14,14 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
-  const parsed = await parseBody(request, appealSchema);
+  const parsed = await parseBody(request, appealSchema, { maxBytes: 16_384 });
   if (!parsed.ok) return parsed.response;
-  const body = parsed.data.body;
-
-  const moderation = await moderateAccountText(body, "suspension_appeal");
-  if ("error" in moderation && moderation.error === "api_unavailable") {
-    return apiFail("MODERATION_UNAVAILABLE", "Content review is temporarily unavailable; please try again", 503);
-  }
-  if ("flagged" in moderation && moderation.flagged) {
-    return apiFail("CONTENT_REJECTED", "This appeal contains disallowed content", 422);
-  }
-
-  const { category, method } = await classifyTicketSmart("Account suspension appeal", body);
+  // Appeals can contain identity/bank information. Keep the entire free-text
+  // path local; pattern redaction alone cannot make arbitrary text public.
+  let body: string;
+  try { body = (await cleanUserContent(parsed.data.body, createServiceClient())).display; }
+  catch { return apiFail("CONTENT_PROCESSING_UNAVAILABLE", "Unable to prepare your appeal; please try again", 503); }
+  const category = classifyTicket(`Account suspension appeal ${body}`);
   const { data, error } = await supabase
     .from("support_tickets")
     .insert({
@@ -34,7 +30,7 @@ export async function POST(request: Request) {
       subject: "Account suspension appeal",
       body,
       category,
-      classification_method: method,
+      classification_method: "keyword",
       status: "open",
     })
     .select("id")

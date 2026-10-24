@@ -220,6 +220,12 @@ describe("Task 5 shared runtime behavior", () => {
     expect(requestUrls.some((url) => url.includes("category=wallet") && url.includes("page=1"))).toBe(true);
   });
 
+  it("loads the staff inbox through the staff-authorized notification scope", async () => {
+    mocks.fetch.mockResolvedValueOnce(response({ data: { items: [], totalPages: 1 } }));
+    await render(<NotificationCenter scope="staff" categories={[{ value: "all", label: "All" }, { value: "wallet", label: "Wallet" }]} />);
+    expect(String(mocks.fetch.mock.calls[0]?.[0])).toContain("scope=staff");
+  });
+
   it("loads the next vendor notification page inside the bell without linking to a separate page", async () => {
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     mocks.fetch.mockImplementation(async (url: string) => {
@@ -371,5 +377,22 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).toContain("Employee and permission summary");
     await click(findButton("Approve translated"));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires the displayed phrase before allowing confirmation", async () => {
+    const onConfirm = vi.fn();
+    await render(<AdminConfirmDialog open title="batchActions.approve" description="confirm.approve" confirmLabel="batchActions.approve" confirmationPhrase="CONFIRM" onCancel={vi.fn()} onConfirm={onConfirm} />);
+    const confirmButton = findButton("Approve translated");
+    const phraseInput = findOne(container, (element) => element.tagName === "INPUT");
+    expect(confirmButton.disabled).toBe(true);
+
+    setInputValue(phraseInput, "CONFIRM");
+    await act(async () => { await Promise.resolve(); });
+    expect(confirmButton.disabled).toBe(false);
+    await click(confirmButton);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+
+    await render(<AdminConfirmDialog open title="batchActions.approve" description="confirm.approve" confirmLabel="batchActions.approve" confirmationPhrase="CONFIRM" confirmationResetKey="reviewed-data-changed" onCancel={vi.fn()} onConfirm={onConfirm} />);
+    expect(findButton("Approve translated").disabled).toBe(true);
   });
 });

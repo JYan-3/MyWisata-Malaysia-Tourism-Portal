@@ -14,6 +14,7 @@ import { GlobalCommandPalette } from "@/components/shared/global-command-palette
 import { staffNavigationSections } from "@/lib/staff-permissions/navigation";
 import { useCommandShortcutLabel } from "@/components/shared/command-shortcut";
 import { PortalSidebar, type PortalSidebarSection } from "@/components/layout/portal-sidebar";
+import { NotificationBell } from "@/components/shared/notification-bell";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -64,6 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // /admin/help and its guides filter their own content to the staff member's menu.
   const outsideAssignedWork = Boolean(currentUser)
     && pathname !== "/admin/security"
+    && pathname !== "/admin/notifications"
     && pathname !== "/admin/help"
     && !pathname.startsWith("/admin/help/")
     && !navigationHrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
@@ -265,6 +267,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <kbd className="ml-1 shrink-0 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{commandShortcutLabel}</kbd>
           </button>}
           <div className="flex items-center gap-2">
+            <NotificationBell scope="staff" allHref="/admin/notifications" />
             <Link
               href="/admin/help"
               aria-label={tAdmin("staffHelp.headerLink")}

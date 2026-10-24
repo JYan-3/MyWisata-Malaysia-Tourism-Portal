@@ -46,4 +46,6 @@ export async function verifyCheckoutEligibility({ db, query, config }) {
   await query(db, sql('supabase/migrations/20261016111120_withdrawal_execution_eligibility.sql'));
   await query(db, sql('supabase/tests/withdrawal_execution_eligibility.sql'));
   console.log('passed payout eligibility holds, identity generation, reserve retention and claim permissions');
+  const { verifyCheckoutContention } = await import('./checkout-contention-db.mjs');
+  await verifyCheckoutContention({ db, query, config });
 }

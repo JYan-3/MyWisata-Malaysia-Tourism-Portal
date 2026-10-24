@@ -1,5 +1,4 @@
 import type Stripe from 'stripe';
-import { enqueueWithdrawalEmail } from '@/lib/email/events';
 import { payoutFeeSen } from '@/lib/payouts/fees';
 import { createTngDirectCreditProvider } from '@/lib/payouts/providers/tng-direct-credit';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -46,7 +45,7 @@ export type PayoutExecutionResult = ExecutionSuccess | ExecutionFailure;
  */
 export async function executeApprovedWithdrawalPayout({
   withdrawalId,
-  userId,
+  userId: _userId,
   amountRm,
 }: ExecutionInput): Promise<PayoutExecutionResult> {
   const db = createServiceClient();
@@ -185,7 +184,6 @@ export async function executeApprovedWithdrawalPayout({
     });
     if (clearFailureError) console.error('[payout-execution] clear execution failure:', clearFailureError);
 
-    await enqueueApprovedEmail(withdrawalId, userId, amountRm);
     return {
       ok: true,
       data: {
@@ -293,22 +291,8 @@ export async function executeApprovedWithdrawalPayout({
   });
   if (clearFailureError) console.error('[payout-execution] clear execution failure:', clearFailureError);
 
-  await enqueueApprovedEmail(withdrawalId, userId, amountRm);
   return {
     ok: true,
     data: { status: 'processing', provider: 'stripe_connect', transfer_id: transfer.id, payout_id: payout.id },
   };
-}
-
-async function enqueueApprovedEmail(withdrawalId: string, userId: string, amountRm: number) {
-  try {
-    await enqueueWithdrawalEmail({
-      withdrawalId,
-      userId,
-      eventType: 'withdrawal_approved',
-      amountRm,
-    });
-  } catch (error) {
-    console.error('[payout-execution] withdrawal email enqueue failed:', error);
-  }
 }

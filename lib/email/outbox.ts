@@ -46,6 +46,7 @@ export type EmailOutboxInput = (
 
 type OutboxRow = {
   id: string;
+  user_id: string | null;
   to_email: string;
   event_type: EmailEventType;
   payload: {
@@ -57,6 +58,7 @@ type OutboxRow = {
     vendorName?: string;
     reference?: string;
     guestAccessToken?: string;
+    receiptOrderId?: string;
     reason?: string;
     occurredAt?: string;
     eventChange?: EventVendorChange;
@@ -73,8 +75,7 @@ export function makeEmailEventKey(eventType: EmailEventType, reference: string):
   return `${eventType}:${reference}`;
 }
 
-export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted: boolean; id?: string }> {
-  const db = createServiceClient();
+export async function enqueueEmail(input: EmailOutboxInput, db = createServiceClient()): Promise<{ inserted: boolean; id?: string }> {
   const payload: OutboxRow['payload'] = {
     locale: emailLocale(input.locale),
     recipientName: input.recipientName ?? null,
@@ -113,7 +114,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
     return { sent: 0, failed: 0, reviewRequired: 0 };
   }
   const db = createServiceClient();
-  const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox_delivery', { p_limit: limit });
+  const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox_delivery_v2', { p_limit: limit });
   if (claimError || !claimed || !Array.isArray(claimed.rows)) throw new Error('email_claim_unavailable');
 
   let sent = 0;
@@ -145,11 +146,24 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
     };
     let accepted: { id: string } | undefined;
     try {
-      if (row.payload?.guestAccessToken && !row.payload.reason) {
-        const {data:order,error}=await db.from('orders').select('id,status,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,order_items(product_name,variant_name,unit_price,quantity)').eq('id',row.payload.reference).is('user_id',null).single();
-        if (error || !order || order.contact_email !== row.to_email) throw new Error('Guest receipt unavailable');
-        const isPaid = ['paid', 'completed'].includes(String(order.status).toLowerCase());
-        const pickupPasses = isPaid ? await loadOrderPickupPasses(db, order.id) : { foodOrders: [], eventPickups: [] };
+      if (row.payload?.receiptOrderId || (row.payload?.guestAccessToken && !row.payload.reason)) {
+        const isGuest = Boolean(row.payload.guestAccessToken);
+        if (!isGuest && !row.user_id) throw new Error('receipt_owner_unavailable');
+        let orderQuery = db.from('orders')
+          .select('id,user_id,guest_subject_id,status,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,voucher_code,order_items(product_name,variant_name,unit_price,quantity)')
+          .eq('id', row.payload.receiptOrderId ?? row.payload.reference);
+        orderQuery = isGuest ? orderQuery.is('user_id', null) : orderQuery.eq('user_id', row.user_id!);
+        const { data: order, error } = await orderQuery.single();
+        if (error || !order || !['paid', 'completed'].includes(String(order.status).toLowerCase())) throw new Error('receipt_order_unavailable');
+        if (isGuest && !order.guest_subject_id) throw new Error('receipt_owner_unavailable');
+        let recipient = order.contact_email?.trim();
+        if (!recipient && !isGuest) {
+          const { data: account, error: accountError } = await db.from('users').select('email').eq('id', row.user_id!).single();
+          if (accountError) throw new Error('receipt_recipient_unavailable');
+          recipient = account?.email?.trim();
+        }
+        if (!recipient || recipient.toLowerCase() !== row.to_email.trim().toLowerCase()) throw new Error('receipt_recipient_unavailable');
+        const pickupPasses = await loadOrderPickupPasses(db, order.id);
         const orderUrl = new URL(`/customer/orders/${encodeURIComponent(order.id)}`, resolvePaymentAppUrl());
         const foodPickupPasses = pickupPasses.foodOrders.map((pass) => {
           const url = new URL(orderUrl);
@@ -178,7 +192,8 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
           items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? copy.standard,unitPrice:Number(item.unit_price),qty:item.quantity})),
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
-          accessUrl:`${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}`,
+          accessUrl: isGuest ? `${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}` : orderUrl.toString(),
+          voucherCode: order.voucher_code ?? undefined,
           pickupPasses: [...foodPickupPasses, ...eventPickupPasses],
         });
       } else if (row.event_type === 'kyc_security_alert') {
@@ -215,7 +230,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
             : ['/vendor/orders', '/vendor/wallet'].includes(row.payload?.actionPath ?? '') ? `${resolvePaymentAppUrl()}${row.payload.actionPath}` : undefined,
           to: row.to_email,
         });
-      } else if (row.event_type.startsWith('account_')) {
+      } else if (row.event_type.startsWith('account_') || row.event_type === 'staff_withdrawal_approval') {
         accepted = await sendAccountEmail({
           delivery, locale,
           eventType: row.event_type as AccountEmailType,

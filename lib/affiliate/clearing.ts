@@ -44,7 +44,7 @@ export interface ReversedCommission {
 export interface ClearingError {
   attributionId: string;
   error: string;
-  critical?: boolean; // attribution was claimed 'confirmed' but the wallet credit failed after
+  critical?: boolean;
 }
 
 export interface ClearingResult {
@@ -62,8 +62,6 @@ interface AttributionCandidate {
   created_at: string;
 }
 
-const REVERSIBLE_ORDER_STATUSES = new Set(['cancelled', 'refunded']);
-
 /**
  * Processes ONE still-pending attribution through the full clearing
  * pipeline — reversible-order check, owner-tier/KYC check, atomic claim,
@@ -76,6 +74,7 @@ async function processAttribution(
   service: SupabaseClient,
   attribution: AttributionCandidate,
   result: ClearingResult,
+  maturedBefore: string | null = null,
 ): Promise<void> {
   try {
     const { data: click } = await service
@@ -97,87 +96,33 @@ async function processAttribution(
       return;
     }
 
-    // Limited profile-complete links can attribute commissions, but money
-    // stays pending until the owner completes approved KYC.
-    const { data: owner } = await service
-      .from('users')
-      .select('tier, kyc_status')
-      .eq('id', link.user_id)
-      .maybeSingle();
-    if (owner?.tier !== 'kyc_verified' || owner?.kyc_status !== 'approved') {
-      result.skipped++;
-      return;
-    }
-
-    const { data: order } = await service
-      .from('orders')
-      .select('status')
-      .eq('id', attribution.order_id)
-      .maybeSingle();
-    if (order && REVERSIBLE_ORDER_STATUSES.has(order.status)) {
-      const reversed = await reverseCommission(service, attribution.id, `order ${order.status}`);
-      if (reversed) result.reversed.push({ attributionId: attribution.id, orderId: attribution.order_id, reason: `order ${order.status}` });
-      else result.skipped++;
-      return;
-    }
-
     // CLAUDE-P4-EXTRAS.md Extra 3: tier is a function of lifetime CONFIRMED
     // referrals (lib/affiliate/tier.ts), and this attribution's status is
     // still 'pending' at this point — so this read is the "before" state
     // for the tier-up comparison after the claim below.
     const tierBefore = await getTierForUser(service, link.user_id);
 
-    // Atomic claim — only proceeds if this row is still 'pending' at the
-    // moment of update. A concurrent/repeated run gets zero rows back here.
-    const { data: claimed, error: claimErr } = await service
-      .from('affiliate_attributions')
-      .update({ status: 'confirmed', cleared_at: new Date().toISOString() })
-      .eq('id', attribution.id)
-      .eq('status', 'pending')
-      .select('id')
-      .maybeSingle();
-    if (claimErr) {
-      result.errors.push({ attributionId: attribution.id, error: claimErr.message });
-      return;
-    }
-    if (!claimed) {
+    const credit = await creditAffiliateCommission(service, attribution.id, maturedBefore);
+    if (credit.outcome === 'skipped') {
       result.skipped++;
       return;
     }
+    if (credit.outcome === 'reversed') {
+      result.reversed.push({ attributionId: attribution.id, orderId: attribution.order_id, reason: credit.reason });
+      return;
+    }
+    result.cleared.push({ attributionId: attribution.id, userId: credit.userId, orderId: credit.orderId, amountRM: credit.amountRM });
 
+    // Notification failures cannot undo a committed credit or trigger a second one.
     try {
-      await creditAffiliateCommission(service, link.user_id, Number(attribution.commission_amount), attribution.order_id);
-      result.cleared.push({
-        attributionId: attribution.id,
-        userId: link.user_id,
-        orderId: attribution.order_id,
-        amountRM: Number(attribution.commission_amount),
-      });
-
-      // Fire-and-forget, never throws (lib/affiliate/notifications.ts) —
-      // only reached once per attribution, since the atomic claim above
-      // already guarantees this credit only ever runs once.
-      await notifyCommissionCleared(service, {
-        userId: link.user_id,
-        amountRM: Number(attribution.commission_amount),
-        attributionId: attribution.id,
-      });
-      const tierAfter = await getTierForUser(service, link.user_id);
+      await notifyCommissionCleared(service, { userId: credit.userId, amountRM: credit.amountRM, attributionId: attribution.id });
+      const tierAfter = await getTierForUser(service, credit.userId);
       if (tierAfter.tierName !== tierBefore.tierName) {
-        await notifyTierUp(service, {
-          userId: link.user_id,
-          tierName: tierAfter.tierName,
-          ratePercent: Number((tierAfter.rate * 100).toFixed(2)),
-          attributionId: attribution.id,
-        });
+        await notifyTierUp(service, { userId: credit.userId, tierName: tierAfter.tierName,
+          ratePercent: Number((tierAfter.rate * 100).toFixed(2)), attributionId: attribution.id });
       }
-    } catch (creditErr) {
-      // Claimed (status='confirmed') but the wallet credit failed — a real
-      // anomaly needing manual reconciliation, not a normal skip. Logged
-      // loudly rather than silently swallowed.
-      const message = creditErr instanceof Error ? creditErr.message : String(creditErr);
-      console.error('[affiliate] CRITICAL: attribution confirmed but wallet credit failed', attribution.id, message);
-      result.errors.push({ attributionId: attribution.id, error: `credited failed after claim: ${message}`, critical: true });
+    } catch {
+      console.error('[affiliate] clearing notification unavailable after committed credit', attribution.id);
     }
   } catch (err) {
     result.errors.push({ attributionId: attribution.id, error: err instanceof Error ? err.message : String(err) });
@@ -187,17 +132,16 @@ async function processAttribution(
 /**
  * Clears pending affiliate commissions older than the clearance window
  * (platform_settings['wallet.clearance_days'], default 7) into the
- * affiliate's real wallet — status -> 'confirmed', cleared_at set, and only
- * then is credit_earnings() called.
+ * affiliate's real wallet. SQL commits credit_earnings() and the confirmed
+ * attribution together, or rolls both back on failure.
  *
  * `maxAgeDays` overrides the clearance window — pass 0 to clear everything
  * regardless of age (used by the dev force-clear route; never expose this
  * override outside a demo-mode-gated route).
  *
- * Idempotent: each attribution is claimed via an atomic
- * `UPDATE ... WHERE status='pending'` before crediting, so a concurrent or
- * repeated run cannot double-credit. One bad row is caught and logged, not
- * allowed to abort the batch.
+ * Idempotent: SQL locks and checks the pending attribution in the credit
+ * transaction. Concurrent calls cannot double-credit; a failed transaction
+ * leaves the row pending for retry.
  */
 export async function clearMaturedCommissions(
   service: SupabaseClient,
@@ -226,7 +170,7 @@ export async function clearMaturedCommissions(
   }
 
   for (const attribution of candidates ?? []) {
-    await processAttribution(service, attribution, result);
+    await processAttribution(service, attribution, result, cutoff);
   }
 
   return result;

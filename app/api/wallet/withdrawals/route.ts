@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { toSen } from '@/lib/wallet/amounts';
-import { enqueueWithdrawalEmail } from '@/lib/email/events';
+import { scheduleEmailDelivery } from '@/lib/email/events';
 import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
@@ -176,21 +176,13 @@ export async function POST(request: Request) {
   });
   if (error) return withdrawalError(error.message ?? 'withdrawal_failed');
   const result = data as { request_id: string; replayed?: boolean };
-  if (result.replayed) return apiOk(result, { status: 201 });
-  try {
-    await enqueueWithdrawalEmail({
-      withdrawalId: result.request_id,
-      userId: user.id,
-      eventType: 'withdrawal_submitted',
-      amountRm: amountSen / 100,
-    });
-  } catch (emailError) {
-    console.error('[wallet-withdrawal] email enqueue failed:', emailError);
+  if (result.replayed) {
+    scheduleEmailDelivery();
+    return apiOk(result, { status: 201 });
   }
+  scheduleEmailDelivery();
   await notifyWithdrawalApprovers({
     withdrawalId: result.request_id,
-    customerUserId: user.id,
-    amountRm: amountSen / 100,
     approvalCycle: 1,
   });
   return apiOk(result, { status: 201 });

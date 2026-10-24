@@ -1,6 +1,6 @@
+import { signIn } from './helpers/demo';
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const DEMO_PASSWORD = "demo123456";
 
 type DemoRole =
   | "customer"
@@ -75,41 +75,44 @@ const VENDOR_COPY = {
   ms: {
     navigation: "Papan pemuka",
     managerNavigation: "Operasi",
-    pageTitle: "Katalog produk",
+    pageTitle: "Produk & aktiviti",
   },
   "zh-CN": {
     navigation: "仪表板",
     managerNavigation: "运营",
-    pageTitle: "产品目录",
+    pageTitle: "产品与活动",
   },
 } as const;
 
 function languageSelect(page: Page): Locator {
-  return page.locator('select:has(option[value="zh-CN"])').first();
+  // The shared LanguageSwitcher is a Radix combobox, not a native <select>.
+  return page.getByRole("combobox").first();
 }
 
 async function switchLanguage(page: Page, locale: Locale) {
   const select = languageSelect(page);
   await expect(select).toBeVisible();
 
-  if (await select.inputValue() !== locale) {
+  const label = locale === "zh-CN" ? "简体中文" : locale === "ms" ? "Bahasa Melayu" : "English";
+  if (!(await select.innerText()).includes(label)) {
     const responsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.pathname === "/api/locale" && response.request().method() === "POST";
     });
-    await select.selectOption(locale);
+    await select.click();
+    await page.getByRole("option", { name: label, exact: true }).click();
     const response = await responsePromise;
     expect(response.status(), `Locale update to ${locale} failed`).toBe(200);
   }
 
-  await expect(select).toHaveValue(locale);
+  await expect(select).toContainText(label);
   await expect(page.locator("html")).toHaveAttribute("lang", locale);
 }
 
 async function openCustomerAccountMenu(page: Page): Promise<Locator> {
-  const menu = page.getByRole("menu").first();
+  const menu = page.getByRole("menu", { name: /^(Account menu|Menu akaun|账户菜单)$/ });
   if (!(await menu.isVisible().catch(() => false))) {
-    await page.locator('button[aria-haspopup="menu"]').first().click();
+    await page.getByRole("button", { name: /account menu|akaun tetamu|账户菜单/i }).click();
   }
   await expect(menu).toBeVisible();
   return menu;
@@ -136,15 +139,7 @@ async function requireDemoAccount(page: Page, role: DemoRole, preferredEmail?: s
 }
 
 async function signInDemoAccount(page: Page, account: DemoAccount) {
-  const probe = await page.request.post("/api/auth/demo-signin", { data: { email: account.email } });
-  expect(probe.status(), `Demo sign-in probe failed for ${account.email}`).toBe(200);
-
-  await page.goto("/login");
-  const form = page.locator("form").filter({ has: page.locator('input[type="email"]') }).first();
-  await form.locator('input[type="email"]').fill(account.email);
-  await form.locator('input[type="password"]').fill(DEMO_PASSWORD);
-  await form.getByRole("button").first().click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
+  await signIn(page, account.email);
 }
 
 async function signOutCustomer(page: Page) {
@@ -221,9 +216,9 @@ test.describe("Sitewide language switching", () => {
       await expect(page.getByText(name, { exact: true })).toBeVisible();
     }
 
-    await page.goto("/customer/activity?tab=orders&history=past&page=2");
-    await expect(page.getByRole("link", { name: "Rakan kongsi", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Terokai", exact: true })).toBeVisible();
+    await page.goto("/customer/explore?category=food&page=2");
+    await expect(page.getByRole("link", { name: "Rakan kongsi", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Terokai", exact: true }).first()).toBeVisible();
     await expect((await openCustomerAccountMenu(page)).getByRole("menuitem", { name: "Log masuk", exact: true })).toBeVisible();
   });
 
@@ -233,11 +228,11 @@ test.describe("Sitewide language switching", () => {
     await page.goto("/customer/preferences");
 
     await switchLanguage(page, "zh-CN");
-    await expect(page.getByRole("link", { name: "合作伙伴", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "我的活动", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "合作伙伴", exact: true }).first()).toBeVisible();
+    await expect((await openCustomerAccountMenu(page)).getByRole("menuitem", { name: /我的活动/ })).toBeVisible();
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-    await expect(page.getByRole("link", { name: "合作伙伴", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "合作伙伴", exact: true }).first()).toBeVisible();
 
     await signOutCustomer(page);
     await expect(page.getByRole("heading", { name: "欢迎回来", exact: true })).toBeVisible();
@@ -248,13 +243,13 @@ test.describe("Sitewide language switching", () => {
     await signInDemoAccount(page, account);
     await page.goto("/customer/preferences");
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-    await expect(page.getByRole("link", { name: "合作伙伴", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "合作伙伴", exact: true }).first()).toBeVisible();
   });
 
   test("vendor owner shell and listings switch through Malay and Chinese", async ({ page }) => {
     const account = await requireDemoAccount(page, "vendor_owner", "vendor.owner@demo.local");
     await signInDemoAccount(page, account);
-    await page.goto("/vendor/listings");
+    await page.goto("/vendor/products");
 
     await switchLanguage(page, "ms");
     await expect(page.getByRole("link", { name: VENDOR_COPY.ms.navigation, exact: true })).toBeVisible();
@@ -268,7 +263,7 @@ test.describe("Sitewide language switching", () => {
   test("outlet manager shell and listings switch through Malay and Chinese", async ({ page }) => {
     const account = await requireDemoAccount(page, "outlet_manager", "outlet.manager@demo.local");
     await signInDemoAccount(page, account);
-    await page.goto("/vendor/listings");
+    await page.goto("/vendor/products");
 
     await switchLanguage(page, "ms");
     await expect(page.getByRole("link", { name: VENDOR_COPY.ms.managerNavigation, exact: true })).toBeVisible();
@@ -281,8 +276,10 @@ test.describe("Sitewide language switching", () => {
 
   for (const [role, locale] of [["admin", "ms"], ["approver", "zh-CN"], ["super_admin", "zh-CN"]] as const) {
     test(`${role} shell and recommendation queue keep locale and role actions`, async ({ page }) => {
-      const account = await requireDemoAccount(page, role);
-      await signInDemoAccount(page, account);
+      const availableAccounts = await loadDemoAccounts(page);
+      const account = availableAccounts.find((candidate) => candidate.role === role);
+      test.skip(!account, `No seeded ${role} account is available in the isolated E2E project`);
+      await signInDemoAccount(page, account!);
       await page.goto("/admin/recommendations");
 
       const copy = ADMIN_COPY[locale];
@@ -303,13 +300,10 @@ test.describe("Sitewide language switching", () => {
   }
 
   test("language switching preserves filtered and paginated route query parameters", async ({ page }) => {
-    await page.goto("/login");
-    await switchLanguage(page, "en");
-    await page.goto("/customer/activity?tab=orders&history=past&page=2&state=Penang");
-    await expect(page.getByRole("link", { name: "Partners", exact: true })).toBeVisible();
+    await page.goto("/login?next=%2Fcustomer%2Factivity&tab=orders&history=past&page=2&state=Penang");
+    await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
 
     const before = new URL(page.url());
-    await openCustomerAccountMenu(page);
     await switchLanguage(page, "ms");
 
     const after = new URL(page.url());

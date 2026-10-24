@@ -1,5 +1,6 @@
 import 'server-only';
 import { isIP } from 'node:net';
+import { extractKycFieldsInNode } from './node-ocr-engine';
 
 import { hashICWithHmac, normalizeIC } from './hash';
 export { requiresManualKycReview } from './ocr-policy';
@@ -105,20 +106,64 @@ async function readPrivateResult(response: Response): Promise<ExtractedOcr | nul
   finally { reader.releaseLock(); }
 }
 
-export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
-  const providerModel = DEFAULT_MODEL;
+export type KycOcrRuntimeConfiguration =
+  | { engine: 'private-http'; timeoutMs: number; url: string; token: string }
+  | { engine: 'tesseract-js'; timeoutMs: number };
+
+export function kycOcrRuntimeConfiguration(): KycOcrRuntimeConfiguration | null {
+  const engine = process.env.KYC_OCR_ENGINE;
+  if (engine === 'tesseract-js') {
+    const timeoutMs = Number(process.env.KYC_NODE_OCR_TIMEOUT_MS);
+    return Number.isSafeInteger(timeoutMs) && timeoutMs >= 1 && timeoutMs <= 20000 ? { engine, timeoutMs } : null;
+  }
+  if (engine && engine !== 'private-http') return null;
   const configuration = privateKycOcrConfiguration();
-  // Legacy external opt-in and GOOGLE_AI_KEY deliberately have no authority here.
+  return configuration ? { engine: 'private-http', ...configuration } : null;
+}
+
+async function compareExtractedKycFields(extracted: ExtractedOcr, input: KycOcrInput, providerModel: string): Promise<KycOcrResult> {
+  const holderName = nullableText(extracted.holderName);
+  const documentNumber = nullableText(extracted.documentNumber, 40);
+  const confidence = nullableConfidence(extracted.confidence);
+  if (extracted.unreadable === true || !documentNumber) {
+    return { status: 'unreadable', holderName, documentNumberHmac: null, documentNumberLast4: null, expiryDate: nullableDate(extracted.expiryDate), confidence, mismatchFields: [], providerModel };
+  }
+
+  const extractedHmac = await hashICWithHmac(documentNumber, input.hmacKey);
+  const expectedHmac = input.expectedDocumentNumberHmac
+    ?? (input.enteredDocumentNumber ? (await hashICWithHmac(input.enteredDocumentNumber, input.hmacKey)).value : null);
+  if (!expectedHmac || !/^[a-f0-9]{64}$/.test(expectedHmac)) return unavailable(providerModel);
+  const mismatchFields = extractedHmac.value === expectedHmac ? [] : ['document_number'];
+  const name = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase();
+  if (input.expectedHolderName && (!holderName || name(holderName) !== name(input.expectedHolderName))) mismatchFields.push('holder_name');
+  const compact = normalizeIC(documentNumber);
+  return {
+    status: mismatchFields.length === 0 ? 'matched' : 'mismatch',
+    holderName,
+    documentNumberHmac: extractedHmac.value,
+    documentNumberLast4: compact.slice(-4) || null,
+    expiryDate: nullableDate(extracted.expiryDate),
+    confidence,
+    mismatchFields,
+    providerModel,
+  };
+}
+
+export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
+  const configuration = kycOcrRuntimeConfiguration();
+  const providerModel = configuration?.engine === 'tesseract-js' ? 'tesseract-js-7.0.0-v1' : DEFAULT_MODEL;
   if (!configuration) return unavailable(providerModel);
   try {
+    if (configuration.engine === 'tesseract-js') {
+      // Pass only the image/type boundary, never expected answers or app secrets.
+      const local = await extractKycFieldsInNode({ documentType: input.documentType, front: input.front, back: input.back }, configuration.timeoutMs);
+      return local.ok ? compareExtractedKycFields(local.fields, input, providerModel) : unavailable(providerModel, local.failureCode, local.retryable);
+    }
     const response = await fetch(configuration.url, {
-      method: 'POST',
-      redirect: 'error',
+      method: 'POST', redirect: 'error',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${configuration.token}` },
       signal: AbortSignal.timeout(configuration.timeoutMs),
-      body: JSON.stringify({
-        documentType: input.documentType, front: imagePart(input.front), back: imagePart(input.back),
-      }),
+      body: JSON.stringify({ documentType: input.documentType, front: imagePart(input.front), back: imagePart(input.back) }),
     });
     if (!response.ok) {
       const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
@@ -126,34 +171,9 @@ export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
     }
     const extracted = await readPrivateResult(response);
     if (!extracted || (typeof extracted.unreadable !== 'boolean' && typeof extracted.documentNumber !== 'string')) return unavailable(providerModel, 'invalid_response');
-
-    const holderName = nullableText(extracted.holderName);
-    const documentNumber = nullableText(extracted.documentNumber, 40);
-    const confidence = nullableConfidence(extracted.confidence);
-    if (extracted.unreadable === true || !documentNumber) {
-      return { status: 'unreadable', holderName, documentNumberHmac: null, documentNumberLast4: null, expiryDate: nullableDate(extracted.expiryDate), confidence, mismatchFields: [], providerModel };
-    }
-
-    const extractedHmac = await hashICWithHmac(documentNumber, input.hmacKey);
-    const expectedHmac = input.expectedDocumentNumberHmac
-      ?? (input.enteredDocumentNumber ? (await hashICWithHmac(input.enteredDocumentNumber, input.hmacKey)).value : null);
-    if (!expectedHmac || !/^[a-f0-9]{64}$/.test(expectedHmac)) return unavailable(providerModel);
-    const mismatchFields = extractedHmac.value === expectedHmac ? [] : ['document_number'];
-    const name = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase();
-    if (input.expectedHolderName && (!holderName || name(holderName) !== name(input.expectedHolderName))) mismatchFields.push('holder_name');
-    const compact = normalizeIC(documentNumber);
-    return {
-      status: mismatchFields.length === 0 ? 'matched' : 'mismatch',
-      holderName,
-      documentNumberHmac: extractedHmac.value,
-      documentNumberLast4: compact.slice(-4) || null,
-      expiryDate: nullableDate(extracted.expiryDate),
-      confidence,
-      mismatchFields,
-      providerModel,
-    };
+    return await compareExtractedKycFields(extracted, input, providerModel);
   } catch (error) {
     const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name);
-    return unavailable(providerModel, timeout ? 'timeout' : 'network', true);
+    return unavailable(providerModel, timeout ? 'timeout' : configuration.engine === 'tesseract-js' ? 'invalid_response' : 'network', configuration.engine !== 'tesseract-js' || timeout);
   }
 }

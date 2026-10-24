@@ -9,7 +9,7 @@ vi.mock("@/backend/supabase", async () => {
   }) };
 });
 
-import { getCustomerWalletTransactionPage, getMyWithdrawals } from "../commerce";
+import { getCustomerWalletTransactionPage, getMyWithdrawals, getMyActiveWithdrawals, getMyWithdrawalById } from "../commerce";
 import { DEFAULT_CUSTOMER_HISTORY_FILTERS } from "@/lib/wallet/customer-transaction-filters";
 
 function pageResponse(rows: object[], total = rows.length, status = 200) {
@@ -196,4 +196,18 @@ describe("customer wallet history database query", () => {
     request.mockResolvedValue(pageResponse([], 0, 403));
     await expect(getCustomerWalletTransactionPage("alice", DEFAULT_CUSTOMER_HISTORY_FILTERS)).rejects.toMatchObject({ message: "denied" });
   });
+});
+
+it("bounds active withdrawals and reconciles one exact owned request", async () => {
+  request.mockReset().mockImplementation(async () => pageResponse([]));
+  expect(await getMyActiveWithdrawals("alice")).toEqual([]);
+  let url = new URL(String(request.mock.calls[0][0]));
+  expect(url.searchParams.get("user_id")).toBe("eq.alice");
+  expect(url.searchParams.get("limit")).toBe("10");
+  expect(url.searchParams.get("status")).toContain("pending");
+  expect(url.searchParams.get("order")).toBe("created_at.desc,id.desc");
+  expect(await getMyWithdrawalById("alice", "request-1")).toBeNull();
+  url = new URL(String(request.mock.calls[1][0]));
+  expect(url.searchParams.get("id")).toBe("eq.request-1");
+  expect(url.searchParams.get("user_id")).toBe("eq.alice");
 });

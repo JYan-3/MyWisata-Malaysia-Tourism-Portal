@@ -144,11 +144,11 @@ export interface TripWeatherSignal {
   hasHighRiskDay: boolean;
 }
 
-async function getTripWeatherSignal(trip: TripCopilotTripInfo, anchor: { lat: number; lng: number }): Promise<TripWeatherSignal> {
+async function getTripWeatherSignal(trip: TripCopilotTripInfo, anchor: { lat: number; lng: number }, signal?: AbortSignal): Promise<TripWeatherSignal> {
   const dates = getTripDayDates({ start_date: trip.startDate, end_date: trip.endDate }).slice(0, MAX_WEATHER_DAYS);
   if (dates.length === 0) return { days: [], hasHighRiskDay: false };
 
-  const forecasts = await Promise.all(dates.map((date) => getOpenMeteoForecast({ latitude: anchor.lat, longitude: anchor.lng, date })));
+  const forecasts = await Promise.all(dates.map((date) => getOpenMeteoForecast({ latitude: anchor.lat, longitude: anchor.lng, date }, { signal })));
   const days: TripDayWeatherRisk[] = [];
   for (let i = 0; i < dates.length; i += 1) {
     const risk = evaluateForecastRisk(forecasts[i]);
@@ -244,18 +244,21 @@ export async function generateTripSuggestions(
   candidates: TripCopilotCandidate[],
   lang: ChatLanguage,
   preference = '',
+  options: { allowExternal?: boolean; signal?: AbortSignal } = {},
 ): Promise<TripSuggestionsResult> {
   if (candidates.length === 0) {
     return { suggestions: [], mode: 'no-candidates' };
   }
 
-  const weather = await getTripWeatherSignal(trip, { lat: candidates[0].lat, lng: candidates[0].lng })
+  if (options.allowExternal === false || options.signal?.aborted) return { suggestions: ruleBasedTripSuggestions(candidates), mode: 'rule-based' };
+  const weather = await getTripWeatherSignal(trip, { lat: candidates[0].lat, lng: candidates[0].lng }, options.signal)
     .catch((error) => {
       console.error('[trip-copilot] weather signal failed, continuing without it', error instanceof Error ? error.message : error);
       return { days: [], hasHighRiskDay: false };
     });
 
   try {
+    options.signal?.throwIfAborted();
     const payload = {
       trip,
       preference: preference.trim().slice(0, 140),
@@ -271,7 +274,7 @@ export async function generateTripSuggestions(
         weatherSensitivity: c.weatherSensitivity,
       })),
     };
-    const raw = await callGemini(buildTripCopilotSystemPrompt(lang), JSON.stringify(payload), { temperature: 0.5, maxOutputTokens: 500 });
+    const raw = await callGemini(buildTripCopilotSystemPrompt(lang), JSON.stringify(payload), { temperature: 0.5, maxOutputTokens: 500, signal: options.signal });
     const parsed = llmResponseSchema.parse(extractJson(raw));
     const suggestions = validateSuggestions(parsed.suggestions, candidates);
     if (suggestions.length === 0) throw new Error('No suggestions survived grounding validation');

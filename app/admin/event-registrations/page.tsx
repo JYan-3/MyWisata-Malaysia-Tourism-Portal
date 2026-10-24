@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, ClipboardCheck, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, ClipboardCheck, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/ui/badge";
+
+import { Button } from "@/components/ui/button";
+
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 interface AdminCampaignRegistration {
   id: string;
@@ -32,35 +36,45 @@ export default function EventRegistrationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     try {
-      const response = await fetch("/api/admin/event-registrations", { cache: "no-store" });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const response = await fetch(`/api/admin/event-registrations?${params}`, { cache: "no-store", signal });
+      if (response.status === 401 || response.status === 403) { setRegistrations([]); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
+      if (response.status === 403 || response.status === 401) setRegistrations([]);
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? t("eventRegistrations.errors.load"));
       setRegistrations(body.data?.registrations ?? []);
+      setTotal(body.data?.total ?? 0);
+      setTotalPages(body.data?.totalPages ?? 0);
+      setCounts(body.data?.counts ?? {});
+      if (body.data?.page && body.data.page !== page) setPage(body.data.page);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("eventRegistrations.errors.load"));
+      if (signal) throw err;
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
-  }, [t]);
+  }, [t, page, pageSize, search, statusFilter]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
-  const pending = registrations.filter((r) => r.status === "pending");
-  const changesRequested = registrations.filter((r) => r.status === "changes_requested");
-  const approved = registrations.filter((r) => r.status === "approved");
-  const visible = registrations.filter((registration) => {
-    const matchesStatus = statusFilter === "all" || registration.status === statusFilter;
-    const searchText = `${registration.vendorName} ${registration.campaignTitle} ${registration.locationName} ${registration.stallNumber} ${registration.requestedStallNumber ?? ""}`.toLowerCase();
-    return matchesStatus && (!search.trim() || searchText.includes(search.trim().toLowerCase()));
-  });
+  const visible = registrations;
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: load });
 
   return (
     <AdminPageShell>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <AdminPageHeader
         eyebrow={<><ClipboardCheck size={18} /> {t("eventRegistrations.eyebrow")}</>}
         title={t("eventRegistrations.title")}
@@ -69,24 +83,26 @@ export default function EventRegistrationsPage() {
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
       <AdminMetricGrid items={[
-        { label: t("eventRegistrations.metrics.pending"), value: pending.length },
-        { label: t("eventRegistrations.metrics.changesRequested"), value: changesRequested.length },
-        { label: t("eventRegistrations.metrics.approved"), value: approved.length },
-        { label: t("eventRegistrations.metrics.total"), value: registrations.length },
+        { label: t("eventRegistrations.metrics.pending"), value: counts.pending ?? 0 },
+        { label: t("eventRegistrations.metrics.changesRequested"), value: counts.changes_requested ?? 0 },
+        { label: t("eventRegistrations.metrics.approved"), value: counts.approved ?? 0 },
+        { label: t("eventRegistrations.metrics.total"), value: counts.all ?? 0 },
       ]} />
 
       <AdminFilterBar>
         <label className="relative min-w-[220px] flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("eventRegistrations.filters.search")} aria-label={t("eventRegistrations.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
+          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("eventRegistrations.filters.search")} aria-label={t("eventRegistrations.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
         </label>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} aria-label={t("eventRegistrations.filters.status")} className={adminFilterControlClassName}>
+        <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as StatusFilter); setPage(1); }} aria-label={t("eventRegistrations.filters.status")} className={adminFilterControlClassName}>
           <option value="all">{t("eventRegistrations.filters.allStatuses")}</option>
           <option value="pending">{t("eventRegistrations.status.pending")}</option>
           <option value="changes_requested">{t("eventRegistrations.status.changesRequested")}</option>
           <option value="approved">{t("eventRegistrations.status.approved")}</option>
           <option value="rejected">{t("eventRegistrations.status.rejected")}</option>
         </select>
+        <select aria-label={t("catalogue.pagination.pageSize")} className={adminFilterControlClassName} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>{[10,25,50].map(size => <option key={size} value={size}>{t("ui.pagination.perPage", { count: size })}</option>)}</select>
+        <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t("actions.refresh")}</Button>
       </AdminFilterBar>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -116,6 +132,10 @@ export default function EventRegistrationsPage() {
             ))}
           </div>
         )}
+        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <span>{t("catalogue.pagination.range", { first: total ? (page-1)*pageSize+1 : 0, last: Math.min(page*pageSize,total), total })}</span>
+          <div className="flex items-center gap-2"><span>{t("ui.pagination.pageOf", { page, total: Math.max(1,totalPages) })}</span><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={loading || page<=1} onClick={() => setPage(page-1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={loading || page>=totalPages} onClick={() => setPage(page+1)}><ChevronRight size={14} /></Button></div>
+        </div>
       </section>
     </AdminPageShell>
   );

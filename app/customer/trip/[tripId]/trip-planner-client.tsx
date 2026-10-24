@@ -12,7 +12,7 @@ import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@
 import { ROUTE_TRAFFIC_COLORS, buildRouteDepartureTime, type GeoHit } from "@/lib/routing";
 import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
-import { getTripLegFeasibility, resolveTripOrigin, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate } from "@/lib/customer/trip-planner";
+import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate } from "@/lib/customer/trip-planner";
 import { useTripRoutes } from "./use-trip-routes";
 import { useTripItems } from "./use-trip-items";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
@@ -87,12 +87,14 @@ export function MapClient({
   tripData,
   initialItems,
   initialActivities,
+  initialDiscoveryFingerprint,
   sponsoredPlacements,
   suggestedAtByVendor,
 }: {
   tripData: Trip;
   initialItems: TripItem[];
   initialActivities: ComputedActivity[];
+  initialDiscoveryFingerprint: string;
   sponsoredPlacements: SponsoredPlacement[];
   suggestedAtByVendor: Record<string, string>;
 }) {
@@ -144,10 +146,13 @@ export function MapClient({
   const [placesCollapsed, setPlacesCollapsed] = useState(false);
   const [aiWidth, setAiWidth] = useState(320);
   const aiResizeRef = useRef(false);
+  const aiRequestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { aiRequestRef.current?.abort(); aiRequestRef.current = null; }, [tripData.id]);
   const [timeEditingId, setTimeEditingId] = useState<string | null>(null);
   const [aiPreference, setAiPreference] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<TripPlanSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiMode, setAiMode] = useState("");
   const [aiError, setAiError] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
@@ -215,18 +220,18 @@ export function MapClient({
   // Places to add are searched around the starting point, or else around the
   // selected day's last stop — where the traveller will be when they add more.
   const dayLastStop = selectedRouteStops.filter((stop) => stop.id !== origin?.id).at(-1);
-  const discoveryNear = near ?? (dayLastStop ? { lat: dayLastStop.lat, lng: dayLastStop.lng } : undefined);
+  const discoveryNear = getTripDiscoveryAnchor(trip.items, selectedDate) ?? (near ?? (dayLastStop ? { lat: dayLastStop.lat, lng: dayLastStop.lng } : undefined));
   const selectedRouteCoordinates = useMemo(
     () => selectedRouteStops.map((stop): [number, number] => [stop.lat, stop.lng]),
     [selectedRouteStops],
   );
 
   const isFirstRender = useRef(true);
-  const tripProductKey = [...new Set(trip.items.flatMap((item) => item.experience_id ? [item.experience_id] : []))].sort().join(",");
+  const discoveryFingerprint = getTripDiscoveryFingerprint(trip.items, selectedDate);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      if (!discoveryNear) return;
+      if (discoveryFingerprint === initialDiscoveryFingerprint) return;
     }
     const controller = new AbortController();
     const query = discoveryNear ? `?${new URLSearchParams({lat:String(discoveryNear.lat),lng:String(discoveryNear.lng)})}` : "";
@@ -240,7 +245,7 @@ export function MapClient({
       });
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripData.id, discoveryNear?.lat, discoveryNear?.lng, tripProductKey]);
+  }, [tripData.id, discoveryFingerprint, discoveryNear?.lat, discoveryNear?.lng, initialDiscoveryFingerprint]);
 
   // Route fetch (debounced): all ORS-supported modes → routes[mode] = options.
   // A route needs at least two points (origin + one more).
@@ -698,6 +703,10 @@ export function MapClient({
   async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (aiLoading) return;
+    const controller = new AbortController();
+    aiRequestRef.current?.abort();
+    aiRequestRef.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 50_000);
     setAiLoading(true);
     setAiError("");
     try {
@@ -707,9 +716,11 @@ export function MapClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
+        signal: controller.signal,
         body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale }),
       });
-      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[] }; error?: { code?: string } };
+      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string }; error?: { code?: string } };
+      if (controller.signal.aborted || aiRequestRef.current !== controller) return;
       if (!response.ok || !body.data) {
         setAiSuggestions([]);
         setAiError(body.error?.code === "PHONE_VERIFICATION_REQUIRED"
@@ -717,12 +728,15 @@ export function MapClient({
           : tCustomer("strictMigration.tripPlanner.ai.error"));
         return;
       }
+      setAiMode(body.data.mode ?? "");
       setAiSuggestions(body.data.suggestions ?? []);
     } catch {
+      if (controller.signal.aborted || aiRequestRef.current !== controller) return;
       setAiSuggestions([]);
       setAiError(tCustomer("strictMigration.tripPlanner.ai.error"));
     } finally {
-      setAiLoading(false);
+      window.clearTimeout(timeout);
+      if (aiRequestRef.current === controller) setAiLoading(false);
     }
   }
 
@@ -1112,6 +1126,7 @@ export function MapClient({
                   </article>;
                 })}
               </section>}
+              {aiMode === "rule-based" && <p role="status" className="text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.basicSuggestions")}</p>}
               {!aiLoading && !aiError && aiSuggestions.length === 0 && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
               <details className="rounded-xl border border-border bg-background px-3 py-2">
                 <summary className="cursor-pointer list-none text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.budget")}</summary>

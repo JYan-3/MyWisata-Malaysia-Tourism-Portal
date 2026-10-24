@@ -1,3 +1,4 @@
+vi.mock('@/lib/email/events', () => ({ scheduleReceiptDelivery: vi.fn() }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({

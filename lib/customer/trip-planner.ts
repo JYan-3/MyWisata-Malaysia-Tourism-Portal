@@ -219,6 +219,22 @@ export function resolveTripOrigin(items: TripItem[], date: string | null): TripI
   return ordered.find(item=>item.is_day_origin && item.scheduled_date === date) ?? ordered.find(item=>item.source === "location" && !item.is_day_origin) ?? null;
 }
 
+export function getTripDiscoveryAnchor(items: TripItem[], date: string | null): { lat: number; lng: number } | undefined {
+  const origin = resolveTripOrigin(items, date);
+  if (origin && isValidTripCoordinate(origin.lat, origin.lng)) return { lat: origin.lat, lng: origin.lng };
+  const lastStop = [...items]
+    .filter((item) => item.scheduled_date === date && !item.is_day_origin && isValidTripCoordinate(item.lat, item.lng))
+    .sort((a, b) => a.sequence - b.sequence)
+    .at(-1);
+  return lastStop ? { lat: lastStop.lat, lng: lastStop.lng } : undefined;
+}
+
+export function getTripDiscoveryFingerprint(items: TripItem[], date: string | null): string {
+  const anchor = getTripDiscoveryAnchor(items, date);
+  const productIds = [...new Set(items.flatMap((item) => item.experience_id ? [item.experience_id] : []))].sort();
+  return JSON.stringify({ date, anchor: anchor ?? null, productIds });
+}
+
 export function getTripBudgetEstimate(items:TripItem[], activities:Map<string, Pick<Activity,"id"|"outletId"|"price"|"variants"> & Partial<Activity>>) {
   let total=0;let unknownCount=0;
   for (const item of items) {

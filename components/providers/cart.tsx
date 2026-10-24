@@ -59,13 +59,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setMounted(false);
     setItems([]);
     setSelectedKeysState(new Set());
-    if (currentUser) {
-      commerce.getCart(currentUser.id)
+    const userId=ownerKey === "guest" ? null : ownerKey;
+    if (userId) {
+      commerce.getCart(userId)
         .then((nextItems) => {
           if (!active) return;
           setItems(nextItems);
           try {
-            const saved = sessionStorage.getItem(`customer-cart-selection-${currentUser.id}`);
+            const saved = sessionStorage.getItem(`customer-cart-selection-${userId}`);
             setSelectedKeysState(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
           } catch {
             setSelectedKeysState(new Set());
@@ -86,7 +87,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }).catch(() => { if (active) { setItems([]); setSelectedKeysState(new Set()); setMounted(true); } });
     }
     return () => { active = false; };
-  }, [currentUser]);
+  }, [ownerKey]);
 
   useEffect(() => {
     const previous = previousPathname.current;

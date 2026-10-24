@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { CUSTOMER_WITHDRAWAL_MINIMUM_RM } from '@/lib/stripe/jit-visibility';
 import { deriveCustomerWalletCapabilities } from '@/lib/wallet/customer-capabilities';
 import { payoutDestinationDisplayLabel } from '@/lib/payouts/destinations';
 
@@ -31,7 +30,7 @@ export async function GET(request: Request) {
       .eq('id', destinationId)
       .maybeSingle();
 
-  const [walletResult, profileResult, destinationResult] = await Promise.all([
+  const [walletResult, profileResult, destinationResult, settingsResult] = await Promise.all([
     db
       .from('wallets')
       .select('topup_sen,earnings_sen,pending_earnings_sen,reserved_earnings_sen,withdrawn_earnings_sen')
@@ -43,8 +42,10 @@ export async function GET(request: Request) {
       .eq('id', user.id)
       .maybeSingle(),
     destinationPromise,
+    service.from('platform_settings').select('value').eq('key', 'withdrawal.min_amount_sen').maybeSingle(),
   ]);
   if (walletResult.error) return NextResponse.json({ error: 'Unable to load wallet balance' }, { status: 500 });
+  if (settingsResult.error) return NextResponse.json({ error: 'Unable to load withdrawal settings' }, { status: 503 });
   if (profileResult.error || !profileResult.data) return NextResponse.json({ error: 'Unable to load wallet readiness' }, { status: 500 });
   if (destinationResult.error) return NextResponse.json({ error: 'Unable to load payout destination' }, { status: 500 });
   if (destinationId !== null && !destinationResult.data) {
@@ -52,11 +53,13 @@ export async function GET(request: Request) {
   }
 
   const wallet = walletResult.data;
+  const configuredMinimum = settingsResult.data?.value == null ? 5000 : Number(settingsResult.data.value);
+  if (!Number.isSafeInteger(configuredMinimum) || configuredMinimum < 100) return NextResponse.json({ error: 'Withdrawal settings are invalid' }, { status: 503 });
   const destination = destinationResult.data;
   const capabilities = deriveCustomerWalletCapabilities({
     kycStatus: profileResult.data.kyc_status,
     availableEarningsSen: wallet?.earnings_sen ?? 0,
-    minimumWithdrawalSen: CUSTOMER_WITHDRAWAL_MINIMUM_RM * 100,
+    minimumWithdrawalSen: configuredMinimum,
     stripePayoutsEnabled: Boolean(profileResult.data.stripe_payouts_enabled),
     stripeFallback: destinationId === null,
     destination: destination ? {
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
       pendingEarningsSen: wallet?.pending_earnings_sen ?? 0,
       reservedEarningsSen: wallet?.reserved_earnings_sen ?? 0,
       withdrawnEarningsSen: wallet?.withdrawn_earnings_sen ?? 0,
+      minimumWithdrawalSen: configuredMinimum,
       ...capabilities,
     },
     error: null,

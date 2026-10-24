@@ -3,9 +3,15 @@ import "server-only";
 import type { ForeignReferenceCurrency, ReferenceCurrency } from "./reference";
 
 const RATE_REVALIDATE_SECONDS = 60 * 60 * 24;
-const RATE_TIMEOUT_MS = 5_000;
-const RATE_ATTEMPT_TIMEOUT_MS = RATE_TIMEOUT_MS / 2;
+const RATE_ATTEMPT_TIMEOUT_MS = 2_500;
+const RATE_FAILURE_COOLDOWN_MS = 30_000;
 const RATE_API_URL = "https://api.frankfurter.dev/v2/rates";
+
+type RateFetcherState = {
+  inFlight: Map<ForeignReferenceCurrency, Promise<ReferenceRateSnapshot | null>>;
+  retryAfter: Map<ForeignReferenceCurrency, number>;
+};
+const fetcherStates = new WeakMap<typeof fetch, RateFetcherState>();
 
 export type ReferenceRateSnapshot = {
   base: "MYR";
@@ -51,31 +57,37 @@ export async function getReferenceRate(
 ): Promise<ReferenceRateSnapshot | null> {
   if (currency === "MYR") return null;
 
+  let state = fetcherStates.get(fetcher);
+  if (!state) {
+    state = { inFlight: new Map(), retryAfter: new Map() };
+    fetcherStates.set(fetcher, state);
+  }
+  const existing = state.inFlight.get(currency);
+  if (existing) return existing;
+  if ((state.retryAfter.get(currency) ?? 0) > Date.now()) return null;
+
   const quote = currency;
   const url = `${RATE_API_URL}?base=MYR&quotes=${quote}&providers=BNM`;
-
-  async function fetchSnapshot(cache: "force-cache" | "no-store") {
-    const requestInit: RequestInit & { next?: { revalidate: number } } = {
-      cache,
-      signal: AbortSignal.timeout(RATE_ATTEMPT_TIMEOUT_MS),
-    };
-    if (cache === "force-cache") {
-      requestInit.next = { revalidate: RATE_REVALIDATE_SECONDS };
-    }
-
+  const task = (async () => {
     try {
-      const response = await fetcher(url, requestInit);
-      if (!response.ok) return null;
-
+      const response = await fetcher(url, {
+        cache: "force-cache",
+        next: { revalidate: RATE_REVALIDATE_SECONDS },
+        signal: AbortSignal.timeout(RATE_ATTEMPT_TIMEOUT_MS),
+      } as RequestInit & { next: { revalidate: number } });
+      if (!response.ok) throw new Error("Reference rate provider unavailable");
       const payload: unknown = await response.json();
-      if (!Array.isArray(payload) || payload.length !== 1) return null;
-
-      return normalizeRateRow(payload[0], quote);
+      const snapshot = Array.isArray(payload) && payload.length === 1 ? normalizeRateRow(payload[0], quote) : null;
+      if (!snapshot) throw new Error("Reference rate response invalid");
+      state!.retryAfter.delete(currency);
+      return snapshot;
     } catch {
+      state!.retryAfter.set(currency, Date.now() + RATE_FAILURE_COOLDOWN_MS);
       return null;
+    } finally {
+      state!.inFlight.delete(currency);
     }
-  }
-
-  const cachedSnapshot = await fetchSnapshot("force-cache");
-  return cachedSnapshot ?? fetchSnapshot("no-store");
+  })();
+  state.inFlight.set(currency, task);
+  return task;
 }

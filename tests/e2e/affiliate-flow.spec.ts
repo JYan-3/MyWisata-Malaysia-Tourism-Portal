@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { ACCOUNTS, DEMO_PASSWORD, api, contextFor, runPaidOrderJob, shot } from './helpers/demo';
+import { ACCOUNTS, api, contextFor, runPaidOrderJob, shot, signIn } from './helpers/demo';
 import { POSTCARD, buyProduct, settlementFor } from './helpers/shop';
 
 // Affiliate user side on the demo data. customer1 owns a link and is a fully verified
@@ -38,7 +38,7 @@ const state: { before?: Stats } = {};
 test('the affiliate dashboard shows the owner their link, tier and live numbers', async ({ browser }) => {
   await as(browser, AFFILIATE, async (page) => {
     await page.goto('/customer/affiliate', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('Earn & Share').first()).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText(/Earn & Share|赚取与分享|Dapat & Kongsi/).first()).toBeVisible({ timeout: 120_000 });
     const stats = await readStats(page);
     state.before = stats;
     expect(stats.affiliateCode).toBe(LINK_CODE);
@@ -63,16 +63,23 @@ test('clicking your own link is not counted as a click', async ({ browser }) => 
   });
 });
 
-test("a friend's click on the link is counted and sets the referral cookie", async ({ browser }) => {
+test("a friend's click is attributed unless the affiliate has reached the click cap", async ({ browser }) => {
   const owner = await contextFor(browser, AFFILIATE);
-  const before = (await readStats(owner.page)).totals.clicks;
+  const before = await readStats(owner.page);
+  const linkResponse = await api(owner.page, 'GET', '/api/affiliate/link');
+  expect(linkResponse.status).toBe(200);
+  const link = (linkResponse.json as { data?: { mode?: string; limits?: { clicksPerMonth?: number | null } | null } }).data;
+  const capped = link?.mode === 'limited'
+    && typeof link.limits?.clicksPerMonth === 'number'
+    && before.totals.clicks >= link.limits.clicksPerMonth;
   await as(browser, BUYER, async (page) => {
     const response = await page.goto(SHARE_PATH, { waitUntil: 'domcontentloaded' });
     expect(response?.status()).toBeLessThan(400);
     await page.waitForURL(/\/customer\/activity\//, { timeout: 120_000 });
-    expect((await page.context().cookies()).some((c) => c.name === 'mw_ref')).toBe(true);
+    expect((await page.context().cookies()).some((c) => c.name === 'mw_ref'), JSON.stringify({ mode: link?.mode, clicksPerMonth: link?.limits?.clicksPerMonth, observedClicks: before.totals.clicks })).toBe(!capped);
   });
-  await expect.poll(async () => (await readStats(owner.page)).totals.clicks, { timeout: 30_000 }).toBe(before + 1);
+  await expect.poll(async () => (await readStats(owner.page)).totals.clicks, { timeout: 30_000 })
+    .toBe(before.totals.clicks + (capped ? 0 : 1));
   await owner.context.close();
 });
 
@@ -110,7 +117,7 @@ test('a referred purchase pays the owner a pending commission at their tier rate
   const after = await readStats(owner.page);
   expect(after.totals.pendingEarnings).toBeCloseTo(before.totals.pendingEarnings + (commission?.amount ?? 0), 2);
   await owner.page.goto('/customer/affiliate', { waitUntil: 'domcontentloaded' });
-  await expect(owner.page.getByText('Earn & Share').first()).toBeVisible({ timeout: 120_000 });
+  await expect(owner.page.getByText(/Earn & Share|赚取与分享|Dapat & Kongsi/).first()).toBeVisible({ timeout: 120_000 });
   await shot(owner.page, 'aff3_owner_commission');
   await owner.context.close();
 
@@ -168,11 +175,7 @@ test('buying through your own link earns nothing, is only a low-severity note, a
   const guest = await guestContext.newPage();
   await guest.goto(ownPath, { waitUntil: 'domcontentloaded' });
   expect((await guestContext.cookies()).some((c) => c.name === 'mw_ref')).toBe(true);
-  await guest.goto('/login');
-  await guest.locator('input[type="email"]').fill(AFFILIATE);
-  await guest.locator('input[type="password"]').fill(DEMO_PASSWORD);
-  await guest.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  await guest.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 120_000 });
+  await signIn(guest, AFFILIATE);
   const orderId = await buyProduct(guest, POSTCARD.productId, 1, 'aff4_self', 'wallet');
   await guestContext.close();
 

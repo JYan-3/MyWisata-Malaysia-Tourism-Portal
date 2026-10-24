@@ -3,6 +3,7 @@ const mocks=vi.hoisted(()=>({update:vi.fn(),revalidate:vi.fn()}));
 vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({owned:true})}));
 vi.mock("@/backend/domains/trips",()=>({createTrip:vi.fn(),deleteTrip:vi.fn(),getTripById:vi.fn(),getTripItems:vi.fn(),getTripNameSequence:vi.fn(),updateTripItem:mocks.update}));
 vi.mock("@/backend/domains/catalogue",()=>({searchTripActivities:vi.fn()}));
+vi.mock("@/lib/cache/catalogue-cache",()=>({getCachedDiscoveryActivityData:vi.fn(async()=>({activities:[],outlets:[]}))}));
 vi.mock("next/cache",()=>({revalidatePath:mocks.revalidate}));
 vi.mock("next/navigation",()=>({redirect:vi.fn()}));
 const {updateTripItemScheduleAction}=await import("../actions");

@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+/** Explicit, synthetic-only deployment probe. No document input or remote DB access. */
+import { pathToFileURL } from 'node:url';
+import { readFile } from 'node:fs/promises';
+import { isDeepStrictEqual } from 'node:util';
+export async function verifySyntheticOcr(options, request = fetch) {
+  const origin = new URL(options.origin);
+  const local = origin.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(origin.hostname);
+  if (!options.runSynthetic || !options.secret || (!local && origin.origin !== 'https://mylawatan.my') || origin.pathname !== '/' || origin.search || origin.hash || origin.username || origin.password) throw new Error('probe_options_invalid');
+  const samples = [];
+  for (let index = 0; index < 3; index += 1) {
+    const response = await request(new URL('/api/cron/process-kyc-prescreening', origin), { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(25000),
+      headers: { authorization: `Bearer ${options.secret}`, 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'synthetic-check' }) });
+    if (!response.ok) throw new Error('probe_failed');
+    const raw = await response.text();
+    if (Buffer.byteLength(raw) > 16384) throw new Error('probe_failed');
+    const result = JSON.parse(raw);
+    if (result.ok !== true || result.fieldsRead !== true || !isDeepStrictEqual(result.manifest, options.manifest)) throw new Error('probe_failed');
+    const sample = {};
+    for (const name of ['initializationMs', 'totalMs', 'parentRssBytes', 'childRssBytes', 'cpuMicroseconds']) {
+      if (typeof result[name] !== 'number' || !Number.isFinite(result[name]) || result[name] < 0) throw new Error('probe_failed');
+      sample[name] = result[name];
+    }
+    samples.push(sample);
+  }
+  return { ok: true, samples };
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    const args = process.argv.slice(2);
+    if (args.length !== 5 || args[0] !== '--origin' || args[2] !== '--manifest' || args[4] !== '--run-synthetic') throw new Error('probe_options_invalid');
+    const manifest = JSON.parse(await readFile(args[3], 'utf8'));
+    console.log(JSON.stringify(await verifySyntheticOcr({ origin: args[1], manifest, runSynthetic: true, secret: process.env.CRON_SECRET })));
+  } catch { console.error('kyc_synthetic_verification_failed'); process.exitCode = 1; }
+}

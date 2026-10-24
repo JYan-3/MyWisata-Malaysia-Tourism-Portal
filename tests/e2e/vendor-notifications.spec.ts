@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { signIn } from './helpers/demo';
 
-const DEMO_PASSWORD = 'demo123456';
 const OWNER_EMAIL = 'vendor.owner@demo.local';
 const MANAGER_EMAIL = 'outlet.manager@demo.local';
 const VENDOR_ONE = 'bbbbbbbb-0000-0000-0000-000000000001';
@@ -18,16 +18,7 @@ type NotificationFixture = {
 };
 
 async function signInAsVendor(page: Page, email: string) {
-  const probe = await page.request.post('/api/auth/demo-signin', { data: { email } });
-  if (probe.status() === 401) {
-    test.skip(true, `Seeded vendor session unavailable for ${email}`);
-  }
-  expect(probe.status(), `Demo sign-in probe failed for ${email}`).toBe(200);
-  await page.goto('/login');
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(DEMO_PASSWORD);
-  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/vendor\//, { timeout: 15_000 });
+  await signIn(page, email);
 }
 
 function fixture(index: number, category = 'vendor_orders'): NotificationFixture {

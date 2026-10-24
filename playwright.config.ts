@@ -9,7 +9,9 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
+    // E2E sessions may be bootstrapped by either demo auth or the Trip fixture.
+    // Keep traces off so a retry never records cookies or one-time session URLs.
+    trace: 'off',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

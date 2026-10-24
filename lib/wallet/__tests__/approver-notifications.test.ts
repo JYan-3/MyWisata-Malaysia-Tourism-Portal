@@ -1,70 +1,43 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const mocks = vi.hoisted(() => ({
-  createServiceClient: vi.fn(),
-  from: vi.fn(),
-  select: vi.fn(),
-  in: vi.fn(),
-  upsert: vi.fn(),
-  enqueueEmail: vi.fn(),
-  processEmailOutbox: vi.fn(),
-}));
-
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
-vi.mock('@/lib/email/outbox', () => ({ enqueueEmail: mocks.enqueueEmail, processEmailOutbox: mocks.processEmailOutbox }));
-
-import { notifyWithdrawalApprovers } from '../approver-notifications';
-
-describe('notifyWithdrawalApprovers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.createServiceClient.mockReturnValue({ from: mocks.from });
-    mocks.from.mockReturnValue({ select: mocks.select, upsert: mocks.upsert });
-    mocks.select.mockReturnValue({ in: mocks.in });
-    mocks.in
-      .mockResolvedValueOnce({ data: [{ id: 1, name: 'approver' }, { id: 2, name: 'super_admin' }], error: null })
-      .mockResolvedValueOnce({ data: [{ user_id: 'approver-1' }, { user_id: 'admin-1' }, { user_id: 'customer-1' }], error: null })
-      .mockResolvedValueOnce({ data: [
-        { id: 'approver-1', email: 'approver@example.test', full_name: 'Approver', status: 'active' },
-        { id: 'admin-1', email: 'admin@example.test', full_name: 'Admin', status: 'active' },
-        { id: 'customer-1', email: 'customer@example.test', full_name: 'Customer', status: 'active' },
-      ], error: null });
-    mocks.upsert.mockResolvedValue({ error: null });
-    mocks.enqueueEmail.mockResolvedValue({ inserted: true });
-    mocks.processEmailOutbox.mockResolvedValue({ sent: 2, failed: 0 });
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), upsert: vi.fn(), enqueue: vi.fn(), smtp: vi.fn() }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: mocks.rpc, from: () => ({ upsert: mocks.upsert }) }) }));
+vi.mock('@/lib/email/outbox', () => ({ enqueueEmail: mocks.enqueue, processEmailOutbox: mocks.smtp }));
+import { notifyWithdrawalApprovers, processWithdrawalApproverNotifications } from '../approver-notifications';
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.rpc.mockImplementation((name: string) => {
+    const data = name === 'claim_withdrawal_approver_job' ? { withdrawalId: id(1), cycle: 2, stage: 'pending', cursor: null, token: id(4), customerUserId: id(2) }
+      : name === 'deliver_withdrawal_approver_notifications' ? { stale: false, recipients: [{ id: id(3), email: 'reviewer@example.test', full_name: 'Reviewer', preferred_locale: 'en' }] }
+      : true;
+    const result = { data, error: null };
+    return Object.assign(Promise.resolve(result), { abortSignal: async () => result });
   });
-
-  it('fans out idempotent in-app and email events to active approvers, excluding submitter', async () => {
-    await notifyWithdrawalApprovers({
-      withdrawalId: 'withdrawal-1',
-      customerUserId: 'customer-1',
-      amountRm: 75,
-      approvalCycle: 2,
-      snapshot: {
-        customer: { id: 'customer-1', displayName: 'Customer', email: 'customer@example.test' },
-        requestTime: '2026-07-22T04:00:00.000Z',
-        kycStatus: 'approved',
-        risk: { level: 'review', reasons: ['recent_failed_withdrawal'] },
-        sourceTotals: { rewardSen: 2500, affiliateSen: 5000, otherSen: 0 },
-        destination: { type: 'e_wallet', maskedReference: '+60••••6789' },
-      },
+  mocks.upsert.mockResolvedValue({ error: null }); mocks.enqueue.mockResolvedValue({ inserted: true });
+});
+describe('durable approval notifications', () => {
+  it('customer requests only persist an intent, without fanout or SMTP', async () => {
+    await notifyWithdrawalApprovers({ withdrawalId: id(1), approvalCycle: 2 });
+    expect(mocks.rpc).toHaveBeenCalledWith('enqueue_withdrawal_approvers', { p_id: id(1), p_cycle: 2 });
+    expect(mocks.upsert).not.toHaveBeenCalled(); expect(mocks.enqueue).not.toHaveBeenCalled(); expect(mocks.smtp).not.toHaveBeenCalled();
+  });
+  it('uses the atomic status-checked delivery RPC and checkpoints only after durable writes', async () => {
+    expect(await processWithdrawalApproverNotifications()).toEqual({ recipients: 1 });
+    expect(mocks.rpc).toHaveBeenCalledWith('deliver_withdrawal_approver_notifications', {
+      p_id: id(1), p_cycle: 2, p_stage: 'pending', p_token: id(4), p_cursor: null,
     });
-
-    expect(mocks.upsert).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        user_id: 'approver-1',
-        event_key: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:approver-1',
-        body: expect.stringContaining('Risk: review'),
-        metadata: expect.objectContaining({ risk_level: 'review', customer_display_name: 'Customer' }),
-      }),
-      expect.objectContaining({ user_id: 'admin-1', event_key: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:admin-1' }),
-    ]), { onConflict: 'event_key', ignoreDuplicates: true });
-    expect(mocks.enqueueEmail).toHaveBeenCalledTimes(2);
-    expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 'approver-1',
-      eventKey: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:approver-1',
-      eventType: 'withdrawal_submitted',
-      reason: expect.stringContaining('Risk: review'),
-    }));
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(mocks.enqueue).toHaveBeenCalledWith(expect.objectContaining({
+      userId: id(3), eventType: 'staff_withdrawal_approval',
+      eventKey: `withdrawal_submitted:${id(1)}:cycle:2:approver:${id(3)}`,
+      reason: 'A withdrawal approval task is waiting in the protected Admin workspace.',
+    }), expect.anything());
+    expect(mocks.rpc).toHaveBeenLastCalledWith('finish_withdrawal_approver_job', expect.objectContaining({ p_cursor: id(3), p_complete: true, p_failed: false }));
+    expect(mocks.smtp).not.toHaveBeenCalled();
+  });
+  it('retains the old cursor after a partial enqueue failure for safe replay', async () => {
+    mocks.enqueue.mockRejectedValue(new Error('private transport details'));
+    await expect(processWithdrawalApproverNotifications()).rejects.toThrow('notification_batch_unconfirmed');
+    expect(mocks.rpc).toHaveBeenLastCalledWith('finish_withdrawal_approver_job', expect.objectContaining({ p_cursor: null, p_failed: true }));
   });
 });

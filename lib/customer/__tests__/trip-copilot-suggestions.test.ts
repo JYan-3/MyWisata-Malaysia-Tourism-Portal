@@ -54,6 +54,14 @@ describe('generateTripSuggestions', () => {
     mocks.getOpenMeteoForecast.mockImplementation(async (input: { date: string }) => noForecast(input.date));
   });
 
+  it('returns grounded basic suggestions without any provider work when admission is denied', async () => {
+    const result = await generateTripSuggestions(TRIP, CANDIDATES, 'en', '', { allowExternal: false });
+    expect(result.mode).toBe('rule-based');
+    expect(result.suggestions.length).toBeGreaterThan(0);
+    expect(mocks.getOpenMeteoForecast).not.toHaveBeenCalled();
+    expect(mocks.callGemini).not.toHaveBeenCalled();
+  });
+
   it('never calls Gemini or the weather API when there are no real candidates', async () => {
     const result = await generateTripSuggestions(TRIP, [], 'en');
 
@@ -183,9 +191,9 @@ describe('generateTripSuggestions', () => {
 
     await generateTripSuggestions(TRIP, CANDIDATES, 'en');
 
-    expect(mocks.getOpenMeteoForecast).toHaveBeenCalledWith({ latitude: 5.4141, longitude: 100.3288, date: '2026-08-15' });
-    expect(mocks.getOpenMeteoForecast).toHaveBeenCalledWith({ latitude: 5.4141, longitude: 100.3288, date: '2026-08-16' });
-    expect(mocks.getOpenMeteoForecast).toHaveBeenCalledWith({ latitude: 5.4141, longitude: 100.3288, date: '2026-08-17' });
+    expect(mocks.getOpenMeteoForecast).toHaveBeenCalledWith({ latitude: 5.4141, longitude: 100.3288, date: '2026-08-15' }, { signal: undefined });
+    expect(mocks.getOpenMeteoForecast).toHaveBeenCalledWith({ latitude: 5.4141, longitude: 100.3288, date: '2026-08-16' }, { signal: undefined });
+    expect(mocks.getOpenMeteoForecast).toHaveBeenCalledWith({ latitude: 5.4141, longitude: 100.3288, date: '2026-08-17' }, { signal: undefined });
 
     const [, userText] = mocks.callGemini.mock.calls[0];
     const payload = JSON.parse(userText) as { weather: TripWeatherSignal };

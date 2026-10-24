@@ -4,9 +4,10 @@ export const WITHDRAWAL_REVIEW_STATUSES = [
   'pending', 'pending_second_approval', 'hold', 'overdue',
 ] as const;
 
-const IN_PROGRESS_STATUSES = new Set([
+export const WITHDRAWAL_IN_PROGRESS_STATUSES = [
   'pending', 'pending_second_approval', 'approved', 'processing', 'hold', 'overdue',
-]);
+] as const;
+const IN_PROGRESS_STATUSES = new Set<string>(WITHDRAWAL_IN_PROGRESS_STATUSES);
 
 const REVIEW_STATUSES = new Set<string>(WITHDRAWAL_REVIEW_STATUSES);
 

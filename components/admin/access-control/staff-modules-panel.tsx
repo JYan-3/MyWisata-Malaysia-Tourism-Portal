@@ -54,8 +54,10 @@ export function StaffModulesPanel({ modules, permissions, groups, onSaved }: Pro
   const [form, setForm] = useState<ModuleForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
 
   function editModule(module: StaffModuleRecord) {
+    setReceipt(null);
     setForm({
       id: module.id,
       key: module.key,
@@ -87,6 +89,7 @@ export function StaffModulesPanel({ modules, permissions, groups, onSaved }: Pro
   async function save() {
     setSaving(true);
     setError("");
+    setReceipt(null);
     try {
       const editing = Boolean(form.id);
       const response = await fetch(
@@ -113,6 +116,7 @@ export function StaffModulesPanel({ modules, permissions, groups, onSaved }: Pro
       );
       const body = await response.json() as ApiEnvelope<MutationReceipt>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffModules.saveError")));
+      setReceipt(body.data);
       setForm(EMPTY_FORM);
       await onSaved();
     } catch (caught) {
@@ -131,6 +135,7 @@ export function StaffModulesPanel({ modules, permissions, groups, onSaved }: Pro
       <div><h2 className="font-semibold">{t("accessControl.staffModules.title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffModules.help")}</p></div>
       {form.id && <Button size="sm" variant="outline" onClick={() => setForm(EMPTY_FORM)}>{t("accessControl.actions.cancel")}</Button>}
     </div>
+    {receipt && <p role="status" className="mt-3 rounded-xl bg-primary/10 p-3 text-sm text-primary">{receipt.receiptAvailable === false ? t("accessControl.feedback.committedReceiptUnavailable") : t("accessControl.feedback.staffModuleUpdated")}</p>}
     {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
     <div className="mt-4 grid gap-3 md:grid-cols-3">
       <Field label={t("accessControl.staffModules.key")}><input name="module-key" disabled={Boolean(form.id)} value={form.key} onChange={(event) => setForm({ ...form, key: event.target.value })} className={`${adminFilterControlClassName} w-full`} /></Field>

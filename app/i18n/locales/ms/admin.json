@@ -230,7 +230,9 @@
       "policyUpdated": "Tindakan polisi telah selesai.",
       "assignmentUpdated": "Tindakan tugasan telah selesai.",
       "staffRoleUpdated": "Tindakan peranan kakitangan telah selesai.",
-      "staffRoleGranted": "Peranan {{role}} telah diberikan kepada {{employee}}."
+      "staffModuleUpdated": "Tetapan modul kakitangan telah disimpan.",
+      "staffRoleGranted": "Peranan {{role}} telah diberikan kepada {{employee}}.",
+      "committedReceiptUnavailable": "Perubahan telah disimpan, tetapi resit audit atau status terkini buat sementara waktu tidak tersedia. Muat semula halaman ini sebelum membuat perubahan lain."
     },
     "filters": {
       "searchCapabilities": "Cari kunci keupayaan",
@@ -408,12 +410,14 @@
       "invitationRevoked": "Jemputan dibatalkan.",
       "invitationError": "Tidak dapat memproses jemputan kakitangan.",
       "joinedEmployees": "Kakitangan yang telah menyertai",
+      "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
       "delivery": {
         "pending": "Menunggu",
         "sending": "Menghantar",
         "sent": "E-mel dihantar",
         "failed": "Penghantaran gagal"
-      }
+      },
+      "systemOnlyModule": "Menggunakan peraturan peranan sistem sedia ada; tidak boleh diwakilkan melalui peranan tersuai."
     },
     "staffModules": {
       "title": "Pengurusan modul",
@@ -450,7 +454,9 @@
       "assignmentDescription": "Tugasan boleh menyekat akses tetapi tidak boleh memintas kawalan keselamatan keras.",
       "revokeTitle": "Sahkan penarikan balik tugasan",
       "revokeDescription": "Tugasan akan berhenti digunakan dan kekal disimpan dalam sejarah.",
-      "confirm": "Sahkan tindakan bertadbir"
+      "confirm": "Sahkan tindakan bertadbir",
+      "typePhrase": "Taip {{phrase}} untuk mengesahkan perubahan ini.",
+      "typePhraseLabel": "Taip frasa pengesahan"
     },
     "capabilities": {
       "key": "Keupayaan",
@@ -569,7 +575,7 @@
       "before": "Sebelum",
       "after": "Selepas",
       "changeSummary": "Perubahan utama",
-      "noChangeSummary": "Tiada perubahan medan asas direkodkan.",
+      "noChangeSummary": "Tiada perubahan medan yang disokong direkodkan.",
       "technicalDetails": "Butiran teknikal",
       "actionSummaries": {
         "unknown": "Tindakan audit tidak diketahui",
@@ -638,10 +644,15 @@
         "riskLevel": "Tahap risiko",
         "customerVisible": "Kelihatan kepada pelanggan",
         "manuallyAssignable": "Boleh ditetapkan secara manual",
-        "generation": "Generasi"
+        "generation": "Generasi",
+        "roleName": "Nama peranan",
+        "moduleKeys": "Modul",
+        "permissionKeys": "Kebenaran",
+        "isActive": "Peranan aktif"
       },
       "valueLabels": {
         "missing": "Tidak direkodkan",
+        "emptyList": "Tiada",
         "null": "Tiada",
         "true": "Ya",
         "false": "Tidak",
@@ -665,6 +676,45 @@
     },
     "pagination": {
       "pageOf": "Halaman {{page}} daripada {{total}}"
+    },
+    "staffEmployees": {
+      "title": "Pekerja dan akses",
+      "help": "Semak kebenaran semasa setiap pekerja dan tarik balik penetapan peranan individu.",
+      "loadError": "Tidak dapat mengesahkan akses pekerja. Muat semula dan cuba lagi.",
+      "revokeError": "Tidak dapat menarik balik penetapan ini. Muat semula akses sebelum mencuba lagi.",
+      "revoked": "Penetapan telah ditarik balik. Kelulusan terdahulu dan rekod audit dikekalkan.",
+      "search": "Cari pekerja mengikut nama atau e-mel",
+      "status": "Status akaun",
+      "pageSize": "Rekod setiap halaman",
+      "total": "{{count}} rekod",
+      "total_one": "{{count}} rekod",
+      "total_other": "{{count}} rekod",
+      "viewAccess": "Lihat akses",
+      "empty": "Tiada pekerja sepadan dengan penapis ini.",
+      "currentAccess": "Akses semasa",
+      "assignments": "Peranan yang ditetapkan",
+      "inactiveRole": "Peranan tidak aktif",
+      "revoke": "Tarik balik penetapan ini",
+      "remainingAccess": "Kebenaran yang kekal selepas penetapan ini ditarik balik",
+      "noPermissions": "Tiada kebenaran modul aktif yang tinggal.",
+      "legacySource": "Peranan sistem sedia ada",
+      "legacyHelp": "Identiti Admin, Pelulus Dompet atau Super Admin sedia ada mungkin memberi akses tambahan. Tarik balik identiti itu melalui halaman pengurusannya.",
+      "preserveHistory": "Hanya penetapan peranan pekerja ini dibuang. Akaun, kelulusan terdahulu dan rekod audit dikekalkan. Penetapan pekerja lain kekal.",
+      "revokeReason": "Sebab menarik balik penetapan ini",
+      "confirmTitle": "Sahkan penarikan balik akses individu",
+      "invitationStatus": "Status jemputan",
+      "invitationStatuses": {
+        "pending": "Belum diterima",
+        "expired": "Tamat tempoh",
+        "accepted": "Diterima",
+        "revoked": "Ditarik balik",
+        "all": "Semua jemputan"
+      },
+      "statuses": {
+        "active": "Aktif",
+        "suspended": "Digantung",
+        "deleted": "Dipadam"
+      }
     }
   },
   "accessibility": {
@@ -937,7 +987,16 @@
       "batchReviewFailed": "Semakan pukal gagal",
       "loadQueue": "Tidak dapat memuatkan barisan semakan",
       "reasonLength": "Sebab sekurang-kurangnya 10 aksara diperlukan.",
+      "reviewConflict": "Item ini berubah semasa anda menyemaknya. Semak versi terkini sebelum membuat keputusan.",
       "reviewActionFailed": "Tindakan semakan gagal"
+    },
+    "pagination": {
+      "pageSize": "Saiz halaman katalog",
+      "perPage": "{{count}} setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
+      "range": "Memaparkan {{first}}–{{last}} daripada {{total}} item",
+      "pageOf": "Halaman {{page}} daripada {{totalPages}}"
     },
     "eyebrow": "Tadbir urus pasaran",
     "fallback": {
@@ -2294,6 +2353,7 @@
         "loadGovernance": "Tidak dapat memuatkan tetapan tadbir urus dompet",
         "loadSettings": "Tidak dapat memuatkan tetapan dompet",
         "negative": "Nilai tidak boleh negatif.",
+        "minimumWithdrawal": "Pengeluaran minimum mestilah sekurang-kurangnya RM1.00.",
         "reasonBeforeSave": "Tambah sebab perubahan sekurang-kurangnya 10 aksara sebelum menyimpan.",
         "roleReason": "Tambah sebab perubahan peranan sekurang-kurangnya 10 aksara sebelum meneruskan.",
         "save": "Tidak dapat menyimpan tetapan"
@@ -2338,6 +2398,7 @@
       },
       "roleChanged": "Akses pelulus dompet telah {{action}}.",
       "saved": "Tetapan tadbir urus dompet disimpan.",
+      "savedNotificationFailed": "Tetapan dompet dan audit telah disimpan, tetapi pemberitahuan tidak dapat dihantar.",
       "title": "Tetapan dompet",
       "units": {
         "days": "hari",
@@ -2416,7 +2477,8 @@
     "approve": "Luluskan",
     "reject": "Tolak",
     "previous": "Sebelum",
-    "next": "Seterusnya"
+    "next": "Seterusnya",
+    "refresh": "Segarkan"
   },
   "email": {
     "draft": {
@@ -3953,5 +4015,10 @@
       "add": "Kemudahan tidak dapat ditambah",
       "update": "Kemudahan tidak dapat dikemas kini"
     }
+  },
+  "reviewRefresh": {
+    "changed": "Tugasan ini telah berubah. Semak butiran terkini sebelum mengesahkan.",
+    "stale": "Muat semula gagal. Data terakhir dipaparkan.",
+    "denied": "Akses semakan anda tidak lagi tersedia."
   }
 }

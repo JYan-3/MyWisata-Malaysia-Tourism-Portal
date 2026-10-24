@@ -1,6 +1,8 @@
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { expect, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
+import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
 
 // Seeded demo accounts (scripts/seed-*). All @demo.local users share one password.
 export const DEMO_PASSWORD = 'demo123456';
@@ -19,6 +21,11 @@ export const ACCOUNTS = {
 export const TEST_PREFIX = 'E2E';
 
 export async function signIn(page: Page, email: string, password = DEMO_PASSWORD) {
+  if (localEnv('E2E_AUTH_MODE') === 'admin-session') {
+    await signInWithLocalAdminSession(page, email);
+    return;
+  }
+
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
@@ -26,6 +33,83 @@ export async function signIn(page: Page, email: string, password = DEMO_PASSWORD
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 120_000 });
   await page.waitForURL((url) => !url.pathname.startsWith('/auth/'), { timeout: 120_000 });
   if (new URL(page.url()).pathname === '/admin/security') await enterAuthenticatorCode(page, email);
+}
+
+/** Creates a local-only browser session for seeded demo accounts without submitting password auth. */
+async function signInWithLocalAdminSession(page: Page, email: string) {
+  expect(email.toLowerCase().endsWith('@demo.local'), 'admin-session only supports seeded @demo.local test accounts').toBe(true);
+
+  const baseUrl = String(testInfoBaseUrl());
+  const appUrl = new URL(baseUrl);
+  expect(['localhost', '127.0.0.1'], 'admin-session is restricted to a local Playwright baseURL').toContain(appUrl.hostname);
+  const siteUrl = localEnv('NEXT_PUBLIC_SITE_URL');
+  expect(siteUrl, 'NEXT_PUBLIC_SITE_URL must be set for local admin-session mode').toBeTruthy();
+  expect(['localhost', '127.0.0.1'], 'NEXT_PUBLIC_SITE_URL must point to localhost').toContain(new URL(siteUrl!).hostname);
+
+  const supabaseUrl = localEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.match(/^([a-z0-9]{20})\.supabase\.co$/)?.[1] : undefined;
+  expect(projectRef, 'admin-session requires a Supabase cloud project URL').toBeTruthy();
+  expect(localEnv('E2E_TEST_DB_CONFIRM'), 'confirm the exact isolated Supabase project before creating a session').toBe(projectRef);
+  expect(supabaseUrl, 'admin-session requires the canonical Supabase HTTPS URL').toBe(`https://${projectRef}.supabase.co`);
+
+  const serviceKey = localEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const anonKey = localEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  expect(serviceKey, 'SUPABASE_SERVICE_ROLE_KEY is required in the local test environment').toBeTruthy();
+  expect(anonKey, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required in the local test environment').toBeTruthy();
+
+  const service = createClient(supabaseUrl!, serviceKey!, { auth: { autoRefreshToken: false, persistSession: false } });
+  const generated = await service.auth.admin.generateLink({ type: 'magiclink', email });
+  expect(generated.error, 'Supabase could not create a test session').toBeNull();
+  expect(generated.data.user?.email?.toLowerCase(), 'session target must be the requested seeded demo account').toBe(email.toLowerCase());
+  const tokenHash = generated.data.properties?.hashed_token;
+  expect(tokenHash, 'Supabase did not return a one-time session token').toBeTruthy();
+
+  const cookieValues = new Map<string, { value: string; options: CookieOptions }>();
+  const authenticated = createServerClient(supabaseUrl!, anonKey!, {
+    cookies: {
+      getAll: () => [...cookieValues].map(([name, cookie]) => ({ name, value: cookie.value })),
+      setAll: (cookies) => { for (const { name, value, options } of cookies) cookieValues.set(name, { value, options }); },
+    },
+  });
+  const verified = await authenticated.auth.verifyOtp({ token_hash: tokenHash!, type: 'magiclink' });
+  expect(verified.error, 'Supabase could not verify the one-time test session').toBeNull();
+  expect(verified.data.user?.email?.toLowerCase()).toBe(email.toLowerCase());
+  expect(verified.data.session, 'Supabase did not return an authenticated session').toBeTruthy();
+
+  const cookies: Parameters<BrowserContext['addCookies']>[0] = [...cookieValues].map(([name, cookie]) => {
+    const result: Parameters<BrowserContext['addCookies']>[0][number] = { name, value: cookie.value, domain: appUrl.hostname, path: cookie.options.path ?? '/' };
+    if (cookie.options.httpOnly !== undefined) result.httpOnly = cookie.options.httpOnly;
+    if (cookie.options.secure !== undefined) result.secure = cookie.options.secure;
+    if (typeof cookie.options.expires === 'number') result.expires = cookie.options.expires;
+    if (cookie.options.sameSite) {
+      const sameSite = String(cookie.options.sameSite).toLowerCase();
+      result.sameSite = sameSite === 'strict' ? 'Strict' : sameSite === 'none' ? 'None' : 'Lax';
+    }
+    return result;
+  });
+  await page.context().addCookies(cookies);
+  const { data: roleRows, error: roleError } = await service
+    .from('user_roles')
+    .select('roles(name)')
+    .eq('user_id', verified.data.user!.id);
+  expect(roleError, 'the demo account role could not be resolved for the MFA boundary').toBeNull();
+  type RoleRow = { roles: { name: string } | Array<{ name: string }> | null };
+  const roleNames = ((roleRows ?? []) as unknown as RoleRow[]).flatMap((row) => {
+    if (Array.isArray(row.roles)) return row.roles.map((role) => role.name);
+    return row.roles?.name ? [row.roles.name] : [];
+  });
+  expect(roleNames.length, 'the seeded demo account must have an application role').toBeGreaterThan(0);
+
+  if (roleNames.some((role) => ['admin', 'approver', 'staff', 'super_admin'].includes(role))) {
+    await page.goto('/admin/security');
+    if (new URL(page.url()).pathname === '/admin/security') await enterAuthenticatorCode(page, email);
+  }
+  await page.goto('/');
+  await page.waitForURL((url) => !url.pathname.startsWith('/auth/'), { timeout: 30_000 });
+}
+
+function testInfoBaseUrl() {
+  return test.info().project.use.baseURL ?? 'http://localhost:3000';
 }
 
 /** RFC 6238 TOTP (SHA-1, 30 s, 6 digits) — what an authenticator app shows for this setup key. */
@@ -47,7 +131,7 @@ export function totpCode(secret: string, now = Date.now()) {
 async function enterAuthenticatorCode(page: Page, email: string) {
   const envName = `E2E_TOTP_${email.split('@')[0].toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
   const secret = localEnv(envName);
-  expect(secret, `${envName} must be set in .env.local (run scripts/setup-staff-mfa.mjs)`).toBeTruthy();
+  if (!secret) test.skip(true, `${envName} must be set in .env.local (run scripts/setup-staff-mfa.mjs)`);
   await page.getByRole('button', { name: /set up or verify authenticator/i }).click();
   await page.locator('#kyc-mfa-code').fill(totpCode(secret!));
   await page.getByRole('button', { name: /verify and continue/i }).click();

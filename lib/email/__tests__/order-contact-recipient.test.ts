@@ -4,11 +4,13 @@ const mocks = vi.hoisted(() => ({
   orderContactEmail: null as string | null,
   orderLookupError: false,
   enqueueEmail: vi.fn(async () => undefined),
+  rpc: vi.fn(),
 }));
 
 vi.mock('@/lib/email/outbox', () => ({ enqueueEmail: mocks.enqueueEmail, processEmailOutbox: vi.fn(async () => undefined) }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
+    rpc: mocks.rpc,
     from: (table: string) => {
       const single = table === 'users'
         ? { data: { email: 'account@example.com', full_name: 'Account Holder', preferred_locale: 'zh-CN' }, error: null }
@@ -31,27 +33,26 @@ describe('signed-in order email recipient', () => {
     mocks.orderLookupError = false;
   });
 
-  it('sends to the email typed at checkout for this order', async () => {
-    mocks.orderContactEmail = 'booking@example.com';
+  it('uses one server-owned canonical receipt for order payment instead of a provider notice', async () => {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
     await send('order-1');
-    expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ toEmail: 'booking@example.com' }));
+    expect(mocks.rpc).toHaveBeenCalledWith('queue_order_receipt', { p_order_id: 'order-1' });
+    expect(mocks.enqueueEmail).not.toHaveBeenCalled();
   });
 
-  it('falls back to the account email when the order has none', async () => {
-    mocks.orderContactEmail = null;
-    await send('order-1');
+  it('retains the account email fallback for ordinary non-order notifications', async () => {
+    await send();
     expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ toEmail: 'account@example.com' }));
   });
 
-  it('keeps the recipient language preference for order emails', async () => {
-    mocks.orderContactEmail = 'booking@example.com';
-    await send('order-1');
+  it('retains the recipient language for ordinary notifications', async () => {
+    await send();
     expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: 'zh-CN' }));
   });
 
-  it('fails closed when the order contact lookup fails', async () => {
-    mocks.orderLookupError = true;
-    await expect(send('order-1')).rejects.toThrow('email_order_recipient_unavailable');
+  it('reports receipt persistence failure instead of creating an untracked notice', async () => {
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    await expect(send('order-1')).rejects.toThrow('receipt_queue_unavailable');
     expect(mocks.enqueueEmail).not.toHaveBeenCalled();
   });
 });

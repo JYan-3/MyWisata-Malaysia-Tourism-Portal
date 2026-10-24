@@ -1,5 +1,7 @@
 "use client";
 
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -64,6 +66,7 @@ export function KycReviewDetailContent({
   const [reasonDetail, setReasonDetail] = useState("");
   const [confirmDecision, setConfirmDecision] = useState<KycReviewDecision | null>(null);
 
+  const [confirmationVersion, setConfirmationVersion] = useState<number | null>(null);
   const actionable = submission.status === "pending" && detail.assignment.canDecide;
   const canContinue = Boolean(reasonCode) && (reasonCode !== "other" || reasonDetail.trim().length >= 10);
   const statusLabel = t(`kyc.status.${statusKey(submission.status)}`);
@@ -83,6 +86,7 @@ export function KycReviewDetailContent({
 
   function prepareReasonDecision() {
     if (!reasonAction || !reasonCode || !canContinue) return;
+    setConfirmationVersion(detail.assignment.reviewVersion);
     setConfirmDecision({
       action: reasonAction,
       reasonCode,
@@ -91,7 +95,7 @@ export function KycReviewDetailContent({
   }
 
   function submitConfirmedDecision() {
-    if (!confirmDecision) return;
+    if (!confirmDecision || !actionable || confirmationVersion !== detail.assignment.reviewVersion) return;
     onDecision(confirmDecision);
     setConfirmDecision(null);
   }
@@ -223,7 +227,7 @@ export function KycReviewDetailContent({
               <h2 className="font-semibold text-foreground">{t("kyc.detail.decision")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.decisionDescription")}</p>
               <div className="mt-4 grid gap-2">
-                <Button disabled={busy} onClick={() => setConfirmDecision({ action: "approve" })}><CheckSquare size={14} /> {t("kyc.detail.approve")}</Button>
+                <Button disabled={busy} onClick={() => { setConfirmationVersion(detail.assignment.reviewVersion); setConfirmDecision({ action: "approve" }); }}><CheckSquare size={14} /> {t("kyc.detail.approve")}</Button>
                 <Button variant="outline" disabled={busy} onClick={() => beginReasonAction("request_info")}><MessageSquare size={14} /> {t("kyc.detail.requestInfo")}</Button>
                 <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={busy} onClick={() => beginReasonAction("reject")}><XCircle size={14} /> {t("kyc.detail.reject")}</Button>
               </div>
@@ -305,7 +309,7 @@ export function KycReviewDetailContent({
       </section>
 
       <AdminConfirmDialog
-        open={Boolean(confirmDecision)}
+        open={Boolean(confirmDecision) && actionable && confirmationVersion === detail.assignment.reviewVersion}
         title={confirmTitle}
         description={confirmDescription}
         confirmLabel={confirmLabel}
@@ -367,12 +371,12 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
     };
   }, [submissionId, clearDocument, disposeDocument]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     try {
-      const response = await fetch(`/api/admin/kyc/submissions/${submissionId}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/kyc/submissions/${submissionId}${signal ? "?refresh=1" : ""}`, { cache: "no-store", signal });
       const body = await response.json().catch(() => ({}));
-      if (handlePermissionFailure(response.status, body?.error?.code)) return;
+      if (handlePermissionFailure(response.status, body?.error?.code)) { if (signal) throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); return; }
       if (response.status === 404) {
         setNotFound(true);
         setDetail(null);
@@ -385,13 +389,15 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("kyc.errors.loadSubmissions"));
+      if (signal) throw err;
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
   }, [submissionId, t, handlePermissionFailure]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: load });
 
   async function openDocument(side: "front" | "back") {
     if (!detail || detail.submission.id !== submissionId) return;
@@ -453,6 +459,13 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
       });
       const body = await response.json().catch(() => ({}));
       if (handlePermissionFailure(response.status, body?.error?.code)) return;
+      if (response.status === 409) {
+        // Refresh in place so the review form retains its draft after a conflict.
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 15_000);
+        try { await load(controller.signal); }
+        finally { window.clearTimeout(timeout); }
+      }
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.reviewFailed"));
       setRecording(false);
       await load();
@@ -544,6 +557,7 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
 
   return (
     <>
+      <div className="col-span-full flex flex-wrap items-center gap-3 py-2 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <section className="mb-5 space-y-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex flex-wrap gap-2">
           {detail.assignment.isAssignedToCurrentUser && detail.submission.status === "pending" && <>

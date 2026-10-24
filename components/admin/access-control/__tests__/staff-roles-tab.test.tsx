@@ -10,12 +10,15 @@ import {
   type TestElement,
 } from "@/components/shared/__tests__/render-test-dom";
 
-const mocks = vi.hoisted(() => ({ fetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetch: vi.fn(), t: (key: string) => key }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }),
+  useTranslation: () => ({ t: mocks.t, i18n: { resolvedLanguage: "en" } }),
 }));
 vi.mock("lucide-react", () => ({
+  ChevronLeft: (props: Record<string, unknown>) => <svg {...props} />,
+  ChevronRight: (props: Record<string, unknown>) => <svg {...props} />,
+  UserMinus: (props: Record<string, unknown>) => <svg {...props} />,
   CheckCircle2: (props: Record<string, unknown>) => <svg {...props} />,
   RefreshCw: (props: Record<string, unknown>) => <svg {...props} />,
   Search: (props: Record<string, unknown>) => <svg {...props} />,
@@ -126,6 +129,12 @@ describe("StaffRolesTab", () => {
     mocks.fetch.mockReset();
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/admin/access-control/staff-employees?")) {
+        return response({ data: { items: [], total: 0, totalPages: 0, page: 1, pageSize: 25 } });
+      }
+      if (url.startsWith("/api/admin/access-control/staff-employees/")) {
+        return response({ data: { id: "22222222-2222-4222-8222-222222222222", name: "Ali Staff", email: "ali@example.com", status: "active", coarseRoles: ["staff"], sources: [], assignments: roleAssignments.filter((assignment) => !assignment.revokedAt).map((assignment) => ({ ...assignment, roleName: "Campaign Manager", isSystem: false, isActive: true })) } });
+      }
       if (url === "/api/admin/access-control/staff-modules" && !init?.method) {
         return response({
           data: {
@@ -165,7 +174,7 @@ describe("StaffRolesTab", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/staff-invitations" && !init?.method) {
+      if (url.startsWith("/api/admin/access-control/staff-invitations?") && !init?.method) {
         return response({ data: { invitations: [] }, error: null });
       }
       if (url === "/api/admin/access-control/staff-invitations" && init?.method === "POST") {

@@ -16,7 +16,7 @@ const request = () => new Request('https://mylawatan.my/api/admin', { method: 'P
 beforeEach(() => { vi.clearAllMocks(); mocks.assurance.mockImplementation(async () => Response.json({ error: { code: 'STAFF_PASSKEY_REQUIRED' } }, { status: 403 })); });
 describe('staff assurance before privileged data or service use', () => {
   it.each([
-    ['refund list', () => refunds()], ['refund action', () => refund(request(), { params: Promise.resolve({ refundId: id }) })],
+    ['refund list', () => refunds(new Request("https://mylawatan.my/api/admin/refunds"))], ['refund action', () => refund(request(), { params: Promise.resolve({ refundId: id }) })],
     ['queue counts', () => counts()], ['financial outcome', () => outcome(request(), { params: Promise.resolve({ orderId: id }) })],
     ['simulator refund', () => simulator(request(), { params: Promise.resolve({ refundId: id }) })],
   ])('denies %s without privileged reads', async (_name, action) => {

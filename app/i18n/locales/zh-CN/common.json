@@ -120,6 +120,7 @@
   "notifications": {
     "title": "通知",
     "label": "通知",
+    "adminDescription": "发给你员工账号的新任务与更新。",
     "all": "全部",
     "unread": "未读",
     "markAllAsRead": "全部标为已读",
@@ -160,6 +161,26 @@
       "withdrawalSubmitted": {
         "title": "提现申请已提交",
         "body": "您的提现正在等待审核。状态有变化时，我们会通知您。"
+      },
+      "withdrawalApprovalTask": {
+        "title": "提现等待审核",
+        "body": "有一项提现审核任务待处理。请打开受保护的 Admin 页面进行审核。"
+      },
+      "withdrawalApprovalStepCompleted": {
+        "title": "提现第一步审核已完成",
+        "body": "第一步已由 {{resolved_by_name}} 于 {{resolved_at_label}} 完成；仍需另一位审批员审核此提现。"
+      },
+      "withdrawalApprovalResolved": {
+        "title": "提现审核已完成",
+        "body": "此审核已由 {{resolved_by_name}} 于 {{resolved_at_label}} 完成。"
+      },
+      "withdrawalApprovalCycleRestarted": {
+        "title": "之前的提现审核周期已关闭",
+        "body": "此审核周期已由 {{resolved_by_name}} 于 {{resolved_at_label}} 替换；新的审核周期已开始。"
+      },
+      "withdrawalApprovalUnavailable": {
+        "title": "提现审核任务已不可用",
+        "body": "此审核任务对应的提现记录已不存在。"
       },
       "withdrawalPaid": {
         "title": "款项已发送至您的账户",
