@@ -272,6 +272,14 @@ async function getDiscoveryOutlets(ids: string[], db: SupabaseClient, badgeSlugs
   } as OutletRow));
 }
 
+export async function getDiscoveryOutletsByIds(
+  ids: string[],
+  db: SupabaseClient = supabase,
+  badgeSlugs: string[] = [],
+): Promise<Outlet[]> {
+  return getDiscoveryOutlets(ids, db, badgeSlugs);
+}
+
 /** One buyable choice on the product page: which outlet, at what price. */
 export interface OutletChoice {
   outletId: string;
@@ -435,6 +443,10 @@ type ProductRow = {
 const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 const DISCOVERY_ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status)";
 
+export interface DiscoveryReviewMetricEntry extends ReviewMetric {
+  productId: string;
+}
+
 async function getReviewMetricsForProducts(productIds: string[], db: SupabaseClient): Promise<Map<string, ReviewMetric>> {
   const metricRows = (await Promise.all(
     Array.from({ length: Math.ceil(productIds.length / REVIEW_METRICS_BATCH_SIZE) }, (_, index) => {
@@ -454,6 +466,15 @@ async function getReviewMetricsForProducts(productIds: string[], db: SupabaseCli
     row.product_id,
     { rating: Number(row.rating), reviews: Number(row.reviews) },
   ]));
+}
+
+export async function getDiscoveryReviewMetricEntries(
+  productIds: string[],
+  db: SupabaseClient = supabase,
+): Promise<DiscoveryReviewMetricEntry[]> {
+  const uniqueIds = [...new Set(productIds.filter(Boolean))];
+  const metrics = await getReviewMetricsForProducts(uniqueIds, db);
+  return [...metrics.entries()].map(([productId, metric]) => ({ productId, ...metric }));
 }
 
 function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0, reviews: 0 }): Activity {
@@ -536,30 +557,52 @@ async function loadDiscoveryActivityData(db: SupabaseClient, outletBadgeSlugs: s
   activities: Activity[];
   outletMap: Map<string, Outlet>;
 }> {
+  const activities = await getDiscoveryProductActivities(db);
+  if (activities.length === 0) return { activities: [], outletMap: new Map() };
+
+  const productIds = activities.map((activity) => activity.id);
+  const outletIds = getDiscoveryOutletIds(activities);
+  const [reviewMetrics, outlets] = await Promise.all([
+    getDiscoveryReviewMetricEntries(productIds, db),
+    getDiscoveryOutletsByIds(outletIds, db, outletBadgeSlugs),
+  ]);
+
+  return {
+    activities: applyDiscoveryReviewMetrics(activities, reviewMetrics),
+    outletMap: new Map(outlets.map((outlet) => [outlet.id, outlet])),
+  };
+}
+
+export async function getDiscoveryProductActivities(db: SupabaseClient = supabase): Promise<Activity[]> {
   const { data, error } = await db
     .from("products")
     .select(DISCOVERY_ACTIVITY_SELECT)
     .eq("status", "active")
     .eq("review_status", "approved");
   if (error) throw error;
+  return ((data ?? []) as unknown as ProductRow[]).map((row) => mapActivity(row));
+}
 
-  const rows = (data ?? []) as unknown as ProductRow[];
-  if (rows.length === 0) return { activities: [], outletMap: new Map() };
+export function getDiscoveryOutletIds(activities: Activity[]): string[] {
+  return [...new Set(activities.flatMap((activity) => [
+    activity.outletId,
+    ...(activity.offers ?? []).map((offer) => offer.outletId),
+  ]).filter(Boolean))].sort();
+}
 
-  const productIds = rows.map((row) => row.id);
-  const outletIds = rows.flatMap((row) => [
-    row.outlet_id,
-    ...(row.outlet_offers ?? []).filter((offer) => offer.status === "active").map((offer) => offer.outlet_id),
-  ]).filter((id): id is string => Boolean(id));
-  const [reviewMetrics, outlets] = await Promise.all([
-    getReviewMetricsForProducts(productIds, db),
-    getDiscoveryOutlets(outletIds, db, outletBadgeSlugs),
-  ]);
+export function applyDiscoveryReviewMetrics(
+  activities: Activity[],
+  metricEntries: DiscoveryReviewMetricEntry[],
+): Activity[] {
+  const metricsByProductId = new Map(metricEntries.map(({ productId, rating, reviews }) => [
+    productId,
+    { rating, reviews },
+  ]));
 
-  return {
-    activities: rows.map((row) => mapActivity(row, reviewMetrics.get(row.id))),
-    outletMap: new Map(outlets.map((outlet) => [outlet.id, outlet])),
-  };
+  return activities.map((activity) => ({
+    ...activity,
+    ...(metricsByProductId.get(activity.id) ?? { rating: 0, reviews: 0 }),
+  }));
 }
 
 /**
@@ -573,10 +616,7 @@ export async function getDiscoveryActivities(
   from?: { lat: number; lng: number },
 ): Promise<ComputedActivity[]> {
   const { activities, outletMap } = await loadDiscoveryActivityData(db);
-  return activities
-    .map((activity) => toComputed(activity, outletMap, from))
-    .filter((activity): activity is ComputedActivity => activity !== null)
-    .sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
+  return composeDiscoveryActivities(activities, [...outletMap.values()], from);
 }
 
 /**
@@ -776,6 +816,18 @@ function toComputed(
     outlet: best.outlet,
     distanceKm: best.distanceKm,
   };
+}
+
+export function composeDiscoveryActivities(
+  activities: Activity[],
+  outlets: Outlet[],
+  from?: { lat: number; lng: number },
+): ComputedActivity[] {
+  const outletMap = new Map(outlets.map((outlet) => [outlet.id, outlet]));
+  return activities
+    .map((activity) => toComputed(activity, outletMap, from))
+    .filter((activity): activity is ComputedActivity => activity !== null)
+    .sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
 }
 
 /**

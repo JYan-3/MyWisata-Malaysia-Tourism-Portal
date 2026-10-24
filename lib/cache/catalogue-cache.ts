@@ -14,7 +14,16 @@
  */
 import { unstable_cache } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/service';
-import { getActivities, getDiscoveryActivities, getOutlets } from '@/backend/domains/catalogue';
+import {
+  applyDiscoveryReviewMetrics,
+  composeDiscoveryActivities,
+  getActivities,
+  getDiscoveryOutletIds,
+  getDiscoveryOutletsByIds,
+  getDiscoveryProductActivities,
+  getDiscoveryReviewMetricEntries,
+  getOutlets,
+} from '@/backend/domains/catalogue';
 import type { Activity, ComputedActivity, Outlet } from '@/backend/core/types';
 
 /**
@@ -30,19 +39,43 @@ export const getCachedActivities: () => Promise<Activity[]> = unstable_cache(
   { revalidate: 60, tags: ['activities'] },
 );
 
-/**
- * Cached narrow discovery catalogue with each product's representative outlet.
- * Checkout/detail consumers keep using the complete catalogue selectors.
- * Revalidates every 60 seconds.
- */
-export const getCachedComputedActivities: () => Promise<ComputedActivity[]> = unstable_cache(
+const getCachedDiscoveryProductActivities = unstable_cache(
   async () => {
     const db = createServiceClient();
-    return getDiscoveryActivities(db);
+    return getDiscoveryProductActivities(db);
   },
-  ['catalogue-computed-activities'],
+  ['catalogue-discovery-products'],
   { revalidate: 60, tags: ['activities'] },
 );
+
+const getCachedDiscoveryRelatedData = unstable_cache(
+  async (productIds: string[], outletIds: string[]) => {
+    const db = createServiceClient();
+    const [metrics, outlets] = await Promise.all([
+      getDiscoveryReviewMetricEntries(productIds, db),
+      getDiscoveryOutletsByIds(outletIds, db),
+    ]);
+    return { metrics, outlets };
+  },
+  ['catalogue-discovery-related-data'],
+  { revalidate: 60, tags: ['activities', 'outlets'] },
+);
+
+/**
+ * Assemble the public discovery shape outside the cache. Keeping the products,
+ * review metrics, and shared outlet records in separate entries avoids storing
+ * the same outlet metadata once for every product card.
+ */
+export async function getCachedComputedActivities(): Promise<ComputedActivity[]> {
+  const activities = await getCachedDiscoveryProductActivities();
+  if (activities.length === 0) return [];
+
+  const productIds = [...new Set(activities.map((activity) => activity.id))].sort();
+  const outletIds = getDiscoveryOutletIds(activities);
+  const { metrics, outlets } = await getCachedDiscoveryRelatedData(productIds, outletIds);
+
+  return composeDiscoveryActivities(applyDiscoveryReviewMetrics(activities, metrics), outlets);
+}
 
 /**
  * Cached getOutlets — revalidates every 60 seconds.
