@@ -19,7 +19,7 @@ describe("public outlet page template", () => {
   it("does not let product blocks create duplicate public content", () => {
     expect(rendererSource).toContain("block.type !== 'product_grid'");
     expect(rendererSource).toContain("<OutletMenu outlet={outlet} products={products} />");
-    expect(rendererSource).toContain("<HotelPage outlet={outlet} rooms={products.filter((p) => p.stay)} gallery={gallery} reviews={reviews} />");
+    expect(rendererSource).toContain("<HotelPage outlet={outlet} rooms={products.filter((p) => p.stay)} gallery={gallery} reviews={reviews} reviewRatingBuckets={reviewRatingBuckets} reviewTotal={reviewTotal} />");
   });
 
   it("puts the useful outlet summary before the optional gallery", () => {

@@ -120,6 +120,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/event-pickup-qr-codes.tsx",
   "components/customer/featured-recommendations-frame.tsx",
   "components/customer/featured-split-card.tsx",
+  "components/customer/feedback/feedback-collection.tsx",
   "components/customer/event-reserve-dialog.tsx",
   "components/customer/expand-card.tsx",
   "components/customer/food-order-qr-codes.tsx",

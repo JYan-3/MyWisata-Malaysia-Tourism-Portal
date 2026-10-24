@@ -50,6 +50,8 @@ describe("Profile completion consistency repair", () => {
     const localUserSeed = localSeed.match(/INSERT INTO users[\s\S]*?ON CONFLICT \(id\) DO UPDATE/)?.[0] ?? "";
 
     expect(localUserSeed).not.toMatch(/,\s*(?:NOW\(\)|NULL),\s*NOW\(\)\s*\)/);
-    expect(remoteSeed).toContain("profile_completed_at: null");
+    // Profile completion is server-managed: the remote seed never writes it, so no demo user starts "complete"
+    // (matches scripts/__tests__/remote-demo-vendor-ownership.test.ts).
+    expect(remoteSeed).not.toMatch(/\bprofile_completed_at\s*:/);
   });
 });

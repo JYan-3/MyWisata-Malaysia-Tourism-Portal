@@ -36,6 +36,7 @@ const NOT_AUTHORIZE_VENDOR = {
   "app/api/vendor/settlements/route.ts": "the event vendor's own wallet settlements",
   "app/api/vendor/share-analytics/route.ts": "read-only, scoped to the caller's own vendor",
   "app/api/vendors/[vendorId]/outlets/[outletId]/calendar.ics/route.ts": "outlet feed; event vendors have no outlets (DB trigger)",
+  "app/api/vendors/[vendorId]/reviews/route.ts": "public read-only: visible reviews and rating counts for an approved vendor page; no writes or private data",
   "app/api/vendors/route.ts": "registers a shop vendor; one vendor per owner is enforced by the RPC",
 } as const;
 
