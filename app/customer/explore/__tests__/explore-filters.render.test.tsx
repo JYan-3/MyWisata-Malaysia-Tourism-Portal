@@ -106,7 +106,7 @@ vi.mock("@/backend/domains/catalogue", () => ({
   filterComputedActivities: mocks.filterComputedActivities,
   filterExploreActivities: mocks.filterExploreActivities,
 }));
-vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, returnTo, detailsRevealOnHover, hideDiscoveryBadges }: { activity: { id: string; name: string }; returnTo?: string; detailsRevealOnHover?: boolean; hideDiscoveryBadges?: boolean }) => <article data-testid={`activity-${activity.id}`} data-details-reveal={detailsRevealOnHover ? "true" : "false"} data-hide-discovery-badges={hideDiscoveryBadges ? "true" : "false"}>{activity.name}|{returnTo}</article> }));
+vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, returnTo, hideDiscoveryBadges }: { activity: { id: string; name: string }; returnTo?: string; hideDiscoveryBadges?: boolean }) => <article data-testid={`activity-${activity.id}`} data-hide-discovery-badges={hideDiscoveryBadges ? "true" : "false"}>{activity.name}|{returnTo}</article> }));
 vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
 vi.mock("@/components/ui/checkbox", () => ({
   Checkbox: ({
@@ -257,7 +257,6 @@ describe("ExploreClient URL-backed advanced filters", () => {
     for (const label of ["Maximum price", "Free entry", "Booking required", "Opening hours"]) expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
     const activityCard = findOne(container, (element) => element.getAttribute("data-testid") === "activity-result-1");
-    expect(activityCard.getAttribute("data-details-reveal")).toBe("true");
     expect(activityCard.getAttribute("data-hide-discovery-badges")).toBe("true");
     const toolbar = findOne(container, (element) => element.getAttribute("data-testid") === "experience-toolbar");
     expect(findElements(toolbar, (element) => element.tagName === "INPUT" && element.getAttribute("aria-label") === "Search")).toHaveLength(1);

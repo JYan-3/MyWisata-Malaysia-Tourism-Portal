@@ -182,16 +182,14 @@ describe("customer home first viewport", () => {
 
   it("supports detail reveal on home product and partner cards", () => {
     expect(homeSource).toContain("detailsRevealOnHover");
-    expect(activityCardSource).toContain("detailsRevealOnHover");
-    expect(activityCardSource).toContain("group-hover:flex");
-    expect(activityCardSource).toContain("group-focus-within:flex");
+    expect(activityCardSource).toContain("mw-card-expand-card");
+    expect(activityCardSource).toContain("mw-card-details-expand");
     expect(activityCardSource).toContain("mw-card-body-compact");
-    expect(activityCardSource).toContain('inverse');
-    expect(activityCardSource).toContain("bg-primary/95");
+    expect(activityCardSource).not.toContain("detailsRevealOnHover");
+    expect(activityCardSource).not.toContain("bg-primary/95");
     expect(vendorCardSource).toContain("detailsRevealOnHover");
     expect(vendorCardSource).toContain("group-hover:flex");
     expect(vendorCardSource).toContain("group-focus-within:flex");
-    expect(activityCardSource).toContain("aria-expanded");
     expect(vendorCardSource).toContain("aria-expanded");
   });
 
@@ -207,8 +205,10 @@ describe("customer home first viewport", () => {
     const featuredVendorCall = homeSource.slice(featuredVendorStart, featuredVendorEnd);
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
-    expect(forYouSection).toContain('detailsRevealStyle="caption"');
-    expect(highlightsSection).toContain('detailsRevealStyle="caption"');
+    expect(forYouSection).toContain("<ActivityCard");
+    expect(forYouSection).not.toContain("detailsRevealStyle");
+    expect(highlightsSection).toContain("<ActivityCard");
+    expect(highlightsSection).not.toContain("detailsRevealStyle");
     expect(featuredVendorCall).toContain('detailsRevealStyle="caption"');
     expect(homeSource).toContain('id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl');
     expect(homeSource).toContain('id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl');

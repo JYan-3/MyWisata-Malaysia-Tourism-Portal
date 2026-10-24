@@ -365,7 +365,7 @@ export function CustomerHomeClient({
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {highlightItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} detailsRevealOnHover detailsRevealStyle="caption" />
+                <ActivityCard key={activity.id} activity={activity} />
               ))}
             </div>
           </section>
@@ -383,7 +383,7 @@ export function CustomerHomeClient({
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {forYouItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} detailsRevealOnHover detailsRevealStyle="caption" />
+                <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} />
               ))}
             </div>
           </section>
