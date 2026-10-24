@@ -177,22 +177,19 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("navigator.geolocation.getCurrentPosition");
     expect(homeSource).toContain("nearbyPartners.slice(0, 4)");
     expect(homeSource).toContain('href="/customer/partners"');
-    expect(homeSource).toContain('detailsRevealStyle="caption"');
+    expect(homeSource).not.toContain("detailsRevealStyle");
   });
 
   it("supports detail reveal on home product and partner cards", () => {
-    expect(homeSource).toContain("detailsRevealOnHover");
-    expect(activityCardSource).toContain("detailsRevealOnHover");
-    expect(activityCardSource).toContain("group-hover:flex");
-    expect(activityCardSource).toContain("group-focus-within:flex");
-    expect(activityCardSource).toContain("mw-card-body-compact");
-    expect(activityCardSource).toContain('inverse');
-    expect(activityCardSource).toContain("bg-primary/95");
-    expect(vendorCardSource).toContain("detailsRevealOnHover");
-    expect(vendorCardSource).toContain("group-hover:flex");
-    expect(vendorCardSource).toContain("group-focus-within:flex");
-    expect(activityCardSource).toContain("aria-expanded");
-    expect(vendorCardSource).toContain("aria-expanded");
+    expect(homeSource).not.toContain("detailsRevealOnHover");
+    expect(activityCardSource).toContain("<ExpandCard");
+    expect(activityCardSource).toContain("details={detailContent}");
+    expect(readFileSync(resolve(process.cwd(), "components/customer/expand-card.tsx"), "utf8")).toContain("mw-card-body-compact");
+    expect(activityCardSource).not.toContain("detailsRevealOnHover");
+    expect(activityCardSource).not.toContain("bg-primary/95");
+    expect(vendorCardSource).toContain("<ExpandCard");
+    expect(vendorCardSource).not.toContain("detailsRevealOnHover");
+    expect(vendorCardSource).not.toContain("aria-expanded");
   });
 
   it("uses the compact map-style reveal across the homepage product and vendor cards", () => {
@@ -207,9 +204,12 @@ describe("customer home first viewport", () => {
     const featuredVendorCall = homeSource.slice(featuredVendorStart, featuredVendorEnd);
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
-    expect(forYouSection).toContain('detailsRevealStyle="caption"');
-    expect(highlightsSection).toContain('detailsRevealStyle="caption"');
-    expect(featuredVendorCall).toContain('detailsRevealStyle="caption"');
+    expect(forYouSection).toContain("<ActivityCard");
+    expect(forYouSection).not.toContain("detailsRevealStyle");
+    expect(highlightsSection).toContain("<ActivityCard");
+    expect(highlightsSection).not.toContain("detailsRevealStyle");
+    expect(featuredVendorCall).toContain("<VendorCard");
+    expect(featuredVendorCall).not.toContain("detailsRevealStyle");
     expect(homeSource).toContain('id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl');
     expect(homeSource).toContain('id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl');
     expect(homeSource).toContain('text-2xl font-bold font-[family-name:var(--font-display)]');

@@ -327,7 +327,7 @@ export function ExploreClient({
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
+    <div className="min-h-screen overflow-x-clip bg-background">
       {dataUnavailable && (
         <p role="status" className="mx-auto max-w-7xl px-4 py-3 text-sm text-muted-foreground sm:px-6">
           {t("ui.states.loadingError")}
@@ -486,7 +486,7 @@ export function ExploreClient({
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                   {visibleActivities.map((a) => (
-                    <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} detailsRevealOnHover hideDiscoveryBadges onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
+                    <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} hideDiscoveryBadges onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                   ))}
                 </div>
               )}

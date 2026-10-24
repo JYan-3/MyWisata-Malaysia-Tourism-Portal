@@ -34,9 +34,12 @@ describe("customer activity image handling", () => {
     expect(cardSource).toContain('t("ui.labels.verified")');
   });
 
-  it("keeps image badges in one overlay group so status labels cannot overlap", () => {
-    expect(cardSource).toContain('className="absolute left-3 top-3 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5"');
-    expect(cardSource).not.toContain('activity.sponsorship ? "top-10"');
+  it("keeps only the Sponsored label on the photo; status badges live in the details drawer", () => {
+    const media = cardSource.slice(cardSource.indexOf("media={<>"), cardSource.indexOf("<SaveToggleButton"));
+    expect(media).toContain("<img");
+    expect(media).toContain('t("ui.labels.sponsored")');
+    expect(media).not.toContain('t("ui.labels.verified")');
+    expect(media).not.toContain('t("ui.labels.closed")');
   });
 
   it("labels sponsored activities and shows the outlet's operating hours", () => {
@@ -47,14 +50,17 @@ describe("customer activity image handling", () => {
     expect(cardSource).toContain("<OperatingHoursSummary");
   });
 
-  it("supports a bottom caption reveal and preserves the explicit full details panel", () => {
-    expect(cardSource).toContain('detailsRevealStyle?: "panel" | "caption"');
-    expect(cardSource).toContain('import { CardMediaHoverCaption } from "@/components/customer/card-media-hover-caption"');
-    expect(cardSource).toContain("<CardMediaHoverCaption>");
-    expect(cardSource).toContain("{activity.outlet.city}{!hideDiscoveryBadges && ` · ${categoryLabel}`}");
+  it("has one detail style: the drawer under the price, with no caption, overlay or info toggle", () => {
+    const shellSource = readFileSync(resolve(process.cwd(), "components/customer/expand-card.tsx"), "utf8");
+    expect(cardSource).toContain('import { ExpandCard } from "@/components/customer/expand-card"');
+    expect(cardSource).toContain("<ExpandCard");
+    expect(cardSource).toContain("details={detailContent}");
+    expect(shellSource).toContain('className="mw-card mw-card-expand-card group"');
+    expect(shellSource).toContain('<div id={detailsId} data-card-details-inline="true" className="mw-card-details-expand">');
     expect(cardSource).toContain("activity.outlet.hours");
-    expect(cardSource).toContain('id={detailsId}');
-    expect(cardSource).toContain('onClick={() => setDetailsOpen((open) => !open)}');
+    expect(cardSource).not.toContain("detailsRevealStyle");
+    expect(cardSource).not.toContain("CardMediaHoverCaption");
+    expect(cardSource).not.toContain("setDetailsOpen");
   });
 
   it("uses the reusable save toggle instead of a card-local heart icon", () => {

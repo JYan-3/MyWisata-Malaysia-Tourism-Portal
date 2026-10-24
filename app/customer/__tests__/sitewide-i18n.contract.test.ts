@@ -121,6 +121,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/featured-recommendations-frame.tsx",
   "components/customer/featured-split-card.tsx",
   "components/customer/event-reserve-dialog.tsx",
+  "components/customer/expand-card.tsx",
   "components/customer/food-order-qr-codes.tsx",
   "components/customer/guest-account-empty-state.tsx",
   "components/customer/malaysia-destination-rail.tsx",
@@ -232,6 +233,8 @@ function resourceValue(resource: unknown, key: string): unknown {
 const delegatingFiles = new Set([
   // Thin route wrappers delegate their rendered copy to the client/component
   // listed below; keeping them in the inventory protects the route boundary.
+  // ExpandCard is a layout shell; every label it shows is translated by the card that uses it.
+  "components/customer/expand-card.tsx",
   "app/customer/activity/[id]/bodies/food-body.tsx",
   "app/customer/activity/[id]/bodies/retail-body.tsx",
   "app/customer/activity/[id]/loading.tsx",

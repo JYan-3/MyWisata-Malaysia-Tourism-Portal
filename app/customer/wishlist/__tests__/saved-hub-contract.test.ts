@@ -9,7 +9,6 @@ const wishlistPagePath = resolve(process.cwd(), "app/customer/wishlist/page.tsx"
 const designDemoPath = resolve(process.cwd(), "app/customer/design-demo/design-demo-client.tsx");
 const activityCardPath = resolve(process.cwd(), "components/customer/activity-card.tsx");
 const savedDestinationCardPath = resolve(process.cwd(), "components/customer/saved-destination-card.tsx");
-const customerHomePath = resolve(process.cwd(), "app/customer/customer-home-client.tsx");
 
 describe("saved hub UI contract", () => {
   it("uses the bookmark icon for the saved hub shortlist marker", () => {
@@ -52,13 +51,11 @@ describe("saved hub UI contract", () => {
     }
   });
 
-  it("uses the Customer Home caption reveal for Saved experiences", () => {
+  it("uses the same shared ActivityCard drawer for Saved experiences as Customer Home", () => {
     const client = readFileSync(clientPath, "utf8");
-    const customerHome = readFileSync(customerHomePath, "utf8");
     const savedActivityCard = client.match(/<ActivityCard key=\{activity\.id\}[\s\S]*?\/>/)?.[0] ?? "";
 
-    expect(customerHome).toContain('detailsRevealStyle="caption"');
-    expect(savedActivityCard).toContain("detailsRevealOnHover");
-    expect(savedActivityCard).toContain('detailsRevealStyle="caption"');
+    expect(savedActivityCard).toContain('returnTo="/customer/wishlist"');
+    expect(savedActivityCard).not.toContain("detailsRevealStyle");
   });
 });

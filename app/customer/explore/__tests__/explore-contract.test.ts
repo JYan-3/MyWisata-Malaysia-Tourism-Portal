@@ -12,6 +12,12 @@ const filterSource = read("components/customer/discovery-filters.tsx");
 const storyMapSource = read("components/demo-map/story-map.tsx");
 
 describe("customer discovery filter contract", () => {
+  it("clips only sideways so an opened card drawer in the last row is not cut off above the footer", () => {
+    // overflow-x: hidden turns overflow-y into auto, which clips anything below the wrapper.
+    expect(exploreSource).toContain('<div className="min-h-screen overflow-x-clip bg-background">');
+    expect(exploreSource).not.toContain("min-h-screen overflow-x-hidden");
+  });
+
   it("omits helper copy and promotional description from the Explore header", () => {
     expect(exploreSource).not.toContain('t("ui.explore.description")');
     expect(exploreSource).not.toContain('t("ui.explore.experiencePageDescription")');

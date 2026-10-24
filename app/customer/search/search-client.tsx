@@ -329,8 +329,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
                 categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
                 index={index}
                 isFeatured={featuredVendorIds.has(vendor.id)}
-                detailsRevealOnHover
-                detailsRevealStyle="caption"
               />
             ))}
           </div>

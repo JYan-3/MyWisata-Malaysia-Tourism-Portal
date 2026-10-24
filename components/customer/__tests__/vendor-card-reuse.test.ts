@@ -33,38 +33,27 @@ describe("customer vendor card reuse", () => {
     expect(partnersSource).toContain("isFeatured={featuredVendorIds.has(vendor.id)}");
   });
 
-  it("reveals Partners vendor details on interaction using the shared card", () => {
-    expect(partnersSource).toContain("detailsRevealOnHover");
-    const detailsStart = sharedCardSource.indexOf('<div id={detailsId}');
-    const detailsEnd = sharedCardSource.indexOf("</div>", detailsStart);
-    const detailsPanel = sharedCardSource.slice(detailsStart, detailsEnd);
-    expect(detailsPanel).toContain("MapPin");
-    expect(detailsPanel).toContain("{location}");
+  it("reveals Partners vendor details in the shared ExpandCard drawer", () => {
+    expect(homeSource).not.toContain("detailsRevealOnHover");
+    expect(partnersSource).not.toContain("detailsRevealOnHover");
+    const details = sharedCardSource.slice(sharedCardSource.indexOf("details={<>"), sharedCardSource.indexOf("detailsId="));
+    expect(sharedCardSource).toContain("<ExpandCard");
+    expect(details).toContain("MapPin");
+    expect(details).toContain("{location}");
   });
 
-  it("uses the same compact caption hover and keeps Explore vendor available on both pages", () => {
-    expect(homeSource).toContain('detailsRevealStyle="caption"');
-    expect(partnersSource).toContain('detailsRevealStyle="caption"');
-    expect(sharedCardSource).toContain('detailsRevealStyle?: "panel" | "caption"');
-    expect(sharedCardSource).toContain('detailsRevealStyle = "panel"');
-    expect(sharedCardSource).toContain("<CardMediaHoverCaption>");
-    expect(sharedCardSource).toContain("mw-card-body-compact");
-    expect(sharedCardSource).toContain('{showExploreAction && <Link');
-    const captionStart = sharedCardSource.indexOf("<CardMediaHoverCaption>");
-    const captionEnd = sharedCardSource.indexOf("</CardMediaHoverCaption>", captionStart);
-    const caption = sharedCardSource.slice(captionStart, captionEnd);
-    expect(caption).toContain("{location}");
-    expect(caption).toContain("{showExploreAction && <Link");
-    expect(caption).toContain("group-hover:pointer-events-auto");
-    expect(homeSource).not.toContain("showExploreAction={false}");
-    expect(partnersSource).not.toContain("showExploreAction={false}");
+  it("uses the shared ExpandCard on Home and Partners and keeps Explore vendor as the action", () => {
+    expect(sharedCardSource).toContain('import { ExpandCard } from "@/components/customer/expand-card"');
+    expect(sharedCardSource).not.toContain("CardMediaHoverCaption");
+    expect(sharedCardSource).not.toContain("detailsRevealStyle");
+    expect(sharedCardSource).toContain('action={{ href: vendorHref, label: t("ui.actions.exploreVendor") }}');
+    expect(homeSource).not.toContain("detailsRevealStyle");
+    expect(partnersSource).not.toContain("detailsRevealStyle");
   });
 
-  it("can show a nearby distance in the same caption as the outlet area", () => {
-    const captionStart = sharedCardSource.indexOf("<CardMediaHoverCaption>");
-    const captionEnd = sharedCardSource.indexOf("</CardMediaHoverCaption>", captionStart);
-    const caption = sharedCardSource.slice(captionStart, captionEnd);
+  it("can show a nearby distance next to the outlet area in the drawer", () => {
+    const details = sharedCardSource.slice(sharedCardSource.indexOf("details={<>"), sharedCardSource.indexOf("detailsId="));
     expect(sharedCardSource).toContain("distanceLabel?: string");
-    expect(caption).toContain("distanceLabel");
+    expect(details).toContain("distanceLabel");
   });
 });

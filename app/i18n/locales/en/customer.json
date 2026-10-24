@@ -314,7 +314,7 @@
       "addBookingToCart": "Add Booking to Cart",
       "bookNow": "Book Now",
       "buyNow": "Buy Now",
-      "viewDetails": "View details",
+      "viewDetails": "View Details",
       "viewAll": "View all",
       "viewBooking": "View booking",
       "openBooking": "Open a booking",
@@ -344,7 +344,7 @@
     "property": {
       "roomTypes_one": "{{count}} room type",
       "roomTypes_other": "{{count}} room types",
-      "seeRooms": "See rooms",
+      "seeRooms": "See Rooms",
       "bookError": "Could not start your booking. Please try again.",
       "roomFallback": "Comfortable room with essential amenities.",
       "onlyLeft_one": "Only {{count}} room left",

@@ -23,8 +23,8 @@ describe("hotel-first discovery surfaces", () => {
     expect(read("app/customer/for-you/for-you-client.tsx")).toContain("groupRankedByProperty(");
   });
 
-  it("never shows opening hours on a hotel or stay card caption", () => {
-    expect(read("components/customer/activity-card.tsx")).toMatch(/!isStayCard && activity\.outlet\.hours &&/);
+  it("never shows opening hours on a hotel or stay card", () => {
+    expect(read("components/customer/activity-card.tsx")).toMatch(/\{isStayCard \? null : activity\.outlet\.operatingHours/);
   });
 
   it("names the pin preview card apart from the shared ActivityCard", () => {
