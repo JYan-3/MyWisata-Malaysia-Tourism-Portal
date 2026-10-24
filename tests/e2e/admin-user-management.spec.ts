@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from './helpers/demo';
 
 /**
  * E2E tests — real user journeys through the browser UI:
@@ -22,27 +23,19 @@ import { test, expect } from '@playwright/test';
  */
 
 const ADMIN_EMAIL    = 'admin@demo.local';
-const ADMIN_PASS     = 'demo123456';
 const CUSTOMER_EMAIL = 'customer@demo.local';
-const CUSTOMER_PASS  = 'demo123456';
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function signInViaForm(page: any, email: string, password: string) {
-  await page.goto('/login');
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  // Wait until we land somewhere other than /login
-  await page.waitForURL((url: URL) => !url.pathname.startsWith('/login'), { timeout: 15_000 });
+async function signInViaForm(page: import('@playwright/test').Page, email: string, password: string) {
+  await signIn(page, email, password);
 }
 
 // ─── 5. Admin Soft Delete ─────────────────────────────────────────────────────
 test.describe('5. Admin Soft Delete', () => {
 
   test('violation reason → Gemini rejects, error shown in drawer, user still active', async ({ page }) => {
-    await signInViaForm(page, ADMIN_EMAIL, ADMIN_PASS);
+    await signInViaForm(page, ADMIN_EMAIL, 'demo123456');
     await page.goto('/admin/users');
 
     // Wait for the user table to load
@@ -80,7 +73,7 @@ test.describe('5. Admin Soft Delete', () => {
   });
 
   test('valid policy reason → drawer shows "deleted", restore button appears', async ({ page }) => {
-    await signInViaForm(page, ADMIN_EMAIL, ADMIN_PASS);
+    await signInViaForm(page, ADMIN_EMAIL, 'demo123456');
     await page.goto('/admin/users');
     await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10_000 });
 
@@ -130,7 +123,26 @@ test.describe('5. Admin Soft Delete', () => {
 test.describe('6. User Suspension Appeal', () => {
 
   test('valid appeal → success state shows ticket ID and "View ticket" link', async ({ page }) => {
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
+    const ticketId = 'e2e-account-appeal-ticket';
+    await page.route('**/api/account-suspended/appeal', async (route) => {
+      expect(route.request().method()).toBe('POST');
+      expect(route.request().postDataJSON()).toMatchObject({
+        body: 'I believe this suspension was applied by mistake and request a manual review.',
+      });
+      await route.fulfill({ status: 201, json: { data: { id: ticketId, category: 'general' }, error: null } });
+    });
+    await page.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({
+      json: { data: {
+        id: ticketId,
+        subject: 'Account suspension appeal',
+        body: 'I believe this suspension was applied by mistake and request a manual review.',
+        status: 'open',
+        transcript: [],
+        replies: [],
+      },
+    } }));
+    await page.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ json: { data: null, error: null } }));
     await page.goto('/account-suspended');
 
     const textarea  = page.locator('textarea');
@@ -158,7 +170,7 @@ test.describe('6. User Suspension Appeal', () => {
   });
 
   test('short appeal (fewer than 10 chars) → submit button stays disabled', async ({ page }) => {
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
     await page.goto('/account-suspended');
 
     const textarea  = page.locator('textarea');
@@ -181,7 +193,14 @@ test.describe('6. User Suspension Appeal', () => {
   });
 
   test('violation content in appeal → error shown, form stays visible (no ticket created)', async ({ page }) => {
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
+    await page.route('**/api/account-suspended/appeal', async (route) => {
+      expect(route.request().method()).toBe('POST');
+      await route.fulfill({
+        status: 422,
+        json: { data: null, error: { code: 'CONTENT_REJECTED', message: 'This appeal contains disallowed content' } },
+      });
+    });
     await page.goto('/account-suspended');
 
     const textarea  = page.locator('textarea');
@@ -202,7 +221,7 @@ test.describe('6. User Suspension Appeal', () => {
   });
 
   test('short appeal via API → 422 validation error', async ({ page }) => {
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
 
     const res = await page.request.post('/api/account-suspended/appeal', {
       data: { body: 'Help' },
@@ -218,7 +237,7 @@ test.describe('6. User Suspension Appeal', () => {
 test.describe('7. Gemini Unavailable', () => {
 
   test('soft_delete returns 503, user remains active', async ({ page }) => {
-    await signInViaForm(page, ADMIN_EMAIL, ADMIN_PASS);
+    await signInViaForm(page, ADMIN_EMAIL, 'demo123456');
     await page.goto('/admin/users');
     await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10_000 });
 
@@ -255,7 +274,7 @@ test.describe('7. Gemini Unavailable', () => {
   });
 
   test('suspension appeal returns 503 via API', async ({ page }) => {
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
 
     const res = await page.request.post('/api/account-suspended/appeal', {
       data: { body: 'I believe this suspension was applied by mistake and request a manual review.' },
@@ -277,7 +296,7 @@ test.describe('7. Gemini Unavailable', () => {
 test.describe('8. Regular Support Ticket not affected', () => {
 
   test('submits normally and ticket is visible in support list', async ({ page }) => {
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
 
     // Create ticket via API (regular support, no moderation gate)
     const res = await page.request.post('/api/support/tickets', {
@@ -306,7 +325,7 @@ test.describe('8. Regular Support Ticket not affected', () => {
   test('regular ticket still succeeds even when Gemini is down (keyword fallback)', async ({ page }) => {
     // classifyTicketSmart falls back to keyword classifier — never calls moderateAccountText.
     // So a regular ticket must always return 201, regardless of GOOGLE_AI_KEY validity.
-    await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
+    await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
 
     const res = await page.request.post('/api/support/tickets', {
       data: {

@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/purge-kyc-evidence",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/purge-recommendation-images",
+      "schedule": "17 * * * *"
     }
   ]
 }

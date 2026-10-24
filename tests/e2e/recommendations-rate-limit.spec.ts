@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signIn } from './helpers/demo';
 
 /**
  * Verifies the recommendation rate limit enforced by the submit_recommendation RPC
@@ -9,16 +10,11 @@ import { test, expect } from '@playwright/test';
  */
 
 const CUSTOMER_EMAIL = 'customer@demo.local';
-const CUSTOMER_PASS  = 'demo123456';
 
 test.describe('Recommendation rate limit (PR 019)', () => {
   test('6th submission within 24 h is rejected with RATE_LIMITED', async ({ page }) => {
     // ── 1. Sign in ──────────────────────────────────────────────────────────
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill(CUSTOMER_EMAIL);
-    await page.locator('input[type="password"]').fill(CUSTOMER_PASS);
-    await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/customer(?:\/|$)/);
+    await signIn(page, CUSTOMER_EMAIL);
 
     // ── 2. Fire 5 submissions via API (same cookie jar = same auth session) ─
     // Using unique names to avoid duplicate detection

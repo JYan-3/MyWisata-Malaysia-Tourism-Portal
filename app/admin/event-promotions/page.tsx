@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Megaphone, Save, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Megaphone, Save, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 interface AdminEventPromotion {
   id: string;
@@ -36,20 +38,35 @@ export default function AdminEventPromotionsPage() {
   const [maxConcurrent, setMaxConcurrent] = useState("4");
   const [savingCost, setSavingCost] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     try {
-      const response = await fetch("/api/admin/event-promotions", { cache: "no-store" });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), search });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const response = await fetch(`/api/admin/event-promotions?${params}`, { cache: "no-store", signal });
+      if (response.status === 401 || response.status === 403) { setPromotions([]); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
+      if (response.status === 403 || response.status === 401) setPromotions([]);
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? t("eventPromotions.errors.load"));
       setPromotions(body.data?.promotions ?? []);
+      setTotal(body.data?.total ?? 0);
+      setTotalPages(body.data?.totalPages ?? 0);
+      setCounts(body.data?.counts ?? {});
+      if (body.data?.page && body.data.page !== page) setPage(body.data.page);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("eventPromotions.errors.load"));
+      if (signal) throw err;
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
-  }, [t]);
+  }, [t, page, pageSize, search, statusFilter]);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -67,7 +84,8 @@ export default function AdminEventPromotionsPage() {
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); void loadSettings(); }, [load, loadSettings]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void Promise.resolve().then(() => loadSettings()); }, [loadSettings]);
 
   async function saveSettings() {
     const rm = Number(costPerDayRm);
@@ -93,18 +111,12 @@ export default function AdminEventPromotionsPage() {
     }
   }
 
-  const pending = promotions.filter((p) => p.status === "pending");
-  const changesRequested = promotions.filter((p) => p.status === "changes_requested");
-  const approved = promotions.filter((p) => p.status === "approved");
-  const paid = promotions.filter((p) => p.status === "paid");
-  const visible = promotions.filter((promotion) => {
-    const matchesStatus = statusFilter === "all" || promotion.status === statusFilter;
-    const searchText = `${promotion.title} ${promotion.vendorName}`.toLowerCase();
-    return matchesStatus && (!search.trim() || searchText.includes(search.trim().toLowerCase()));
-  });
+  const visible = promotions;
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: load });
 
   return (
     <AdminPageShell>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <AdminPageHeader
         eyebrow={<><Megaphone size={18} /> {t("eventPromotions.eyebrow")}</>}
         title={t("eventPromotions.title")}
@@ -146,19 +158,19 @@ export default function AdminEventPromotionsPage() {
       </section>
 
       <AdminMetricGrid items={[
-        { label: t("eventPromotions.metrics.pending"), value: pending.length },
-        { label: t("eventPromotions.metrics.changesRequested"), value: changesRequested.length },
-        { label: t("eventPromotions.metrics.approved"), value: approved.length },
-        { label: t("eventPromotions.metrics.paid"), value: paid.length },
-        { label: t("eventPromotions.metrics.total"), value: promotions.length },
+        { label: t("eventPromotions.metrics.pending"), value: counts.pending ?? 0 },
+        { label: t("eventPromotions.metrics.changesRequested"), value: counts.changes_requested ?? 0 },
+        { label: t("eventPromotions.metrics.approved"), value: counts.approved ?? 0 },
+        { label: t("eventPromotions.metrics.paid"), value: counts.paid ?? 0 },
+        { label: t("eventPromotions.metrics.total"), value: counts.all ?? 0 },
       ]} />
 
       <AdminFilterBar>
         <label className="relative min-w-[220px] flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("eventPromotions.filters.search")} aria-label={t("eventPromotions.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
+          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("eventPromotions.filters.search")} aria-label={t("eventPromotions.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
         </label>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} aria-label={t("eventPromotions.filters.status")} className={adminFilterControlClassName}>
+        <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as StatusFilter); setPage(1); }} aria-label={t("eventPromotions.filters.status")} className={adminFilterControlClassName}>
           <option value="all">{t("eventPromotions.filters.allStatuses")}</option>
           <option value="pending">{t("eventPromotions.status.pending")}</option>
           <option value="changes_requested">{t("eventPromotions.status.changesRequested")}</option>
@@ -167,6 +179,8 @@ export default function AdminEventPromotionsPage() {
           <option value="paused">{t("eventPromotions.status.paused")}</option>
           <option value="rejected">{t("eventPromotions.status.rejected")}</option>
         </select>
+        <select aria-label={t("catalogue.pagination.pageSize")} className={adminFilterControlClassName} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>{[10,25,50].map(size => <option key={size} value={size}>{t("ui.pagination.perPage", { count: size })}</option>)}</select>
+        <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t("actions.refresh")}</Button>
       </AdminFilterBar>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -196,6 +210,10 @@ export default function AdminEventPromotionsPage() {
             ))}
           </div>
         )}
+        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <span>{t("catalogue.pagination.range", { first: total ? (page-1)*pageSize+1 : 0, last: Math.min(page*pageSize,total), total })}</span>
+          <div className="flex items-center gap-2"><span>{t("ui.pagination.pageOf", { page, total: Math.max(1,totalPages) })}</span><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={loading || page<=1} onClick={() => setPage(page-1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={loading || page>=totalPages} onClick={() => setPage(page+1)}><ChevronRight size={14} /></Button></div>
+        </div>
       </section>
     </AdminPageShell>
   );

@@ -14,8 +14,9 @@
  */
 import { unstable_cache } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/service';
-import { getActivities, getDiscoveryActivities, getOutlets } from '@/backend/domains/catalogue';
+import { getActivities, getDiscoveryActivities, getDiscoveryActivityData, getOutlets } from '@/backend/domains/catalogue';
 import type { Activity, ComputedActivity, Outlet } from '@/backend/core/types';
+import type { DiscoveryActivityData } from '@/backend/domains/catalogue';
 
 /**
  * Cached getActivities — revalidates every 60 seconds.
@@ -42,6 +43,16 @@ export const getCachedComputedActivities: () => Promise<ComputedActivity[]> = un
   },
   ['catalogue-computed-activities'],
   { revalidate: 60, tags: ['activities'] },
+);
+
+/** Public Trip discovery inputs; representative outlets are selected per request. */
+export const getCachedDiscoveryActivityData: () => Promise<DiscoveryActivityData> = unstable_cache(
+  async () => {
+    const db = createServiceClient();
+    return getDiscoveryActivityData(db);
+  },
+  ['catalogue-trip-discovery-data'],
+  { revalidate: 60, tags: ['activities', 'outlets'] },
 );
 
 /**

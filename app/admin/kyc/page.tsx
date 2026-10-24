@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KycSecurityStatus } from "@/lib/kyc/types";
 import { Clock3, FileCheck2, Search, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
@@ -15,6 +15,7 @@ import { KycReviewQueueRow } from "@/components/admin/kyc-review-queue-row";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 function dateLabel(value: string | null | undefined, locale: AppLocale) {
   return value ? new Date(value).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -40,25 +41,29 @@ export default function AdminKycPage() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [refresh, setRefresh] = useState(0);
 
+  const loadQueue = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
+    try {
+      const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize), status: statusFilter, assignment, search });
+      const response = await fetch(`/api/admin/kyc/submissions?${query}`, { cache: "no-store", signal });
+      const body = await response.json().catch(() => ({}));
+      if (body.error?.code === "KYC_MFA_REQUIRED") { setQueue(null); router.replace("/admin/kyc/mfa?next=%2Fadmin%2Fkyc"); return; }
+      if (response.status === 401 || response.status === 403) { setQueue(null); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
+      if (!response.ok || !body.data) throw new Error(t("kyc.errors.loadQueue"));
+      setQueue(body.data as KycQueueResult);
+      if (body.data.page && body.data.page !== page) setPage(body.data.page);
+      setError(null);
+    } catch (reason) {
+      if (signal) throw reason;
+      setError(t("kyc.errors.loadQueue"));
+    } finally { if (!signal) setLoading(false); }
+  }, [page, pageSize, statusFilter, assignment, search, router, t]);
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: loadQueue });
   useEffect(() => {
     const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize), status: statusFilter, assignment, search });
-        const response = await fetch(`/api/admin/kyc/submissions?${query}`, { cache: "no-store", signal: controller.signal });
-        const body = await response.json().catch(() => ({}));
-        if (controller.signal.aborted) return;
-        if (body.error?.code === "KYC_MFA_REQUIRED") { router.replace("/admin/kyc/mfa?next=%2Fadmin%2Fkyc"); return; }
-        if (!response.ok || !body.data) throw new Error(t("kyc.errors.loadQueue"));
-        setQueue(body.data as KycQueueResult);
-      } catch {
-        if (!controller.signal.aborted) { setQueue(null); setError(t("kyc.errors.loadQueue")); }
-      } finally { if (!controller.signal.aborted) setLoading(false); }
-    }, 250);
+    const timer = window.setTimeout(() => { void loadQueue(controller.signal).catch(() => setError(t("kyc.errors.loadQueue"))).finally(() => setLoading(false)); }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [page, pageSize, statusFilter, assignment, search, refresh, router, t]);
+  }, [loadQueue, refresh, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -100,6 +105,7 @@ export default function AdminKycPage() {
   const actualPage = queue?.page ?? page;
   return (
     <AdminPageShell>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <AdminPageHeader
         eyebrow={<><ShieldCheck size={18} /> {t("kyc.eyebrow")}</>}
         title={t("kyc.title")}

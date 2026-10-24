@@ -39,8 +39,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   await notifyWithdrawalApprovers({
     withdrawalId: id,
-    customerUserId: result.user_id,
-    amountRm: Number(result.amount_rm),
     approvalCycle: result.approval_cycle,
   });
   return apiOk({ status: 'pending', approval_cycle: result.approval_cycle });

@@ -1490,7 +1490,13 @@
       },
       "photosSelected_one": "已选择 {{count}} 张照片",
       "pendingReview_one": "待审核（{{count}}）",
-      "pendingReview_other": "待审核（{{count}}）"
+      "pendingReview_other": "待审核（{{count}}）",
+      "historyStatus": "状态",
+      "allStatuses": "全部状态",
+      "historyLoading": "正在读取推荐…",
+      "historyTotal": "共 {{total}} 条推荐",
+      "historyError": "暂时无法读取推荐记录。",
+      "historyRetry": "重试"
     },
     "recommendationEarnings": {
       "title": "推荐收益",
@@ -1848,6 +1854,8 @@
       "retryWallet": "重新加载钱包",
       "confirmingWithdrawal": "请求已超时，系统正在确认是否已收到申请。",
       "withdrawalOutcomeUnknown": "暂时无法确认申请结果。再次尝试前，请先检查提现记录。",
+      "resumeWithdrawalCheck": "查看这笔请求",
+      "retrySameWithdrawal": "重试同一笔请求",
       "tngSecurityHint": "我们会通过付款服务商验证收款方式。切勿输入 TNG PIN。",
       "verifying": "正在验证…",
       "verifySave": "验证并保存",
@@ -3125,7 +3133,8 @@
         "budget": "旅程预算",
         "collapse": "收起 AI 规划栏",
         "expand": "展开 AI 规划栏",
-        "resize": "调整 AI 规划栏宽度"
+        "resize": "调整 AI 规划栏宽度",
+        "basicSuggestions": "AI 暂时不可用或繁忙，目前显示基础建议。"
       },
       "timeFor": "{{item}}的时间",
       "editItem": "编辑{{item}}",

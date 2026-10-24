@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ run: vi.fn(), config: vi.fn(), rpc: vi.fn(), download: vi.fn() }));
-vi.mock('@/lib/kyc/ocr', () => ({ runKycOcr: mocks.run, privateKycOcrConfiguration: mocks.config }));
+vi.mock('@/lib/kyc/ocr', () => ({ runKycOcr: mocks.run, privateKycOcrConfiguration: mocks.config, kycOcrRuntimeConfiguration: mocks.config }));
 import { processKycPrescreening } from '../prescreening';
 const service = { rpc: mocks.rpc, storage: { from: () => ({ download: mocks.download }) } };
 const result = { status: 'matched', holderName: 'Aina', documentNumberHmac: 'a'.repeat(64), documentNumberLast4: '1234', expiryDate: null, confidence: 0.9, mismatchFields: [], providerModel: 'private-ocr-v1' };
@@ -11,7 +11,7 @@ beforeEach(() => {
   vi.stubEnv('KYC_PRESCREENING_LEASE_SECONDS', '60'); vi.stubEnv('KYC_PRESCREENING_MAX_ATTEMPTS', '2');
   vi.stubEnv('KYC_PRESCREENING_RETRY_SECONDS', '60'); vi.stubEnv('KYC_IC_HMAC_KEY', 'test-hmac-key');
   vi.stubEnv('KYC_PRIVATE_OCR_MIN_CONFIDENCE', '');
-  mocks.config.mockReturnValue({ timeoutMs: 1000 }); mocks.rpc.mockReset(); mocks.run.mockReset().mockResolvedValue(result);
+  mocks.config.mockReturnValue({ engine: 'private-http', timeoutMs: 1000 }); mocks.rpc.mockReset(); mocks.run.mockReset().mockResolvedValue(result);
   mocks.download.mockReset().mockResolvedValue({ data: new Blob(['watermarked'], { type: 'image/jpeg' }), error: null });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
@@ -98,5 +98,36 @@ describe('drain boundaries and evidence failures', () => {
     expect(summary.failureCounts).toEqual({evidence_missing:1});
     expect(mocks.rpc).toHaveBeenLastCalledWith('finish_kyc_prescreening_job',expect.objectContaining({p_result:expect.objectContaining({retryable:false,failureCode:'evidence_missing'})}));
     expect(JSON.stringify(summary)).not.toContain('storage');
+  });
+});
+
+
+describe('Node queue admission', () => {
+  function nodeMode() {
+    mocks.config.mockReturnValue({ engine: 'tesseract-js', timeoutMs: 1000 });
+    vi.stubEnv('KYC_PRESCREENING_BATCH_SIZE', '1'); vi.stubEnv('KYC_PRESCREENING_MAX_RUNNING', '1');
+  }
+  it('rejects Node batch expansion before claim or download', async () => {
+    nodeMode(); vi.stubEnv('KYC_PRESCREENING_BATCH_SIZE', '2');
+    expect(await processKycPrescreening(service as never)).toMatchObject({ enabled: false });
+    expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.download).not.toHaveBeenCalled();
+  });
+  it('does not repeat a claim whose response is lost after commit', async () => {
+    nodeMode();
+    mocks.rpc.mockReturnValue({ abortSignal: () => Promise.reject(new DOMException('private detail', 'TimeoutError')) });
+    expect(await processKycPrescreening(service as never)).toMatchObject({ stopReason: 'claim_unknown', writeErrors: 1 });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1); expect(mocks.download).not.toHaveBeenCalled();
+  });
+  it('holds local admission before download and does not repeat unknown finish', async () => {
+    nodeMode();
+    let release: (value: unknown) => void = () => {};
+    const claim = new Promise(resolve => { release = resolve; });
+    mocks.rpc.mockReturnValueOnce({ abortSignal: () => claim }).mockReturnValue({ abortSignal: () => Promise.reject(new Error('lost finish')) });
+    const first = processKycPrescreening(service as never);
+    expect(await processKycPrescreening(service as never)).toMatchObject({ stopReason: 'busy', claimed: 0 });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    release({ data: [job()], error: null });
+    expect(await first).toMatchObject({ writeErrors: 1, acknowledged: 0 });
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
   });
 });

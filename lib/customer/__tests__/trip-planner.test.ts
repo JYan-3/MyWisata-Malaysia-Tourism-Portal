@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Trip, TripItem } from "@/backend/domains/trips";
 import {
   resolveTripOrigin,
+  getTripDiscoveryAnchor,
+  getTripDiscoveryFingerprint,
   getTripBudgetEstimate,
   applyTripOrder,
   getTripScheduleIssue,
@@ -43,6 +45,17 @@ function item(id: string, overrides: Partial<TripItem> = {}): TripItem {
 }
 
 describe("trip planner scheduling helpers", () => {
+  it("uses the valid origin or the selected day's last valid stop for discovery", () => {
+    const items = [
+      item("other-day", { scheduled_date: "2026-08-16", sequence: 1, lat: 6, lng: 101 }),
+      item("first", { scheduled_date: "2026-08-15", sequence: 2, lat: 5, lng: 100 }),
+      item("last", { scheduled_date: "2026-08-15", sequence: 3, lat: 4, lng: 99 }),
+    ];
+    expect(getTripDiscoveryAnchor(items, "2026-08-15")).toEqual({ lat: 4, lng: 99 });
+    expect(getTripDiscoveryFingerprint(items, "2026-08-15")).toContain('"anchor":{"lat":4,"lng":99}');
+    expect(getTripDiscoveryFingerprint(items, "2026-08-15")).toBe(getTripDiscoveryFingerprint([...items].reverse(), "2026-08-15"));
+  });
+
   it("uses the current catalogue price and outlet for linked activities", () => {
     expect(getTripActivitySublabel(
       { price: 75, outlet: { city: "George Town" } },

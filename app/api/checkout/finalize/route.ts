@@ -1,3 +1,4 @@
+import { scheduleReceiptDelivery } from '@/lib/email/events';
 import { privateCheckoutJson } from '@/lib/checkout/guest-session';
 import { authorizeCheckoutSession } from '@/lib/checkout/order-access';
 import { createClient } from '@/lib/supabase/server';
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   }
   const orderId = data && typeof data === 'object' && 'order_id' in data && typeof data.order_id === 'string' ? data.order_id : null;
   if (parsed.data.outcome === 'succeeded' && orderId && data?.status === 'paid') {
+    scheduleReceiptDelivery();
     void emitOrderVendorEvent({
       serviceDb: createServiceClient(),
       orderId,

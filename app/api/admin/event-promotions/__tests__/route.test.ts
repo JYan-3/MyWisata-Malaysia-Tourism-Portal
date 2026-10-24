@@ -4,7 +4,8 @@ const requireStaffPermission = vi.fn();
 vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffPermission }));
 
 const from = vi.fn();
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from }) }));
+const rpc = vi.fn();
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from, rpc }) }));
 
 const { GET } = await import('../route');
 
@@ -22,6 +23,7 @@ describe('GET /api/admin/event-promotions', () => {
       eq: vi.fn().mockReturnThis(),
     };
     from.mockReturnValue(query);
+    rpc.mockResolvedValue({ data: { items: [{ id: "promo-1", vendorName: "Vendor One", status: "pending" }], total: 1 }, error: null });
   });
 
   it('requires admin.event_promotion.review before reading', async () => {

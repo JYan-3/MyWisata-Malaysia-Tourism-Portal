@@ -156,6 +156,17 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
     createServiceClient.mockReset();
   });
 
+  it('reads assignment without claiming an unassigned case during automatic refresh', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });
+    createServiceClient.mockReturnValue(serviceFor());
+    const GET = await loadGet();
+    if (!GET) return;
+    const response = await GET(new Request('http://localhost?refresh=1'), { params: Promise.resolve({ submissionId }) });
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('read_staff_review_assignment', { p_domain: 'kyc', p_id: submissionId });
+    expect(rpc.mock.calls.some(([name]) => name === 'claim_kyc_submission')).toBe(false);
+  });
+
   it('returns 401 before validating a malformed submission id', async () => {
     getUser.mockResolvedValue({ data: { user: null } });
     const GET = await loadGet();

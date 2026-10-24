@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { authorizeVendor, type VendorAccess } from '@/lib/vendor-authorization';
+import { requireStaffNotificationAccess } from '@/lib/notifications/staff-access';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
 const PAGE_SIZE_MAX = 50;
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope') ?? 'customer';
-  if (scope !== 'customer' && scope !== 'vendor') return apiFail('INVALID_SCOPE', 'Unknown notification scope', 400);
+  if (scope !== 'customer' && scope !== 'vendor' && scope !== 'staff') return apiFail('INVALID_SCOPE', 'Unknown notification scope', 400);
   const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1);
   const pageSize = Math.min(PAGE_SIZE_MAX, Math.max(1, Number(url.searchParams.get('pageSize') ?? 15) || 15));
   const read = url.searchParams.get('read') ?? 'all';
@@ -24,6 +25,10 @@ export async function GET(request: Request) {
 
   let queryDb = db;
   let scopedVendor: VendorAccess | null = null;
+  if (scope === 'staff') {
+    const staffResponse = await requireStaffNotificationAccess(db, user.id);
+    if (staffResponse) return staffResponse;
+  }
   if (scope === 'vendor') {
     const vendorId = url.searchParams.get('vendorId');
     if (!vendorId || !VENDOR_ID.test(vendorId)) return apiFail('INVALID_VENDOR', 'A valid vendorId is required for vendor notifications', 400);

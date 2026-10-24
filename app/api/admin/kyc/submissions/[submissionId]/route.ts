@@ -12,7 +12,7 @@ interface Props {
   params: Promise<{ submissionId: string }>;
 }
 
-export async function GET(_request: Request, { params }: Props) {
+export async function GET(request: Request, { params }: Props) {
   const { db: authenticated, response } = await requireKycReviewer();
   if (response) return response;
 
@@ -37,9 +37,10 @@ export async function GET(_request: Request, { params }: Props) {
   if (customerError) return apiFail('CUSTOMER_LOOKUP_FAILED', 'Unable to load KYC customer', 500);
   if (!customerRow) return apiFail('NOT_FOUND', 'KYC submission not found', 404);
 
-  const { data: claimData, error: claimError } = await authenticated.rpc('claim_kyc_submission', {
-    p_submission_id: submissionId,
-  });
+  const isRefresh = new URL(request.url).searchParams.get('refresh') === '1';
+  const { data: claimData, error: claimError } = isRefresh
+    ? await authenticated.rpc('read_staff_review_assignment', { p_domain: 'kyc', p_id: submissionId })
+    : await authenticated.rpc('claim_kyc_submission', { p_submission_id: submissionId });
   if (claimError) return apiFail('ASSIGNMENT_FAILED', 'Unable to claim KYC submission', 409);
 
   const { data: eventRows, error: eventsError } = await service

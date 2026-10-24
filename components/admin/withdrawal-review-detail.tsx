@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { StaffPasskey } from "@/components/admin/staff-passkey";
@@ -79,32 +81,33 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const [reviewingReason, setReviewingReason] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
 
-  const loadDetail = useCallback(async (silent = false) => {
+  const snapshot = useRef<string | null>(null);
+  const loadDetail = useCallback(async (silent = false, signal?: AbortSignal) => {
     if (!silent) setLoading(true);
     try {
-      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}`, { cache: "no-store", signal });
       const body = await response.json() as { data?: WithdrawalReviewDetailData; error?: { message?: string } };
+      if (response.status === 401 || response.status === 403) { setDetail(null); setPendingConfirmation(null); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
       if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("withdrawals.errors.loadReviewDetails"));
+      const version = JSON.stringify([body.data.authorizationVersion, body.data.status, body.data.availableActions]);
+      if (signal && snapshot.current && snapshot.current !== version) setPendingConfirmation(null);
+      snapshot.current = version;
       setDetail({ ...body.data, reviewSources: body.data.reviewSources ?? { rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: [] }, payoutFailure: body.data.payoutFailure ?? { provider: null, eventId: null, code: null, message: null, category: null, occurredAt: null, retryable: null }, settlementProof: body.data.settlementProof ?? null, availableActions: body.data.availableActions ?? [] });
       setError("");
     } catch (loadError) {
-      if (!silent) setError(loadError instanceof Error ? loadError.message : t("withdrawals.errors.loadReviewDetails"));
+      setError(loadError instanceof Error ? loadError.message : t("withdrawals.errors.loadReviewDetails"));
+      if (signal) throw loadError;
     } finally {
       if (!silent) setLoading(false);
     }
   }, [t, withdrawalId]);
 
   useEffect(() => { void Promise.resolve().then(() => loadDetail()); }, [loadDetail]);
-  useEffect(() => {
-    if (!detail || !["approved", "processing"].includes(detail.status)) return;
-    let inFlight = false;
-    const interval = window.setInterval(() => {
-      if (inFlight) return;
-      inFlight = true;
-      void loadDetail(true).finally(() => { inFlight = false; });
-    }, 2_000);
-    return () => window.clearInterval(interval);
-  }, [detail, loadDetail]);
+  const reviewRefresh = useVisibleReviewRefresh({
+    enabled: detail != null && !["paid", "rejected", "completed"].includes(detail.status),
+    intervalMs: detail && ["approved", "processing"].includes(detail.status) ? 2_000 : 30_000,
+    onRefresh: (signal) => loadDetail(true, signal),
+  });
 
   const displayStatus = (value: string | null | undefined) => value ? t(ENUM_VALUE_KEYS[value] ?? "withdrawals.status.unknown") : t("withdrawals.status.notAssessed");
   const decisionLabel = (action: WithdrawalAvailableAction) => t(DECISION_COPY[action].labelKey);
@@ -170,12 +173,13 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   }
 
   async function confirmAction(proofId?: string | null) {
-    if (!pendingConfirmation) return;
+    if (!pendingConfirmation || !detail?.availableActions.includes(pendingConfirmation.action)) return;
     const { action: nextAction, reason: pendingReason, reasonCategory: pendingCategory } = pendingConfirmation;
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/${nextAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...(nextAction === "approve" ? { note: pendingReason, reasonCategory: pendingCategory } : nextAction === "reject" ? { reason: pendingReason, reasonCategory: pendingCategory, moderationCredential: pendingConfirmation.moderationCredential, advisoryAccepted: pendingConfirmation.advisoryAccepted ?? false } : { reason: pendingReason, reasonCategory: pendingCategory }), ...(proofId ? { proofId } : {}) }) });
       const body = await response.json() as { error?: { code?: string; message?: string } };
+      if (response.status === 409) await loadDetail(true);
       if (!response.ok) throw new Error(body.error?.message ?? t("withdrawals.errors.actionFailed"));
       showFeedback("success", nextAction === "fraud-override" ? t("withdrawals.feedback.riskOverrideRecorded") : t("withdrawals.feedback.actionCompleted"));
       setSelectedDecision(null); setReason(""); setReasonCategory(""); setPendingConfirmation(null); setAssistantReview(null);
@@ -194,6 +198,7 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const activeReasonAction = selectedDecision ? toWalletReasonAction(selectedDecision) : null;
 
   return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="col-span-full flex flex-wrap items-center gap-3 py-2 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
     <div className="space-y-4">
       <section className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.amount")}</p><p className="font-mono font-bold">{formatMYRFromSen(detail.amountSen)}</p></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.status")}</p><StatusBadge status={detail.status} /></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.appKyc")}</p><p>{displayStatus(detail.customer.kycStatus)}</p></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.risk")}</p><p className={detail.riskLevel === "high" ? "font-semibold text-red-600 dark:text-red-300" : ""}>{displayStatus(detail.riskLevel)}{detail.riskOverridden ? ` · ${t("withdrawals.detail.overridden")}` : ""}</p></div></section>
       <section className="rounded-xl border border-border bg-card p-4 text-sm"><h2 className="font-semibold">{t("withdrawals.readiness.title")}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{[
@@ -277,6 +282,6 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       <p className="text-xs text-muted-foreground">{t("withdrawals.timeline.auditNote")}</p>
     </aside>
 
-    <AdminConfirmDialog open={pendingConfirmation != null} title={t("withdrawals.confirmation.title")} description={t(selectedDecision ? DECISION_COPY[selectedDecision].consequenceKey : "withdrawals.decision.description")} confirmLabel={t("withdrawals.confirmation.confirm")} confirmVariant={selectedDecision === "reject" ? "destructive" : "default"} busy={loading || passkeyBusy} onCancel={() => setPendingConfirmation(null)} onConfirm={() => void confirmAction()} confirmControl={pendingConfirmation && (pendingConfirmation.action === "approve" || pendingConfirmation.action === "fraud-override") ? <StaffPasskey operation={pendingConfirmation.action} withdrawalId={withdrawalId} expectedVersion={detail.authorizationVersion} payload={pendingConfirmation.action === "approve" ? { note: pendingConfirmation.reason, reasonCategory: pendingConfirmation.reasonCategory } : { reason: pendingConfirmation.reason, reasonCategory: pendingConfirmation.reasonCategory }} disabled={loading} onBusyChange={setPasskeyBusy} onVerified={proofId => confirmAction(proofId)} /> : undefined} />
+    <AdminConfirmDialog open={pendingConfirmation != null && detail.availableActions.includes(pendingConfirmation.action)} title={t("withdrawals.confirmation.title")} description={t(selectedDecision ? DECISION_COPY[selectedDecision].consequenceKey : "withdrawals.decision.description")} confirmLabel={t("withdrawals.confirmation.confirm")} confirmVariant={selectedDecision === "reject" ? "destructive" : "default"} busy={loading || passkeyBusy} onCancel={() => setPendingConfirmation(null)} onConfirm={() => void confirmAction()} confirmControl={pendingConfirmation && (pendingConfirmation.action === "approve" || pendingConfirmation.action === "fraud-override") ? <StaffPasskey operation={pendingConfirmation.action} withdrawalId={withdrawalId} expectedVersion={detail.authorizationVersion} payload={pendingConfirmation.action === "approve" ? { note: pendingConfirmation.reason, reasonCategory: pendingConfirmation.reasonCategory } : { reason: pendingConfirmation.reason, reasonCategory: pendingConfirmation.reasonCategory }} disabled={loading} onBusyChange={setPasskeyBusy} onVerified={proofId => confirmAction(proofId)} /> : undefined} />
   </div>;
 }

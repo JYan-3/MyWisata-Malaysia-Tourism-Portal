@@ -1490,7 +1490,13 @@
       },
       "photosSelected_one": "{{count}} photo selected",
       "pendingReview_one": "Pending review ({{count}})",
-      "pendingReview_other": "Pending review ({{count}})"
+      "pendingReview_other": "Pending review ({{count}})",
+      "historyStatus": "Status",
+      "allStatuses": "All statuses",
+      "historyLoading": "Loading recommendations…",
+      "historyTotal": "{{total}} recommendations",
+      "historyError": "Unable to load recommendations.",
+      "historyRetry": "Try again"
     },
     "recommendationEarnings": {
       "title": "Recommendation earnings",
@@ -1848,6 +1854,8 @@
       "retryWallet": "Retry Wallet loading",
       "confirmingWithdrawal": "The request timed out. We are confirming whether it was received.",
       "withdrawalOutcomeUnknown": "We could not confirm the request yet. Review your withdrawal list before trying again.",
+      "resumeWithdrawalCheck": "Review this request",
+      "retrySameWithdrawal": "Retry the same request",
       "tngSecurityHint": "We verify the destination with the payout provider. Never enter your TNG PIN.",
       "verifying": "Verifying…",
       "verifySave": "Verify & save",
@@ -3125,7 +3133,8 @@
         "budget": "Trip budget",
         "collapse": "Collapse AI planner",
         "expand": "Expand AI planner",
-        "resize": "Resize AI planner"
+        "resize": "Resize AI planner",
+        "basicSuggestions": "Showing basic suggestions while AI is unavailable or busy."
       },
       "timeFor": "Time for {{item}}",
       "editItem": "Edit {{item}}",

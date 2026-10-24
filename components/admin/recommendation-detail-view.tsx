@@ -1,7 +1,9 @@
 "use client";
 
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
+
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -57,32 +59,43 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const [localizationBusy, setLocalizationBusy] = useState(false);
   const [translationEdits, setTranslationEdits] = useState<Record<string, string>>({});
 
-  const loadDetail = useCallback(async () => {
-    setLoading(true);
+  const snapshot = useRef<string | null>(null);
+  const loadDetail = useCallback(async (signal?: AbortSignal) => {
+    if (!signal) setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/recommendations/${recommendationId}`, {
-        cache: "no-store",
+      const response = await fetch(`/api/admin/recommendations/${recommendationId}${signal ? "?refresh=1" : ""}`, {
+        cache: "no-store", signal,
       });
       const body = (await response.json()) as {
         data: AdminRecommendationDetail | null;
         error: { message: string } | null;
       };
+      if (response.status === 401 || response.status === 403) { setDetail(null); setConfirmOpen(false); }
       if (!response.ok || !body.data) {
         setError(body.error?.message ?? t("recommendation.detail.errors.loadFailed"));
+        if (signal) throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status });
         return;
       }
+      const version = JSON.stringify({ status: body.data.status, assignment: body.data.assignment, name: body.data.name,
+        description: body.data.description, location: body.data.location, contact: body.data.contact,
+        imageIds: body.data.images.map(image => image.id), reviewEvents: body.data.reviewEvents.map(event => event.id) });
+      if (signal && snapshot.current && snapshot.current !== version) setConfirmOpen(false);
+      snapshot.current = version;
       setDetail(body.data);
-    } catch {
+      if (signal && body.data.availableActions.length === 0) setConfirmOpen(false);
+    } catch (reason) {
       setError(t("recommendation.detail.errors.loadFailed"));
+      if (signal) throw reason;
     } finally {
-      setLoading(false);
+      if (!signal) setLoading(false);
     }
   }, [recommendationId, t]);
 
   useEffect(() => {
-    void Promise.resolve().then(loadDetail);
+    void Promise.resolve().then(() => loadDetail());
   }, [loadDetail]);
+  const reviewRefresh = useVisibleReviewRefresh({ enabled: true, onRefresh: loadDetail });
 
   const mapUrl = useMemo(() => {
     if (!detail?.location) return null;
@@ -126,7 +139,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   }
 
   async function submitReview() {
-    if (!action || submitting) return;
+    if (!action || submitting || !detail?.availableActions.includes(action)) return;
     setSubmitting(true);
     try {
       const response = await fetch("/api/admin/recommendations/review", {
@@ -142,6 +155,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
       const body = await response.json().catch(() => null) as {
         error?: { message?: string };
       } | null;
+      if (response.status === 409) await loadDetail();
       if (!response.ok) {
         const message = body?.error?.message ?? t("recommendation.detail.errors.reviewFailed");
         setError(message);
@@ -293,6 +307,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
   return (
     <div>
+      <div className="col-span-full flex flex-wrap items-center gap-3 py-2 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <Link href="/admin/recommendations" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
         <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
       </Link>

@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createTrip, deleteTrip, getTripById, getTripItems, getTripNameSequence } from "@/backend/domains/trips";
 import type { AddTripItemInput } from "@/backend/domains/trips";
 import { searchTripActivities } from "@/backend/domains/catalogue";
+import { getCachedDiscoveryActivityData } from "@/lib/cache/catalogue-cache";
+import { getTripDiscoveryAnchor } from "@/lib/customer/trip-planner";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -17,14 +19,18 @@ const tripDiscoverySchema = z.object({
 export async function searchTripActivitiesAction(tripId: string, near?: { lat: number; lng: number }) {
   const input = tripDiscoverySchema.parse({ tripId, near });
   const db = await createClient();
-  if (!await getTripById(input.tripId, db)) throw new Error("Trip not found");
+  const trip = await getTripById(input.tripId, db);
+  if (!trip) throw new Error("Trip not found");
   const items = await getTripItems(input.tripId, db);
+  const discoveryData = await getCachedDiscoveryActivityData();
+  const anchor = input.near ?? getTripDiscoveryAnchor(items, trip.start_date);
   // Raw inventory stays on the server; only this owner's persisted stops can
   // request purchase details, projected by the shared Trip catalogue loader.
   return searchTripActivities(
-    { category: null, near: input.near, sort: input.near ? "distance_asc" : "recommended" },
+    { category: null, near: anchor, sort: anchor ? "distance_asc" : "recommended" },
     items.flatMap((item) => item.experience_id ? [item.experience_id] : []),
     db,
+    discoveryData,
   );
 }
 

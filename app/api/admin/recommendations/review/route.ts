@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     uid: user.id,
   });
   if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
+    return apiFail('FORBIDDEN', 'Recommendation review permission required', 403);
   }
 
   const parsed = await parseBody(request, reviewSchema);
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   });
 
   if (rpcErr) {
-    if (rpcErr.message.includes('admin_required')) return apiFail('FORBIDDEN', 'Admin role required', 403);
+    if (rpcErr.message.includes('admin_required')) return apiFail('FORBIDDEN', 'Recommendation review permission required', 403);
     if (rpcErr.message.includes('self_dealing'))   return apiFail('FORBIDDEN', 'You cannot review your own recommendation', 403);
     if (rpcErr.message.includes('recommendation_not_assigned')) {
       return apiFail('CONFLICT', 'Recommendation is assigned to another reviewer', 409);

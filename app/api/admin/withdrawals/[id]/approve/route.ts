@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { withdrawalProofFailure } from '@/lib/wallet/withdrawal-authorization';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
 import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
+import { scheduleEmailDelivery } from '@/lib/email/events';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { requestIp } from '@/lib/wallet/request-ip';
@@ -96,6 +97,7 @@ export async function POST(
     amountRm: result.amount_rm,
   });
   if (!execution.ok) return execution.response;
+  scheduleEmailDelivery();
   const { callbackJobId, callbackAvailableAt, ...publicResult } = execution.data;
   if (callbackJobId && callbackAvailableAt) {
     scheduleTngMockCallbackAcceleration(callbackJobId, callbackAvailableAt);

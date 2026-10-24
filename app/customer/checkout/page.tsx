@@ -151,7 +151,6 @@ export default function CheckoutPage() {
         if (!orderId) throw new Error("stripe_order_missing");
         if (body.data?.status === 'payment_exception') { router.push(`/customer/orders/${orderId}`); return; }
         attributeCheckout(orderId);
-        fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId }), keepalive: true });
         router.push(`/customer/orders/${orderId}`);
       })
       .catch(() => {
@@ -271,7 +270,6 @@ export default function CheckoutPage() {
       if (isFreeReservation) {
         if (!prepared.data.order_id) throw new Error("Order creation failed");
         if (currentUser) attributeCheckout(prepared.data.order_id);
-        fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: prepared.data.order_id }), keepalive: true });
         router.push(`/customer/orders/${prepared.data.order_id}`);
         return;
       }
@@ -305,7 +303,6 @@ export default function CheckoutPage() {
       const finalized = await finalizeResponse.json() as { data?: { order_id?: string }; error?: CheckoutErrorPayload };
       if (!finalizeResponse.ok || !finalized.data?.order_id) throw new Error(getCheckoutErrorMessage(finalized.error));
       attributeCheckout(finalized.data.order_id);
-      fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: finalized.data.order_id }), keepalive: true });
       router.push(`/customer/orders/${finalized.data.order_id}`);
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : getCheckoutErrorMessage(err as CheckoutErrorPayload));

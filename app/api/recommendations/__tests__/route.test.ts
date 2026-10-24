@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
   rpc: vi.fn(),
   serviceFrom: vi.fn(),
+  serviceRpc: vi.fn(),
   resolveEffectiveCapability: vi.fn(),
 }));
 
@@ -22,7 +23,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 vi.mock('@/lib/supabase/service', () => ({
-  createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom })),
+  createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.serviceRpc })),
 }));
 
 import { POST } from '../route';
@@ -42,6 +43,7 @@ function request() {
 describe('POST /api/recommendations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.serviceRpc.mockResolvedValue({ data: "internal-ipoh", error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     mocks.from.mockReturnValue({ select: mocks.select });
     mocks.select.mockReturnValue({ eq: mocks.eq });
@@ -74,6 +76,61 @@ describe('POST /api/recommendations', () => {
         },
       },
     });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized JSON before the recommendation RPC', async () => {
+    const response = await POST(new Request('http://localhost/api/recommendations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ vendorName: 'x'.repeat(40_000) }),
+    }));
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'REQUEST_TOO_LARGE' } });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('caps chunked bodies without a Content-Length header', async () => {
+    const chunks = [new Uint8Array(20_000), new Uint8Array(13_000)];
+    const request = new Request('http://localhost/api/recommendations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: new ReadableStream<Uint8Array>({
+        start(controller) { for (const chunk of chunks) controller.enqueue(chunk); controller.close(); },
+      }),
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' });
+    expect(request.headers.has('content-length')).toBe(false);
+    expect((await POST(request)).status).toBe(413);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('keeps the byte cap above worst-case escaped schema fields', async () => {
+    mocks.rpc.mockResolvedValue({ data: '3bd3f3ef-8e4c-4bbc-b7f5-be5d9f9ae9fe', error: null });
+    mocks.serviceRpc.mockResolvedValue({ data: null, error: null });
+    const controlChars = (length: number) => '\u0000'.repeat(length);
+    const body = JSON.stringify({
+      vendorName: controlChars(255),
+      description: controlChars(2000),
+      whyRecommend: controlChars(500),
+      categoryId: '3bd3f3ef-8e4c-4bbc-b7f5-be5d9f9ae9fe',
+      location: { placeId: controlChars(255), name: controlChars(255), formattedAddress: controlChars(500), latitude: 4.5, longitude: 101.5 },
+      contact: { phone: controlChars(50) },
+      stagedImageIds: Array.from({ length: 5 }, (_, index) => `4bd3f3ef-8e4c-4bbc-b7f5-be5d9f9ae9f${index}`),
+      imageAttested: true,
+    });
+    expect(new TextEncoder().encode(body).byteLength).toBeLessThan(32_768);
+    const response = await POST(new Request('http://localhost/api/recommendations', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body,
+    }));
+    expect(response.status).toBe(201);
+  });
+
+  it('returns 400 for malformed JSON without calling the submission RPC', async () => {
+    const response = await POST(new Request('http://localhost/api/recommendations', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{',
+    }));
+    expect(response.status).toBe(400);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

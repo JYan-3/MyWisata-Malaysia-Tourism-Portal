@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 type Props = {
   open: boolean;
   title: string;
+  titleIsTranslated?: boolean;
   description: string | ReactNode;
   confirmLabel: string;
   confirmVariant?: "default" | "destructive";
@@ -15,11 +16,14 @@ type Props = {
   onCancel: () => void;
   onConfirm: () => void;
   confirmControl?: ReactNode;
+  confirmationPhrase?: string;
+  confirmationResetKey?: string | number;
 };
 
-export function AdminConfirmDialog({ open, title, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm, confirmControl }: Props) {
+export function AdminConfirmDialog({ open, title, titleIsTranslated = false, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm, confirmControl, confirmationPhrase, confirmationResetKey }: Props) {
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
+  const resetKey = `${open}:${title}:${confirmationPhrase ?? ""}:${String(confirmationResetKey ?? "")}`;
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -40,7 +44,7 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{tAdmin(title)}</h2>
+              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{titleIsTranslated ? title : tAdmin(title)}</h2>
               <button type="button" aria-label={tCommon("accessibility.closeConfirmation")} onClick={onCancel} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50">
                 <X size={17} />
               </button>
@@ -50,11 +54,34 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
             </div>
           </div>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel")}</Button>
-          {confirmControl ?? <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>}
-        </div>
+        <ConfirmationActions
+          key={resetKey}
+          phrase={confirmationPhrase}
+          confirmLabel={confirmLabel}
+          confirmVariant={confirmVariant}
+          busy={busy}
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+          confirmControl={confirmControl}
+        />
       </div>
     </div>
   );
+}
+
+function ConfirmationActions({ phrase, confirmLabel, confirmVariant, busy, onCancel, onConfirm, confirmControl }: Pick<Props, "confirmLabel" | "confirmVariant" | "busy" | "onCancel" | "onConfirm" | "confirmControl"> & { phrase?: string }) {
+  const { t: tAdmin } = useTranslation("admin");
+  const { t: tCommon } = useTranslation("common");
+  const [typedConfirmation, setTypedConfirmation] = useState("");
+
+  return <>
+    {phrase && <label className="mt-5 block text-sm">
+      <span className="block text-muted-foreground">{tAdmin("accessControl.confirm.typePhrase", { phrase })}</span>
+      <input aria-label={tAdmin("accessControl.confirm.typePhraseLabel")} value={typedConfirmation} onChange={(event) => setTypedConfirmation(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" autoComplete="off" />
+    </label>}
+    <div className="mt-5 flex justify-end gap-2">
+      <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel")}</Button>
+      {confirmControl ?? <Button variant={confirmVariant} onClick={onConfirm} disabled={busy || Boolean(phrase && typedConfirmation !== phrase)}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>}
+    </div>
+  </>;
 }

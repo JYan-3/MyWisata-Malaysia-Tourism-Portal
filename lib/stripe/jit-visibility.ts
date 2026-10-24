@@ -4,8 +4,9 @@ export function shouldExposeStripePayoutSetup(input: {
   availableEarningsRm: number;
   withdrawRequested: boolean;
   returningFromOnboarding: boolean;
+  minimumWithdrawalRm?: number;
 }): boolean {
   if (input.returningFromOnboarding) return true;
-  if (input.availableEarningsRm >= CUSTOMER_WITHDRAWAL_MINIMUM_RM) return true;
+  if (input.availableEarningsRm >= (input.minimumWithdrawalRm ?? CUSTOMER_WITHDRAWAL_MINIMUM_RM)) return true;
   return input.withdrawRequested && input.availableEarningsRm > 0;
 }

@@ -25,6 +25,7 @@ interface GeminiGenerateResponse {
 }
 
 export interface CallGeminiOptions {
+  signal?: AbortSignal;
   temperature?: number;
   maxOutputTokens?: number;
   images?: GeminiInlineImage[];
@@ -86,7 +87,7 @@ export async function callGemini(systemPrompt: string, userText: string, options
           maxOutputTokens: options.maxOutputTokens ?? 500,
         },
       }),
-      signal: controller.signal,
+      signal: options.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal,
     });
 
     if (!res.ok) {

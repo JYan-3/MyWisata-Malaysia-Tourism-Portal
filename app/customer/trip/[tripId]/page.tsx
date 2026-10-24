@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getTripById, getTripItems } from "@/backend/domains/trips";
 import { searchTripActivities } from "@/backend/domains/catalogue";
+import { getCachedDiscoveryActivityData } from "@/lib/cache/catalogue-cache";
+import { getTripDiscoveryAnchor, getTripDiscoveryFingerprint } from "@/lib/customer/trip-planner";
 import { MapClient } from "./trip-planner-client";
 import { redirect, notFound } from "next/navigation";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -34,20 +36,22 @@ export default async function TripPlannerPage({ params }: { params: Promise<{ tr
     notFound();
   }
 
-  const itemsPromise = getTripItems(tripId, db);
-  const [items, activities, placementsResult, suggestionsResult] = await Promise.all([
-    itemsPromise,
-    itemsPromise.then((items) => searchTripActivities(
-      { category: null, sort: "recommended" },
-      items.flatMap((item) => item.experience_id ? [item.experience_id] : []),
-      db,
-    )),
+  const items = await getTripItems(tripId, db);
+  const anchor = getTripDiscoveryAnchor(items, trip.start_date);
+  const [discoveryData, placementsResult, suggestionsResult] = await Promise.all([
+    getCachedDiscoveryActivityData(),
     db.rpc("list_active_sponsored_discovery_placements"),
     db.from("vendor_recommendations")
       .select("converted_vendor_id,created_at")
       .eq("status", "converted")
       .not("converted_vendor_id", "is", null),
   ]);
+  const activities = await searchTripActivities(
+    { category: null, near: anchor, sort: anchor ? "distance_asc" : "recommended" },
+    items.flatMap((item) => item.experience_id ? [item.experience_id] : []),
+    db,
+    discoveryData,
+  );
   const sponsoredPlacements = placementsResult.error ? [] : ((placementsResult.data ?? []) as Array<{
     id: string;
     product_id: string;
@@ -71,5 +75,5 @@ export default async function TripPlannerPage({ params }: { params: Promise<{ tr
     ? {}
     : collapseSuggestedAtByVendor((suggestionsResult.data ?? []) as Array<{ converted_vendor_id: string | null; created_at: string }>);
 
-  return <MapClient initialActivities={activities} tripData={trip} initialItems={items} sponsoredPlacements={sponsoredPlacements} suggestedAtByVendor={suggestedAtByVendor} />;
+  return <MapClient key={trip.id} initialActivities={activities} initialDiscoveryFingerprint={getTripDiscoveryFingerprint(items, trip.start_date)} tripData={trip} initialItems={items} sponsoredPlacements={sponsoredPlacements} suggestedAtByVendor={suggestedAtByVendor} />;
 }

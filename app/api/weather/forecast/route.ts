@@ -6,7 +6,7 @@ import { getOpenMeteoForecast } from "@/lib/weather/open-meteo";
 import { evaluateForecastRisk } from "@/lib/weather/risk";
 import { weatherBatchRequestSchema } from "@/lib/weather/schema";
 import type { NormalizedForecast, WeatherBatchResponse, WeatherTarget, WeatherTargetResult } from "@/lib/weather/types";
-import { consumeWeatherForecastRateLimit, withWeatherForecastProviderSlot } from "./route-state";
+import { consumeWeatherForecastRateLimit } from "./route-state";
 
 export const dynamic = "force-dynamic";
 
@@ -112,15 +112,15 @@ export async function POST(request: Request) {
     groups.set(identity, [...(groups.get(identity) ?? []), target]);
   }
 
-  const entries = await Promise.all([...groups.values()].map(async (group) => {
+  const resolveGroup = async (group: WeatherTarget[]) => {
     const representative = group[0];
     let forecast: NormalizedForecast;
     try {
-      forecast = await withWeatherForecastProviderSlot(() => getOpenMeteoForecast({
+      forecast = await getOpenMeteoForecast({
         latitude: representative.latitude,
         longitude: representative.longitude,
         date: representative.date,
-      }));
+      }, { signal: request.signal });
     } catch {
       forecast = unavailableFor(representative);
     }
@@ -129,7 +129,14 @@ export async function POST(request: Request) {
       target.key,
       { target: { ...target, label: itemsById.get(target.itemId)?.label ?? target.label }, forecast, risk },
     ]);
-  }));
+  };
+  const entries: Array<Array<[string, WeatherTargetResult]>> = [];
+  const groupList = [...groups.values()];
+  // Bound each request's fanout too; the adapter independently caps real fetches
+  // across route and Copilot consumers, after cache/in-flight coalescing.
+  for (let offset = 0; offset < groupList.length; offset += 3) {
+    entries.push(...await Promise.all(groupList.slice(offset, offset + 3).map(resolveGroup)));
+  }
 
   const data: WeatherBatchResponse = { results: Object.fromEntries(entries.flat()) };
   return privateResponse(apiOk(data));

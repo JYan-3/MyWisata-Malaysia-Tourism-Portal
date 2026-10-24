@@ -86,6 +86,11 @@ export async function DELETE(request: Request, context: Context) {
   const parsed = await parseBody(request, revokeStaffRoleSchema);
   if (!parsed.ok) return parsed.response;
 
+  const { data: assignment, error: lookupError } = await db.from("staff_role_assignments")
+    .select("role_id").eq("id", parsed.data.assignmentId).maybeSingle();
+  if (lookupError) return apiFail("STAFF_ROLE_OPERATION_FAILED", "Unable to verify the role assignment", 503);
+  if (!assignment || assignment.role_id !== roleId) return apiFail("NOT_FOUND", "The requested role assignment was not found", 404);
+
   const { error } = await db.rpc("revoke_staff_role_assignment", {
     p_assignment_id: parsed.data.assignmentId,
     p_reason: parsed.data.reason,

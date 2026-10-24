@@ -1,16 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { signIn as signInDemoAccount } from './helpers/demo';
 
 const ADMIN_EMAIL = 'admin@demo.local';
 const CUSTOMER_EMAIL = 'customer@demo.local';
-const DEMO_PASSWORD = 'demo123456';
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(DEMO_PASSWORD);
-  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15_000 });
+  await signInDemoAccount(page, email);
 }
 
 const settingsPayload = {

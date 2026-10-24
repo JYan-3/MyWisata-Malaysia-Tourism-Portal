@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 
 async function readLiveCampaigns(page: import("@playwright/test").Page): Promise<PromotionCampaignPublic[]> {
   const response = await page.request.get("/api/customer/promotion-campaigns");
@@ -42,10 +43,14 @@ test.describe("Customer vendor-fair event journeys", () => {
   test("home, Browse all, event detail, and a participating vendor's stall page are all reachable", async ({ page }) => {
     test.setTimeout(150_000);
     const campaigns = await readLiveCampaigns(page);
-    const campaign = campaigns.find((item) => item.vendors.length > 0);
-    test.skip(!campaign, "no live campaign currently has an approved vendor registration to walk through");
+    const campaign = selectFeaturedPublicCampaigns(campaigns).find((item) => item.vendors.some((itemVendor) => itemVendor.stalls.length > 0));
+    test.skip(!campaign, "no featured campaign currently has an approved vendor registration to walk through");
     if (!campaign) return;
-    const vendor = campaign.vendors[0];
+    const vendor = campaign.vendors.find((itemVendor) => itemVendor.stalls.length > 0);
+    if (!vendor) {
+      test.skip(true, "the featured campaign has no participating vendor stall");
+      return;
+    }
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/customer");

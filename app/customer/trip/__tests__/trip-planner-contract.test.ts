@@ -136,11 +136,11 @@ describe("trip planner workspace contract", () => {
   });
 
   it("loads distance-enriched activities around the start or the selected day's last stop", () => {
-    expect(plannerSource).toContain("const discoveryNear = near ?? (dayLastStop ?");
-    expect(plannerSource).toContain("if (!discoveryNear) return;");
+    expect(plannerSource).toContain("const discoveryNear = getTripDiscoveryAnchor(trip.items, selectedDate) ?? (near ?? (dayLastStop ?");
+    expect(plannerSource).toContain('discoveryNear ? `?${new URLSearchParams({lat:String(discoveryNear.lat),lng:String(discoveryNear.lng)})}` : ""');
     expect(plannerSource).toContain("/api/trips/${encodeURIComponent(tripData.id)}/activities${query}");
     expect(plannerSource).not.toContain("getActivitiesByIds");
-    expect(plannerSource).toContain('[tripData.id, discoveryNear?.lat, discoveryNear?.lng, tripProductKey]');
+    expect(plannerSource).toContain('[tripData.id, discoveryFingerprint, discoveryNear?.lat, discoveryNear?.lng, initialDiscoveryFingerprint]');
   });
 
   it("reveals the map when a weather risk window is selected", () => {

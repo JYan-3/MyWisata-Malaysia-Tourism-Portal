@@ -18,7 +18,9 @@ describe('withdrawal stable detail route', () => {
     expect(componentSource).toContain('detail.availableActions');
     expect(componentSource).toContain('detail.settlementProof');
     expect(componentSource).toContain('detail.reviewSources');
-    expect(componentSource).toContain('setInterval');
+    expect(componentSource).toContain('useVisibleReviewRefresh');
+    expect(componentSource).toContain('? 2_000 : 30_000');
+    expect(componentSource).not.toContain('setInterval');
     expect(componentSource).toContain('/${nextAction}');
     expect(componentSource).not.toContain('AdminBatchActionBar');
   });

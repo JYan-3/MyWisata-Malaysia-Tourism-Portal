@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   updateEq: vi.fn(),
   rpc: vi.fn(),
-  enqueueWithdrawalEmail: vi.fn(),
+  scheduleEmailDelivery: vi.fn(),
   retrieveConnectAccountStatus: vi.fn(),
   notifyWithdrawalApprovers: vi.fn(),
   serviceRpc: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock('@/lib/supabase/server', () => ({
     rpc: mocks.rpc,
   })),
 }));
-vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWithdrawalEmail }));
+vi.mock('@/lib/email/events', () => ({ scheduleEmailDelivery: mocks.scheduleEmailDelivery }));
 vi.mock('@/lib/stripe/connect-status', () => ({
   retrieveConnectAccountStatus: mocks.retrieveConnectAccountStatus,
 }));
@@ -249,7 +249,7 @@ describe('POST /api/wallet/withdrawals', () => {
     expect(mocks.serviceRpc).not.toHaveBeenCalledWith('submit_wallet_withdrawal_server', expect.anything());
   });
 
-  it('does not duplicate email or approver side effects for an idempotent replay', async () => {
+  it('replays durable email dispatch without recreating email or approver intents', async () => {
     mocks.serviceRpc.mockImplementation(async (name: string) => name === 'save_verified_payout_destination'
       ? { data: { id: 'destination-1' }, error: null }
       : { data: { request_id: requestId, replayed: true }, error: null });
@@ -257,7 +257,7 @@ describe('POST /api/wallet/withdrawals', () => {
     const response = await POST(request({ amountRm: '50.00' }));
 
     expect(response.status).toBe(201);
-    expect(mocks.enqueueWithdrawalEmail).not.toHaveBeenCalled();
+    expect(mocks.scheduleEmailDelivery).toHaveBeenCalledTimes(1);
     expect(mocks.notifyWithdrawalApprovers).not.toHaveBeenCalled();
   });
 });

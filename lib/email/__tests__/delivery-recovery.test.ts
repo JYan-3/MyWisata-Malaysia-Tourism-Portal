@@ -19,7 +19,7 @@ describe('email delivery interruption boundaries', () => {
     vi.resetAllMocks();
     mocks.paused.mockResolvedValue(false);
     mocks.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
-    mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery'
+    mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery_v2'
       ? { rows: [row], recovered: 0, reviewRequired: 0 }
       : name === 'claim_email_outbox' ? [row] : true, error: null }));
     mocks.send.mockImplementation(async (input) => { await input.delivery?.beforeSend(); return { id: 'smtp-accepted' }; });
@@ -31,7 +31,7 @@ describe('email delivery interruption boundaries', () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
   it('dispatches the persisted recipient language and structured exception without a sender-language override', async () => {
-    mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery'
+    mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery_v2'
       ? { rows: [{ ...row, payload: { ...row.payload, locale: 'zh-CN', reasonCode: 'pickup_review', reasonDetails: 'MW-TEST · 2 × Cake' } }], reviewRequired: 0 }
       : true, error: null }));
     await processEmailOutbox();

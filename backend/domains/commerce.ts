@@ -1,3 +1,4 @@
+import { WITHDRAWAL_IN_PROGRESS_STATUSES } from "@/lib/wallet/withdrawal-display";
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
 import { assertCartItemHasBackingRecord, canMergeCartItemLines, cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
@@ -541,6 +542,24 @@ export async function getMyWithdrawals(userId: string, signal?: AbortSignal): Pr
   const { data, error } = await query;
   if (error) throw error;
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
+}
+
+export async function getMyActiveWithdrawals(userId: string, signal?: AbortSignal): Promise<WithdrawalRequest[]> {
+  let query = supabase.from("withdrawal_requests").select(WITHDRAWAL_SELECT).eq("user_id", userId)
+    .in("status", [...WITHDRAWAL_IN_PROGRESS_STATUSES])
+    .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(10);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
+  if (error) throw error;
+  return ((data ?? []) as unknown as WithdrawalRow[]).map(mapWithdrawal);
+}
+
+export async function getMyWithdrawalById(userId: string, requestId: string, signal?: AbortSignal): Promise<WithdrawalRequest | null> {
+  let query = supabase.from("withdrawal_requests").select(WITHDRAWAL_SELECT).eq("user_id", userId).eq("id", requestId);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data ? mapWithdrawal(data as unknown as WithdrawalRow) : null;
 }
 
 type WalletTransactionRow = {

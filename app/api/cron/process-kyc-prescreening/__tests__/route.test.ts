@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks=vi.hoisted(()=>({create:vi.fn(),run:vi.fn()}));
 vi.mock('@/lib/supabase/service',()=>({createServiceClient:mocks.create}));
 vi.mock('@/lib/kyc/prescreening',()=>({processKycPrescreening:mocks.run}));
+vi.mock('@/lib/operations/queue-health', () => ({ recordPortalDispatch: vi.fn().mockResolvedValue(undefined), portalQueueHealth: vi.fn().mockResolvedValue({ kyc: { queued: 0 } }) }));
 import { POST } from '../route';
 beforeEach(()=>{ vi.stubEnv('CRON_SECRET','test-secret');mocks.create.mockReset().mockReturnValue({});mocks.run.mockReset().mockResolvedValue({enabled:false,claimed:0,writeErrors:0}); });
 afterEach(()=>vi.unstubAllEnvs());
@@ -28,4 +29,17 @@ describe('private KYC worker entry point',()=>{
   expect(response.status).toBe(503);
   expect(await response.json()).toMatchObject({writeErrors:1});
  });
+});
+
+
+it('rejects synthetic probe while formal processing is enabled, before DB access', async () => {
+ vi.stubEnv('KYC_NODE_OCR_PROBE_ENABLED','true'); vi.stubEnv('KYC_PRESCREENING_ENABLED','true');
+ const response=await POST(new Request('http://localhost',{method:'POST',headers:{authorization:'Bearer test-secret'},body:JSON.stringify({mode:'synthetic-check'})}));
+ expect(response.status).toBe(403); expect(mocks.create).not.toHaveBeenCalled();
+});
+it('rejects unknown mode and excessive streamed JSON before service creation', async () => {
+ for(const body of ['{"mode":"unknown"}', ' '.repeat(1025)]){
+  const response=await POST(new Request('http://localhost',{method:'POST',headers:{authorization:'Bearer test-secret'},body}));
+  expect([400,413]).toContain(response.status); expect(mocks.create).not.toHaveBeenCalled();
+ }
 });

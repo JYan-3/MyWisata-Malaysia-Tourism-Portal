@@ -3,8 +3,12 @@ export type AccessControlTabId = "overview" | "capabilities" | "policies" | "ass
 export type ApiError = { code?: string; message?: string };
 export type ApiEnvelope<T> = { data?: T | null; error?: ApiError | null };
 export type MutationReceipt = {
-  auditEventId: string;
-  generation: number;
+  auditEventId: string | null;
+  generation: number | null;
+  committed?: boolean;
+  entityId?: string;
+  action?: string;
+  receiptAvailable?: boolean;
   capabilityId?: string;
   capabilityKey?: string;
   policyId?: string;
@@ -94,7 +98,7 @@ export type StaffInvitationRecord = {
   invitedEmail: string;
   roleName: string;
   permissionKeys: string[];
-  status: "pending" | "accepted" | "revoked";
+  status: "pending" | "expired" | "accepted" | "revoked";
   deliveryStatus: "pending" | "sending" | "sent" | "failed";
   sendAttemptCount: number;
   expiresAt: string;

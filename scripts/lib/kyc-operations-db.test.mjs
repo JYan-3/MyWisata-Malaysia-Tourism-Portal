@@ -125,6 +125,7 @@ try {
   try {
     await sql(admin, migration);
     await sql(admin, await fs.readFile(path.join(repo, 'supabase/migrations/20261016124312_kyc_prescreening_failure_policy.sql'), 'utf8'));
+    await sql(admin, await fs.readFile(path.join(repo, 'supabase/migrations/20261021041200_kyc_ocr_engine_provenance.sql'), 'utf8'));
     ok('migration applies to isolated PostgreSQL');
   } catch (e) {
     fail('migration applies to isolated PostgreSQL', e);
@@ -220,6 +221,31 @@ try {
     fail('matched prescreen result accepted', e);
     console.error('This is the expected signature/finish-path check; inspect record_kyc_ocr_result and outcome assignment.', e.message);
   }
+  const legacyProvider = (await sql(admin, `SELECT provider_model FROM public.kyc_ocr_results WHERE submission_id=$1`, [jobSubmission])).rows[0]?.provider_model;
+  if (legacyProvider !== 'private-ocr-v1') throw new Error('legacy provider compatibility failed');
+  for (const provider of ['not-allowed', 'tesseract-js-7.0.0-v1']) {
+    await sql(admin, `UPDATE public.kyc_prescreening_jobs SET status='processing',lease_token=$2,lease_expires_at=now()+interval '60 seconds' WHERE id=$1`, [firstJob, token]);
+    let accepted = false;
+    try {
+      const completed = await sql(svc, `SELECT public.finish_kyc_prescreening_job($1,$2,$3::jsonb,60) AS ok`, [firstJob, token,
+        JSON.stringify({ status:'matched', documentNumberHmac:hmac(), mismatchFields:[], providerModel:provider })]);
+      accepted = completed.rows[0].ok;
+    } catch (error) { if (provider !== 'not-allowed' || !error.message.includes('invalid_ocr_provider')) throw error; }
+    if (accepted !== (provider !== 'not-allowed')) throw new Error('provider whitelist failed');
+  }
+  const actualProvider = (await sql(admin, `SELECT provider_model FROM public.kyc_ocr_results WHERE submission_id=$1`, [jobSubmission])).rows[0]?.provider_model;
+  if (actualProvider !== 'tesseract-js-7.0.0-v1') throw new Error('Node provider not recorded');
+  ok('legacy compatibility, Node provenance and unknown provider rejection');
+  for (const role of ['anon', 'authenticated']) {
+    await sql(admin, `SET ROLE ${role}`);
+    let denied = false;
+    try { await sql(admin, `SELECT public.finish_kyc_prescreening_job($1,$2,$3::jsonb,60)`, [firstJob, token, JSON.stringify({status:'unavailable'})]); }
+    catch { denied = true; }
+    finally { await sql(admin, 'RESET ROLE'); }
+    if (!denied) throw new Error('unprivileged OCR completion accepted');
+  }
+  ok('anon and authenticated cannot finish a service OCR job');
+
   const jobState = await sql(admin, `SELECT status,outcome,last_error_code FROM public.kyc_prescreening_jobs WHERE id=$1`, [firstJob]);
   console.log(`JOB_STATE ${JSON.stringify(jobState.rows[0])}`);
 

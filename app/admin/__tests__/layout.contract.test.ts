@@ -46,6 +46,12 @@ describe('admin navigation shell', () => {
     expect(layoutSource).not.toContain('> Switch account</Link>');
   });
 
+  it('exposes the same personal notification inbox to every signed-in Admin staff role', () => {
+    expect(layoutSource).toContain('pathname !== "/admin/notifications"');
+    expect(layoutSource).toContain('<NotificationBell scope="staff" allHref="/admin/notifications" />');
+    expect(readFileSync(resolve(process.cwd(), 'app/admin/notifications/page.tsx'), 'utf8')).toContain('<NotificationCenter scope="staff"');
+  });
+
   it('polls one shared queue-count endpoint and renders the same pending badge for review nav items', () => {
     expect(layoutSource).toContain('/api/admin/navigation/counts');
     expect(layoutSource).toContain('pendingCountFor');

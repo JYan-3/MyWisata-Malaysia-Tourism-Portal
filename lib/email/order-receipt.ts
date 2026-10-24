@@ -129,7 +129,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
       ],
       ...(payload.delivery ? { messageId: payload.delivery.messageId } : {}),
     });
-    if (payload.delivery && (!result.accepted?.length || result.rejected?.length)) throw new Error('email_delivery_not_confirmed');
+    if (!result.accepted?.length || result.rejected?.length) throw new Error('email_delivery_not_confirmed');
     return { id: result.messageId };
   } catch (error) {
     if (payload.delivery) throw classifyEmailDeliveryError(error, attempted);

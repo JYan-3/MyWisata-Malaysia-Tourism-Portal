@@ -50,6 +50,9 @@ function listQuery(data: unknown[]) {
   builder.select = vi.fn(() => builder);
   builder.order = vi.fn(() => builder);
   builder.eq = vi.fn(() => builder);
+  builder.range = vi.fn(() => builder);
+  builder.gt = vi.fn(() => builder);
+  builder.lte = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => Promise.resolve({ data: data[0] ?? null, error: null }));
   builder.then = (resolve: (value: ReturnType<typeof result>) => unknown) => Promise.resolve(result()).then(resolve);
   return builder;
@@ -221,7 +224,7 @@ describe("staff invitation administration routes", () => {
       token_hash: "must-not-leak",
       reason: "must-not-leak",
     }]));
-    const response = await invitationsRoute.GET();
+    const response = await invitationsRoute.GET(new Request("http://localhost/api/admin/access-control/staff-invitations?status=all"));
     const body = await response.json();
 
     expect(response.status).toBe(200);

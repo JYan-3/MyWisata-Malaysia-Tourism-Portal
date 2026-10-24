@@ -14,6 +14,7 @@ vi.mock("@/backend/domains/trips", () => ({
   getTripById: mocks.getTripById, getTripItems: mocks.getTripItems,
 }));
 vi.mock("@/backend/domains/catalogue", () => ({ searchTripActivities: mocks.searchTripActivities }));
+vi.mock("@/lib/cache/catalogue-cache", () => ({ getCachedDiscoveryActivityData: vi.fn(async () => ({ activities: [], outlets: [] })) }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -22,7 +23,7 @@ const { searchTripActivitiesAction } = await import("../actions");
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.createClient.mockResolvedValue(mocks.db);
-  mocks.getTripById.mockResolvedValue({ id: "owned-trip" });
+  mocks.getTripById.mockResolvedValue({ id: "owned-trip", start_date: null });
   mocks.getTripItems.mockResolvedValue([{ experience_id: "food" }, { experience_id: null }]);
   mocks.searchTripActivities.mockResolvedValue([{ id: "food", variants: [{ id: "variant" }] }]);
 });
@@ -33,7 +34,7 @@ describe("Trip discovery purchase-data boundary", () => {
     expect(mocks.getTripById).toHaveBeenCalledWith("owned-trip", mocks.db);
     expect(mocks.getTripItems).toHaveBeenCalledWith("owned-trip", mocks.db);
     expect(mocks.searchTripActivities).toHaveBeenCalledWith(
-      { category: null, near: { lat: 3.14, lng: 101.69 }, sort: "distance_asc" }, ["food"], mocks.db,
+      { category: null, near: { lat: 3.14, lng: 101.69 }, sort: "distance_asc" }, ["food"], mocks.db, { activities: [], outlets: [] },
     );
     expect(result).toEqual([{ id: "food", variants: [{ id: "variant" }] }]);
   });

@@ -19,6 +19,7 @@ import { productImageUrl } from '@/lib/storage/product-image';
 import { hashVisitorId } from './click';
 import { sanitizeCampaign } from './campaign';
 import { getAttributionCookieDays, getMonthlyClickCap } from './settings';
+import { parseEntitlementDecision } from '@/lib/entitlements/server';
 import { logFraudFlag, hasRecentOpenFlag } from './fraud';
 import { GUEST_EXPLORE_PATH, guestVendorHref } from '@/lib/auth/guest-mode';
 import { ratingFromRows } from '@/lib/reviews/rating-summary';
@@ -326,18 +327,24 @@ export async function handleAffiliateRedirect(
 
     // Limited-tier affiliates (anything short of full KYC-verified) get a
     // deliberately small trial click allowance, §8.3. Full affiliates are
-    // never capped. `fullAffiliate` matches app/api/affiliate/link/route.ts's
-    // own `full` computation exactly — the same two fields (tier, kyc_status)
-    // decide "is this a full affiliate" in both places. The redirect always
-    // still sends the visitor to the right page either way — capping only
-    // ever withholds the click row and attribution cookie, never the
-    // redirect itself.
+    // never capped. Use the same canonical entitlement resolver as the link
+    // API so a stale tier projection cannot disagree with the full-access
+    // decision. Capping only withholds the click row and attribution cookie;
+    // the visitor still reaches the destination.
     const { data: owner } = await service
       .from('users')
-      .select('tier, kyc_status')
+      .select('kyc_status')
       .eq('id', link.user_id)
       .maybeSingle();
-    const fullAffiliate = owner?.tier === 'kyc_verified' && owner?.kyc_status === 'approved';
+    // The link API authorizes full affiliates through the canonical entitlement
+    // policy. Use that same decision here; the legacy tier projection can lag a
+    // successful KYC approval and otherwise causes paid-tier users to be capped.
+    const { data: fullAffiliateDecision, error: fullAffiliateError } = await service.rpc('resolve_user_capability', {
+      p_user_id: link.user_id,
+      p_capability_key: 'affiliate.full',
+    });
+    const fullAffiliate = !fullAffiliateError
+      && parseEntitlementDecision(fullAffiliateDecision, 'affiliate.full')?.allowed === true;
     // A rejected KYC resubmission can't generate a NEW link (see that route's
     // 403), but an existing link created before rejection still works here —
     // treat it as permanently capped rather than falling through to the

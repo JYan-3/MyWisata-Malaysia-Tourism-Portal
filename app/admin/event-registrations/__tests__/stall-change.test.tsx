@@ -52,7 +52,7 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: React.ComponentProps<"a">) => <a {...props}>{children}</a> }));
-vi.mock("lucide-react", () => ({ ArrowLeft: (props: Record<string, unknown>) => <svg {...props} />,
+vi.mock("lucide-react", () => ({ RefreshCw: (props: Record<string, unknown>) => <svg {...props} />, ChevronLeft: (props: Record<string, unknown>) => <svg {...props} />, ArrowLeft: (props: Record<string, unknown>) => <svg {...props} />,
   ChevronRight: () => <svg />, ClipboardCheck: () => <svg />, Search: () => <svg /> }));
 
 import EventRegistrationDetailPage from "@/app/admin/event-registrations/[id]/page";
@@ -186,7 +186,7 @@ describe("Admin event registration stall changes", () => {
     expect(JSON.parse(String((mutation![1] as RequestInit).body))).toMatchObject({ action: 'approve', stallNumber: 'B08', expectedUpdatedAt: UPDATED_AT });
   });
   it('shows and searches the requested booth for a pending application in the review queue', async () => {
-    mocks.fetch.mockResolvedValue(response({ data: { registrations: [{ ...detail, status: 'pending', stallNumber: '', requestedStallNumber: 'A12' }] } }));
+    mocks.fetch.mockImplementation(async (url: string) => { const search = new URL(url, 'http://localhost').searchParams.get('search'); return response({ data: { registrations: search === 'A13' ? [] : [{ ...detail, status: 'pending', stallNumber: '', requestedStallNumber: 'A12' }], page: 1, total: search === 'A13' ? 0 : 1, totalPages: 1 } }); });
     await act(async () => { root.render(<EventRegistrationsPage />); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(container.textContent).toContain('eventRegistrations.preferredStall');
     const search = findOne(container, (element) => element.tagName === 'INPUT');

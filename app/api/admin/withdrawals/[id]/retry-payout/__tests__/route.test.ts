@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
   moderate: vi.fn(),
   schedule: vi.fn(),
+  scheduleEmailDelivery: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -34,6 +35,7 @@ vi.mock('@/lib/supabase/service', () => ({
 }));
 vi.mock('@/lib/payouts/execute-approved-withdrawal', () => ({ executeApprovedWithdrawalPayout: mocks.execute }));
 vi.mock('@/lib/payouts/tng-mock-callbacks', () => ({ scheduleTngMockCallbackAcceleration: mocks.schedule }));
+vi.mock('@/lib/email/events', () => ({ scheduleEmailDelivery: mocks.scheduleEmailDelivery }));
 vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderate }));
 
 import { POST } from '../route';
@@ -105,6 +107,7 @@ describe('POST /api/admin/withdrawals/:id/retry-payout', () => {
       'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       '2026-08-21T05:00:03.000Z',
     );
+    expect(mocks.scheduleEmailDelivery).toHaveBeenCalledTimes(1);
     expect(body.data).not.toHaveProperty('callbackJobId');
     expect(body.data).not.toHaveProperty('callbackAvailableAt');
   });

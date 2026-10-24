@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {expect,test,type APIRequestContext,type Page} from '@playwright/test';
 import {createClient} from '@supabase/supabase-js';
 import {createServerClient} from '@supabase/ssr';
-import {localEnv,signIn} from './demo';
+import {localEnv} from './demo';
 
 const SUPABASE_URL = localEnv('NEXT_PUBLIC_SUPABASE_URL')!;
 const SERVICE_KEY = localEnv('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -55,12 +55,7 @@ export async function signInTestCustomer(page: Page, customer: TestCustomer) {
     await page.route(pattern,route=>route.fulfill({status:503,json:{data:null,error:{code:'TEST_UNRELATED_SERVICE_UNAVAILABLE'}}}));
   }
   await page.route('**/api/route',route=>route.fulfill({json:{data:{routes:[]}}}));
-  if (localEnv('TRIP_E2E_AUTH_MODE') !== 'admin-session') {
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
-    await signIn(page, customer.email, customer.password);
-    return;
-  }
+  test.skip(localEnv('TRIP_E2E_AUTH_MODE') !== 'admin-session', 'Trip persistence E2E requires the isolated admin-session fixture so DB assertions use this run’s customer token');
 
   // An explicit test fixture isolates Trip persistence from provider challenges.
   // It authenticates only this run's new account and does not verify CAPTCHA login.

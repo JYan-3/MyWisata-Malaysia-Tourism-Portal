@@ -86,6 +86,7 @@ scripts/disable-rls.sql.DO-NOT-RUN
 
 # screenshots captured during dev / QA — kept locally only
 scripts/screenshot-*.png
+/e2e-shots/
 
 # agent task reports and local work scratch docs
 work/

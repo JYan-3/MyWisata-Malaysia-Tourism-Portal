@@ -1,11 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { signIn } from './helpers/demo';
 
 test('customer verification wizard exposes five stable steps and progress', async ({ page }) => {
-  await page.goto('/login');
-  await page.locator('input[type="email"]').fill('customer@demo.local');
-  await page.locator('input[type="password"]').fill('demo123456');
-  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15_000 });
+  await signIn(page, 'customer@demo.local');
 
   const profileResponsePromise = page.waitForResponse(
     (response) => response.url().endsWith('/api/profile/me') && response.request().method() === 'GET',

@@ -13,6 +13,7 @@ const updateStaffRoleSchema = z.object({
   moduleKeys: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)).max(100)
     .refine((keys) => new Set(keys).size === keys.length, "Module keys must be unique"),
   active: z.boolean(),
+  updatedAt: z.string().datetime(),
   reason: z.string().trim().min(10).max(500),
 }).strict();
 
@@ -26,9 +27,13 @@ function staffRoleFailure(message: string) {
   if (message.includes("staff_role_not_found")) {
     return apiFail("NOT_FOUND", "The requested staff role was not found", 404);
   }
+  if (message.includes("staff_role_version_conflict")) {
+    return apiFail("CONFLICT", "This staff role changed after you opened it. Reload it before saving again.", 409);
+  }
   if (message.includes("super_admin_required")) {
     return apiFail("FORBIDDEN", "Super Admin access required", 403);
   }
+  if (message.includes("staff_module_not_delegable")) return apiFail("MODULE_NOT_DELEGABLE", "This module is reserved for its existing system role", 422);
   if (message.includes("staff_reason_required") || message.includes("staff_role_name_required")
       || message.includes("staff_role_description_too_long")
       || message.includes("invalid_module_key") || message.includes("duplicate_module_key")) {
@@ -55,6 +60,7 @@ export async function PATCH(request: Request, context: Context) {
     p_description: parsed.data.description,
     p_module_keys: parsed.data.moduleKeys,
     p_active: parsed.data.active,
+    p_expected_updated_at: parsed.data.updatedAt,
     p_reason: parsed.data.reason,
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Star, Plus, CheckCircle2, Clock, XCircle, ImagePlus, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -11,7 +11,7 @@ import { VerifiedContributorBadge } from "@/components/shared/verified-contribut
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useAppDialog } from "@/components/providers/app-dialog";
-import { groupRecommendations } from "@/lib/customer/recommendation-status";
+import { RECOMMENDATION_STATUSES, groupRecommendations } from "@/lib/customer/recommendation-status";
 import Link from "next/link";
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
@@ -20,6 +20,8 @@ import { useTranslation } from "react-i18next";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
+
+import { DirectoryPagination } from "@/components/customer/directory-pagination";
 
 type RecommendationResponse = {
   id: string;
@@ -60,6 +62,15 @@ export default function RecommendationsPage() {
   const { showFeedback } = useActionFeedback();
   const { confirm } = useAppDialog();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [refresh, setRefresh] = useState(0);
+  const [list, setList] = useState({ key: "", total: 0, pages: 1, error: false });
+  const stagedImages = useRef(new Map<File, string>());
+  const submission = useRef<AbortController | null>(null);
+  useEffect(() => () => submission.current?.abort(), []);
+  const requestKey = JSON.stringify([currentUser?.id, page, statusFilter, refresh]);
+  const loading = Boolean(currentUser) && list.key !== requestKey;
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<CanonicalCategoryOption[]>([]);
   const [form, setForm] = useState({
@@ -82,33 +93,30 @@ export default function RecommendationsPage() {
   const supabase = useMemo(() => createClient(), []);
   useEffect(() => {
     supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order").then(({ data }) => setCategories(normalizeCategoryRows((data ?? []) as { id: string; name: string; slug: string | null }[])));
+  }, [supabase]);
+  useEffect(() => {
     if (!currentUser) return;
-    fetch('/api/recommendations')
-      .then((r) => r.json())
-      .then((body) => {
-        if (body?.data) {
-          setRecs(body.data.map((r: RecommendationResponse) => ({
-            id: r.id,
-            submittedBy: currentUser.id,
-            name: r.vendor_name,
-            category: r.categories?.slug ? getDiscoveryCategoryLabel(r.categories.slug) : r.categories?.name ?? "",
-            state: r.state ?? "",
-            status: r.status,
-            qualityScore: 0,
-            duplicate: false,
-            author: r.author ? {
-              id: r.author.id,
-              name: r.author.name,
-              avatarUrl: r.author.avatarUrl ?? undefined,
-              city: r.author.city ?? undefined,
-              country: r.author.country ?? undefined,
-              isKycVerified: Boolean(r.author.isKycVerified),
-            } : undefined,
-          })));
-        }
-      })
-      .catch(() => setRecs([]));
-  }, [currentUser, supabase]);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10_000);
+    let active = true;
+    fetch(`/api/recommendations?page=${page}&status=${encodeURIComponent(statusFilter)}`, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json() as { data?: { items: RecommendationResponse[]; total: number; totalPages: number } };
+        if (!response.ok || !body.data || !Array.isArray(body.data.items)) throw new Error("recommendations_unavailable");
+        if (!active) return;
+        if (page > body.data.totalPages) { setPage(body.data.totalPages); return; }
+        setRecs(body.data.items.map((r) => ({
+          id: r.id, submittedBy: currentUser.id, name: r.vendor_name,
+          category: r.categories?.slug ? getDiscoveryCategoryLabel(r.categories.slug) : r.categories?.name ?? "",
+          state: r.state ?? "", status: r.status, qualityScore: 0, duplicate: false,
+          author: r.author ? { id: r.author.id, name: r.author.name, avatarUrl: r.author.avatarUrl ?? undefined,
+            city: r.author.city ?? undefined, country: r.author.country ?? undefined, isKycVerified: Boolean(r.author.isKycVerified) } : undefined,
+        })));
+        setList({ key: requestKey, total: body.data.total, pages: body.data.totalPages, error: false });
+      }).catch(() => { if (active) { setRecs([]); setList({ key: requestKey, total: 0, pages: 1, error: true }); } })
+      .finally(() => window.clearTimeout(timeout));
+    return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
+  }, [currentUser, page, statusFilter, requestKey]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,15 +134,21 @@ export default function RecommendationsPage() {
     if (!form.imageAttested) { setError(tCustomer("ui.recommendations.attestPhotos")); return; }
 
     setSubmitting(true);
+    const controller = new AbortController();
+    submission.current = controller;
     try {
-      const stagedImageIds = await Promise.all(images.map(async (image) => {
-        const upload = await fetch('/api/recommendations/images', { method: 'POST', body: (() => { const data = new FormData(); data.append('image', image); return data; })() });
+      const stagedImageIds: string[] = [];
+      for (const image of images) {
+        const cached = stagedImages.current.get(image);
+        if (cached) { stagedImageIds.push(cached); continue; }
+        const upload = await fetch('/api/recommendations/images', { method: 'POST', signal: controller.signal, body: (() => { const data = new FormData(); data.append('image', image); return data; })() });
         const uploadBody = await upload.json().catch(() => ({}));
         if (!upload.ok) throw new Error(uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError"));
-        return uploadBody.data.stagedImageId as string;
-      }));
+        const id = uploadBody.data.stagedImageId as string;
+        stagedImages.current.set(image, id); stagedImageIds.push(id);
+      }
       const res = await fetch('/api/recommendations', {
-        method: 'POST',
+        method: 'POST', signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vendorName:  form.name.trim(),
@@ -153,17 +167,8 @@ export default function RecommendationsPage() {
         setError(recommendationErrorMessage(body, tCustomer("ui.recommendations.submitError"), (key) => tCustomer(key)));
         return;
       }
-      const newRec: VendorRecommendation = {
-        id:           body.data.id,
-        submittedBy:  currentUser.id,
-        name:         body.data.vendor_name,
-        category:     selectedCategory?.name ?? "",
-        state:        location.formattedAddress,
-        status:       'pending',
-        qualityScore: 0,
-        duplicate:    false,
-      };
-      setRecs((prev) => [newRec, ...(prev ?? [])]);
+      stagedImages.current.clear();
+      setPage(1); setStatusFilter("all"); setRefresh((value) => value + 1);
       setShowForm(false);
       setForm({ name: "", description: "", whyRecommend: "", category: "", phone: "", email: "", website: "", imageAttested: false });
       setLocation(null); setImages([]);
@@ -192,7 +197,8 @@ export default function RecommendationsPage() {
     event.currentTarget.value = "";
   }
 
-  const groups = groupRecommendations(recs ?? []);
+  const visibleRecs = !loading && !list.error && list.key === requestKey ? recs ?? [] : [];
+  const groups = groupRecommendations(visibleRecs);
   const pending = [...groups.action_required, ...groups.in_review];
   const reviewed = [...groups.decided, ...groups.converted];
 
@@ -211,6 +217,16 @@ export default function RecommendationsPage() {
       <CustomerPageShell wide className="pt-0 sm:pt-0">
 
       {currentUser && <RecommendationEarningsPanel showEmpty />}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.historyStatus")}
+          <select className="ml-2 rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}>
+            <option value="all">{tCustomer("ui.recommendations.allStatuses")}</option>
+            {RECOMMENDATION_STATUSES.map((status) => <option key={status} value={status}>{tCustomer(`ui.recommendations.status.${status}`)}</option>)}
+          </select>
+        </label>
+        <p role="status" className="text-xs text-muted-foreground">{loading ? tCustomer("ui.recommendations.historyLoading") : tCustomer("ui.recommendations.historyTotal", { total: list.total })}</p>
+        {!loading && list.error && <div role="alert" className="text-sm text-destructive">{tCustomer("ui.recommendations.historyError")} <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>{tCustomer("ui.recommendations.historyRetry")}</Button></div>}
+      </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
@@ -325,7 +341,7 @@ export default function RecommendationsPage() {
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-bold text-foreground text-sm">{tCustomer("ui.recommendations.myRecommendations")}</h2>
         </div>
-        {(recs ?? []).length === 0 ? (
+        {loading || list.error ? null : visibleRecs.length === 0 ? (
           <div className="px-5 py-8 text-center">
             <Star size={32} aria-hidden="true" className="text-muted-foreground mx-auto mb-3 opacity-40" />
             <p className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneYet")}</p>
@@ -358,6 +374,7 @@ export default function RecommendationsPage() {
           </div>
         )}
       </CustomerPanel>
+      {!loading && !list.error && <DirectoryPagination ariaLabel={tCustomer("ui.recommendations.myRecommendations")} currentPage={page} itemLabel={tCustomer("ui.recommendations.myRecommendations")} onPageChange={setPage} pageSize={25} totalItems={list.total} totalPages={list.pages} />}
       </CustomerPageShell>
     </>
   );

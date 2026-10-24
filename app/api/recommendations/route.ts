@@ -1,30 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { apiOk, apiFail } from '@/lib/validation/schemas';
+import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
+import { RECOMMENDATION_STATUSES } from '@/lib/customer/recommendation-status';
 import { recommendationSubmissionSchema } from '@/lib/recommendations/submission';
-import { selectSuggestedPlace } from '@/lib/recommendations/place-resolution';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 async function storeSuggestedPlace(recommendationId: string, latitude: number, longitude: number) {
   try {
     const service = createServiceClient();
-    const { data: places, error } = await service
-      .from('places')
-      .select('id,name,level,lat,lng')
-      .eq('status', 'active');
+    const { data: placeId, error } = await service.rpc('nearest_recommendation_place', { p_lat: latitude, p_lng: longitude });
     if (error) throw error;
-    const suggestion = selectSuggestedPlace(latitude, longitude, (places ?? []).map((place) => ({
-      id: place.id,
-      name: place.name,
-      level: place.level,
-      latitude: Number(place.lat),
-      longitude: Number(place.lng),
-    })));
-    if (!suggestion) return;
+    if (!placeId) return;
     const { error: updateError } = await service
       .from('vendor_recommendations')
-      .update({ suggested_place_id: suggestion.id, place_resolution_status: 'suggested' })
+      .update({ suggested_place_id: placeId, place_resolution_status: 'suggested' })
       .eq('id', recommendationId);
     if (updateError) throw updateError;
   } catch (error) {
@@ -52,9 +42,8 @@ export async function POST(request: Request) {
   );
   if (recommendationFailure) return recommendationFailure;
 
-  const body = await request.json().catch(() => null);
-  const evidence = recommendationSubmissionSchema.safeParse(body);
-  if (!evidence.success) return apiFail('VALIDATION_FAILED', 'Complete all required recommendation evidence', 422, evidence.error.flatten());
+  const evidence = await parseBody(request, recommendationSubmissionSchema, { maxBytes: 32_768 });
+  if (!evidence.ok) return evidence.response;
   const value = evidence.data;
   const { data, error } = await supabase.rpc('submit_recommendation_with_evidence', {
     p_vendor_name: value.vendorName,
@@ -85,16 +74,26 @@ export async function POST(request: Request) {
   return apiOk({ id: data, vendor_name: value.vendorName, status: 'pending' }, { status: 201 });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data, error } = await supabase
+  const params = new URL(request.url).searchParams;
+  const rawPage = params.get('page') ?? '1';
+  const status = params.get('status') ?? 'all';
+  if (!/^\d+$/.test(rawPage) || !Number.isSafeInteger(Number(rawPage)) || Number(rawPage) < 1 || Number(rawPage) > 10_000
+      || !['all', ...RECOMMENDATION_STATUSES].includes(status)) {
+    return apiFail('INVALID_FILTERS', 'Invalid recommendation filters', 422);
+  }
+  const page = Number(rawPage), pageSize = 25;
+  let query = supabase
     .from('vendor_recommendations')
-    .select('id, vendor_name, status, state, recommender_id, categories(name,slug), created_at')
+    .select('id, vendor_name, status, state, recommender_id, categories(name,slug), created_at', { count: 'exact' })
     .eq('recommender_id', user.id)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }).order('id', { ascending: false });
+  if (status !== 'all') query = query.eq('status', status);
+  const { data, count, error } = await query.range((page - 1) * pageSize, page * pageSize - 1);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   const rows = data ?? [];
@@ -114,5 +113,6 @@ export async function GET() {
     country: author.country ?? null,
     isKycVerified: Boolean(author.is_kyc_verified),
   }]));
-  return apiOk(rows.map((row) => ({ ...row, author: authorById.get(row.recommender_id) ?? null })));
+  return apiOk({ items: rows.map((row) => ({ ...row, author: authorById.get(row.recommender_id) ?? null })),
+    page, pageSize, total: count ?? 0, totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)) });
 }

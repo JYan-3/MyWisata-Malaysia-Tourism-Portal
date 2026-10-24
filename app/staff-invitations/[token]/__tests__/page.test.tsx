@@ -25,6 +25,11 @@ describe("staff invitation acceptance page", () => {
     expect(source).toContain('router.push("/staff")');
   });
 
+  it("refreshes the authenticated employee before entering the Staff shell", () => {
+    expect(source).toContain('import { useAuth } from "@/components/providers/auth"');
+    expect(source).toMatch(/await refreshUser\(\)[\s\S]*?router\.push\("\/staff"\)/);
+  });
+
   it("offers the shared language and appearance controls on the invitation page", () => {
     expect(source).toContain('import { LanguageSwitcher } from "@/components/shared/language-switcher"');
     expect(source).toContain('import { AppearanceControl } from "@/components/shared/appearance-control"');

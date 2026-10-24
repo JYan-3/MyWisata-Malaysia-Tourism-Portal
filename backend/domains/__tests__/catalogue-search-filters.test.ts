@@ -190,6 +190,8 @@ function makeDb(
           if (table === "products") rows = rows.filter((row) => (row as Record<string, unknown>)[column] === value);
           return builder;
         },
+        order: () => builder,
+        range: () => builder,
         in: (column: string, values: string[]) => {
           if (table === "products" && column === "id") {
             options.productIdBatches?.push(values);

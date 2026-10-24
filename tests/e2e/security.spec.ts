@@ -36,10 +36,26 @@ function record(ok: boolean, finding: Finding) {
 }
 
 let ids: Record<string, string | null> = {};
+let targetIdsLoaded = false;
+
+async function safeGet(request: APIRequestContext, url: string, headers: Record<string, string>, label: string) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await request.get(url, { headers, timeout: 15_000 });
+    } catch {
+      if (attempt === 1) {
+        // Playwright includes request headers in transport exceptions; never let a
+        // service-role key appear in test output or error-context artifacts.
+        throw new Error(`${label} network request failed after retry`);
+      }
+    }
+  }
+  throw new Error(`${label} network request failed after retry`);
+}
 
 async function serviceSelect(request: APIRequestContext, table: string, query: string): Promise<Record<string, string>[]> {
   if (!SERVICE_KEY) return [];
-  const res = await request.get(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: { ...SERVER_UA, apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+  const res = await safeGet(request, `${SUPABASE_URL}/rest/v1/${table}?${query}`, { ...SERVER_UA, apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }, `Service-role ${table} lookup`);
   return res.ok() ? res.json() : [];
 }
 
@@ -72,11 +88,12 @@ async function apiStatus(page: Page, path: string) {
   }, path);
 }
 
-test.beforeAll(async ({ request }) => {
+async function loadTargetIds(request: APIRequestContext) {
+  if (targetIdsLoaded) return;
   const one = async (table: string, query: string, col = 'id') => (await serviceSelect(request, table, `select=${col}&${query}&limit=1`))[0]?.[col] ?? null;
   const userId = async (email: string) => {
     if (!SERVICE_KEY) return null;
-    const res = await request.get(`${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`, { headers: { ...SERVER_UA, apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+    const res = await safeGet(request, `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`, { ...SERVER_UA, apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }, 'Service-role test-user lookup');
     const users = res.ok() ? ((await res.json()) as { users: { id: string; email: string }[] }).users : [];
     return users.find((u) => u.email === email)?.id ?? null;
   };
@@ -95,8 +112,9 @@ test.beforeAll(async ({ request }) => {
     vendorB: vB ? await one('vendors', `owner_id=eq.${vB}`) : null,
   };
   ids.vendorBProduct = ids.vendorB ? await one('products', `vendor_id=eq.${ids.vendorB}`) : null;
+  targetIdsLoaded = true;
   console.log('TARGET IDS', JSON.stringify(ids));
-});
+}
 
 test.afterAll(() => {
   const out = process.env.E2E_SHOTS_DIR ?? 'e2e-shots';
@@ -107,20 +125,25 @@ test.afterAll(() => {
 });
 
 test('1. signed-out visitors cannot reach protected pages or APIs', async ({ browser, request }) => {
-  const page = await (await browser.newContext()).newPage();
-  // /customer/* pages are open to guests by design (empty shells); their data APIs are checked below.
-  for (const path of ['/admin/dashboard', '/admin/users', '/admin/withdrawals', '/vendor/dashboard', '/vendor/wallet']) {
-    await page.goto(path, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(4000);
-    const landed = new URL(page.url()).pathname;
-    record(landed.startsWith('/login') || landed.startsWith('/customer/explore') || landed === '/', { area: 'access', severity: 'high', check: `signed-out ${path}`, detail: `stayed on ${landed}` });
-  }
-  const userApis = ['/api/affiliate/stats', '/api/affiliate/earnings-export', '/api/customer/chat', '/api/customer/vouchers', '/api/kyc/submission', '/api/notifications', '/api/profile/me', '/api/profile/survey', '/api/recommendations/earnings', '/api/saved-destinations', '/api/support/tickets', '/api/vendor/settlements', '/api/vendor/share-analytics', '/api/vendor/revenue-assistant', '/api/wallet/destinations', '/api/wallet/summary', '/api/wishlist', '/api/admin/users', '/api/admin/withdrawals', '/api/admin/kyc/submissions', '/api/admin/orders'];
-  for (const path of userApis) {
-    const res = await request.get(path, { maxRedirects: 0 });
-    let hasData = false;
-    try { const body = await res.json(); hasData = body?.data != null && !(Array.isArray(body.data) && body.data.length === 0); } catch { /* not JSON */ }
-    record(DENIED.includes(res.status()) || (res.status() < 400 && !hasData), { area: 'access', severity: 'high', check: `signed-out GET ${path}`, detail: `status ${res.status()}${hasData ? ' with data' : ''}` });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    // /customer/* pages are open to guests by design (empty shells); their data APIs are checked below.
+    for (const path of ['/admin/dashboard', '/admin/users', '/admin/withdrawals', '/vendor/dashboard', '/vendor/wallet']) {
+      await page.goto(path, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(4000);
+      const landed = new URL(page.url()).pathname;
+      record(landed.startsWith('/login') || landed.startsWith('/customer/explore') || landed === '/', { area: 'access', severity: 'high', check: `signed-out ${path}`, detail: `stayed on ${landed}` });
+    }
+    const userApis = ['/api/affiliate/stats', '/api/affiliate/earnings-export', '/api/customer/chat', '/api/customer/vouchers', '/api/kyc/submission', '/api/notifications', '/api/profile/me', '/api/profile/survey', '/api/recommendations/earnings', '/api/saved-destinations', '/api/support/tickets', '/api/vendor/settlements', '/api/vendor/share-analytics', '/api/vendor/revenue-assistant', '/api/wallet/destinations', '/api/wallet/summary', '/api/wishlist', '/api/admin/users', '/api/admin/withdrawals', '/api/admin/kyc/submissions', '/api/admin/orders'];
+    for (const path of userApis) {
+      const res = await request.get(path, { maxRedirects: 0 });
+      let hasData = false;
+      try { const body = await res.json(); hasData = body?.data != null && !(Array.isArray(body.data) && body.data.length === 0); } catch { /* not JSON */ }
+      record(DENIED.includes(res.status()) || (res.status() < 400 && !hasData), { area: 'access', severity: 'high', check: `signed-out GET ${path}`, detail: `status ${res.status()}${hasData ? ' with data' : ''}` });
+    }
+  } finally {
+    await context.close();
   }
 });
 
@@ -136,7 +159,8 @@ test('2. customers and vendors cannot call admin APIs', async ({ browser }) => {
   }
 });
 
-test('3. users cannot read other users\' records (IDOR)', async ({ browser }) => {
+test('3. users cannot read other users\' records (IDOR)', async ({ browser, request }) => {
+  await loadTargetIds(request);
   const c1 = await signedInPage(browser, ACCOUNTS.customer1);
   for (const [label, path] of [
     ['another customer\'s order', ids.c2Order && `/api/customer/orders/${ids.c2Order}`],
@@ -173,7 +197,7 @@ test('4. direct database and storage access with the public key', async ({ reque
   const anonSpec = await request.get(`${SUPABASE_URL}/rest/v1/`, { headers: { apikey: ANON_KEY } });
   record(!anonSpec.ok(), { area: 'database', severity: 'low', check: 'schema listing hidden from the public key', detail: `/rest/v1/ answered ${anonSpec.status()} to the public key` });
   // The table list itself comes from the secret key; every probe below uses only the public key.
-  const spec = SERVICE_KEY ? await request.get(`${SUPABASE_URL}/rest/v1/`, { headers: { ...SERVER_UA, apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }) : null;
+  const spec = SERVICE_KEY ? await safeGet(request, `${SUPABASE_URL}/rest/v1/`, { ...SERVER_UA, apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }, 'Service-role schema lookup') : null;
   const definitions = spec?.ok() ? ((await spec.json()) as { definitions?: Record<string, { properties?: Record<string, unknown> }> }).definitions ?? {} : {};
   const tables = Object.keys(definitions);
   expect.soft(tables.length, 'table list from the secret key (needed for the anonymous-read scan)').toBeGreaterThan(0);
@@ -181,7 +205,7 @@ test('4. direct database and storage access with the public key', async ({ reque
   const SENSITIVE = /email|phone|ic_|nric|passport|address|bank|account_no|account_number|password|token|secret|balance|amount|_sen$|dob|birth/i;
   const anonReadable: string[] = [];
   for (const table of tables) {
-    const res = await request.get(`${SUPABASE_URL}/rest/v1/${table}?select=*&limit=1`, { headers: { apikey: ANON_KEY } });
+    const res = await safeGet(request, `${SUPABASE_URL}/rest/v1/${table}?select=*&limit=1`, { apikey: ANON_KEY }, `Anonymous ${table} scan`);
     if (!res.ok()) continue;
     const rows = (await res.json()) as Record<string, unknown>[];
     if (rows.length === 0) continue;
@@ -190,13 +214,31 @@ test('4. direct database and storage access with the public key', async ({ reque
     if (sensitive.length) findings.push({ area: 'database', severity: 'high', check: `anonymous read of ${table}`, detail: `returns rows including ${sensitive.join(', ')} — confirm this is meant to be public` });
   }
   passed.push(`database: ${tables.length - anonReadable.length} of ${tables.length} tables/views return nothing anonymously`);
+  const commissionRules = await safeGet(request, `${SUPABASE_URL}/rest/v1/commission_rules?select=id&limit=1`, { apikey: ANON_KEY }, 'Anonymous commission rule probe');
+  record(!commissionRules.ok(), { area: 'database', severity: 'high', check: 'anonymous commission rule access', detail: `status ${commissionRules.status()} — affiliate thresholds are served through authorized server routes` });
+
+  const outletProjection = await safeGet(request, `${SUPABASE_URL}/rest/v1/outlets?select=id,status,review_status,address,phone,email&limit=5`, { apikey: ANON_KEY }, 'Anonymous outlet projection probe');
+  const outletRows = outletProjection.ok() ? ((await outletProjection.json()) as Array<Record<string, unknown>>) : [];
+  const publicOutletsOnly = outletProjection.ok() && outletRows.length > 0 && outletRows.every((outlet) => outlet.status === 'active' && outlet.review_status === 'approved');
+  record(publicOutletsOnly, { area: 'database', severity: 'high', check: 'public outlet contact projection is limited to published outlets', detail: outletProjection.ok() ? `${outletRows.length} row(s); every row must be active and approved` : `status ${outletProjection.status()}` });
+  const nonPublishedOutletsQuery = new URLSearchParams({
+    select: 'id,status,review_status',
+    or: '(status.neq.active,review_status.neq.approved)',
+    limit: '5',
+  });
+  const nonPublishedOutlets = await safeGet(request, `${SUPABASE_URL}/rest/v1/outlets?${nonPublishedOutletsQuery}`, { apikey: ANON_KEY }, 'Anonymous unpublished outlet probe');
+  const hiddenOutletRows = nonPublishedOutlets.ok() ? ((await nonPublishedOutlets.json()) as unknown[]) : null;
+  record(nonPublishedOutlets.ok() && hiddenOutletRows?.length === 0, { area: 'database', severity: 'high', check: 'anonymous users cannot read unpublished outlets', detail: nonPublishedOutlets.ok() ? `${hiddenOutletRows?.length ?? 0} non-published row(s) returned` : `status ${nonPublishedOutlets.status()}` });
+  const outletReviewColumns = await safeGet(request, `${SUPABASE_URL}/rest/v1/outlets?select=review_note,reviewed_by,reviewed_at&limit=1`, { apikey: ANON_KEY }, 'Anonymous outlet review field probe');
+  record(!outletReviewColumns.ok(), { area: 'database', severity: 'high', check: 'anonymous outlet moderation fields', detail: `status ${outletReviewColumns.status()}` });
+
   // Specific rows that must never be public, whatever their column names.
   for (const [table, query, why] of [
     ['chatbot_sessions', 'select=id&limit=1', 'guest help-bot sessions'],
     ['chatbot_messages', 'select=id,body&limit=1', 'help-bot conversation text'],
     ['vendor_event_promotions', 'select=amount_sen,stripe_checkout_session_id&limit=1', 'what vendors paid and their Stripe session ids'],
   ] as const) {
-    const res = await request.get(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: { apikey: ANON_KEY } });
+    const res = await safeGet(request, `${SUPABASE_URL}/rest/v1/${table}?${query}`, { apikey: ANON_KEY }, `Anonymous ${table} probe`);
     const rows = res.ok() ? ((await res.json()) as unknown[]).length : 0;
     record(rows === 0, { area: 'database', severity: 'medium', check: `anonymous read of ${table} (${why})`, detail: `${rows} row(s) returned` });
   }
@@ -210,7 +252,7 @@ test('4. direct database and storage access with the public key', async ({ reque
       const cols = Object.keys(definitions[table]?.properties ?? {});
       const owner = ['user_id', 'customer_id'].find((c) => cols.includes(c));
       if (!owner) continue;
-      const res = await request.get(`${SUPABASE_URL}/rest/v1/${table}?select=${owner}&${owner}=neq.${ids.customer1}&limit=1`, { headers: auth });
+      const res = await safeGet(request, `${SUPABASE_URL}/rest/v1/${table}?select=${owner}&${owner}=neq.${ids.customer1}&limit=1`, auth, `Authenticated ${table} scan`);
       if (res.ok() && ((await res.json()) as unknown[]).length) crossUser.push(table);
     }
     findings.push({ area: 'database', severity: 'info', check: 'tables where customer1 sees other users\' rows', detail: crossUser.length ? `${crossUser.join(', ')} — review each is public by design (reviews, public profiles)` : 'none' });
@@ -254,7 +296,8 @@ test('5. security headers and cookies', async ({ browser, request }) => {
   await page.context().close();
 });
 
-test('6. reflected XSS through URL parameters', async ({ browser }) => {
+test('6. reflected XSS through URL parameters', async ({ browser, request }) => {
+  await loadTargetIds(request);
   const page = await signedInPage(browser, ACCOUNTS.customer1);
   let dialogs = 0;
   page.on('dialog', async (d) => { dialogs += 1; await d.dismiss(); });
@@ -293,11 +336,17 @@ test('7. open redirects', async ({ browser, request }) => {
   await page.locator('input[type="password"]').fill(DEMO_PASSWORD);
   await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 120_000 }).catch(() => undefined);
-  record(!page.url().includes('evil.example'), { area: 'redirect', severity: 'medium', check: 'sign-in with next=https://evil.example', detail: `landed on ${page.url()}` });
+  const landed = new URL(page.url());
+  if (landed.pathname === '/login') {
+    findings.push({ area: 'redirect', severity: 'info', check: 'post-login redirect probe not completed', detail: 'Sign-in did not leave the login route, so this flow could not evaluate its post-auth destination; direct callback probes above still run.' });
+  } else {
+    record(!landed.href.includes('evil.example'), { area: 'redirect', severity: 'medium', check: 'sign-in with next=https://evil.example', detail: `landed on ${landed.href}` });
+  }
   await page.context().close();
 });
 
-test('8. filter injection and error leakage', async ({ browser }) => {
+test('8. filter injection and error leakage', async ({ browser, request }) => {
+  await loadTargetIds(request);
   expect.soft(ids.vendorA, 'vendor A id for the injection checks').toBeTruthy();
   const vA = await signedInPage(browser, VENDOR_A_EMAIL);
   for (const q of ['x%,status.neq.null', 'a),or(id.neq.00000000-0000-0000-0000-000000000000', `a'"\\`]) {

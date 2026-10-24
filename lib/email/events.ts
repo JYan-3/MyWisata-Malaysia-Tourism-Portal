@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { emailLocale } from './copy';
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
@@ -144,8 +145,28 @@ export async function enqueueWithdrawalEmail(input: {
   });
 }
 
+/** Dispatch is an accelerator; the business transaction and Cron retain the intent. */
+export function scheduleEmailDelivery(): void {
+  after(async () => {
+    try { await processEmailOutbox(10); }
+    catch { console.error('[email-outbox] email_processing_unavailable'); }
+  });
+}
+
+/** Backwards-compatible name for order receipt callers. */
+export function scheduleReceiptDelivery(): void {
+  scheduleEmailDelivery();
+}
+
 export async function enqueueUserTransactionEmail(input: UserEmailEventInput): Promise<void> {
   const db = createServiceClient();
+  if (input.eventType === 'checkout_succeeded' && input.orderId) {
+    const { data, error } = await db.rpc('queue_order_receipt', { p_order_id: input.orderId });
+    if (error || data !== true) throw new Error('receipt_queue_unavailable');
+    try { await processEmailOutbox(10); }
+    catch { console.error('[email-outbox] email_processing_unavailable'); }
+    return;
+  }
   const { data: user, error } = await db
     .from('users')
     .select('email, full_name, preferred_locale')
