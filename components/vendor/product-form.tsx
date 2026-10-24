@@ -18,6 +18,7 @@ import type { ListingSuggestion } from '@/lib/ai/listing-suggestions';
 import { canonicalCategorySlug, normalizeCategoryRows, type CanonicalCategoryOption } from '@/lib/customer/discovery-categories';
 import { useTranslation } from 'react-i18next';
 import { formatMYRNumber } from '@/lib/i18n/format';
+import { ProductTypeSelector } from '@/components/vendor/product-type-selector';
 
 interface Props {
   vendorId: string;
@@ -56,6 +57,9 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   const requiresBooking = watch('requiresBooking');
   const ticketEntryPolicy = watch('ticketEntryPolicy');
   const tags = normalizeProductTags(watch('tags'));
+  const selectedCategoryId = watch('categoryId');
+  const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
+  const typeSlugs = (watch('typeSlugs') || []) as string[];
   const gallery = (watch('gallery') || []) as { url: string; alt?: string }[];
 
   useEffect(() => {
@@ -112,7 +116,10 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     setValue('tags', suggestionDraft.tags.join(', '), { shouldDirty: true });
     const suggestedSlug = canonicalCategorySlug(suggestionDraft.category);
     const matchedCategory = categories.find((category) => category.slug === suggestedSlug || category.name.toLowerCase() === suggestionDraft.category.toLowerCase());
-    if (matchedCategory) setValue('categoryId', matchedCategory.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    if (matchedCategory) {
+      setValue('categoryId', matchedCategory.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+      setValue('typeSlugs', [], { shouldDirty: true, shouldValidate: true });
+    }
     setSuggestionDraft(null);
     setSuggestionMessage(t('productForm.draftApplied'));
   }
@@ -140,6 +147,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         : undefined,
       basePrice: Number(data.basePrice),
       categoryId: data.categoryId || undefined,
+      typeSlugs: data.typeSlugs || [],
       coverUrl: data.coverUrl || undefined,
       tags: normalizedTags.length ? normalizedTags : undefined,
       submissionMode: intent,
@@ -174,8 +182,12 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         : `/api/vendors/${vendorId}/products`;
         
       const contentFields = ['name', 'description', 'productType', 'requiresBooking', 'ticketEntryPolicy', 'ticketEntryLimit', 'ticketValidityDays', 'basePrice', 'categoryId', 'coverUrl', 'tags', 'defaultCapacity', 'digitalAssetUrl', 'digitalAssetName', 'digitalAssetType', 'digitalAssetSize', 'gallery'];
+      const changedFields = Object.keys(dirtyFields).filter((field) => field !== 'typeSlugs' && field !== 'submissionMode');
+      const taxonomyOnly = Boolean(isEdit && dirtyFields.typeSlugs && changedFields.length === 0);
       const inventoryOnlySetup = Boolean(initialData?.id && initialData.inventoryConfigured === false && initialData.inventorySetupSingleEntry !== false && !contentFields.some((field) => dirtyFields[field]));
-      const requestData = inventoryOnlySetup
+      const requestData = taxonomyOnly
+        ? { typeSlugs: normalizedData.typeSlugs }
+        : inventoryOnlySetup
         ? {
             ...(normalizedData.availableStock !== undefined ? { availableStock: normalizedData.availableStock } : {}),
             ...(dirtyFields.lowStockThreshold && normalizedData.lowStockThreshold !== undefined ? { lowStockThreshold: normalizedData.lowStockThreshold } : {}),
@@ -272,7 +284,9 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.category')}</label>
-            <select {...register('categoryId')} className="w-full border border-gray-300 dark:border-border rounded-lg px-3 py-2 text-sm">
+            <select {...register('categoryId', { onChange: (event) => {
+              if (event.target.value !== selectedCategoryId) setValue('typeSlugs', [], { shouldDirty: true, shouldValidate: true });
+            } })} className="w-full border border-gray-300 dark:border-border rounded-lg px-3 py-2 text-sm">
               <option value="">{t('productForm.selectCategory')}</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
@@ -280,6 +294,12 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             {errors.categoryId && <p className="text-red-500 text-xs mt-1">{(errors.categoryId as any)?.message || t('productForm.categoryInvalid')}</p>}
           </div>
         </div>
+
+        <ProductTypeSelector
+          categorySlug={selectedCategory?.slug}
+          value={typeSlugs}
+          onChange={(next) => setValue('typeSlugs', next, { shouldDirty: true, shouldValidate: true })}
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('productForm.tags')}</label>

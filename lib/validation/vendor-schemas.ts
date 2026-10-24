@@ -7,6 +7,7 @@ import { TICKET_ENTRY_POLICIES } from '@/lib/tickets/product-ticket-policy';
 import { validateMalaysianPhone } from '@/lib/phone/normalize';
 import { parseInternationalPhone } from '@/lib/phone/international';
 import { malaysiaDateTimeLocalToIso } from '@/lib/datetime/malaysia';
+import { isAccommodationPropertyTypeSlug, isOutletBadgeSlug, isProductTypeSlug } from '@/lib/vendor/taxonomy';
 
 // ── Common building blocks ─────────────────────────────────
 
@@ -110,6 +111,14 @@ export const vendorSuspendSchema = z.object({
 
 export const FOOD_SERVICE_MODES = ["dine_in", "takeaway"] as const;
 
+const uniqueControlledSlugs = (isAllowed: (slug: string) => boolean, max: number) => z.array(z.string().min(1).max(64))
+  .max(max)
+  .refine((slugs) => new Set(slugs).size === slugs.length, 'Duplicate values are not allowed')
+  .refine((slugs) => slugs.every(isAllowed), 'Contains an unsupported value');
+const outletBadgeSlugsSchema = uniqueControlledSlugs(isOutletBadgeSlug, 3);
+const accommodationTypeSlugsSchema = uniqueControlledSlugs(isAccommodationPropertyTypeSlug, 7);
+const productTypeSlugsSchema = uniqueControlledSlugs(isProductTypeSlug, 9);
+
 export const outletCreateSchema = z.object({
   name: z.string().trim().min(2).max(255),
   slug: slug.optional(),
@@ -136,6 +145,8 @@ export const outletCreateSchema = z.object({
   foodServiceModes: z.array(z.enum(FOOD_SERVICE_MODES)).min(1).max(2)
     .refine((modes) => new Set(modes).size === modes.length)
     .default(["dine_in", "takeaway"]),
+  badgeSlugs: outletBadgeSlugsSchema.default([]),
+  accommodationTypeSlugs: accommodationTypeSlugsSchema.default([]),
 }).strict();
 
 // .partial() keeps .default(), which would add foodServiceModes to every update (blocking managers'
@@ -144,6 +155,8 @@ export const outletUpdateSchema = outletCreateSchema.partial().extend({
   foodServiceModes: z.array(z.enum(FOOD_SERVICE_MODES)).min(1).max(2)
     .refine((modes) => new Set(modes).size === modes.length)
     .optional(),
+  badgeSlugs: outletBadgeSlugsSchema.optional(),
+  accommodationTypeSlugs: accommodationTypeSlugsSchema.optional(),
 });
 
 // ── Product ────────────────────────────────────────────────
@@ -159,6 +172,7 @@ export const productCreateSchema = z.object({
   ticketValidityDays: z.number().int().min(1).max(365).optional(),
   basePrice: rmMoney.min(0.01),
   categoryId: optionalUuid.transform((value) => value || undefined),
+  typeSlugs: productTypeSlugsSchema.default([]),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
   tags: z.array(z.string().max(50)).max(20).optional(),
   submissionMode: z.enum(['draft', 'review']).default('review'),
@@ -173,7 +187,14 @@ export const productCreateSchema = z.object({
   outletId: uuid,
 }).strict();
 
-export const productUpdateSchema = productCreateSchema.partial().omit({ outletId: true }).extend({ status: z.enum(['active', 'inactive', 'archived']).optional() });
+export const productUpdateSchema = productCreateSchema.partial().omit({ outletId: true }).extend({
+  typeSlugs: productTypeSlugsSchema.optional(),
+  status: z.enum(['active', 'inactive', 'archived']).optional(),
+});
+
+export const productTaxonomyUpdateSchema = z.object({
+  typeSlugs: productTypeSlugsSchema,
+}).strict();
 
 // ── Variant ────────────────────────────────────────────────
 

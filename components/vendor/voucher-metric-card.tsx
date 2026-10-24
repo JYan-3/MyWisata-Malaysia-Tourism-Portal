@@ -31,7 +31,7 @@ export function VoucherMetricCard({
       className={cn(
         density === "compact"
           ? "rounded-xl border border-border bg-card px-4 py-3"
-          : "rounded-2xl border border-border bg-card p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md",
+          : "rounded-2xl border border-border bg-card p-5 shadow-sm",
         className,
       )}
     >

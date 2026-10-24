@@ -60,7 +60,6 @@ export default function DevListingsPage() {
                     <span className="truncate">{a.name}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {formatMYR(Number(a.price))}
-                      {a.isHiddenGem ? " · 💎" : ""}
                     </span>
                   </Link>
                 ))}

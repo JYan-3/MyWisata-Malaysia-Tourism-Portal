@@ -7,7 +7,11 @@ import { findElements, findOne, installTestDom, TestElement, TestEvent, type Tes
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options?.count !== undefined ? `${key}:${options.count}` : key), i18n: { language: "en" } }),
+  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => {
+    if (key === "ui.reviews.ratingBucketLabel") return `${options?.rating}★ (${options?.reviewCount})`;
+    if (key === "ui.reviews.paginationSummary") return `${options?.pageLabel} · ${options?.reviewCountLabel}`;
+    return options?.count !== undefined ? `${key}:${options.count}` : key;
+  }, i18n: { language: "en" } }),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/providers/cart", () => ({ useCart: () => ({ addItem: vi.fn(), selectedKeys: new Set<string>(), setSelectedKeys: vi.fn() }) }));
@@ -111,6 +115,20 @@ describe("hotel page", () => {
     expect(markup).not.toContain("/customer/activity/");
   });
 
+  it("shows the property's outlet badges and property types", () => {
+    const property = {
+      ...outlet,
+      badgeSlugs: ["hidden_gem", "family_friendly"],
+      accommodationTypeSlugs: ["boutique", "resort"],
+    };
+    const markup = renderToStaticMarkup(<HotelPage outlet={property} rooms={[]} gallery={[]} />);
+
+    expect(markup).toContain("ui.labels.hiddenGem");
+    expect(markup).toContain("strictMigration.activityDetail.familyFriendly");
+    expect(markup).toContain("strictMigration.activityDetail.types.boutique");
+    expect(markup).toContain("strictMigration.activityDetail.types.resort");
+  });
+
   it("lists a room's bed, size and amenities in the popup content", () => {
     const markup = renderToStaticMarkup(<RoomDetailsContent room={full} />);
     expect(markup).toContain("1 king bed");
@@ -148,6 +166,8 @@ describe("hotel page", () => {
       outlet={outlet}
       rooms={[full]}
       gallery={[]}
+      reviewTotal={8}
+      reviewRatingBuckets={[{ rating: 5, count: 4 }, { rating: 4, count: 4 }]}
       reviews={[{
         id: "review-1",
         rating: 5,
@@ -156,6 +176,10 @@ describe("hotel page", () => {
         createdAt: "2026-09-12T10:00:00.000Z",
         authorName: "Aisyah R.",
         verifiedPurchase: true,
+        productId: "room-1",
+        productName: "Garden Family Room",
+        outletId: "hotel-1",
+        outletName: "Pelangi Beach Resort & Spa",
       }]}
     />);
 
@@ -166,9 +190,12 @@ describe("hotel page", () => {
     expect(markup).toContain("method=\"get\"");
     expect(markup).toContain("ui.hotel.checkAvailability");
     expect(markup).not.toContain("ui.property.search");
-    expect(markup).toContain("A lovely stay");
+    expect(markup).not.toContain("A lovely stay");
     expect(markup).toContain("The room was quiet and the staff were kind.");
     expect(markup).toContain("ui.reviews.verifiedPurchase");
+    expect(markup).toContain("Garden Family Room");
+    expect(markup).toContain("ui.reviews.allRatings (8)");
+    expect(markup).toContain("5★ (4)");
   });
 
   it("captures guest details before adding and does not redirect directly to checkout", () => {

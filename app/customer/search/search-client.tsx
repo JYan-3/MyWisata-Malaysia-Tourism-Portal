@@ -27,6 +27,8 @@ import type { FeaturedEventPromotion } from "@/lib/customer/event-promotions";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import { isOperatingHoursAtAvailable, isOperatingHoursWindowAvailable } from "@/lib/customer/operating-hours";
 import { LocalizedContent } from "@/components/customer/localized-content";
+import { buildActivityPath } from "@/lib/customer/navigation-context";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 type PlaceSuggestion = { display_name: string; short: string };
 
@@ -64,11 +66,11 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   const image = getPlaceActivityImage(activity);
 
   return (
-    <article className="group overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
-      <Link href={`/customer/activity/${activity.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
+    <article className="overflow-hidden rounded-[24px] border border-border bg-card shadow-sm">
+      <Link href={buildActivityPath(activity.id, undefined, activity.outlet.id)} className="group/activity-media block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
         <div className="relative aspect-[1.55] overflow-hidden bg-[#eef2ff]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image} alt={activity.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <img src={image} alt={activity.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/activity-media:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#071923]/80 via-[#071923]/5 to-transparent" />
           <span className="absolute left-3 top-3 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">{t("ui.labels.placeBasedExperience")}</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
@@ -78,7 +80,7 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name}>
-              {({ text, control }) => <><Link href={`/customer/activity/${activity.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h3 className="break-words whitespace-normal text-sm font-bold leading-5 text-[#122b3a]">{text}</h3></Link>{control}</>}
+              {({ text, control }) => <><Link href={buildActivityPath(activity.id, undefined, activity.outlet.id)} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h3 className="break-words whitespace-normal text-sm font-bold leading-5 text-[#122b3a]">{text}</h3></Link>{control}</>}
             </LocalizedContent>
             <p className="mt-1 text-xs capitalize text-[#6d7e83]">{typeLabel} · {vendorBacked && activity.requiresBooking ? t("ui.search.guidedBookable") : vendorBacked ? t("ui.search.vendorExperience") : t("ui.labels.publicPlace")}</p>
           </div>
@@ -87,7 +89,7 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
         <p className="break-words whitespace-normal text-xs leading-5 text-[#6d7e83]"><LocalizedContent entityType="product" entityId={activity.id} field="description" sourceText={activity.description} /></p>
         <div className="flex flex-wrap items-start justify-between gap-3 text-[11px] text-[#6d7e83]">
           <span className="min-w-0 flex-1 break-words whitespace-normal">{vendorBacked ? t("ui.search.providedBy", { vendor: provider }) : t("ui.search.noVendorRequired")}</span>
-          <Link href={`/customer/activity/${activity.id}`} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">{t("ui.actions.viewDetails")} <ArrowRight size={13} /></Link>
+          <Link href={buildActivityPath(activity.id, undefined, activity.outlet.id)} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">{t("ui.actions.viewDetails")} <ArrowRight size={13} /></Link>
         </div>
       </div>
       <span className="sr-only">{t("ui.search.placeCard", { index: index + 1 })}</span>
@@ -128,7 +130,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       const labels = map.get(vendorId) ?? new Set<string>();
       const canonicalSlug = canonicalCategorySlug(activity.categorySlug);
       labels.add(canonicalSlug ?? activity.categorySlug ?? activity.category);
-      if (activity.isHiddenGem) labels.add("hidden_gem");
+      if (activity.outlet.badgeSlugs?.includes("hidden_gem")) labels.add("hidden_gem");
       map.set(vendorId, labels);
     }
     return map;
@@ -154,26 +156,33 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     });
     const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
     const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
-    const matchesCategory = !category || labels.has(category);
+    const matchesCategory = !category || (category === "hidden_gem"
+      ? vendor.outlets.some((outlet) => outlet.badgeSlugs?.includes("hidden_gem"))
+      : labels.has(category));
     const vendorActivities = initialResults.filter((activity) => activity.outlet.vendorId === vendor.id);
+    const selectedBadgeSlugs = [
+      filters.hiddenGemOnly && "hidden_gem",
+      filters.familyFriendlyOnly && "family_friendly",
+      filters.coupleFriendlyOnly && "couple_friendly",
+    ].filter(Boolean) as string[];
+    const matchesOutletBadges = selectedBadgeSlugs.length === 0 || vendor.outlets.some((outlet) =>
+      selectedBadgeSlugs.some((slug) => outlet.badgeSlugs?.includes(slug)),
+    );
     const hasActivityFilters = filters.categories.length > 0 || filters.types.length > 0 || filters.priceMax !== null ||
-      filters.freeOnly || filters.bookableOnly || filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly;
+      filters.freeOnly || filters.bookableOnly;
     const matchesActivities = !hasActivityFilters || vendorActivities.some((activity) => {
       const activityCategory = canonicalCategorySlug(activity.categorySlug) ?? activity.categorySlug ?? activity.category;
       const matchesTypes = filters.types.length === 0 || filters.types.some((token) => {
         const [selectedCategory, selectedType] = token.split(":", 2);
         return selectedCategory === activityCategory && Boolean(selectedType && activity.typeSlugs?.includes(selectedType));
       });
-      const matchesCategoryBranch = filters.categories.length === 0 || filters.categories.includes(activityCategory) || (filters.hiddenGemOnly && activity.isHiddenGem);
-      const matchesBoolean = !(filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) ||
-        (filters.hiddenGemOnly && activity.isHiddenGem) ||
-        (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
-        (filters.coupleFriendlyOnly && activity.isCoupleFriendly);
+      const matchesCategoryBranch = filters.categories.length === 0 || filters.categories.includes(activityCategory) ||
+        (filters.categories.includes("hidden_gem") && activity.outlet.badgeSlugs?.includes("hidden_gem"));
       const matchesPrice = filters.priceMax === null || activity.price <= filters.priceMax;
       const matchesCommerce = (!filters.freeOnly || activity.price === 0) && (!filters.bookableOnly || activity.requiresBooking);
-      return matchesCategoryBranch && matchesTypes && matchesBoolean && matchesPrice && matchesCommerce;
+      return matchesCategoryBranch && matchesTypes && matchesPrice && matchesCommerce;
     });
-    return matchesQuery && matchesOutlets && matchesCategory && matchesActivities;
+    return matchesQuery && matchesOutlets && matchesCategory && matchesActivities && matchesOutletBadges;
   }), [categoriesByVendor, filters, initialResults, initialVendors]);
 
   const featuredVendorIds = useMemo(
@@ -305,6 +314,18 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
               <VendorCard
                 key={vendor.id}
                 vendor={vendor}
+                destinationHref={(() => {
+                  const badgeSlugs = [
+                    filters.hiddenGemOnly && "hidden_gem",
+                    filters.familyFriendlyOnly && "family_friendly",
+                    filters.coupleFriendlyOnly && "couple_friendly",
+                    filters.categories.includes("hidden_gem") && "hidden_gem",
+                  ].filter(Boolean) as string[];
+                  const matchingOutlet = badgeSlugs.length > 0
+                    ? vendor.outlets.find((outlet) => badgeSlugs.some((slug) => outlet.badgeSlugs?.includes(slug)))
+                    : undefined;
+                  return matchingOutlet ? getOutletShopHref(matchingOutlet.id) : undefined;
+                })()}
                 categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
                 index={index}
                 isFeatured={featuredVendorIds.has(vendor.id)}

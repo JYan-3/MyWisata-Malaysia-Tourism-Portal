@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getProductReviewEligibility, getProductReviewsPage } from "@/backend/domains/catalogue";
+import { getReviewRatingSummary } from "@/backend/domains/vendor-reviews";
 import { cleanUserContent } from "@/lib/moderation/clean";
 import { apiFail, apiOk, parseBody, productReviewSubmitSchema } from "@/lib/validation/schemas";
 
@@ -27,15 +28,24 @@ export async function GET(request: Request, { params }: Props) {
   if (outletIdParam && !UUID.test(outletIdParam)) {
     return apiFail("INVALID_QUERY", "outletId must be a valid UUID", 400);
   }
+  const ratingParam = query.get("rating");
+  const rating = ratingParam === null ? undefined : Number(ratingParam);
+  if (rating !== undefined && (!Number.isInteger(rating) || rating < 1 || rating > 5)) {
+    return apiFail("INVALID_QUERY", "rating must be an integer between 1 and 5", 400);
+  }
 
   try {
     const db = await createClient();
     const { data: { user } } = await db.auth.getUser();
-    const data = await getProductReviewsPage(productId, { page, pageSize, outletId: outletIdParam ?? undefined }, db);
+    const service = createServiceClient();
+    const [data, ratingSummary] = await Promise.all([
+      getProductReviewsPage(productId, { page, pageSize, outletId: outletIdParam ?? undefined, rating }, db),
+      getReviewRatingSummary(outletIdParam ? "product_outlet" : "product", productId, service, outletIdParam ?? undefined),
+    ]);
     const viewer = user
-      ? await getProductReviewEligibility(productId, user.id, { outletId: outletIdParam ?? undefined }, createServiceClient())
+      ? await getProductReviewEligibility(productId, user.id, { outletId: outletIdParam ?? undefined }, service)
       : { state: "signed_out" as const, canReview: false, orderItemId: null };
-    return apiOk({ ...data, viewer });
+    return apiOk({ ...data, ratingBuckets: ratingSummary.buckets, viewer });
   } catch (error) {
     return apiFail("DB_ERROR", error instanceof Error ? error.message : "Could not load reviews", 500);
   }

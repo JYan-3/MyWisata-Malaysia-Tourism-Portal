@@ -37,7 +37,7 @@ export function PlaceActivityCard({
     <>
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={imageAlt} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        <img src={imageUrl} alt={imageAlt} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/place-media:scale-105" />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">{imageFallback}</div>
       )}
@@ -48,9 +48,9 @@ export function PlaceActivityCard({
   );
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md sm:flex-row">
+    <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:flex-row">
       {href ? (
-        <Link href={href} className="relative block aspect-[16/10] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
+        <Link href={href} className="group/place-media relative block aspect-[16/10] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
           {media}
         </Link>
       ) : (
@@ -66,11 +66,11 @@ export function PlaceActivityCard({
               <LocalizedContentHeading
                 {...titleTranslation}
                 href={href}
-                linkClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                headingClassName={href ? "break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary" : "break-words whitespace-normal text-lg font-bold leading-tight text-foreground"}
+                linkClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 hover:text-primary"
+                headingClassName="break-words whitespace-normal text-lg font-bold leading-tight text-foreground"
               />
             ) : href ? (
-              <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{title}</h3></Link>
+              <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 hover:text-primary"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3></Link>
             ) : <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3>}
             {supportingText && <p className="mt-1 break-words whitespace-normal text-xs font-semibold text-primary">{supportingText}</p>}
           </div>

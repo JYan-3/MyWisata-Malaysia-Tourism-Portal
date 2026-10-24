@@ -1,6 +1,6 @@
 import type { GalleryItem, OutletPageBlock, OutletPageDocument } from '@/lib/vendor/outlet-page-schema';
 import type { RoomDetails } from '@/lib/customer/room-details';
-import type { ProductReview } from '@/backend/core/types';
+import type { ReviewRatingBucket, ScopedReviewItem } from '@/backend/domains/vendor-reviews';
 
 export interface OutletRendererOutlet {
   id: string;
@@ -16,6 +16,8 @@ export interface OutletRendererOutlet {
   operating_hours?: unknown;
   wheelchair_accessible?: boolean | null;
   pet_friendly?: boolean | null;
+  badgeSlugs?: string[];
+  accommodationTypeSlugs?: string[];
   logoUrl?: string | null;
   stay?: {
     checkIn: string;
@@ -68,7 +70,9 @@ export interface OutletPageRendererProps {
   document: OutletPageDocument;
   outlet: OutletRendererOutlet;
   products?: OutletRendererProduct[];
-  reviews?: ProductReview[];
+  reviews?: ScopedReviewItem[];
+  reviewRatingBuckets?: ReviewRatingBucket[];
+  reviewTotal?: number;
   mode?: 'editor' | 'public';
   selectedBlockId?: string | null;
   onSelect?: (blockId: string) => void;

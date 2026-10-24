@@ -12,27 +12,32 @@ import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useTranslation } from 'react-i18next';
 import { SAMPLE_MY_PHONE } from '@/lib/i18n/invariant-tokens';
 import { z } from 'zod';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ACCOMMODATION_PROPERTY_TYPES, OUTLET_BADGE_OPTIONS } from '@/lib/vendor/taxonomy';
 
 interface Props {
   vendorId: string;
   initialData?: OutletCreate & { id?: string };
+  showAccommodationTypes?: boolean;
   onSuccess?: () => void;
   onClose?: () => void;
 }
 
-export default function OutletForm({ vendorId, initialData, onSuccess, onClose }: Props) {
+export default function OutletForm({ vendorId, initialData, showAccommodationTypes = false, onSuccess, onClose }: Props) {
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<z.input<typeof outletCreateSchema>, unknown, OutletCreate>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting, dirtyFields } } = useForm<z.input<typeof outletCreateSchema>, unknown, OutletCreate>({
     resolver: zodResolver(outletCreateSchema),
     defaultValues: { country: 'Malaysia', welcomeEnabled: true, ...initialData },
   });
   // eslint-disable-next-line react-hooks/incompatible-library
   const address = watch('address');
   const foodServiceModes = watch('foodServiceModes') ?? [];
+  const badgeSlugs = watch('badgeSlugs') ?? [];
+  const accommodationTypeSlugs = watch('accommodationTypeSlugs') ?? [];
 
   function applyAddress(selection: AddressSelection) {
     setValue('address', selection.address || selection.label, { shouldDirty: true });
@@ -51,11 +56,17 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
       const url = isEdit 
         ? `/api/vendors/${vendorId}/outlets/${initialData.id}` 
         : `/api/vendors/${vendorId}/outlets`;
+      const taxonomyFields = ['badgeSlugs', 'accommodationTypeSlugs'] as const;
+      const changedFields = Object.keys(dirtyFields);
+      const taxonomyOnly = isEdit && changedFields.length > 0 && changedFields.every((field) => taxonomyFields.includes(field as (typeof taxonomyFields)[number]));
+      const requestData = taxonomyOnly
+        ? Object.fromEntries(taxonomyFields.filter((field) => dirtyFields[field]).map((field) => [field, data[field]]))
+        : data;
         
       const res = await fetch(url, {
         method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
       });
       
       const result = await res.json();
@@ -191,6 +202,38 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
           </div>
           {errors.foodServiceModes && <p className="text-xs text-red-600 dark:text-red-300">{t('outletForm.foodServiceModeRequired')}</p>}
         </fieldset>
+
+        <fieldset className="rounded-xl border border-border bg-card p-4">
+          <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.outletBadges.title')}</legend>
+          <p className="mb-3 text-xs text-muted-foreground">{t('taxonomy.outletBadges.hint')}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {OUTLET_BADGE_OPTIONS.map(({ slug, labelKey }) => {
+              const id = `outlet-badge-${slug}`;
+              const checked = badgeSlugs.includes(slug);
+              return <label key={slug} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60">
+                <Checkbox id={id} checked={checked} onCheckedChange={(nextChecked) => setValue('badgeSlugs', nextChecked ? [...badgeSlugs, slug] : badgeSlugs.filter((value) => value !== slug), { shouldDirty: true, shouldValidate: true })} />
+                {t(`taxonomy.outletBadges.options.${labelKey}`)}
+              </label>;
+            })}
+          </div>
+          {errors.badgeSlugs && <p className="mt-2 text-xs text-destructive">{errors.badgeSlugs.message}</p>}
+        </fieldset>
+
+        {showAccommodationTypes && <fieldset className="rounded-xl border border-border bg-card p-4">
+          <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.accommodationTypes.title')}</legend>
+          <p className="mb-3 text-xs text-muted-foreground">{t('taxonomy.accommodationTypes.hint')}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {ACCOMMODATION_PROPERTY_TYPES.map(({ slug }) => {
+              const id = `property-type-${slug}`;
+              const checked = accommodationTypeSlugs.includes(slug);
+              return <label key={slug} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60">
+                <Checkbox id={id} checked={checked} onCheckedChange={(nextChecked) => setValue('accommodationTypeSlugs', nextChecked ? [...accommodationTypeSlugs, slug] : accommodationTypeSlugs.filter((value) => value !== slug), { shouldDirty: true, shouldValidate: true })} />
+                {t(`taxonomy.accommodationTypes.options.${slug}`)}
+              </label>;
+            })}
+          </div>
+          {errors.accommodationTypeSlugs && <p className="mt-2 text-xs text-destructive">{errors.accommodationTypeSlugs.message}</p>}
+        </fieldset>}
 
         <div>
           <div className="flex items-center justify-between mb-1">

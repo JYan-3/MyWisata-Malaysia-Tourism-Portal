@@ -114,11 +114,11 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
   const priceLabel = t("ui.outletMenu.price", { price: formatMYRNumber(Number(product.base_price)) });
 
   return (
-    <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
-      <Link href={detailHref} className="relative block aspect-[4/3] overflow-hidden bg-secondary" aria-label={t("ui.outletMenu.viewProduct", { product: product.name })}>
+    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <Link href={detailHref} className="group/product-media relative block aspect-[4/3] overflow-hidden bg-secondary" aria-label={t("ui.outletMenu.viewProduct", { product: product.name })}>
         {product.cover_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105" />
         ) : fallbackImage(categoryLabel, t("ui.outlet.photoComingSoon"))}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 pb-3 pt-12">
           <span className="inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">

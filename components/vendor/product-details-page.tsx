@@ -6,6 +6,8 @@ import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import VariantManager from '@/components/vendor/variant-manager';
 import PriceRuleManager from '@/components/vendor/price-rule-manager';
 import { StatusBadge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ProductTypeSelector } from '@/components/vendor/product-type-selector';
 import { ShareButton } from '@/components/shared/share-button';
 import { outletIdLabel, outletLocation, outletShortName } from '@/lib/outlet-display';
 import { getProductDetailsLayoutClasses } from '@/lib/vendor/product-details-layout';
@@ -13,6 +15,9 @@ import { productImageUrl } from '@/lib/storage/product-image';
 import { useTranslation } from 'react-i18next';
 import { isAppLocale } from '@/lib/i18n/locale';
 import { formatMYR, formatNumber } from '@/lib/i18n/format';
+import { CATEGORY_DETAILS } from '@/lib/customer/category-details';
+import { canonicalCategorySlug } from '@/lib/customer/discovery-categories';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface ProductVariantData {
   id: string;
@@ -40,6 +45,8 @@ export interface ProductDetailsData {
   name: string;
   description?: string | null;
   product_type: string;
+  type_slugs?: string[] | null;
+  categories?: { name?: string | null; slug?: string | null } | null;
   base_price: number;
   status: string;
   requires_booking: boolean;
@@ -56,6 +63,7 @@ interface Props {
   product: ProductDetailsData;
   vendorId: string;
   canManageOutlet: boolean;
+  canEditType?: boolean;
   canViewDetails: boolean;
   productTypeLabel: string;
   productImageKind: 'food' | 'experience' | 'product';
@@ -84,10 +92,41 @@ function ProductImage({ product, kind }: { product: ProductDetailsData; kind: Pr
   );
 }
 
-export default function ProductDetailsPage({ product, vendorId, canManageOutlet, canViewDetails, productTypeLabel, productImageKind, outletFallback, outlets: outletsProp, productOptions, copiedProductId, onCopyProductId, onBack, onEdit, onUpdate }: Props) {
+export default function ProductDetailsPage({ product, vendorId, canManageOutlet, canEditType = false, canViewDetails, productTypeLabel, productImageKind, outletFallback, outlets: outletsProp, productOptions, copiedProductId, onCopyProductId, onBack, onEdit, onUpdate }: Props) {
   const { t, i18n } = useTranslation('vendor');
+  const { showFeedback } = useActionFeedback();
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : 'en';
   const layout = getProductDetailsLayoutClasses();
+  const categorySlug = canonicalCategorySlug(product.categories?.slug);
+  const hasEditableProductTypes = Boolean(categorySlug && categorySlug !== 'accommodation' && CATEGORY_DETAILS[categorySlug]?.types.length);
+  const [savedTypeSlugs, setSavedTypeSlugs] = useState<string[]>(product.type_slugs ?? []);
+  const [typeSlugs, setTypeSlugs] = useState<string[]>(product.type_slugs ?? []);
+  const [savingTypes, setSavingTypes] = useState(false);
+  const [typeSaveError, setTypeSaveError] = useState('');
+  const typesChanged = JSON.stringify(typeSlugs) !== JSON.stringify(savedTypeSlugs);
+
+  async function saveProductTypes() {
+    if (!canEditType || !typesChanged || savingTypes) return;
+    setSavingTypes(true);
+    setTypeSaveError('');
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${product.id}/taxonomy`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ typeSlugs }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error?.message || t('productDetails.typeSaveFailed'));
+      setSavedTypeSlugs(typeSlugs);
+      showFeedback('success', t('productDetails.typeUpdated'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('productDetails.typeSaveFailed');
+      setTypeSaveError(message);
+      showFeedback('error', message);
+    } finally {
+      setSavingTypes(false);
+    }
+  }
 
   // Build a normalised outlet list: prefer outlets[] (multi-outlet API shape),
   // fall back to the singular outlet / outletFallback for legacy single-outlet products.
@@ -247,6 +286,18 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
           </div>
           <p className="mt-5 max-w-4xl text-sm leading-7 text-gray-600 dark:text-muted-foreground">{product.description || t('productDetails.noDescription')}</p>
         </section>
+
+        {canEditType && hasEditableProductTypes && <section className={layout.section} aria-label={t('taxonomy.productTypes.title')}>
+          <ProductTypeSelector
+            categorySlug={categorySlug}
+            value={typeSlugs}
+            onChange={setTypeSlugs}
+          />
+          {typeSaveError && <p role="alert" className="mt-3 text-sm text-destructive">{typeSaveError}</p>}
+          <Button type="button" className="mt-3" disabled={!typesChanged || savingTypes} onClick={() => void saveProductTypes()}>
+            {savingTypes ? t('productDetails.savingTypes') : t('productDetails.saveTypes')}
+          </Button>
+        </section>}
 
         <section id="inventory" className={layout.section}>
           <div>

@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
 import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, relationOne, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
@@ -16,11 +15,60 @@ import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { readRoomDetails } from "@/lib/customer/room-details";
-import { getPublicReviewAuthorNames } from "@/backend/domains/catalogue";
-import { toProductReview } from "@/backend/domains/review-presenter";
-import type { ProductReview } from "@/backend/core/types";
+import { getReviewRatingSummary, getScopedReviewPage } from "@/backend/domains/vendor-reviews";
+import type { OperatingHours } from "@/backend/core/types";
 
 export const dynamic = "force-dynamic";
+
+const PUBLIC_OUTLET_SELECT = "id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,check_in_time,check_out_time,stay_policies,hotel_about,amenity_codes,badge_slugs,accommodation_type_slugs,vendors(id,name,logo_url)";
+const PUBLIC_OUTLET_SELECT_WITHOUT_TAXONOMY = PUBLIC_OUTLET_SELECT.replace(",badge_slugs,accommodation_type_slugs", "");
+
+type PublicOutletRow = {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string | null;
+  operating_hours: OperatingHours | null;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  stay_policies: string | null;
+  hotel_about: string | null;
+  amenity_codes: string[] | null;
+  badge_slugs?: string[] | null;
+  accommodation_type_slugs?: string[] | null;
+  vendors: { id: string; name: string | null; logo_url: string | null } | { id: string; name: string | null; logo_url: string | null }[] | null;
+};
+
+type PublicOutletQueryResult = {
+  data: PublicOutletRow | null;
+  error: { code?: string; message?: string } | null;
+};
+
+function isMissingOutletTaxonomy(error: { code?: string; message?: string } | null | undefined) {
+  return (error?.code === "42703" || error?.code === "PGRST204")
+    && Boolean(error.message?.includes("badge_slugs") || error.message?.includes("accommodation_type_slugs"));
+}
+
+async function selectPublicOutlet(db: Awaited<ReturnType<typeof createClient>>, outletId: string, vendorId: string) {
+  const query = async (columns: string): Promise<PublicOutletQueryResult> => {
+    const result = await db
+      .from("outlets")
+      .select(columns)
+      .eq("id", outletId)
+      .eq("vendor_id", vendorId)
+      .eq("status", "active")
+      .eq("review_status", "approved")
+      .maybeSingle();
+    return result as unknown as PublicOutletQueryResult;
+  };
+  const result = await query(PUBLIC_OUTLET_SELECT);
+  if (isMissingOutletTaxonomy(result.error)) return query(PUBLIC_OUTLET_SELECT_WITHOUT_TAXONOMY);
+  return result;
+}
 
 interface Props {
   params: Promise<{ vendorId: string; outletId: string }>;
@@ -30,14 +78,7 @@ interface Props {
 async function getPublicOutletPage(outletId: string, vendorId: string) {
   const db = await createClient();
   const [{ data: outlet }, { data: page }, { data: outlets }, { data: media }] = await Promise.all([
-    db
-      .from("outlets")
-      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,check_in_time,check_out_time,stay_policies,hotel_about,amenity_codes,vendors(id,name,logo_url)")
-      .eq("id", outletId)
-      .eq("vendor_id", vendorId)
-      .eq("status", "active")
-      .eq("review_status", "approved")
-      .maybeSingle(),
+    selectPublicOutlet(db, outletId, vendorId),
     db.from("public_outlet_pages").select("*").eq("outlet_id", outletId).maybeSingle(),
     db.from("outlets").select("id,name").eq("vendor_id", vendorId).eq("status", "active").eq("review_status", "approved").order("name"),
     db.from("media_assets").select("url,alt_text,media_type,sort_order").eq("outlet_id", outletId).is("product_id", null).order("sort_order"),
@@ -55,10 +96,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const document = selectPublicDocument(page || {});
   const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
 
-  // Rating prefix for the WhatsApp/social preview card — never fabricated,
-  // omitted entirely when there are zero visible reviews.
-  const { data: reviewRows } = await createServiceClient().from("reviews").select("rating").eq("outlet_id", outletId).eq("is_visible", true);
-  const { rating } = await ratingFromRows(reviewRows ?? []);
+  // Hotel metadata uses the same accommodation-only aggregate as its review section.
+  const reviewSummary = await getReviewRatingSummary("outlet_accommodation", outletId, createServiceClient());
+  const rating = reviewSummary.total > 0 ? reviewSummary.rating : null;
   const baseDescription = document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name });
   const description = rating !== null ? `★ ${rating.toFixed(1)} · ${baseDescription}` : baseDescription;
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/customer/vendor/${vendorId}/outlet/${outletId}`;
@@ -110,6 +150,8 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
     phone: profile.phone,
     email: profile.email,
     operating_hours: profile.operatingHours,
+    badgeSlugs: outlet.badge_slugs ?? [],
+    accommodationTypeSlugs: outlet.accommodation_type_slugs ?? [],
     logoUrl: logoUrl || vendor?.logo_url || null,
   };
   const availableGallery = gallery.length ? gallery : document.gallery;
@@ -156,22 +198,10 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
   const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
   const STAY_SLUG = "accommodation";
   const stayIds = (products || []).filter((p) => relationOne(p.categories)?.slug === STAY_SLUG).map((p) => p.id);
-  const { data: hotelReviewRows } = stayIds.length
-    ? await db.from("reviews").select("id,rating,title,body,created_at,user_id,product_id").in("product_id", stayIds).eq("outlet_id", outletId).eq("is_visible", true).order("created_at", { ascending: false }).limit(6)
-    : { data: [] };
-  let hotelReviews: ProductReview[] = [];
-  if (hotelReviewRows?.length) {
-    try {
-      const authorNames = await getPublicReviewAuthorNames(db, hotelReviewRows.map((row) => row.user_id ?? ""));
-      hotelReviews = hotelReviewRows.map((row) => toProductReview({
-        ...row,
-        users: { full_name: row.user_id ? authorNames.get(row.user_id) ?? null : null },
-      }));
-    } catch {
-      // Public review text is optional; preserve the hotel page if reviewer names are unavailable.
-      hotelReviews = hotelReviewRows.map((row) => toProductReview({ ...row, users: null }));
-    }
-  }
+  const [hotelReviewPage, hotelReviewSummary] = await Promise.all([
+    getScopedReviewPage("outlet", outletId, { page: 1, pageSize: 6, productCategorySlug: STAY_SLUG }, db),
+    getReviewRatingSummary("outlet_accommodation", outletId, createServiceClient()),
+  ]);
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
   const stay = resolveStaySearch(search, today);
   const nightDays = Array.from({ length: stay.nights }, (_, k) => addDays(stay.checkIn, k));
@@ -242,11 +272,8 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
         policies: outlet.stay_policies ?? null,
         about: outlet.hotel_about ?? null,
         amenities: hotelAmenities,
-        ...(() => {
-          const roomMetrics = stayIds.map((id) => metricByProduct.get(id)).filter((metric) => metric && metric.reviews > 0) as { rating: number; reviews: number }[];
-          const reviews = roomMetrics.reduce((sum, metric) => sum + metric.reviews, 0);
-          return { reviews, rating: reviews ? Math.round((roomMetrics.reduce((sum, metric) => sum + metric.rating * metric.reviews, 0) / reviews) * 10) / 10 : 0 };
-        })(),
+        reviews: hotelReviewSummary.total,
+        rating: hotelReviewSummary.rating,
       },
     }),
   };
@@ -291,7 +318,15 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
           <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
         </div>
       </div>}
-      <OutletPageRenderer document={publicDocument} outlet={stayOutlet} products={menuProducts} reviews={hotelReviews} mode="public" />
+      <OutletPageRenderer
+        document={publicDocument}
+        outlet={stayOutlet}
+        products={menuProducts}
+        reviews={hotelReviewPage.items}
+        reviewRatingBuckets={hotelReviewSummary.buckets}
+        reviewTotal={hotelReviewSummary.total}
+        mode="public"
+      />
     </main>
   );
 }

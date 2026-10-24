@@ -1,4 +1,58 @@
 {
+  "taxonomy": {
+    "productTypes": {
+      "title": "Product types",
+      "hint": "Choose every type that accurately describes this product.",
+      "options": {
+        "chinese": "Chinese",
+        "malay": "Malay",
+        "nyonya": "Nyonya / Peranakan",
+        "indian": "Indian",
+        "mamak": "Mamak / Street",
+        "western": "Western",
+        "seafood": "Seafood",
+        "cafe-dessert": "Café / Dessert",
+        "fusion": "Fusion",
+        "nature": "Nature",
+        "adventure": "Adventure",
+        "cultural": "Cultural / Heritage",
+        "nightlife": "Nightlife",
+        "wellness": "Wellness / Spa",
+        "water": "Water",
+        "sightseeing": "Sightseeing / Tours",
+        "handicrafts": "Handicrafts",
+        "souvenirs": "Souvenirs",
+        "batik-textiles": "Batik / Textiles",
+        "fashion": "Fashion",
+        "jewellery": "Jewellery",
+        "local-produce": "Local Produce / Food",
+        "art-prints": "Art & Prints",
+        "duty-free": "Duty-Free"
+      }
+    },
+    "outletBadges": {
+      "title": "Outlet badges",
+      "hint": "Choose the qualities that describe this outlet.",
+      "options": {
+        "hiddenGem": "Hidden Gem",
+        "familyFriendly": "Family Friendly",
+        "coupleFriendly": "Couple Friendly"
+      }
+    },
+    "accommodationTypes": {
+      "title": "Property types",
+      "hint": "Choose the types that describe this accommodation property.",
+      "options": {
+        "5-star": "5-Star",
+        "4-star": "4-Star",
+        "3-star": "3-Star",
+        "boutique": "Boutique",
+        "homestay": "Homestay",
+        "hostel": "Hostel",
+        "resort": "Resort"
+      }
+    }
+  },
   "hotelProfile": {
     "eyebrow": "Hotel profile",
     "description": "Your hotel page uses a fixed layout. Edit its content here; changes go live after admin review, and your hotel stays live meanwhile.",
@@ -2126,6 +2180,10 @@
     "sectionNavigation": "Product detail sections",
     "shownOnListing": "Shown on the listing page",
     "status": "Status",
+    "saveTypes": "Save product types",
+    "savingTypes": "Saving types…",
+    "typeSaveFailed": "Unable to save product types. Please try again.",
+    "typeUpdated": "Product types updated.",
     "timeSlots": "Managed by time slots",
     "unitsAvailable": "{{count}} units available",
     "variantsHint": "Manage options, price offsets, stock quantity, and the default variant.",

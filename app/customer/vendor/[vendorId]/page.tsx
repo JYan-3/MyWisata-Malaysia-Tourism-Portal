@@ -5,19 +5,19 @@ import { notFound } from 'next/navigation';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ArrowRight, ArrowUpRight, CheckCircle2, Clock3, ExternalLink, MapPin, Navigation, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { ShareButton } from '@/components/shared/share-button';
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
-import { selectFeaturedVendorProducts, summarizeVendorReviews } from '@/lib/customer/vendor-page';
+import { selectFeaturedVendorProducts } from '@/lib/customer/vendor-page';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
 import { productImageUrl } from '@/lib/storage/product-image';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { formatHours } from '@/lib/customer/operating-hours';
 import type { OperatingHours } from '@/backend/core/types';
-import { formatReviewAuthor } from '@/backend/domains/review-presenter';
-import { getPublicReviewAuthorNames } from '@/backend/domains/catalogue';
-import { VendorReviewsList, type VendorReviewItem } from '@/components/customer/vendor-reviews-list';
+import { getReviewRatingSummary, getScopedReviewPage } from '@/backend/domains/vendor-reviews';
+import { VendorReviewsList } from '@/components/customer/vendor-reviews-list';
 import { LocalizedContent, LocalizedContentHeading } from '@/components/customer/localized-content';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
@@ -65,17 +65,6 @@ type LocationSummary = OutletRecord & {
   fromPrice: number | null;
 };
 
-type RawVendorReviewRow = {
-  id: string;
-  rating: number | string;
-  title: string | null;
-  body: string | null;
-  created_at: string;
-  product_id: string | null;
-  outlet_id: string | null;
-  user_id: string | null;
-};
-
 function formatBusinessType(value: string | null, t: TFunction) {
   if (!value) return t('ui.vendor.localExperiencePartner');
   const key = `ui.vendor.businessTypes.${value.replace(/-/g, '_')}`;
@@ -120,15 +109,11 @@ async function getVendor(vendorId: string) {
   }
   if (!vendor) return null;
 
-  const [{ data: outlets }, { data: products }, { data: managedPlaces }, { data: rawReviews }] = await Promise.all([
+  const [{ data: outlets }, { data: products }, { data: managedPlaces }] = await Promise.all([
     db.from('outlets').select('id,name,city,state,address,lat,lng,operating_hours,outlet_pages(hero_url)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('products').select('id,name,description,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
-    db.from('reviews').select('id,rating,title,body,created_at,product_id,outlet_id,user_id').eq('vendor_id', vendorId).eq('is_visible', true).order('created_at', { ascending: false }),
   ]);
-
-  const reviewRows = (rawReviews ?? []) as { user_id: string | null }[];
-  const reviewAuthorNames = await getPublicReviewAuthorNames(db, reviewRows.map((row) => row.user_id ?? ''));
 
   const outletIds = (outlets ?? []).map((outlet) => outlet.id);
   const [{ data: vendorMedia }, { data: outletMedia }] = await Promise.all([
@@ -160,7 +145,6 @@ async function getVendor(vendorId: string) {
   }) as OutletRecord[];
   const outletNames = new Map(outletRows.map((outlet) => [outlet.id, outlet.name]));
   const productRows = products ?? [];
-  const productNames = new Map(productRows.map((product) => [product.id, product.name]));
   const metricRows = productRows.length
     ? (await db.from('product_review_metrics').select('product_id,rating,reviews').in('product_id', productRows.map((product) => product.id))).data ?? []
     : [];
@@ -201,19 +185,10 @@ async function getVendor(vendorId: string) {
       .filter((product) => Array.isArray(product.tags) && product.tags.some((tag: unknown) => tag === 'featured'))
       .map((product) => product.id);
 
-  // Map review records for full vendor review display
-  const reviews: VendorReviewItem[] = ((rawReviews ?? []) as unknown as RawVendorReviewRow[]).map((row) => ({
-    id: row.id,
-    rating: Number(row.rating),
-    title: row.title ?? undefined,
-    body: row.body ?? undefined,
-    createdAt: row.created_at,
-    authorName: formatReviewAuthor(row.user_id ? reviewAuthorNames.get(row.user_id) : null),
-    productId: row.product_id ?? null,
-    productName: row.product_id ? (productNames.get(row.product_id) ?? null) : null,
-    outletId: row.outlet_id ?? null,
-    outletName: row.outlet_id ? (outletNames.get(row.outlet_id) ?? null) : null,
-  }));
+  const [reviewPage, reviewSummary] = await Promise.all([
+    getScopedReviewPage("vendor", vendorId, { page: 1, pageSize: 6 }, db),
+    getReviewRatingSummary("vendor", vendorId, createServiceClient()),
+  ]);
 
   return {
     vendor,
@@ -221,8 +196,9 @@ async function getVendor(vendorId: string) {
     locations,
     catalogue,
     featuredProducts: selectFeaturedVendorProducts(catalogue, 4, explicitFeaturedIds),
-    reviewSummary: summarizeVendorReviews(catalogue.map((product) => ({ rating: product.rating, reviews: product.reviews }))),
-    reviews,
+    reviewSummary: { rating: reviewSummary.total ? reviewSummary.rating : null, reviews: reviewSummary.total },
+    reviews: reviewPage.items,
+    reviewRatingBuckets: reviewSummary.buckets,
   };
 }
 
@@ -248,11 +224,11 @@ function vendorProductDetailHref(productId: string, vendorId: string, outletId?:
 
 function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vendorId: string; t: TFunction }) {
   const href = vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined);
-  return <article className="mw-card group relative min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
-    <Link href={href} aria-label={t('ui.vendor.viewProductDetails')} className="block min-w-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+  return <article className="mw-card relative min-w-0">
+    <Link href={href} aria-label={t('ui.vendor.viewProductDetails')} className="group/product-media block min-w-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
     <div className="mw-card-media h-48 aspect-auto bg-secondary">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
+      {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
       <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`)}</span>
     </div></Link>
     <div className="mw-card-body p-4">
@@ -269,9 +245,9 @@ function LocationCard({ location, vendorId, t }: { location: LocationSummary; ve
   const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
   const hoursLabel = formatHours(location.operatingHours, { scheduleUnavailable: t('ui.outlet.scheduleBeforeBooking'), closed: t('ui.outlet.closed'), day: (day) => t(`ui.labels.days.${day.slice(0, 3).toLowerCase()}`) });
   const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
-  return <article className="mw-card group min-w-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+  return <article className="mw-card min-w-0">
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-secondary">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 dark:bg-card/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]">{visual.initials}</span></div>}{visual.logoUrl && <span className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/95 dark:bg-card/95 p-1 shadow-md"><img src={visual.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: location.name })} className="h-full w-full object-contain" /></span>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-200"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
+    <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-secondary">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 dark:bg-card/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm">{visual.initials}</span></div>}{visual.logoUrl && <span className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/95 dark:bg-card/95 p-1 shadow-md"><img src={visual.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: location.name })} className="h-full w-full object-contain" /></span>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-200"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
       <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-foreground" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-muted-foreground" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-muted-foreground"><Clock3 size={13} className="mt-0.5 shrink-0 text-primary" /><span><span className="font-semibold text-foreground">{t('ui.labels.operatingHours')}:</span> {hoursLabel}</span></p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-border pt-3 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>{location.fromPrice !== null && <span className="inline-flex items-center gap-1 font-semibold text-primary">{t('ui.vendor.from')} <ReferencePrice amountMYR={location.fromPrice} /></span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
   </article>;
 }
@@ -310,7 +286,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const [result, publicEvents] = await Promise.all([getVendor((await params).vendorId), getPublicPromotionCampaigns()]);
   if (!result) notFound();
   const { t } = await getServerTranslation('customer');
-  const { vendor, vendorGallery, locations, catalogue, featuredProducts, reviewSummary, reviews } = result;
+  const { vendor, vendorGallery, locations, catalogue, featuredProducts, reviewSummary, reviews, reviewRatingBuckets } = result;
   const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });
   const heroImage = vendorVisual.coverUrl;
   const visibleVendorGallery = vendorGallery.filter((item) => item.url !== heroImage);
@@ -561,7 +537,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
               </div>
             </div>
 
-            <VendorReviewsList reviews={reviews} vendorId={vendor.id} />
+            <VendorReviewsList reviews={reviews} ratingBuckets={reviewRatingBuckets} totalReviews={reviewSummary.reviews} vendorId={vendor.id} />
           </section>
         )}
       </div>

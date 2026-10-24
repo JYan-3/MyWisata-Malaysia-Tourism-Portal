@@ -19,11 +19,11 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
   const entry = entryLabel(place, t);
   const location = [place.district, place.state].filter(Boolean).join(", ");
   return (
-    <article className="group flex h-full min-h-[390px] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-xl">
-      <Link href={`/customer/place/${place.slug}`} aria-label={t("ui.place.explorePlace", { name: place.name })} className="relative block h-48 shrink-0 overflow-hidden bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:h-52">
+    <article className="flex h-full min-h-[390px] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-sm">
+      <Link href={`/customer/place/${place.slug}`} aria-label={t("ui.place.explorePlace", { name: place.name })} className="group/place-media relative block h-48 shrink-0 overflow-hidden bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:h-52">
         {place.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={place.imageUrl} alt={place.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <img src={place.imageUrl} alt={place.name} className="h-full w-full object-cover transition duration-700 group-hover/place-media:scale-105" />
         ) : (
           <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/15 via-secondary to-primary/5 text-5xl font-black text-primary/30">
             {place.name.charAt(0)}

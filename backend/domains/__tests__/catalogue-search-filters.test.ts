@@ -7,7 +7,14 @@ import type { TripItem } from "@/backend/domains/trips";
 // an injected client, so the default export is never actually used here.
 vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
-const { getOutletActivities, getVendorActivities, searchActivities, searchTripActivities } = await import("@/backend/domains/catalogue");
+const {
+  filterExploreActivities,
+  getOutletActivities,
+  getVendorActivities,
+  searchActivities,
+  searchExploreActivities,
+  searchTripActivities,
+} = await import("@/backend/domains/catalogue");
 
 const OUTLET_FIELDS = {
   address: null,
@@ -157,10 +164,10 @@ const SHARED_PRODUCT = {
 };
 
 const OUTLETS = [
-  { ...OUTLET_FIELDS, operating_hours: { mon: { open: "09:00", close: "18:00" } }, id: "outlet-penang", vendor_id: "vendor-1", name: "Penang outlet", city: "George Town", state: "Penang", lat: 5.41, lng: 100.33, status: "active" },
-  { ...OUTLET_FIELDS, id: "outlet-johor", vendor_id: "vendor-1", name: "Johor outlet", city: "Johor Bahru", state: "Johor", lat: 1.49, lng: 103.74, status: "active" },
-  { ...OUTLET_FIELDS, id: "outlet-kuala-lumpur", vendor_id: "vendor-1", name: "Kuala Lumpur outlet", city: "Kuala Lumpur", state: "Kuala Lumpur", lat: 3.14, lng: 101.69, status: "active" },
-  { ...OUTLET_FIELDS, id: "outlet-sabah", vendor_id: "vendor-1", name: "Sabah outlet", city: "Kota Kinabalu", state: "Sabah", lat: 5.98, lng: 116.07, status: "active" },
+  { ...OUTLET_FIELDS, badge_slugs: ["family_friendly"], operating_hours: { mon: { open: "09:00", close: "18:00" } }, id: "outlet-penang", vendor_id: "vendor-1", name: "Penang outlet", city: "George Town", state: "Penang", lat: 5.41, lng: 100.33, status: "active" },
+  { ...OUTLET_FIELDS, badge_slugs: ["couple_friendly"], id: "outlet-johor", vendor_id: "vendor-1", name: "Johor outlet", city: "Johor Bahru", state: "Johor", lat: 1.49, lng: 103.74, status: "active" },
+  { ...OUTLET_FIELDS, badge_slugs: ["couple_friendly"], id: "outlet-kuala-lumpur", vendor_id: "vendor-1", name: "Kuala Lumpur outlet", city: "Kuala Lumpur", state: "Kuala Lumpur", lat: 3.14, lng: 101.69, status: "active" },
+  { ...OUTLET_FIELDS, badge_slugs: [], id: "outlet-sabah", vendor_id: "vendor-1", name: "Sabah outlet", city: "Kota Kinabalu", state: "Sabah", lat: 5.98, lng: 116.07, status: "active" },
 ];
 
 /** Respect the product projection so lean discovery cannot masquerade as checkout data. */
@@ -172,7 +179,8 @@ function makeDb(
 ) {
   return {
     from(table: string) {
-      let rows = table === "products" ? productRows : table === "outlets" ? outletRows : options.metrics ?? [];
+      const tableRows = table === "products" ? productRows : table === "outlets" ? outletRows : options.metrics ?? [];
+      let rows = [...tableRows];
       let includesDetails = false;
       const builder: Record<string, unknown> = {
         select: (columns?: string) => {
@@ -187,16 +195,28 @@ function makeDb(
           return builder;
         },
         eq: (column: string, value: unknown) => {
-          if (table === "products") rows = rows.filter((row) => (row as Record<string, unknown>)[column] === value);
+          if (table === "products") {
+            rows = rows.filter((row) => (row as Record<string, unknown>)[column] === value);
+          }
           return builder;
         },
         order: () => builder,
-        range: () => builder,
+        range: (from: number, to: number) => {
+          if (table === "products") rows = rows.slice(from, to + 1);
+          return builder;
+        },
         in: (column: string, values: string[]) => {
           if (table === "products" && column === "id") {
             options.productIdBatches?.push(values);
-            rows = rows.filter((row) => values.includes((row as { id: string }).id));
           }
+          rows = rows.filter((row) => values.includes(String((row as Record<string, unknown>)[column])));
+          return builder;
+        },
+        overlaps: (column: string, values: string[]) => {
+          rows = rows.filter((row) => {
+            const slugs = (row as Record<string, unknown>)[column];
+            return Array.isArray(slugs) && slugs.some((slug) => values.includes(String(slug)));
+          });
           return builder;
         },
         maybeSingle: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
@@ -265,6 +285,161 @@ describe("searchActivities discovery filters", () => {
     expect(activity.outlet.id).toBe("outlet-kuala-lumpur");
     expect(activity.price).toBe(30);
     expect(activity.distanceKm).toBeCloseTo(0);
+  });
+
+  it("returns a shared product once at an outlet that actually has the selected badge", async () => {
+    const outlets = OUTLETS.map((outlet) => ({
+      ...outlet,
+      badge_slugs: outlet.id === "outlet-kuala-lumpur" ? ["family_friendly"] : [],
+    }));
+    const results = await searchActivities(
+      { familyFriendlyOnly: true },
+      makeDb(outlets, [SHARED_PRODUCT]),
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: "shared-offer", outletId: "outlet-kuala-lumpur", price: 30 });
+    expect(results[0].outlet.badgeSlugs).toEqual(["family_friendly"]);
+  });
+});
+
+describe("Explore facet filters", () => {
+  const computed = (input: {
+    id: string;
+    categorySlug: string;
+    typeSlugs?: string[];
+    state?: string;
+    badgeSlugs?: string[];
+    accommodationTypeSlugs?: string[];
+    currentlyOpen?: boolean;
+    placeState?: string;
+  }) => ({
+    id: input.id,
+    name: input.id,
+    category: input.categorySlug,
+    categorySlug: input.categorySlug,
+    typeSlugs: input.typeSlugs ?? [],
+    price: 10,
+    rating: 0,
+    reviews: 0,
+    place: input.placeState ? { state: input.placeState, lat: 1, lng: 1 } : undefined,
+    outlet: {
+      id: `outlet-${input.id}`,
+      state: input.state ?? "Sabah",
+      city: "Test City",
+      badgeSlugs: input.badgeSlugs ?? [],
+      accommodationTypeSlugs: input.accommodationTypeSlugs ?? [],
+      currentlyOpen: input.currentlyOpen ?? true,
+      open: true,
+    },
+  }) as never;
+
+  it("matches any selected category when no type is selected", () => {
+    const results = filterExploreActivities(
+      { categories: ["food", "activity"] },
+      [
+        computed({ id: "food", categorySlug: "food" }),
+        computed({ id: "activity", categorySlug: "activity" }),
+        computed({ id: "retail", categorySlug: "retail" }),
+      ],
+    );
+
+    expect(results.map(({ id }) => id)).toEqual(["food", "activity"]);
+  });
+
+  it("matches any selected category, then intersects selected types with that category set", () => {
+    const results = filterExploreActivities(
+      { categories: ["food", "activity"], types: ["food:chinese"] },
+      [
+        computed({ id: "food-chinese", categorySlug: "food", typeSlugs: ["chinese"] }),
+        computed({ id: "food-malay", categorySlug: "food", typeSlugs: ["malay"] }),
+        computed({ id: "activity-nature", categorySlug: "activity", typeSlugs: ["nature"] }),
+        computed({ id: "retail-souvenir", categorySlug: "retail", typeSlugs: ["souvenirs"] }),
+      ],
+    );
+
+    expect(results.map(({ id }) => id)).toEqual(["food-chinese"]);
+  });
+
+  it("matches any selected type within the active type group", () => {
+    const results = filterExploreActivities(
+      { categories: ["activity"], types: ["activity:nature", "activity:adventure"] },
+      [
+        computed({ id: "nature", categorySlug: "activity", typeSlugs: ["nature"] }),
+        computed({ id: "adventure", categorySlug: "activity", typeSlugs: ["adventure"] }),
+        computed({ id: "cultural", categorySlug: "activity", typeSlugs: ["cultural"] }),
+      ],
+    );
+
+    expect(results.map(({ id }) => id)).toEqual(["nature", "adventure"]);
+  });
+
+  it("combines category/type, OR-ed badges, state, and Open Now as ANDed groups", () => {
+    const results = filterExploreActivities(
+      {
+        categories: ["food", "activity"],
+        types: ["food:chinese", "activity:nature"],
+        state: "Sabah",
+        openNow: true,
+        hiddenGemOnly: true,
+        familyFriendlyOnly: true,
+        coupleFriendlyOnly: false,
+      },
+      [
+        computed({ id: "valid", categorySlug: "activity", typeSlugs: ["nature"], badgeSlugs: ["family_friendly"] }),
+        computed({ id: "wrong-type", categorySlug: "activity", typeSlugs: ["adventure"], badgeSlugs: ["hidden_gem"] }),
+        computed({ id: "wrong-state", categorySlug: "food", typeSlugs: ["chinese"], state: "Johor", badgeSlugs: ["hidden_gem"] }),
+        computed({ id: "closed", categorySlug: "food", typeSlugs: ["chinese"], badgeSlugs: ["couple_friendly"], currentlyOpen: false }),
+      ],
+    );
+
+    expect(results.map(({ id }) => id)).toEqual(["valid"]);
+  });
+
+  it("matches Accommodation property types on the outlet and other types on the product", () => {
+    const results = filterExploreActivities(
+      { categories: ["accommodation"], types: ["accommodation:resort"] },
+      [
+        computed({ id: "resort", categorySlug: "accommodation", accommodationTypeSlugs: ["resort"] }),
+        computed({ id: "boutique", categorySlug: "accommodation", accommodationTypeSlugs: ["boutique"] }),
+      ],
+    );
+
+    expect(results.map(({ id }) => id)).toEqual(["resort"]);
+  });
+
+  it("keeps one shared product and displays an outlet matching the selected badge and state", async () => {
+    const outlets = OUTLETS.map((outlet) => ({
+      ...outlet,
+      badge_slugs: outlet.id === "outlet-kuala-lumpur" ? ["family_friendly"] : [],
+    }));
+    const product = { ...SHARED_PRODUCT, type_slugs: ["nature"] };
+    const results = await searchExploreActivities(
+      {
+        categories: ["activity"],
+        types: ["activity:nature"],
+        state: "Kuala Lumpur",
+        familyFriendlyOnly: true,
+      },
+      makeDb(outlets, [product]),
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: "shared-offer", outletId: "outlet-kuala-lumpur", price: 30 });
+    expect(results[0].outlet.badgeSlugs).toEqual(["family_friendly"]);
+  });
+
+  it("uses a place-bound state instead of a seller outlet state", () => {
+    const results = filterExploreActivities(
+      { state: "Sabah" },
+      [
+        computed({ id: "place-in-sabah", categorySlug: "activity", state: "Johor", placeState: "Sabah" }),
+        computed({ id: "place-in-johor", categorySlug: "activity", state: "Sabah", placeState: "Johor" }),
+        computed({ id: "outlet-in-sabah", categorySlug: "activity", state: "Sabah" }),
+      ],
+    );
+
+    expect(results.map(({ id }) => id)).toEqual(["place-in-sabah", "outlet-in-sabah"]);
   });
 });
 

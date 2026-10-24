@@ -17,6 +17,7 @@ import {
   resolveProductTicketAdmission,
 } from '@/lib/tickets/product-ticket-policy';
 import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
+import { isValidProductTypeSelection } from '@/lib/vendor/taxonomy';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -60,7 +61,7 @@ export async function GET(request: Request, { params }: Props) {
     ? 'id,name,base_price,requires_booking,status,outlet_id,categories(name,slug),outlets(id,name),outlet_offers(outlet_id,status,price,outlets(id,name))'
     : metadataOnly
       ? 'id,name,requires_booking,status,outlet_id,outlets(id,name),outlet_offers(outlet_id,status,outlets(id,name))'
-      : 'id,display_id,name,slug,description,product_type,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state,status),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state,status)),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),booking_slots(outlet_id,starts_at,status,capacity,booked)';
+      : 'id,display_id,name,slug,description,product_type,requires_booking,ticket_entry_policy,ticket_entry_limit,ticket_validity_days,base_price,cover_url,status,review_status,review_note,category_id,type_slugs,categories(name,slug),outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state,status),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state,status)),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),booking_slots(outlet_id,starts_at,status,capacity,booked)';
   const legacySelection = selection.replace('ticket_entry_policy,ticket_entry_limit,ticket_validity_days,', '');
   let outletProductIds: Set<string> | null = null;
 
@@ -268,6 +269,15 @@ export async function POST(request: Request, { params }: Props) {
   const ticketAdmission = resolveProductTicketAdmission(body);
   if (!ticketAdmission.ok) return apiFail('INVALID_TICKET_ADMISSION', ticketAdmission.message, 400);
 
+  if (body.typeSlugs.length > 0) {
+    if (!body.categoryId) return apiFail('INVALID_PRODUCT_TYPES', 'Select a matching product category before choosing product types', 422);
+    const { data: category, error: categoryError } = await supabase.from('categories').select('slug').eq('id', body.categoryId).maybeSingle();
+    if (categoryError) return apiFail('DB_ERROR', categoryError.message, 500);
+    if (!category || !isValidProductTypeSelection(category.slug, body.typeSlugs)) {
+      return apiFail('INVALID_PRODUCT_TYPES', 'One or more product types do not match the selected category', 422);
+    }
+  }
+
   // Verify outlet belongs to vendor
   const { data: outlet } = await supabase
     .from('outlets')
@@ -287,6 +297,7 @@ export async function POST(request: Request, { params }: Props) {
     vendor_id: vendorId,
     outlet_id: body.outletId,
     category_id: body.categoryId ?? null,
+    type_slugs: body.typeSlugs,
     name: body.name,
     slug: finalSlug,
     description: body.description ?? null,

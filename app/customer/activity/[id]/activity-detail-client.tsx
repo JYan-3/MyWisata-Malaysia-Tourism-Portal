@@ -117,6 +117,8 @@ export function ActivityDetailClient({
       vendorName: activity.outlet.vendorName,
       rating: activity.rating,
       reviews: activity.reviews,
+      badgeSlugs: activity.outlet.badgeSlugs ?? [],
+      accommodationTypeSlugs: activity.outlet.accommodationTypeSlugs ?? [],
     };
   }, [activity, selectedChoice]);
   // A trail can be a public place or a paid guide-led experience. Never expose
@@ -140,7 +142,7 @@ export function ActivityDetailClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotId]);
 
-  const chips = useMemo(() => (activity ? getCategoryChips(activity, t) : []), [activity, t]);
+  const chips = useMemo(() => (activity ? getCategoryChips(activity, t, selectedOutlet ?? undefined) : []), [activity, selectedOutlet, t]);
   // What varies by category lives in the body; everything around it is shared.
   const body = getDetailBody(activity?.categorySlug);
   const namesOutlet = activity ? !placeBound : true;
@@ -203,7 +205,7 @@ export function ActivityDetailClient({
         )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
         <ProductSaveButton productId={activity.id} productName={activity.name} className="absolute right-3 top-3 z-10" />
-        {activity.isHiddenGem && (
+        {selectedOutlet?.badgeSlugs.includes("hidden_gem") && (
           <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>
             <Sparkles size={13} /> {t("ui.labels.hiddenGem")}
           </div>

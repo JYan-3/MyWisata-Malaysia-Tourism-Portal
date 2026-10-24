@@ -5,6 +5,10 @@ import {
   contentReviewSchema,
   pickupSlotSchema,
   productCreateSchema,
+  productTaxonomyUpdateSchema,
+  productUpdateSchema,
+  outletCreateSchema,
+  outletUpdateSchema,
   vendorRegisterSchema,
   voucherCreateSchema,
   voucherValidateSchema,
@@ -30,6 +34,31 @@ describe('productCreateSchema', () => {
   it('retains a valid category ID and rejects malformed category IDs', () => {
     expect(productCreateSchema.safeParse({ ...product, categoryId: validId }).success).toBe(true);
     expect(productCreateSchema.safeParse({ ...product, categoryId: 'retail' }).success).toBe(false);
+  });
+
+  it('accepts only controlled product types and rejects duplicates', () => {
+    expect(productCreateSchema.safeParse({ ...product, typeSlugs: ['nyonya', 'seafood'] }).success).toBe(true);
+    expect(productCreateSchema.safeParse({ ...product, typeSlugs: ['made-up'] }).success).toBe(false);
+    expect(productCreateSchema.safeParse({ ...product, typeSlugs: ['nature', 'nature'] }).success).toBe(false);
+  });
+});
+
+describe('taxonomy-only update schemas', () => {
+  it('does not materialize defaults for omitted metadata on ordinary updates', () => {
+    expect(productUpdateSchema.parse({ name: 'Updated name' })).not.toHaveProperty('typeSlugs');
+    expect(outletUpdateSchema.parse({ name: 'Updated outlet' })).not.toHaveProperty('badgeSlugs');
+    expect(outletUpdateSchema.parse({ name: 'Updated outlet' })).not.toHaveProperty('accommodationTypeSlugs');
+  });
+
+  it('rejects arbitrary badge slugs and accepts the fixed list', () => {
+    expect(outletCreateSchema.safeParse({ name: 'Valid outlet', badgeSlugs: ['hidden_gem'] }).success).toBe(true);
+    expect(outletCreateSchema.safeParse({ name: 'Valid outlet', badgeSlugs: ['vendor-made-up'] }).success).toBe(false);
+    expect(outletCreateSchema.safeParse({ name: 'Valid outlet', badgeSlugs: ['hidden_gem', 'hidden_gem'] }).success).toBe(false);
+  });
+
+  it('allows the owner endpoint to update only product type metadata', () => {
+    expect(productTaxonomyUpdateSchema.safeParse({ typeSlugs: ['nature'] }).success).toBe(true);
+    expect(productTaxonomyUpdateSchema.safeParse({ typeSlugs: ['nature'], basePrice: 10 }).success).toBe(false);
   });
 });
 

@@ -212,6 +212,20 @@ If unable, explain why.
 
 ---
 
+## Commit Message
+
+After implementing a plan or any code change, end the final chat reply with a
+commit message the user can copy (the user commits; never run git commit):
+
+```text
+<Summary: one line, English, imperative, max 70 characters>
+
+<Description: 2-4 sentences: why the change was made and what it does now.
+No file lists; the diff shows those.>
+```
+
+---
+
 ## Execution Timebox and Review Stop Rules
 
 Keep implementation and verification proportionate to the risk. Do not allow

@@ -18,13 +18,20 @@ describe("customer activity image handling", () => {
     expect(cardSource).toContain('t("ui.labels.imageUnavailable")');
   });
 
-  it("shows the canonical category and optional hidden-gem badge on every activity image", () => {
+  it("shows the canonical category on generic activity cards without implying outlet badges are product-wide", () => {
     expect(cardSource).toContain('import { CategoryIcon } from "@/components/customer/category-icon"');
     expect(cardSource).toContain("canonicalCategorySlug(activity.categorySlug)");
     expect(cardSource).toContain("getDiscoveryCategoryLabelKey(categorySlug)");
     expect(cardSource).toContain('<CategoryIcon category={categorySlug}');
-    expect(cardSource).toContain('t("categories.hiddenGem")');
-    expect(cardSource).toContain("activity.isHiddenGem");
+    expect(cardSource).not.toContain("activity.isHiddenGem");
+    expect(cardSource).not.toContain('t("categories.hiddenGem")');
+  });
+
+  it("can hide discovery taxonomy and promotional badges in dense listing views", () => {
+    expect(cardSource).toContain("hideDiscoveryBadges = false");
+    expect(cardSource).toContain("!hideDiscoveryBadges && activity.hot");
+    expect(cardSource).toContain("activity.sponsorship && <span");
+    expect(cardSource).toContain('t("ui.labels.verified")');
   });
 
   it("keeps image badges in one overlay group so status labels cannot overlap", () => {
@@ -44,7 +51,7 @@ describe("customer activity image handling", () => {
     expect(cardSource).toContain('detailsRevealStyle?: "panel" | "caption"');
     expect(cardSource).toContain('import { CardMediaHoverCaption } from "@/components/customer/card-media-hover-caption"');
     expect(cardSource).toContain("<CardMediaHoverCaption>");
-    expect(cardSource).toContain("{activity.outlet.city} · {categoryLabel}");
+    expect(cardSource).toContain("{activity.outlet.city}{!hideDiscoveryBadges && ` · ${categoryLabel}`}");
     expect(cardSource).toContain("activity.outlet.hours");
     expect(cardSource).toContain('id={detailsId}');
     expect(cardSource).toContain('onClick={() => setDetailsOpen((open) => !open)}');

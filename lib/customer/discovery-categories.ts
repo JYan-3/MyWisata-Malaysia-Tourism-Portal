@@ -2,8 +2,8 @@
  * Canonical customer discovery taxonomy.
  *
  * The four real slugs map to rows in `categories`. Hidden Gem is intentionally
- * a collection backed by `products.is_hidden_gem`, so it must not be passed to
- * a category-id selector or category detail page.
+ * a collection backed by outlet badges, so it must not be passed to a
+ * category-id selector or category detail page.
  */
 export const REAL_CATEGORY_SLUGS = ["food", "activity", "accommodation", "retail"] as const;
 export type RealCategorySlug = (typeof REAL_CATEGORY_SLUGS)[number];

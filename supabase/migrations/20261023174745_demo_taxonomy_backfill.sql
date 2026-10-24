@@ -62,4 +62,4 @@ updated_products AS (
 )
 SELECT
   (SELECT COUNT(*) FROM updated_outlets) AS outlet_badges_filled,
-  (SELECT COUNT(*) FROM updated_products) AS product_types_filled
+  (SELECT COUNT(*) FROM updated_products) AS product_types_filled;

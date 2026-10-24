@@ -12,8 +12,9 @@ const filterSource = read("components/customer/discovery-filters.tsx");
 const storyMapSource = read("components/demo-map/story-map.tsx");
 
 describe("customer discovery filter contract", () => {
-  it("omits the generic helper sentence from the Explore header", () => {
+  it("omits helper copy and promotional description from the Explore header", () => {
     expect(exploreSource).not.toContain('t("ui.explore.description")');
+    expect(exploreSource).not.toContain('t("ui.explore.experiencePageDescription")');
   });
 
   it("shares the searchable category-card controls", () => {
@@ -34,7 +35,8 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("timeFrom");
     expect(exploreSource).toContain("timeTo");
     expect(exploreSource).toContain("onClear");
-    expect(exploreSource).toContain("visibleLimit");
+    expect(exploreSource).toContain("EXPERIENCE_PAGE_SIZE");
+    expect(exploreSource).toContain("<DirectoryPagination");
     expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
   });
 
@@ -46,19 +48,20 @@ describe("customer discovery filter contract", () => {
   });
 
   it("shares the complete weekly-hours filter surface with Partners", () => {
-    expect(exploreSource).toContain("<CustomerDiscoveryFilterPanel");
-    expect(exploreSource).toContain("operatingDays");
-    expect(exploreSource).toContain("hoursMode");
-    expect(exploreSource).toContain("openNow");
+    expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(searchSource).toContain("operatingDays");
+    expect(searchSource).toContain("hoursMode");
+    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
+    expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
-  it("aligns the More filters action to the right on Explore", () => {
-    expect(exploreSource).toContain('filterButtonAlignment="end"');
-  });
-
-  it("aligns the Show all action to the right beneath the Explore activity grid", () => {
-    const showAllAction = exploreSource.match(/<div className="mt-6 flex justify-end">([\s\S]*?)<\/div>/)?.[1] ?? "";
-    expect(showAllAction).toContain("onClick={() => setVisibleLimit(activities.length)}");
+  it("uses the shared sidebar and numbered marketplace pagination on Experiences", () => {
+    expect(exploreSource).toContain("<DialogContent");
+    expect(exploreSource).toContain("<DialogTrigger asChild>");
+    expect(exploreSource).toContain('variant="marketplace"');
+    expect(exploreSource).not.toContain("visibleLimit");
+    expect(exploreSource).not.toContain("setVisibleLimit");
+    expect(exploreSource).not.toContain('t("ui.discovery.showAll"');
   });
 
   it("keeps sponsored analytics metadata and discloses Sponsored labels in the Explore map", () => {
@@ -78,7 +81,7 @@ describe("customer discovery filter contract", () => {
     expect(filterSource).toContain('t("ui.map.moreFilters")');
     expect(filterSource).toContain('t("ui.map.activeFilters"');
     expect(filterSource).toContain("aria-expanded={filtersOpen}");
-    expect(filterSource).toContain("filtersOpen && <DiscoveryAdvancedFilters");
+    expect(filterSource).toContain("filtersOpen && advancedFilters");
   });
 
   it("keeps Partners state and schedule filtering in the shared panel", () => {
@@ -87,6 +90,15 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("hoursMode");
     expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
     expect(filterSource).toContain('t("ui.discovery.state")');
+  });
+
+  it("uses an Experiences-only checkbox facet mode and keeps search beside sorting", () => {
+    expect(exploreSource).toContain('mode="experiences"');
+    expect(exploreSource).toContain('data-testid="experience-toolbar"');
+    expect(exploreSource).toContain("DiscoverySearchField");
+    expect(filterSource).toContain('mode === "experiences"');
+    expect(filterSource).toContain("Checkbox");
+    expect(exploreSource).toContain("showSummary={false}");
   });
 
   it("keeps the Explore mode switch on the right with the voucher navy active state", () => {

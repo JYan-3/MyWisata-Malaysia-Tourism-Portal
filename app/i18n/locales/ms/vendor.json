@@ -1,4 +1,58 @@
 {
+  "taxonomy": {
+    "productTypes": {
+      "title": "Jenis produk",
+      "hint": "Pilih semua jenis yang menerangkan produk ini dengan tepat.",
+      "options": {
+        "chinese": "Cina",
+        "malay": "Melayu",
+        "nyonya": "Nyonya / Peranakan",
+        "indian": "India",
+        "mamak": "Mamak / Jalanan",
+        "western": "Barat",
+        "seafood": "Makanan laut",
+        "cafe-dessert": "Kafe / Pencuci mulut",
+        "fusion": "Fusi",
+        "nature": "Alam semula jadi",
+        "adventure": "Pengembaraan",
+        "cultural": "Budaya / Warisan",
+        "nightlife": "Hiburan malam",
+        "wellness": "Kesihatan / Spa",
+        "water": "Air",
+        "sightseeing": "Lawatan / Bersiar-siar",
+        "handicrafts": "Kraftangan",
+        "souvenirs": "Cenderamata",
+        "batik-textiles": "Batik / Tekstil",
+        "fashion": "Fesyen",
+        "jewellery": "Barang kemas",
+        "local-produce": "Hasil tempatan / Makanan",
+        "art-prints": "Seni & Cetakan",
+        "duty-free": "Bebas cukai"
+      }
+    },
+    "outletBadges": {
+      "title": "Lencana cawangan",
+      "hint": "Pilih ciri yang menggambarkan cawangan ini.",
+      "options": {
+        "hiddenGem": "Permata Tersembunyi",
+        "familyFriendly": "Mesra Keluarga",
+        "coupleFriendly": "Mesra Pasangan"
+      }
+    },
+    "accommodationTypes": {
+      "title": "Jenis penginapan",
+      "hint": "Pilih jenis yang menggambarkan penginapan ini.",
+      "options": {
+        "5-star": "5 Bintang",
+        "4-star": "4 Bintang",
+        "3-star": "3 Bintang",
+        "boutique": "Butik",
+        "homestay": "Homestay",
+        "hostel": "Asrama",
+        "resort": "Resort"
+      }
+    }
+  },
   "hotelProfile": {
     "eyebrow": "Profil hotel",
     "description": "Halaman hotel anda menggunakan susun atur tetap. Sunting kandungannya di sini; perubahan disiarkan selepas semakan admin, dan hotel anda kekal dipaparkan sementara itu.",
@@ -2126,6 +2180,10 @@
     "sectionNavigation": "Bahagian butiran produk",
     "shownOnListing": "Dipaparkan pada halaman penyenaraian",
     "status": "Status",
+    "saveTypes": "Simpan jenis produk",
+    "savingTypes": "Menyimpan jenis…",
+    "typeSaveFailed": "Tidak dapat menyimpan jenis produk. Cuba lagi.",
+    "typeUpdated": "Jenis produk dikemas kini.",
     "timeSlots": "Diurus melalui slot masa",
     "unitsAvailable": "{{count}} unit tersedia",
     "variantsHint": "Urus pilihan, perbezaan harga, kuantiti stok dan varian lalai.",

@@ -48,4 +48,43 @@ describe("getPageItems", () => {
     expect(markup).toContain("ui.pagination.pageOf 2 4");
     expect(markup.match(/<button/g)).toHaveLength(2);
   });
+
+  it("renders numbered pages with the token-based marketplace presentation", () => {
+    const markup = renderToStaticMarkup(createElement(DirectoryPagination, {
+      ariaLabel: "Experience pages",
+      currentPage: 2,
+      itemLabel: "experiences",
+      onPageChange: () => undefined,
+      pageSize: 8,
+      totalItems: 30,
+      totalPages: 4,
+      variant: "marketplace",
+    }));
+
+    expect(markup).toContain('data-pagination-variant="marketplace"');
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("bg-primary text-primary-foreground");
+    expect(markup).toContain("border border-border bg-card text-primary");
+    expect(markup).toContain("ui.pagination.showing 9 16 30 experiences");
+    expect(markup.match(/<button/g)).toHaveLength(6);
+  });
+
+  it("can hide only the marketplace result summary while retaining numbered page controls", () => {
+    const markup = renderToStaticMarkup(createElement(DirectoryPagination, {
+      ariaLabel: "Experience pages",
+      currentPage: 2,
+      itemLabel: "experiences",
+      onPageChange: () => undefined,
+      pageSize: 8,
+      totalItems: 30,
+      totalPages: 4,
+      variant: "marketplace",
+      showSummary: false,
+    }));
+
+    expect(markup).not.toContain("ui.pagination.showing");
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("sm:justify-end");
+    expect(markup.match(/<button/g)).toHaveLength(6);
+  });
 });

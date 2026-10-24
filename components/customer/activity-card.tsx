@@ -26,7 +26,7 @@ type ActivityCardItem = ComputedActivity & {
   property?: DiscoveryPropertySummary;
 };
 
-export function ActivityCard({ activity, recommendationReason, returnTo, outletId, source, onSponsoredClick, detailsRevealOnHover = false, detailsRevealStyle = "panel" }: { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; detailsRevealOnHover?: boolean; detailsRevealStyle?: "panel" | "caption" }) {
+export function ActivityCard({ activity, recommendationReason, returnTo, outletId, source, onSponsoredClick, detailsRevealOnHover = false, detailsRevealStyle = "panel", hideDiscoveryBadges = false }: { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; detailsRevealOnHover?: boolean; detailsRevealStyle?: "panel" | "caption"; hideDiscoveryBadges?: boolean }) {
   const { t } = useTranslation("customer");
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -66,10 +66,10 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
 
   return (
     <article
-      className="mw-card group transition-all duration-200 hover:-translate-y-1"
+      className="mw-card group"
     >
       <div className="mw-card-media">
-        <Link href={activityHref} onClick={onSponsoredClick} className="block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
+        <Link href={activityHref} onClick={onSponsoredClick} className="group/activity-media block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
           {!imageSrc || imageFailed ? (
             <div
               role="img"
@@ -86,16 +86,15 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
               src={imageSrc}
               alt={cardName}
               onError={() => setImageFailed(true)}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover/activity-media:scale-105"
               style={{ backgroundColor: "#EEF2FF" }}
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
           <div className="absolute left-3 top-3 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5">
-            {!detailsRevealOnHover && <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>}
+            {!detailsRevealOnHover && !hideDiscoveryBadges && <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>}
             {activity.sponsorship && <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">{t("ui.labels.sponsored")}</span>}
-            {!detailsRevealOnHover && activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-900 dark:text-violet-200"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
-            {!detailsRevealOnHover && activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
+            {!detailsRevealOnHover && !hideDiscoveryBadges && activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
           </div>
           {!detailsRevealOnHover && activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</div>}
           {!detailsRevealOnHover && activity.outlet.wheelchairAccessible === true && <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title={t("ui.labels.wheelchairAccessible")}><Accessibility size={9} aria-hidden="true" /> {t("ui.labels.accessible")}</div>}
@@ -107,7 +106,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
               <CardMediaHoverCaption>
                   <p className="flex items-start gap-1.5 text-xs font-semibold leading-snug">
                     <MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
-                    <span>{activity.outlet.city} · {categoryLabel}</span>
+                    <span>{activity.outlet.city}{!hideDiscoveryBadges && ` · ${categoryLabel}`}</span>
                   </p>
                   {!isStayCard && activity.outlet.hours && (
                     <p className="flex items-start gap-1.5 text-[11px] leading-snug text-white/85">
@@ -129,9 +128,8 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
             </button>
             <div id={detailsId} className={`absolute inset-0 z-10 max-h-full flex-col gap-2 overflow-y-auto bg-primary/95 p-3 pt-12 text-white shadow-inner ${detailsVisibility}`}>
               <div className="flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>
-                {activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-900 dark:text-violet-200"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
-                {activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
+                {!hideDiscoveryBadges && <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>}
+                {!hideDiscoveryBadges && activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
                 {activity.outlet.verified && <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</span>}
                 {activity.outlet.wheelchairAccessible === true && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white"><Accessibility size={9} aria-hidden="true" /> {t("ui.labels.accessible")}</span>}
                 {!isStayCard && !(activity.outlet.currentlyOpen ?? activity.outlet.open) && <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold">{t("ui.labels.closed")}</span>}

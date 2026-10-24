@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATEGORY_DETAILS, PLACE_BOUND_TYPES, getActivityCommerceMode, getActivityDiscoveryMode, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
+import { CATEGORY_DETAILS, PLACE_BOUND_TYPES, getActivityCommerceMode, getActivityDiscoveryMode, getCategoryChips, getOutletTaxonomyLabels, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 
 // Phase 1 taxonomy: 4 top-level categories.slug values — see
@@ -75,14 +75,29 @@ describe("getCategoryChips", () => {
     expect(chips.find((c) => c.label === "Type")?.value).toBe("Chinese");
   });
 
-  it("renders a Good For chip for family/couple friendly badges, but not for hidden gem", () => {
-    const chips = getCategoryChips(makeActivity({ isFamilyFriendly: true, isCoupleFriendly: true, isHiddenGem: true, typeSlugs: undefined }));
+  it("renders a Good For chip from the selected outlet, but not legacy product badge fields", () => {
+    const activity = makeActivity({ isFamilyFriendly: true, isCoupleFriendly: true, isHiddenGem: true, typeSlugs: undefined });
+    const chips = getCategoryChips(activity, undefined, {
+      badgeSlugs: ["family_friendly", "couple_friendly", "hidden_gem"],
+      accommodationTypeSlugs: [],
+    });
     expect(chips.find((c) => c.label === "Good For")?.value).toBe("Family Friendly · Couple Friendly");
   });
 
   it("omits the Good For chip when no badge is set", () => {
-    const chips = getCategoryChips(makeActivity({ isFamilyFriendly: false, isCoupleFriendly: false, typeSlugs: undefined }));
+    const chips = getCategoryChips(makeActivity({ isFamilyFriendly: true, isCoupleFriendly: true, typeSlugs: undefined }), undefined, {
+      badgeSlugs: [],
+      accommodationTypeSlugs: [],
+    });
     expect(chips.some((c) => c.label === "Good For")).toBe(false);
+  });
+
+  it("renders accommodation property types from the selected outlet", () => {
+    const chips = getCategoryChips(makeActivity({ categorySlug: "accommodation", typeSlugs: ["nature"], attributes: {} }), undefined, {
+      badgeSlugs: [],
+      accommodationTypeSlugs: ["boutique", "resort"],
+    });
+    expect(chips.find((chip) => chip.label === "Property type")?.value).toBe("Boutique · Resort");
   });
 
   it("still renders Food's baseline chips (hours/tags/contact)", () => {
@@ -104,6 +119,25 @@ describe("getCategoryChips", () => {
     })[key] ?? key;
     const chips = getCategoryChips(makeActivity({ categorySlug: "food", typeSlugs: ["chinese", "vendor-special"], attributes: {} }), translate);
     expect(chips.find((chip) => chip.label === "类型")?.value).toBe("中式 · vendor-special");
+  });
+});
+
+describe("getOutletTaxonomyLabels", () => {
+  it("localizes only approved outlet badges and accommodation property types", () => {
+    const labels = getOutletTaxonomyLabels({
+      badgeSlugs: ["hidden_gem", "family_friendly", "unknown"],
+      accommodationTypeSlugs: ["boutique", "invalid"],
+    }, (key) => ({
+      "ui.labels.hiddenGem": "Hidden Gem",
+      "strictMigration.activityDetail.familyFriendly": "Family Friendly",
+      "strictMigration.activityDetail.types.boutique": "Boutique",
+    })[key] ?? key);
+
+    expect(labels).toEqual([
+      { slug: "hidden_gem", kind: "badge", label: "Hidden Gem" },
+      { slug: "family_friendly", kind: "badge", label: "Family Friendly" },
+      { slug: "property:boutique", kind: "propertyType", label: "Boutique" },
+    ]);
   });
 });
 

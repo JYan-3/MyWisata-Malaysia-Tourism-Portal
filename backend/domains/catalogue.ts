@@ -7,6 +7,7 @@ import type { Activity, BookingSlot, ComputedActivity, OperatingHourWeekday, Ope
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
+import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import {
   canonicalCategorySlug,
   DISCOVERY_CATEGORIES,
@@ -24,8 +25,34 @@ export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 const REVIEW_METRICS_BATCH_SIZE = 100;
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
+type VendorWithOutletsRow = {
+  id: string;
+  name: string;
+  status: string;
+  kind: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  outlets: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    status: string | null;
+    review_status: string | null;
+    operating_hours: OperatingHours | null;
+    badge_slugs?: string[] | null;
+  }[] | null;
+};
+
 export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
-  const { data, error } = await db.from("vendors").select("id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
+  const selectVendors = async (includeOutletBadges: boolean) => {
+    const { data, error } = await db.from("vendors").select(includeOutletBadges
+      ? "id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours,badge_slugs)"
+      : "id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
+    return { data: data as unknown as VendorWithOutletsRow[] | null, error };
+  };
+  let { data, error } = await selectVendors(true);
+  if (isMissingOutletColumn(error, "badge_slugs")) ({ data, error } = await selectVendors(false));
   if (error) throw error;
   return (data ?? []).map((v) => ({
     id: v.id,
@@ -46,6 +73,7 @@ export async function getVendors(db: SupabaseClient = supabase): Promise<VendorS
       currentlyOpen: outlet.status === "active" && outlet.operating_hours
         ? isOperatingHoursOpenNow(outlet.operating_hours)
         : false,
+      badgeSlugs: outlet.badge_slugs ?? [],
     })),
   }));
 }
@@ -78,6 +106,8 @@ type OutletRow = {
   wheelchair_accessible: boolean | null;
   pet_friendly: boolean | null;
   food_service_modes?: ("dine_in" | "takeaway")[] | null;
+  badge_slugs?: string[] | null;
+  accommodation_type_slugs?: string[] | null;
   outlet_pages: { hero_url: string | null } | { hero_url: string | null }[] | null;
   vendors: {
     name: string | null;
@@ -97,10 +127,17 @@ function getVendorLogoUrl(slug: string | null | undefined): string | null {
   return vendorImageUrl(path);
 }
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,food_service_modes,outlet_pages(hero_url),vendors(name,slug,status,products(categories(name,slug)))";
-const LEGACY_OUTLET_SELECT = OUTLET_SELECT.replace(",food_service_modes", "");
-const DISCOVERY_OUTLET_SELECT = "id,vendor_id,name,city,state,lat,lng,operating_hours,status,wheelchair_accessible,pet_friendly,food_service_modes,vendors(name,slug,status)";
-const LEGACY_DISCOVERY_OUTLET_SELECT = DISCOVERY_OUTLET_SELECT.replace(",food_service_modes", "");
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,food_service_modes,badge_slugs,accommodation_type_slugs,outlet_pages(hero_url),vendors(name,slug,status,products(categories(name,slug)))";
+const OUTLET_SELECT_WITHOUT_TAXONOMY = OUTLET_SELECT.replace(",badge_slugs,accommodation_type_slugs", "");
+const LEGACY_OUTLET_SELECT = OUTLET_SELECT_WITHOUT_TAXONOMY.replace(",food_service_modes", "");
+const DISCOVERY_OUTLET_SELECT = "id,vendor_id,name,city,state,lat,lng,operating_hours,status,wheelchair_accessible,pet_friendly,food_service_modes,badge_slugs,accommodation_type_slugs,vendors(name,slug,status)";
+const DISCOVERY_OUTLET_SELECT_WITHOUT_TAXONOMY = DISCOVERY_OUTLET_SELECT.replace(",badge_slugs,accommodation_type_slugs", "");
+const LEGACY_DISCOVERY_OUTLET_SELECT = DISCOVERY_OUTLET_SELECT_WITHOUT_TAXONOMY.replace(",food_service_modes", "");
+
+function isMissingOutletColumn(error: { code?: string; message?: string } | null | undefined, column: "food_service_modes" | "badge_slugs" | "accommodation_type_slugs"): boolean {
+  return (error?.code === "42703" || error?.code === "PGRST204")
+    && Boolean(error.message?.includes(`outlets.${column}`) || error.message?.includes(`'${column}'`));
+}
 
 // An outlet's category belongs to its vendor, not to whichever product happens
 // to be pinned to that one outlet. Vendor-wide products carry outlet_id NULL, so
@@ -158,6 +195,8 @@ function mapOutlet(row: OutletRow): Outlet {
     wheelchairAccessible: row.wheelchair_accessible,
     petFriendly: row.pet_friendly,
     foodServiceModes: row.food_service_modes ?? ["dine_in", "takeaway"],
+    badgeSlugs: row.badge_slugs ?? [],
+    accommodationTypeSlugs: row.accommodation_type_slugs ?? [],
   };
 }
 
@@ -168,9 +207,14 @@ export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[
     .eq("status", "active")
     .eq("review_status", "approved");
   const result = await queryOutlets(OUTLET_SELECT);
-  if (result.error?.code === "42703" && result.error.message.includes("outlets.food_service_modes")) {
-    // Keep discovery available while the additive food-mode migration is pending.
-    // mapOutlet supplies the schema default of both modes for these legacy rows.
+  if (isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+    // Keep existing outlet fields available while the additive taxonomy migration is pending.
+    const withoutTaxonomy = await queryOutlets(OUTLET_SELECT_WITHOUT_TAXONOMY);
+    if (!withoutTaxonomy.error) return (withoutTaxonomy.data as unknown as OutletRow[]).map(mapOutlet);
+    if (!isMissingOutletColumn(withoutTaxonomy.error, "food_service_modes")) throw withoutTaxonomy.error;
+  }
+  if (isMissingOutletColumn(result.error, "food_service_modes") || isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+    // The food-service field predates this taxonomy. Retain the pre-existing legacy projection as the final compatibility fallback.
     const legacy = await queryOutlets(LEGACY_OUTLET_SELECT);
     if (legacy.error) throw legacy.error;
     return (legacy.data as unknown as OutletRow[]).map(mapOutlet);
@@ -180,12 +224,12 @@ export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[
 }
 
 type DiscoveryOutletRow = Pick<OutletRow,
-  "id" | "vendor_id" | "name" | "city" | "state" | "lat" | "lng" | "operating_hours" | "status" | "wheelchair_accessible" | "pet_friendly" | "food_service_modes"
+  "id" | "vendor_id" | "name" | "city" | "state" | "lat" | "lng" | "operating_hours" | "status" | "wheelchair_accessible" | "pet_friendly" | "food_service_modes" | "badge_slugs" | "accommodation_type_slugs"
 > & {
   vendors: { name: string | null; slug: string | null; status: string } | null;
 };
 
-async function getDiscoveryOutlets(ids: string[], db: SupabaseClient): Promise<Outlet[]> {
+async function getDiscoveryOutlets(ids: string[], db: SupabaseClient, badgeSlugs: string[] = []): Promise<Outlet[]> {
   const outletIds = [...new Set(ids.filter(Boolean))];
   if (outletIds.length === 0) return [];
 
@@ -194,15 +238,24 @@ async function getDiscoveryOutlets(ids: string[], db: SupabaseClient): Promise<O
     outletIds.slice(index * 200, (index + 1) * 200),
   );
   const batchRows = await mapWithConcurrencyTwo(batches, async (batch) => {
-    const query = (select: string) => db
-      .from("outlets")
-      .select(select)
-      .in("id", batch)
-      .eq("status", "active")
-      .eq("review_status", "approved");
-    const result = await query(DISCOVERY_OUTLET_SELECT);
-    if (result.error?.code === "42703" && result.error.message.includes("outlets.food_service_modes")) {
-      const legacy = await query(LEGACY_DISCOVERY_OUTLET_SELECT);
+    const query = (select: string, includeBadgeFilter: boolean) => {
+      let builder = db
+        .from("outlets")
+        .select(select)
+        .in("id", batch)
+        .eq("status", "active")
+        .eq("review_status", "approved");
+      if (badgeSlugs.length > 0 && includeBadgeFilter) builder = builder.overlaps("badge_slugs", badgeSlugs);
+      return builder;
+    };
+    const result = await query(DISCOVERY_OUTLET_SELECT, true);
+    if (isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+      const withoutTaxonomy = await query(DISCOVERY_OUTLET_SELECT_WITHOUT_TAXONOMY, false);
+      if (!withoutTaxonomy.error) return (withoutTaxonomy.data ?? []) as unknown as DiscoveryOutletRow[];
+      if (!isMissingOutletColumn(withoutTaxonomy.error, "food_service_modes")) throw withoutTaxonomy.error;
+    }
+    if (isMissingOutletColumn(result.error, "food_service_modes") || isMissingOutletColumn(result.error, "badge_slugs") || isMissingOutletColumn(result.error, "accommodation_type_slugs")) {
+      const legacy = await query(LEGACY_DISCOVERY_OUTLET_SELECT, false);
       if (legacy.error) throw legacy.error;
       return (legacy.data ?? []) as unknown as DiscoveryOutletRow[];
     }
@@ -217,6 +270,14 @@ async function getDiscoveryOutlets(ids: string[], db: SupabaseClient): Promise<O
     outlet_pages: null,
     vendors: row.vendors ? { ...row.vendors, products: [] } : null,
   } as OutletRow));
+}
+
+export async function getDiscoveryOutletsByIds(
+  ids: string[],
+  db: SupabaseClient = supabase,
+  badgeSlugs: string[] = [],
+): Promise<Outlet[]> {
+  return getDiscoveryOutlets(ids, db, badgeSlugs);
 }
 
 async function mapWithConcurrencyTwo<T, R>(items: T[], mapper: (item: T) => Promise<R>): Promise<R[]> {
@@ -250,6 +311,8 @@ export interface OutletChoice {
   /** This product's rating/review count at this outlet specifically. */
   rating: number;
   reviews: number;
+  badgeSlugs: string[];
+  accommodationTypeSlugs: string[];
 }
 
 /**
@@ -284,6 +347,8 @@ export async function getOutletChoices(activity: Activity, db: SupabaseClient = 
         vendorName: outlet.vendorName,
         rating: metric.rating,
         reviews: metric.reviews,
+        badgeSlugs: outlet.badgeSlugs ?? [],
+        accommodationTypeSlugs: outlet.accommodationTypeSlugs ?? [],
       };
     })
     .filter((choice): choice is OutletChoice => choice !== null)
@@ -392,6 +457,10 @@ type ProductRow = {
 const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 const DISCOVERY_ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status)";
 
+export interface DiscoveryReviewMetricEntry extends ReviewMetric {
+  productId: string;
+}
+
 async function getReviewMetricsForProducts(productIds: string[], db: SupabaseClient): Promise<Map<string, ReviewMetric>> {
   const metricBatches: Array<() => PromiseLike<{ product_id: string; rating: number | string; reviews: number | string }[]>> = Array.from({ length: Math.ceil(productIds.length / REVIEW_METRICS_BATCH_SIZE) }, (_, index) => {
       const batch = productIds.slice(index * REVIEW_METRICS_BATCH_SIZE, (index + 1) * REVIEW_METRICS_BATCH_SIZE);
@@ -410,6 +479,15 @@ async function getReviewMetricsForProducts(productIds: string[], db: SupabaseCli
     row.product_id,
     { rating: Number(row.rating), reviews: Number(row.reviews) },
   ]));
+}
+
+export async function getDiscoveryReviewMetricEntries(
+  productIds: string[],
+  db: SupabaseClient = supabase,
+): Promise<DiscoveryReviewMetricEntry[]> {
+  const uniqueIds = [...new Set(productIds.filter(Boolean))];
+  const metrics = await getReviewMetricsForProducts(uniqueIds, db);
+  return [...metrics.entries()].map(([productId, metric]) => ({ productId, ...metric }));
 }
 
 function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0, reviews: 0 }): Activity {
@@ -493,7 +571,28 @@ export type DiscoveryActivityData = {
   outlets: Outlet[];
 };
 
-async function loadDiscoveryActivityData(db: SupabaseClient): Promise<DiscoveryActivityData & { outletMap: Map<string, Outlet> }> {
+async function loadDiscoveryActivityData(
+  db: SupabaseClient,
+  outletBadgeSlugs: string[] = [],
+): Promise<DiscoveryActivityData & { outletMap: Map<string, Outlet> }> {
+  const activities = await getDiscoveryProductActivities(db);
+  if (activities.length === 0) return { activities: [], outlets: [], outletMap: new Map() };
+
+  const productIds = activities.map((activity) => activity.id);
+  const outletIds = getDiscoveryOutletIds(activities);
+  // Keep the refresh-wide query ceiling at two: the metric and outlet query
+  // families each batch internally and run in turn rather than concurrently.
+  const reviewMetrics = await getDiscoveryReviewMetricEntries(productIds, db);
+  const outlets = await getDiscoveryOutletsByIds(outletIds, db, outletBadgeSlugs);
+
+  return {
+    activities: applyDiscoveryReviewMetrics(activities, reviewMetrics),
+    outlets,
+    outletMap: new Map(outlets.map((outlet) => [outlet.id, outlet])),
+  };
+}
+
+export async function getDiscoveryProductActivities(db: SupabaseClient = supabase): Promise<Activity[]> {
   const rows: ProductRow[] = [];
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
@@ -509,23 +608,29 @@ async function loadDiscoveryActivityData(db: SupabaseClient): Promise<DiscoveryA
     rows.push(...page);
     if (page.length < pageSize) break;
   }
-  if (rows.length === 0) return { activities: [], outlets: [], outletMap: new Map() };
+  return rows.map((row) => mapActivity(row));
+}
 
-  const productIds = rows.map((row) => row.id);
-  const outletIds = rows.flatMap((row) => [
-    row.outlet_id,
-    ...(row.outlet_offers ?? []).filter((offer) => offer.status === "active").map((offer) => offer.outlet_id),
-  ]).filter((id): id is string => Boolean(id));
-  // Keep the refresh-wide query ceiling at two: each helper batches with at
-  // most two concurrent requests, and the two relation families run in turn.
-  const reviewMetrics = await getReviewMetricsForProducts(productIds, db);
-  const outlets = await getDiscoveryOutlets(outletIds, db);
+export function getDiscoveryOutletIds(activities: Activity[]): string[] {
+  return [...new Set(activities.flatMap((activity) => [
+    activity.outletId,
+    ...(activity.offers ?? []).map((offer) => offer.outletId),
+  ]).filter(Boolean))].sort();
+}
 
-  return {
-    activities: rows.map((row) => mapActivity(row, reviewMetrics.get(row.id))),
-    outlets,
-    outletMap: new Map(outlets.map((outlet) => [outlet.id, outlet])),
-  };
+export function applyDiscoveryReviewMetrics(
+  activities: Activity[],
+  metricEntries: DiscoveryReviewMetricEntry[],
+): Activity[] {
+  const metricsByProductId = new Map(metricEntries.map(({ productId, rating, reviews }) => [
+    productId,
+    { rating, reviews },
+  ]));
+
+  return activities.map((activity) => ({
+    ...activity,
+    ...(metricsByProductId.get(activity.id) ?? { rating: 0, reviews: 0 }),
+  }));
 }
 
 export async function getDiscoveryActivityData(db: SupabaseClient = supabase): Promise<DiscoveryActivityData> {
@@ -661,7 +766,7 @@ export async function getPublicReviewAuthorNames(
 
 export async function getProductReviewsPage(
   productId: string,
-  options: { page?: number; pageSize?: number; outletId?: string } = {},
+  options: { page?: number; pageSize?: number; outletId?: string; rating?: number } = {},
   db: SupabaseClient = supabase,
 ): Promise<ProductReviewPage> {
   const requestedPageSize = Math.floor(Number(options.pageSize ?? 5));
@@ -673,6 +778,7 @@ export async function getProductReviewsPage(
     .eq("product_id", productId)
     .eq("is_visible", true);
   if (options.outletId) countQuery = countQuery.eq("outlet_id", options.outletId);
+  if (options.rating !== undefined) countQuery = countQuery.eq("rating", options.rating);
   const { count, error: countError } = await countQuery;
   if (countError) throw countError;
 
@@ -688,8 +794,10 @@ export async function getProductReviewsPage(
     .eq("product_id", productId)
     .eq("is_visible", true);
   if (options.outletId) dataQuery = dataQuery.eq("outlet_id", options.outletId);
+  if (options.rating !== undefined) dataQuery = dataQuery.eq("rating", options.rating);
   const { data, error } = await dataQuery
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .range(offset, offset + pageSize - 1);
   if (error) throw error;
 
@@ -751,6 +859,18 @@ function toComputed(
     outlet: best.outlet,
     distanceKm: best.distanceKm,
   };
+}
+
+export function composeDiscoveryActivities(
+  activities: Activity[],
+  outlets: Outlet[],
+  from?: { lat: number; lng: number },
+): ComputedActivity[] {
+  const outletMap = new Map(outlets.map((outlet) => [outlet.id, outlet]));
+  return activities
+    .map((activity) => toComputed(activity, outletMap, from))
+    .filter((activity): activity is ComputedActivity => activity !== null)
+    .sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
 }
 
 /**
@@ -939,9 +1059,9 @@ export function filterComputedActivities(filters: SearchFilters, activities: Com
   }
   if (filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) {
     results = results.filter((activity) =>
-      (filters.hiddenGemOnly && activity.isHiddenGem) ||
-      (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
-      (filters.coupleFriendlyOnly && activity.isCoupleFriendly),
+      (filters.hiddenGemOnly && activity.outlet.badgeSlugs?.includes("hidden_gem")) ||
+      (filters.familyFriendlyOnly && activity.outlet.badgeSlugs?.includes("family_friendly")) ||
+      (filters.coupleFriendlyOnly && activity.outlet.badgeSlugs?.includes("couple_friendly")),
     );
   }
   if (filters.state && filters.state !== "All Malaysia") {
@@ -990,9 +1110,145 @@ export function filterComputedActivities(filters: SearchFilters, activities: Com
   return results;
 }
 
+type ExploreTypeSelections = Map<string, Set<string>>;
+
+function getExploreTypeSelections(filters: SearchFilters): ExploreTypeSelections {
+  const selections = new Map<string, Set<string>>();
+  for (const token of filters.types ?? []) {
+    const separator = token.indexOf(":");
+    if (separator < 1) continue;
+    const category = canonicalCategorySlug(token.slice(0, separator));
+    const type = token.slice(separator + 1);
+    if (!category || !type || !CATEGORY_DETAILS[category].types.some((option) => option.slug === type)) continue;
+    const types = selections.get(category) ?? new Set<string>();
+    types.add(type);
+    selections.set(category, types);
+  }
+  return selections;
+}
+
+function getExploreCategorySelections(filters: SearchFilters, typeSelections: ExploreTypeSelections): Set<string> {
+  return new Set([
+    ...(filters.categories ?? []),
+    ...(filters.categorySlug ? [filters.categorySlug] : []),
+    ...(filters.category ? [filters.category] : []),
+    ...typeSelections.keys(),
+  ].map(canonicalCategorySlug).filter((category): category is RealCategorySlug => category !== null));
+}
+
+function getExploreBadgeSelections(filters: SearchFilters): string[] {
+  return [
+    ...(filters.hiddenGemOnly ? ["hidden_gem"] : []),
+    ...(filters.familyFriendlyOnly ? ["family_friendly"] : []),
+    ...(filters.coupleFriendlyOnly ? ["couple_friendly"] : []),
+  ];
+}
+
+function matchesExploreActivity(
+  activity: Activity,
+  outlet: Outlet,
+  filters: SearchFilters,
+  categorySelections: Set<string>,
+  typeSelections: ExploreTypeSelections,
+  badgeSelections: string[],
+): boolean {
+  const category = canonicalCategorySlug(activity.categorySlug);
+  if (categorySelections.size > 0 && (!category || !categorySelections.has(category))) return false;
+
+  if (typeSelections.size > 0) {
+    const selectedTypes = category ? typeSelections.get(category) : undefined;
+    if (!selectedTypes) return false;
+    const availableTypes = category === "accommodation" ? outlet.accommodationTypeSlugs : activity.typeSlugs;
+    if (!availableTypes?.some((type) => selectedTypes.has(type))) return false;
+  }
+
+  const query = filters.q?.trim().toLocaleLowerCase();
+  if (query) {
+    const productMatches = activity.name.toLocaleLowerCase().includes(query)
+      || activity.category.toLocaleLowerCase().includes(query);
+    const outletMatches = outlet.city.toLocaleLowerCase().includes(query)
+      || outlet.state.toLocaleLowerCase().includes(query);
+    if (!productMatches && !outletMatches) return false;
+  }
+
+  if (badgeSelections.length > 0 && !badgeSelections.some((badge) => outlet.badgeSlugs?.includes(badge))) return false;
+  if (filters.state && filters.state !== "All Malaysia" && (activity.place?.state ?? outlet.state) !== filters.state) return false;
+  if (filters.openNow && !(outlet.currentlyOpen ?? outlet.open)) return false;
+  if (filters.vendorId && outlet.vendorId !== filters.vendorId) return false;
+  return true;
+}
+
+function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
+  switch (filters.sort) {
+    case "price_asc":
+      activities.sort((a, b) => a.price - b.price);
+      break;
+    case "rating_desc":
+      activities.sort((a, b) => b.rating - a.rating);
+      break;
+    case "distance_asc":
+      activities.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+      break;
+    default:
+      activities.sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
+  }
+  return activities;
+}
+
+/** Explore's facet groups combine with AND; selections within each group use OR. */
+export function filterExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
+  const typeSelections = getExploreTypeSelections(filters);
+  const categorySelections = getExploreCategorySelections(filters, typeSelections);
+  const badgeSelections = getExploreBadgeSelections(filters);
+  const matching = activities.filter((activity) => matchesExploreActivity(
+    activity,
+    activity.outlet,
+    filters,
+    categorySelections,
+    typeSelections,
+    badgeSelections,
+  ));
+  return sortExploreActivities(filters, matching);
+}
+
+/**
+ * Searches Explore with outlet-scoped filters applied before collapsing a
+ * shared product to its one representative outlet and offer price.
+ */
+export async function searchExploreActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+  const typeSelections = getExploreTypeSelections(filters);
+  const categorySelections = getExploreCategorySelections(filters, typeSelections);
+  const badgeSelections = getExploreBadgeSelections(filters);
+  const { activities, outletMap } = await loadDiscoveryActivityData(db, badgeSelections);
+  const matchingActivities = activities.flatMap((activity) => {
+    const candidateOutletIds = [...new Set([
+      ...(activity.offers ?? []).map((offer) => offer.outletId),
+      activity.outletId,
+    ].filter(Boolean))];
+    const matchingOutlets = new Map<string, Outlet>();
+    for (const outletId of candidateOutletIds) {
+      const outlet = outletMap.get(outletId);
+      if (outlet && matchesExploreActivity(activity, outlet, filters, categorySelections, typeSelections, badgeSelections)) {
+        matchingOutlets.set(outlet.id, outlet);
+      }
+    }
+    const computed = toComputed(activity, matchingOutlets, filters.near);
+    return computed ? [computed] : [];
+  });
+  return sortExploreActivities(filters, matchingActivities);
+}
+
 export async function searchActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const activities = await getDiscoveryActivities(db, filters.near);
-  return filterComputedActivities(filters, activities);
+  const selectedBadgeSlugs = [
+    ...(filters.hiddenGemOnly ? ["hidden_gem"] : []),
+    ...(filters.familyFriendlyOnly ? ["family_friendly"] : []),
+    ...(filters.coupleFriendlyOnly ? ["couple_friendly"] : []),
+  ];
+  const { activities, outletMap } = await loadDiscoveryActivityData(db, selectedBadgeSlugs);
+  const computedActivities = activities
+    .map((activity) => toComputed(activity, outletMap, filters.near))
+    .filter((activity): activity is ComputedActivity => activity !== null);
+  return filterComputedActivities(filters, computedActivities);
 }
 
 /** Keep discovery lean; only itinerary products need purchase variants and stock. */

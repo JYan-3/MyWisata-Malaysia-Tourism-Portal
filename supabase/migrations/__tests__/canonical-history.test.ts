@@ -298,6 +298,8 @@ const approvedForwardMigrations = [
   "20261018162000_apply_hotel_profile_submission.sql",
   "20261018170000_stay_booking_details.sql",
   "20261019180100_hotel_data_fill.sql",
+  "20261020085328_review_rating_metrics_by_scope.sql",
+  "20261022195929_vendor_managed_product_types_outlet_badges.sql",
 ];
 
 function migrationFiles() {

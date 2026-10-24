@@ -45,7 +45,16 @@ describe("place comments API contract", () => {
     const response = await GET(new Request(`http://localhost/api/places/${placeId}/comments`), { params: Promise.resolve({ placeId }) });
 
     expect(response.status).toBe(200);
-    expect(mocks.getPlaceCommentsPage).toHaveBeenCalledWith(placeId, expect.objectContaining({ page: 1, pageSize: 6, viewerId: undefined }), expect.anything());
+    expect(mocks.getPlaceCommentsPage).toHaveBeenCalledWith(placeId, expect.objectContaining({ page: 1, pageSize: 6, sort: "newest", viewerId: undefined }), expect.anything());
+  });
+
+  it("validates the sort selection and passes oldest-first intent to the domain", async () => {
+    const invalid = await GET(new Request(`http://localhost/api/places/${placeId}/comments?sort=random`), { params: Promise.resolve({ placeId }) });
+    expect(invalid.status).toBe(400);
+
+    const oldest = await GET(new Request(`http://localhost/api/places/${placeId}/comments?sort=oldest`), { params: Promise.resolve({ placeId }) });
+    expect(oldest.status).toBe(200);
+    expect(mocks.getPlaceCommentsPage).toHaveBeenCalledWith(placeId, expect.objectContaining({ sort: "oldest" }), expect.anything());
   });
 
   it("requires a signed-in user before a note can be created or deleted", async () => {

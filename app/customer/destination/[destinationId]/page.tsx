@@ -193,15 +193,15 @@ export default async function DestinationPage({ params }: Props) {
                 const category = Array.isArray(product.categories) ? product.categories[0] : product.categories;
                 const price = Number(product.base_price);
                 return (
-                  <article key={product.id} className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                    <Link href={`/customer/activity/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                  <article key={product.id} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                    <Link href={`/customer/activity/${product.id}`} className="group/product-media block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                     <div className="relative aspect-[4/3] overflow-hidden bg-primary/10">
                       {product.cover_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={productImageUrl(product.cover_url) ?? ""}
                           alt={product.name}
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">

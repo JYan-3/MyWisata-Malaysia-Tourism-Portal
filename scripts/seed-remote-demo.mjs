@@ -12,13 +12,12 @@ import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { buildDemoBookingReference, buildDemoReviewCopy } from './lib/demo-content.mjs';
 import { remoteDemoSeedBlockReason } from './lib/demo-seed-guard.mjs';
+import { assertDemoOutletBadgeCoverage, assertDemoProductType, demoOutletBadgeSlugs } from './lib/demo-taxonomy-fixtures.mjs';
+import { vendorOwnerIdForSlug } from './lib/vendor-owner-id.mjs';
 
-// WARNING: this script encodes the older all-vendors-share-3-owners demo
-// model, which conflicts with the per-vendor-owner model established in
-// supabase/migrations/20260815010000_per_vendor_owner_accounts.sql and
-// 20260815011000_demo_outlet_manager_accounts.sql. Running it against a
-// project with those migrations applied will reintroduce non-deterministic
-// vendor-dashboard behavior for the shared demo accounts.
+// Vendor owner IDs follow the per-vendor identity written by
+// 20260814162659_per_vendor_owner_accounts.sql. Auth credentials remain a
+// separate concern handled by scripts/seed-demo-vendor-accounts.mjs.
 
 function loadEnv() {
   for (const filename of ['.env.local', '.env']) {
@@ -73,7 +72,9 @@ const DEMO_USERS = [
 ];
 
 const CUSTOMER_IDS = DEMO_USERS.filter(([, email]) => email.startsWith('customer')).map(([id]) => id);
-const OWNER_ID = DEMO_USERS[2][0];
+const RASA_VENDOR_SLUG = 'rasa-malaysia';
+const RASA_VENDOR_NAME = 'Rasa Malaysia Kitchen';
+const RASA_OWNER_ID = vendorOwnerIdForSlug(RASA_VENDOR_SLUG);
 const MANAGER_IDS = [DEMO_USERS[3][0], DEMO_USERS[10][0], DEMO_USERS[11][0], DEMO_USERS[12][0]];
 const VENDOR_ID = 'bbbbbbbb-0000-0000-0000-000000000001';
 
@@ -118,7 +119,7 @@ const PHOTO_URLS = [
 // [baseName, productType, basePrice, requiresBooking, categoryIndex (into
 // CATEGORIES: 0=food 1=activity 2=accommodation 3=retail), description,
 // typeSlug (the category's second-level type, see category-details.ts),
-// isFamilyFriendly]
+// legacy isFamilyFriendly (ignored; outlet badges are authoritative)]
 const PRODUCT_SEEDS = [
   ['Nasi Lemak Pandan', 'food', 18, false, 0, "Fragrant pandan-infused coconut rice served the traditional way, with sambal, crispy anchovies, roasted peanuts, and a boiled egg. Malaysia's national breakfast, any time of day.", 'malay', false],
   ['Penang Assam Laksa', 'food', 15, false, 0, "Tangy, tamarind-based fish broth over thick rice noodles, topped with torch ginger flower, mint, and prawn paste — Penang's signature sour-and-spicy laksa.", 'malay', false],
@@ -196,23 +197,33 @@ const WELLNESS_OUTLET_INDICES = [1, 2, 5]; // Kuala Lumpur (KLCC), George Town, 
 // rehome_mis_vendored_products migration, so "Provided by" stays consistent
 // between a fresh reseed and the live DB.
 const THEMED_VENDORS = [
-  { id: stableUuid('vendor:explore-outdoors'), slug: 'explore-outdoors-malaysia', name: 'Explore Outdoors Malaysia', description: 'Nature and adventure experiences across Malaysia.', businessType: 'tourism_experience', types: ['nature', 'adventure'] },
-  { id: stableUuid('vendor:warisan-cultural'), slug: 'warisan-cultural-journeys', name: 'Warisan Cultural Journeys', description: 'Heritage walks and cultural workshops across Malaysia.', businessType: 'tourism_experience', types: ['cultural'] },
-  { id: stableUuid('vendor:serenity-wellness'), slug: 'serenity-wellness-retreats', name: 'Serenity Wellness Retreats', description: 'Spa and wellness escapes across Malaysia.', businessType: 'wellness', types: ['wellness'] },
-  { id: stableUuid('vendor:kraftangan-artisan'), slug: 'kraftangan-artisan-market', name: 'Kraftangan Artisan Market', description: 'Local handicrafts and souvenirs across Malaysia.', businessType: 'retail', types: ['handicrafts', 'souvenirs'] },
+  { id: stableUuid('vendor:explore-outdoors'), ownerId: vendorOwnerIdForSlug('explore-outdoors-malaysia'), slug: 'explore-outdoors-malaysia', name: 'Explore Outdoors Malaysia', description: 'Nature and adventure experiences across Malaysia.', businessType: 'tourism_experience', types: ['nature', 'adventure'] },
+  { id: stableUuid('vendor:warisan-cultural'), ownerId: vendorOwnerIdForSlug('warisan-cultural-journeys'), slug: 'warisan-cultural-journeys', name: 'Warisan Cultural Journeys', description: 'Heritage walks and cultural workshops across Malaysia.', businessType: 'tourism_experience', types: ['cultural'] },
+  { id: stableUuid('vendor:serenity-wellness'), ownerId: vendorOwnerIdForSlug('serenity-wellness-retreats'), slug: 'serenity-wellness-retreats', name: 'Serenity Wellness Retreats', description: 'Spa and wellness escapes across Malaysia.', businessType: 'wellness', types: ['wellness'] },
+  { id: stableUuid('vendor:kraftangan-artisan'), ownerId: vendorOwnerIdForSlug('kraftangan-artisan-market'), slug: 'kraftangan-artisan-market', name: 'Kraftangan Artisan Market', description: 'Local handicrafts and souvenirs across Malaysia.', businessType: 'retail', types: ['handicrafts', 'souvenirs'] },
 ];
 const TYPE_TO_THEMED_VENDOR = Object.fromEntries(THEMED_VENDORS.flatMap((v) => v.types.map((t) => [t, v])));
 
 const EXTRA_VENDORS = [
   {
-    id: stableUuid('vendor:batik-nusantara'), ownerId: DEMO_USERS[8][0], name: 'Batik Nusantara Studio', slug: 'batik-nusantara', description: 'Hands-on batik workshops and artisan gifts from the east coast.', city: 'Kuantan', state: 'Pahang',
+    id: stableUuid('vendor:batik-nusantara'), ownerId: vendorOwnerIdForSlug('batik-nusantara'), name: 'Batik Nusantara Studio', slug: 'batik-nusantara', description: 'Hands-on batik workshops and artisan gifts from the east coast.', city: 'Kuantan', state: 'Pahang',
     outlets: [['batik-kuantan', 'Batik Nusantara — Kuantan', 'Kuantan', 'Pahang', 3.8077, 103.3260], ['batik-kuala-terengganu', 'Batik Nusantara — Kuala Terengganu', 'Kuala Terengganu', 'Terengganu', 5.3302, 103.1408]],
   },
   {
-    id: stableUuid('vendor:borneo-wild'), ownerId: DEMO_USERS[9][0], name: 'Borneo Wild Trails', slug: 'borneo-wild', description: 'Small-group rainforest, river and wildlife experiences hosted by local guides.', city: 'Kota Kinabalu', state: 'Sabah',
+    id: stableUuid('vendor:borneo-wild'), ownerId: vendorOwnerIdForSlug('borneo-wild'), name: 'Borneo Wild Trails', slug: 'borneo-wild', description: 'Small-group rainforest, river and wildlife experiences hosted by local guides.', city: 'Kota Kinabalu', state: 'Sabah',
     outlets: [['borneo-kota-kinabalu', 'Borneo Wild — Kota Kinabalu', 'Kota Kinabalu', 'Sabah', 5.9804, 116.0735], ['borneo-sandakan', 'Borneo Wild — Sandakan', 'Sandakan', 'Sabah', 5.8402, 118.1179]],
   },
 ];
+
+const SEEDED_VENDOR_OWNER_PROFILES = [
+  { slug: RASA_VENDOR_SLUG, name: RASA_VENDOR_NAME },
+  ...THEMED_VENDORS.map(({ slug, name }) => ({ slug, name })),
+  ...EXTRA_VENDORS.map(({ slug, name }) => ({ slug, name })),
+].map(({ slug, name }) => ({
+  id: vendorOwnerIdForSlug(slug),
+  email: `owner.${slug}@demo.local`,
+  full_name: `${name} Owner`,
+}));
 
 // Place-specific activities that only ever existed in the live database
 // (plan finding F3): hand-authored rows that no seed or migration reproduced.
@@ -304,39 +315,25 @@ async function upsert(table, rows, onConflict = 'id') {
   }
 }
 
-async function ensureAuthUsers() {
-  for (const [id, email, fullName] of DEMO_USERS) {
-    const { error } = await supabase.auth.admin.createUser({
-      id,
-      email,
-      password: 'demo123456',
-      email_confirm: true,
-      user_metadata: { full_name: fullName },
-    });
-    if (error && !/already|duplicate|exists/i.test(error.message)) {
-      throw new Error(`auth user ${email}: ${error.message}`);
-    }
-  }
-  await upsert('users', DEMO_USERS.map(([id, email, fullName], index) => ({
+async function ensureDemoProfiles() {
+  const demoProfiles = DEMO_USERS.map(([id, email, fullName]) => ({
     id,
     email,
     full_name: fullName,
-    kyc_status: index < 4 ? 'approved' : index === 4 ? 'approved' : 'unverified',
-    email_verified_at: new Date().toISOString(),
-    profile_completed_at: null,
-  })));
+  }));
+  await upsert('users', [...demoProfiles, ...SEEDED_VENDOR_OWNER_PROFILES]);
 }
 
 async function ensureVendor() {
   const { data: existing, error: findError } = await supabase
-    .from('vendors').select('id').eq('slug', 'rasa-malaysia').maybeSingle();
+    .from('vendors').select('id').eq('slug', RASA_VENDOR_SLUG).maybeSingle();
   if (findError) throw findError;
   const id = existing?.id || VENDOR_ID;
   await upsert('vendors', [{
     id,
-    owner_id: OWNER_ID,
-    name: 'Rasa Malaysia Kitchen',
-    slug: 'rasa-malaysia',
+    owner_id: RASA_OWNER_ID,
+    name: RASA_VENDOR_NAME,
+    slug: RASA_VENDOR_SLUG,
     description: 'A Malaysia-wide collection of local flavours, heritage trails and small-group experiences.',
     business_type: 'food_and_tourism',
     status: 'approved',
@@ -348,7 +345,7 @@ async function ensureVendor() {
   return id;
 }
 
-async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds = MANAGER_IDS) {
+async function seedRoles(vendorId, outletIds, ownerId, managerIds = MANAGER_IDS) {
   // Ensure default roles exist first
   const defaultRoles = [
     { name: 'super_admin', description: 'Full platform administrative control' },
@@ -364,12 +361,19 @@ async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds 
   const { data: roles, error } = await supabase.from('roles').select('id,name').in('name', ['super_admin', 'admin', 'approver', 'vendor_owner', 'outlet_manager', 'customer']);
   if (error) throw error;
   const roleByName = Object.fromEntries((roles || []).map((role) => [role.name, role.id]));
+  const { error: staleOwnerRolesError } = await supabase.from('user_roles')
+    .delete()
+    .eq('role_id', roleByName.vendor_owner)
+    .eq('vendor_id', vendorId)
+    .neq('user_id', ownerId);
+  if (staleOwnerRolesError) throw new Error(`Failed to reconcile vendor owner role: ${staleOwnerRolesError.message}`);
+
   const assignments = [
     { user_id: DEMO_USERS[0][0], role_id: roleByName.super_admin, vendor_id: null, outlet_id: null },
     { user_id: DEMO_USERS[1][0], role_id: roleByName.approver, vendor_id: null, outlet_id: null },
     { user_id: DEMO_USERS[13][0], role_id: roleByName.admin, vendor_id: null, outlet_id: null },
     ...CUSTOMER_IDS.map((customerId) => ({ user_id: customerId, role_id: roleByName.customer, vendor_id: null, outlet_id: null })),
-    ...ownerIds.map((ownerId) => ({ user_id: ownerId, role_id: roleByName.vendor_owner, vendor_id: vendorId, outlet_id: null })),
+    { user_id: ownerId, role_id: roleByName.vendor_owner, vendor_id: vendorId, outlet_id: null },
     ...outletIds.slice(0, managerIds.length).map((outletId, index) => ({ user_id: managerIds[index], role_id: roleByName.outlet_manager, vendor_id: null, outlet_id: outletId })),
   ];
   for (const assignment of assignments) {
@@ -403,10 +407,11 @@ async function seedAdditionalVendors(categories) {
   const extraProducts = [];
   for (const [vendorIndex, vendor] of EXTRA_VENDORS.entries()) {
     const outletRows = vendor.outlets.map(([slug, name, city, state, lat, lng]) => ({
-      id: stableUuid(`outlet:${slug}`), vendor_id: vendor.id, name, slug, address: `${name}, Malaysia`, city, state, country: 'Malaysia', lat, lng, phone: '+60 9-5555 0168', email: `hello+${slug}@demo.local`, operating_hours: { mon: { open: '09:00', close: '18:00' }, tue: { open: '09:00', close: '18:00' }, wed: { open: '09:00', close: '18:00' }, thu: { open: '09:00', close: '18:00' }, fri: { open: '09:00', close: '20:00' }, sat: { open: '09:00', close: '20:00' }, sun: { open: '10:00', close: '18:00' } }, status: 'active', review_status: 'approved',
+      id: stableUuid(`outlet:${slug}`), vendor_id: vendor.id, name, slug, badge_slugs: demoOutletBadgeSlugs(slug), accommodation_type_slugs: [], address: `${name}, Malaysia`, city, state, country: 'Malaysia', lat, lng, phone: '+60 9-5555 0168', email: `hello+${slug}@demo.local`, operating_hours: { mon: { open: '09:00', close: '18:00' }, tue: { open: '09:00', close: '18:00' }, wed: { open: '09:00', close: '18:00' }, thu: { open: '09:00', close: '18:00' }, fri: { open: '09:00', close: '20:00' }, sat: { open: '09:00', close: '20:00' }, sun: { open: '10:00', close: '18:00' } }, status: 'active', review_status: 'approved',
     }));
+    assertDemoOutletBadgeCoverage(outletRows, { requireAll: false });
     await upsert('outlets', outletRows);
-    await seedRoles(vendor.id, outletRows.map((outlet) => outlet.id), [vendor.ownerId], []);
+    await seedRoles(vendor.id, outletRows.map((outlet) => outlet.id), vendor.ownerId, []);
     // One real activity per outlet, from EXTRA_VENDOR_ACTIVITIES. Previously
     // this cloned a single name onto every outlet, which put "River &
     // Rainforest Discovery" in both Kota Kinabalu and Sandakan.
@@ -423,6 +428,7 @@ async function seedAdditionalVendors(categories) {
         status: 'active', review_status: 'approved',
       })),
     );
+    for (const product of products) assertDemoProductType('activity', product.type_slugs, product.slug);
     await upsert('products', products);
     const variants = products.map((product, index) => ({ id: stableUuid(`variant:${product.id}:adult`), product_id: product.id, name: 'Adult', sku: `EXTRA-${vendorIndex}-${index}-ADULT`, price_offset: 0, is_default: true, is_active: true, sort_order: 0 }));
     await upsert('product_variants', variants);
@@ -535,7 +541,7 @@ async function seedAdditionalVendorCommerce() {
 
 async function main() {
   console.log(`Seeding remote Supabase project ${url.replace(/https?:\/\//, '').split('.')[0]}…`);
-  await ensureAuthUsers();
+  await ensureDemoProfiles();
   // Sync categories: fetch what's already in the DB (schema seed may have inserted
   // them with different UUIDs). Remap CATEGORIES[i][0] to the actual DB IDs so that
   // product category_id references remain valid.
@@ -561,6 +567,8 @@ async function main() {
     vendor_id: vendorId,
     name,
     slug,
+    badge_slugs: demoOutletBadgeSlugs(slug),
+    accommodation_type_slugs: [],
     address: `${name.replace('Rasa Malaysia — ', '')}, Malaysia`,
     city,
     state,
@@ -572,9 +580,10 @@ async function main() {
     operating_hours: { mon: { open: '09:00', close: '22:00' }, tue: { open: '09:00', close: '22:00' }, wed: { open: '09:00', close: '22:00' }, thu: { open: '09:00', close: '22:00' }, fri: { open: '09:00', close: '23:00' }, sat: { open: '09:00', close: '23:00' }, sun: { open: '09:00', close: '22:00' } },
     status: 'active',
   }));
+  assertDemoOutletBadgeCoverage(outletRows);
   await upsert('outlets', outletRows);
   const outletIds = outletRows.map((outlet) => outlet.id);
-  await seedRoles(vendorId, outletIds);
+  await seedRoles(vendorId, outletIds, RASA_OWNER_ID);
 
   await upsert('outlet_pages', outletRows.map((outlet, index) => ({
     id: stableUuid(`outlet-page:${outlet.id}`),
@@ -586,7 +595,7 @@ async function main() {
   })), 'outlet_id');
 
   await upsert('vendors', THEMED_VENDORS.map((tv) => ({
-    id: tv.id, owner_id: DEMO_USERS[9][0], name: tv.name, slug: tv.slug, description: tv.description,
+    id: tv.id, owner_id: tv.ownerId, name: tv.name, slug: tv.slug, description: tv.description,
     business_type: tv.businessType, status: 'approved', approved_by: DEMO_USERS[0][0], approved_at: new Date().toISOString(),
   })));
   // One outlet per themed vendor per city, cloning the same OUTLETS coords as
@@ -599,6 +608,8 @@ async function main() {
       vendor_id: tv.id,
       name: `${tv.name} — ${city}`,
       slug: `${tv.slug}-${slug}`,
+      badge_slugs: demoOutletBadgeSlugs(`${tv.slug}-${slug}`),
+      accommodation_type_slugs: [],
       address: `${city}, Malaysia`,
       city,
       state,
@@ -609,8 +620,10 @@ async function main() {
       operating_hours: { mon: { open: '09:00', close: '18:00' }, tue: { open: '09:00', close: '18:00' }, wed: { open: '09:00', close: '18:00' }, thu: { open: '09:00', close: '18:00' }, fri: { open: '09:00', close: '18:00' }, sat: { open: '09:00', close: '18:00' }, sun: { open: '09:00', close: '18:00' } },
       status: 'active',
     }));
+    assertDemoOutletBadgeCoverage(rows);
     await upsert('outlets', rows);
     themedOutletRows[tv.slug] = rows;
+    await seedRoles(tv.id, rows.map((outlet) => outlet.id), tv.ownerId, []);
   }
 
   const productRows = [];
@@ -620,7 +633,7 @@ async function main() {
   const productSeedIndex = [];
   for (let i = 0; i < 100; i += 1) {
     const seed = PRODUCT_SEEDS[i % PRODUCT_SEEDS.length];
-    const [baseName, productType, basePrice, requiresBooking, categoryIndex, baseDescription, typeSlug, isFamilyFriendly] = seed;
+    const [baseName, productType, basePrice, requiresBooking, categoryIndex, baseDescription, typeSlug] = seed;
     const placeBound = PLACE_BOUND_ACTIVITIES[i];
     // A place-bound type is only created where it actually is. Every other
     // index of these types is a clone this seed used to scatter across cities.
@@ -630,6 +643,8 @@ async function main() {
     const name = placeBound ? placeBound[0] : baseName;
     const slug = placeBound ? placeBound[1] : `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95);
     const isPublicPlace = Boolean(placeBound && PUBLIC_PLACE_SLUGS.has(slug));
+    const productTypeSlugs = placeBound ? [placeBound[2]] : typeSlug ? [typeSlug] : [];
+    assertDemoProductType(CATEGORIES[categoryIndex][2], productTypeSlugs, slug);
     productSeedIndex.push(i);
     productRows.push(withPlace({
       id: stableUuid(`product:${i}`),
@@ -644,8 +659,7 @@ async function main() {
       base_price: isPublicPlace ? 0 : basePrice + ((i % 5) * 2),
       cover_url: PHOTO_URLS[i % PHOTO_URLS.length],
       tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), productType],
-      type_slugs: placeBound ? [placeBound[2]] : typeSlug ? [typeSlug] : [],
-      is_family_friendly: !!isFamilyFriendly,
+      type_slugs: productTypeSlugs,
       status: 'active',
     }));
   }
@@ -678,6 +692,7 @@ async function main() {
     tags: ['malaysia', exploreOutlets[outletIndex].state.toLowerCase().replaceAll(' ', '-'), 'activity'],
     status: 'active', review_status: 'approved',
   }));
+  for (const product of exploreActivityRows) assertDemoProductType('activity', product.type_slugs, product.slug);
   await upsert('products', exploreActivityRows);
   await upsert('product_variants', exploreActivityRows.map((product) => ({
     id: stableUuid(`variant:${product.id}:standard`), product_id: product.id, name: 'Standard',
@@ -848,11 +863,11 @@ async function main() {
   await upsert('chat_threads', chatThreads);
   await upsert('chat_messages', chatThreads.flatMap((thread, index) => [
     { id: stableUuid(`chat-message:${index}:customer`), thread_id: thread.id, sender_id: thread.customer_id, body: `Hi, could you share more details about your Malaysia experience at ${outletRows[index % outletRows.length].city}?`, created_at: thread.created_at },
-    { id: stableUuid(`chat-message:${index}:vendor`), thread_id: thread.id, sender_id: OWNER_ID, body: 'Thanks for reaching out — our local team will be happy to help with your trip.', created_at: thread.last_message_at },
+    { id: stableUuid(`chat-message:${index}:vendor`), thread_id: thread.id, sender_id: RASA_OWNER_ID, body: 'Thanks for reaching out — our local team will be happy to help with your trip.', created_at: thread.last_message_at },
   ]));
 
   console.log(JSON.stringify({ vendorId, outlets: outletRows.length, products: productRows.length, vouchers: voucherRows.length, orders: orders.length, orderItems: items.length, bookings: bookings.length, reviews: reviews.length, chatThreads: chatThreads.length, extraCommerce }, null, 2));
-  console.log('Remote demo seed completed. Demo password for seeded auth users: demo123456');
+  console.log('Remote demo seed completed. Auth login provisioning and passwords were not changed.');
 }
 
 main().catch((error) => {

@@ -110,11 +110,11 @@ function FeaturedEventPartnerCard({ partner, locale }: { partner: EventPartner; 
     : t("ui.eventPartners.noUpcoming");
 
   return (
-    <article className="mw-card group relative min-w-0 transition duration-300 hover:-translate-y-1 hover:shadow-md">
-      <div className="mw-card-media">
+    <article className="mw-card group relative min-w-0">
+      <div className="mw-card-media group/partner-media">
         {visual.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: partner.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: partner.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/partner-media:scale-105" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(255,204,0,0.28),transparent_28%),linear-gradient(135deg,#010066,#172b72_58%,#2d5273)]">
             <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-white/25 bg-white/10 dark:bg-card/10 text-2xl font-black text-white shadow-xl backdrop-blur-sm">

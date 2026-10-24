@@ -57,16 +57,18 @@ export function toPlaceComment(row: PlaceCommentRow, viewerId?: string | null): 
 
 export async function getPlaceCommentsPage(
   placeId: string,
-  options: { page: number; pageSize: number; viewerId?: string | null },
+  options: { page: number; pageSize: number; viewerId?: string | null; sort?: "newest" | "oldest" },
   db: SupabaseClient,
 ): Promise<PlaceCommentsPage> {
   const from = (options.page - 1) * options.pageSize;
+  const ascending = options.sort === "oldest";
   const { data, error, count } = await db
     .from("place_comments")
     .select("id,place_id,user_id,body,is_anonymous,created_at,users(full_name,display_name,avatar_url,city)", { count: "exact" })
     .eq("place_id", placeId)
     .eq("status", "published")
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending })
+    .order("id", { ascending })
     .range(from, from + options.pageSize - 1);
 
   if (error) throw error;

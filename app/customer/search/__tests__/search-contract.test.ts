@@ -131,9 +131,9 @@ describe("customer vendor search contract", () => {
     expect(clientSource).not.toContain("lg:w-[460px]");
   });
 
-  it("aligns More filters right for Partners and Explore", () => {
+  it("keeps Partners filter alignment and uses the Explore sidebar", () => {
     expect(clientSource).toContain('filterButtonAlignment="end"');
-    expect(exploreSource).toContain('filterButtonAlignment="end"');
+    expect(exploreSource).toContain('layout="sidebar"');
     expect(filterSource).toContain('filterButtonAlignment = "start"');
   });
 

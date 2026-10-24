@@ -105,4 +105,41 @@ describe("getOutlets", () => {
     expect(selections[1]).not.toContain("food_service_modes");
     expect(outlets[0].foodServiceModes).toEqual(["dine_in", "takeaway"]);
   });
+
+  it("falls back only the new taxonomy columns and keeps existing food modes", async () => {
+    const responses = [
+      { data: null, error: { code: "PGRST204", message: "Could not find the 'badge_slugs' column of 'outlets' in the schema cache" } },
+      { data: [{
+        id: "o1", vendor_id: "v1", name: "Food stall", address: null, city: null, state: null,
+        lat: null, lng: null, operating_hours: null, phone: null, status: "active",
+        wheelchair_accessible: null, pet_friendly: null, food_service_modes: ["takeaway"],
+        outlet_pages: null, vendors: { name: "Food stall", slug: null, status: "approved", products: [] },
+      }], error: null },
+    ];
+    const selections: string[] = [];
+    let attempt = 0;
+    const db = {
+      from: () => {
+        const response = responses[attempt++];
+        const query: {
+          select: (columns: string) => typeof query;
+          eq: () => typeof query;
+          then: (resolve: (value: (typeof responses)[number]) => unknown) => Promise<unknown>;
+        } = {
+          select: (columns) => { selections.push(columns); return query; },
+          eq: () => query,
+          then: (resolve) => Promise.resolve(response).then(resolve),
+        };
+        return query;
+      },
+    };
+
+    const outlets = await getOutlets(db as never);
+
+    expect(attempt).toBe(2);
+    expect(selections[1]).not.toContain("badge_slugs");
+    expect(selections[1]).toContain("food_service_modes");
+    expect(outlets[0].foodServiceModes).toEqual(["takeaway"]);
+    expect(outlets[0].badgeSlugs).toEqual([]);
+  });
 });

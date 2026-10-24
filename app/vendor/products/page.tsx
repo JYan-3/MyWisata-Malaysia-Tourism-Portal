@@ -32,6 +32,8 @@ interface ProductData {
   status: string;
   review_status?: string;
   category_id?: string | null;
+  categories?: { name?: string | null; slug?: string | null } | null;
+  type_slugs?: string[] | null;
   requires_booking: boolean;
   ticket_entry_policy?: 'single_entry' | 'group_entry' | 'multi_entry';
   ticket_entry_limit?: number;
@@ -324,9 +326,11 @@ export default function VendorProductsPage() {
   return (
     <div className="space-y-5">
       {selectedProduct ? <ProductDetailsPage
+        key={selectedProduct.id}
         product={selectedProduct}
         vendorId={vendorId || ''}
         canManageOutlet={canManageOutlet}
+        canEditType={isOwner}
         canViewDetails={canViewProductDetails}
         productTypeLabel={typeLabel(selectedProduct.product_type, t)}
         productImageKind={imageKind(selectedProduct.product_type)}
@@ -710,7 +714,7 @@ export default function VendorProductsPage() {
                   return displayOutlets.map((outlet, idx) => (
                     <div
                       key={outlet.id || idx}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-card p-3.5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-500/30 hover:bg-emerald-50/30 dark:hover:bg-emerald-500/10 transition"
+                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-card p-3.5 shadow-sm"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
