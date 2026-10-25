@@ -47,11 +47,57 @@ export interface ClearingError {
   critical?: boolean;
 }
 
+export interface GuestCommissionReviewResult {
+  outcome: 'resolved' | 'stale' | 'error';
+  decision?: 'release' | 'reject';
+  version?: number;
+  ownerId?: string;
+  amountRM?: number;
+  error?: string;
+}
+
+export async function resolveGuestCommissionReview(
+  service: SupabaseClient,
+  attributionId: string,
+  expectedVersion: number,
+  decision: 'release' | 'reject',
+  adminId: string,
+): Promise<GuestCommissionReviewResult> {
+  const { data, error } = await service.rpc('resolve_guest_affiliate_commission_review', {
+    p_attribution_id: attributionId,
+    p_expected_version: expectedVersion,
+    p_decision: decision,
+    p_admin_id: adminId,
+  });
+  if (error) return { outcome: 'error', error: error.message };
+  if (!data || typeof data !== 'object' || !('outcome' in data)) return { outcome: 'error', error: 'Invalid guest review response' };
+  if (data.outcome === 'stale') return { outcome: 'stale' };
+  if (data.outcome !== 'resolved' || !('decision' in data) || !('owner_id' in data) || !('version' in data) || !('amount_rm' in data)) {
+    return { outcome: 'error', error: 'Invalid guest review response' };
+  }
+  const ownerId = data.owner_id;
+  const amountRM = typeof data.amount_rm === 'number' ? data.amount_rm : Number(data.amount_rm);
+  if (typeof ownerId !== 'string' || !Number.isFinite(amountRM) || amountRM <= 0 || typeof data.version !== 'number') {
+    return { outcome: 'error', error: 'Invalid guest review response' };
+  }
+  if (decision === 'reject') {
+    try {
+      await notifyCommissionRejected(service, { userId: ownerId, amountRM, attributionId, reason: 'Possible self-referral confirmed by admin' });
+    } catch (error) {
+      console.error('[affiliate] rejection notification failed after committed review', attributionId, error);
+    }
+  }
+  return { outcome: 'resolved', decision, version: data.version, ownerId, amountRM };
+}
+
 export interface ClearingResult {
   cleared: ClearedCommission[];
   reversed: ReversedCommission[];
   skipped: number; // already claimed by a concurrent/prior run
   errors: ClearingError[];
+  reviewRequired?: boolean;
+  hasMore?: boolean;
+  busy?: boolean;
 }
 
 interface AttributionCandidate {
@@ -103,6 +149,11 @@ async function processAttribution(
     const tierBefore = await getTierForUser(service, link.user_id);
 
     const credit = await creditAffiliateCommission(service, attribution.id, maturedBefore);
+    if (credit.outcome === 'review_required') {
+      result.reviewRequired = true;
+      result.skipped++;
+      return;
+    }
     if (credit.outcome === 'skipped') {
       result.skipped++;
       return;
@@ -149,14 +200,7 @@ export async function clearMaturedCommissions(
 ): Promise<ClearingResult> {
   const clearanceDays = opts?.maxAgeDays ?? (await getClearanceDays(service));
   const cutoff = new Date(Date.now() - clearanceDays * 86_400_000).toISOString();
-
-  const { data: candidates } = await service
-    .from('affiliate_attributions')
-    .select('id, click_id, order_id, commission_amount, created_at')
-    .eq('status', 'pending')
-    .lt('created_at', cutoff);
-
-  const result: ClearingResult = { cleared: [], reversed: [], skipped: 0, errors: [] };
+  const result: ClearingResult = { cleared: [], reversed: [], skipped: 0, errors: [], hasMore: false };
 
   // CLAUDE-PHASE2.md Feature C: run the fraud sweep alongside clearing, not
   // just from its own admin button — clearing already runs on a schedule
@@ -169,14 +213,54 @@ export async function clearMaturedCommissions(
     console.error('[affiliate] fraud sweep (via clearing) failed', err instanceof Error ? err.message : err);
   }
 
-  for (const attribution of candidates ?? []) {
-    await processAttribution(service, attribution, result, cutoff);
+  const scope = opts?.maxAgeDays === undefined ? 'clearing' : 'clearing_force';
+  const claim = await service.rpc('claim_affiliate_job', { p_scope: scope, p_cutoff: cutoff, p_lease_seconds: 600 });
+  if (claim.error || !claim.data || typeof claim.data !== 'object') {
+    throw new Error('affiliate_clearing_claim_unavailable');
+  }
+  const claimData = claim.data as Record<string, unknown>;
+  if (claimData.outcome === 'busy') return { ...result, busy: true, hasMore: true };
+  if (claimData.outcome !== 'claimed' || typeof claimData.token !== 'string' || typeof claimData.cutoff !== 'string') {
+    throw new Error('affiliate_clearing_claim_invalid');
+  }
+  const leaseToken = claimData.token;
+  const maturedBefore = claimData.cutoff;
+  const batchSize = 50;
+  const maxBatchesPerRun = 3;
+
+  for (let batchNumber = 0; batchNumber < maxBatchesPerRun; batchNumber++) {
+    const batch = await service.rpc('get_affiliate_pending_clear_batch', {
+      p_scope: scope,
+      p_token: leaseToken,
+      p_limit: batchSize,
+    });
+    if (batch.error || !Array.isArray(batch.data)) throw new Error('affiliate_clearing_batch_unavailable');
+    const candidates = batch.data as AttributionCandidate[];
+    for (const attribution of candidates) await processAttribution(service, attribution, result, maturedBefore);
+
+    const complete = candidates.length < batchSize;
+    const last = candidates.at(-1);
+    const releaseLease = complete || batchNumber === maxBatchesPerRun - 1;
+    const advanced = await service.rpc('advance_affiliate_job', {
+      p_scope: scope,
+      p_token: leaseToken,
+      p_created_at: last?.created_at ?? null,
+      p_id: last?.id ?? null,
+      p_complete: complete,
+      p_release_lease: releaseLease,
+    });
+    if (advanced.error || advanced.data !== true) throw new Error('affiliate_clearing_checkpoint_unavailable');
+    if (complete) return result;
+    if (releaseLease) {
+      result.hasMore = true;
+      return result;
+    }
   }
 
   return result;
 }
 
-export type AcceptOutcome = 'confirmed' | 'reversed' | 'skipped' | 'error';
+export type AcceptOutcome = 'confirmed' | 'reversed' | 'review_required' | 'skipped' | 'error';
 
 export interface AcceptResult {
   outcome: AcceptOutcome;
@@ -208,6 +292,7 @@ export async function acceptAttribution(service: SupabaseClient, attributionId: 
   await processAttribution(service, attribution, result);
 
   if (result.errors.length > 0) return { outcome: 'error', error: result.errors[0].error };
+  if (result.reviewRequired) return { outcome: 'review_required', error: 'Resolve the guest commission review first' };
   if (result.reversed.length > 0) return { outcome: 'reversed' }; // the order turned out to be cancelled/refunded
   if (result.cleared.length > 0) return { outcome: 'confirmed', amountRM: result.cleared[0].amountRM };
   return { outcome: 'skipped', error: 'Not eligible yet (owner has not completed KYC)' };
@@ -266,6 +351,12 @@ export async function rejectAttribution(
   adminId: string,
   reason?: string,
 ): Promise<RejectResult> {
+  const { data: review, error: reviewError } = await service.from('affiliate_guest_commission_reviews')
+    .select('status').eq('attribution_id', attributionId).maybeSingle();
+  if (reviewError) return { rejected: false, error: 'Guest commission review state is unavailable' };
+  if (review?.status === 'pending') {
+    return { rejected: false, error: 'Resolve the guest commission review first' };
+  }
   const { data, error } = await service
     .from('affiliate_attributions')
     .update({ status: 'rejected', rejected_at: new Date().toISOString(), rejected_by: adminId })

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { rangeCutoffIso, type EarningsExportRange } from "@/lib/affiliate/earnings-range";
 import type { AffiliateCommission } from "@/lib/affiliate/stats";
+import type { AffiliateEarningsPage } from "@/lib/affiliate/earnings-history";
 import { formatMYR } from "@/lib/i18n/format";
 
 /**
@@ -33,10 +34,39 @@ export function AffiliateEarningsHistory({
   const { showFeedback } = useActionFeedback();
   const [range, setRange] = useState<EarningsExportRange>("all");
   const [exporting, setExporting] = useState(false);
+  const [historyPage, setHistoryPage] = useState<AffiliateEarningsPage | null>(null);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [cursorHistory, setCursorHistory] = useState<Array<{ createdAt: string; id: string } | null>>([null]);
+  const cursor = cursorHistory[cursorHistory.length - 1] ?? null;
+  const snapshotCutoffRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const params = new URLSearchParams({ range, pageSize: "10" });
+    if (snapshotCutoffRef.current) params.set("snapshotCutoff", snapshotCutoffRef.current);
+    if (cursor) {
+      params.set("beforeCreatedAt", cursor.createdAt);
+      params.set("beforeId", cursor.id);
+    }
+    void fetch(`/api/affiliate/earnings-history?${params.toString()}`)
+      .then(async (response) => {
+        const body = await response.json() as { data?: AffiliateEarningsPage };
+        if (!response.ok || !body.data) throw new Error("earnings_history_unavailable");
+        if (active) {
+          snapshotCutoffRef.current = body.data.snapshotCutoff;
+          setHistoryPage(body.data);
+        }
+      })
+      .catch(() => { if (active) setHistoryUnavailable(true); })
+      .finally(() => { if (active) setHistoryLoading(false); });
+    return () => { active = false; };
+  }, [limit, range, cursor]);
 
   // `commissions` arrive newest first (lib/affiliate/stats.ts), so a slice is "the latest N".
-  const cutoff = rangeCutoffIso(range);
-  const inRange = cutoff ? commissions.filter((c) => Date.parse(c.createdAt) >= Date.parse(cutoff)) : commissions;
+  const cutoff = historyPage ? null : rangeCutoffIso(range);
+  const sourceCommissions = historyPage?.commissions ?? commissions;
+  const inRange = cutoff ? sourceCommissions.filter((c) => Date.parse(c.createdAt) >= Date.parse(cutoff)) : sourceCommissions;
   const shown = limit ? inRange.slice(0, limit) : inRange;
 
   async function downloadEarnings() {
@@ -78,12 +108,19 @@ export function AffiliateEarningsHistory({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
         <p className="text-[0.6875rem] text-muted-foreground">
-          {limit && inRange.length > limit ? tCustomer("strictMigration.affiliate.earnings.latest", { shown: limit, total: inRange.length }) : null}
+          {limit && (historyPage?.totalCount ?? inRange.length) > limit ? tCustomer("strictMigration.affiliate.earnings.latest", { shown: limit, total: historyPage?.totalCount ?? inRange.length }) : null}
         </p>
         <div className="flex items-center gap-2">
           <select
             value={range}
-            onChange={(e) => setRange(e.target.value as EarningsExportRange)}
+            onChange={(e) => {
+              setRange(e.target.value as EarningsExportRange);
+              setHistoryLoading(true);
+              setHistoryUnavailable(false);
+              snapshotCutoffRef.current = null;
+              setHistoryPage(null);
+              setCursorHistory([null]);
+            }}
             aria-label={tCustomer("strictMigration.affiliate.earnings.period")}
             className="h-7 rounded-lg border border-border px-2 text-[0.6875rem] bg-background text-foreground"
           >
@@ -96,10 +133,34 @@ export function AffiliateEarningsHistory({
           </Button>
         </div>
       </div>
+      {!limit && historyPage && historyPage.totalCount > 0 && (
+        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
+          <p className="text-[0.6875rem] text-muted-foreground">
+            {tCustomer("ui.pagination.showing", {
+              from: (cursorHistory.length - 1) * 10 + 1,
+              to: Math.min(cursorHistory.length * 10, historyPage.totalCount),
+              total: historyPage.totalCount,
+              items: tCustomer("strictMigration.affiliate.earningsHistory"),
+            })}
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" disabled={cursorHistory.length <= 1 || historyLoading} onClick={() => { setHistoryLoading(true); setCursorHistory((history) => history.slice(0, -1)); }}>
+              {tCustomer("ui.pagination.previousPage")}
+            </Button>
+            <Button size="sm" variant="outline" disabled={!historyPage.hasMore || !historyPage.nextCursor || historyLoading} onClick={() => { if (historyPage.nextCursor) { setHistoryLoading(true); setCursorHistory((history) => [...history, historyPage.nextCursor]); } }}>
+              {tCustomer("ui.pagination.nextPage")}
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="divide-y divide-border">
-        {shown.length === 0 ? (
+        {!historyPage && !historyUnavailable ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">{tCustomer("ui.loading")}</p>
+        ) : historyUnavailable ? (
+          <p role="alert" className="px-4 py-8 text-center text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.earnings.exportFailed")}</p>
+        ) : shown.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-            {commissions.length === 0 ? tCustomer("strictMigration.affiliate.noCommissions") : tCustomer("strictMigration.affiliate.earnings.noneInRange")}
+            {(limit ? commissions : historyPage?.totalCount ? [1] : []).length === 0 ? tCustomer("strictMigration.affiliate.noCommissions") : tCustomer("strictMigration.affiliate.earnings.noneInRange")}
           </p>
         ) : (
           shown.map((c) => (

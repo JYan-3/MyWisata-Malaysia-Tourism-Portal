@@ -9,14 +9,17 @@ vi.mock('../notifications', () => ({ notifyCommissionCleared: mocks.notify, noti
 import { acceptAttribution, clearMaturedCommissions } from '../clearing';
 
 function fixture(creditFails = false) {
-  const attribution = { id: 'attribution-1', click_id: 'click-1', order_id: 'order-1', commission_amount: 10, created_at: '2020-01-01T00:00:00Z', status: 'pending' };
+  const attribution = { id: 'attribution-1', click_id: 'click-1', order_id: 'order-1', commission_amount: 10, created_at: new Date(Date.now() - 8 * 86_400_000).toISOString(), status: 'pending' };
   const tables: Record<string, Record<string, unknown>[]> = {
     affiliate_attributions: [attribution], affiliate_clicks: [{ id: 'click-1', link_id: 'link-1' }],
     affiliate_links: [{ id: 'link-1', user_id: 'owner-1' }], users: [{ id: 'owner-1', tier: 'kyc_verified', kyc_status: 'approved' }],
     orders: [{ id: 'order-1', status: 'paid' }], wallets: [{ id: 'wallet-1', user_id: 'owner-1' }],
   };
-  mocks.rpc.mockImplementation(async (name: string) => {
+  mocks.rpc.mockImplementation(async (name: string, args?: { p_cutoff?: string }) => {
     if (creditFails) return { data: null, error: { message: 'synthetic ledger unavailable' } };
+    if (name === 'claim_affiliate_job') return { data: { outcome: 'claimed', token: 'lease-1', cutoff: args?.p_cutoff }, error: null };
+    if (name === 'get_affiliate_pending_clear_batch') return { data: attribution.status === 'pending' ? [attribution] : [], error: null };
+    if (name === 'advance_affiliate_job') return { data: true, error: null };
     if (name !== 'clear_affiliate_commission') return { data: null, error: { message: 'split credit must not be used' } };
     if (attribution.status !== 'pending') return { data: { outcome: 'skipped' }, error: null };
     attribution.status = 'confirmed';
@@ -65,7 +68,7 @@ describe('atomic affiliate clearing', () => {
     const before = Date.now() - 7 * 86_400_000;
     const result = await clearMaturedCommissions(service);
     expect(result.cleared).toHaveLength(1);
-    const [name, args] = mocks.rpc.mock.calls[0] as [string, { p_attribution_id: string; p_matured_before: string }];
+    const [name, args] = mocks.rpc.mock.calls.find(([rpcName]) => rpcName === 'clear_affiliate_commission') as [string, { p_attribution_id: string; p_matured_before: string }];
     expect(name).toBe('clear_affiliate_commission');
     expect(args.p_attribution_id).toBe(attribution.id);
     expect(Date.parse(args.p_matured_before)).toBeGreaterThanOrEqual(before);

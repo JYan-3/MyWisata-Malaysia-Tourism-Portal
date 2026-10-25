@@ -1,5 +1,5 @@
 // P4 — Member 4: fraud analytics (CLAUDE-P4-EXTRAS.md Extra 2)
-// GET /api/admin/affiliate/fraud-analytics?range=7d|30d|all — trends,
+// GET /api/admin/affiliate/fraud-analytics?range=7d|30d|90d — trends,
 // type/severity breakdown, headline stats, and top-flagged affiliates over
 // affiliate_fraud_flags. Gated on super_admin, same as every other
 // route on this admin page (fraud-flags, fraud-sweep, links).
@@ -10,7 +10,7 @@ import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getFraudAnalytics, type FraudAnalyticsRange } from '@/lib/affiliate/fraud-analytics';
 
-const VALID_RANGES: FraudAnalyticsRange[] = ['7d', '30d', 'all'];
+const VALID_RANGES: FraudAnalyticsRange[] = ['7d', '30d', '90d'];
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -26,6 +26,10 @@ export async function GET(request: Request) {
     : '30d';
 
   const service = createServiceClient();
-  const analytics = await getFraudAnalytics(service, range);
-  return apiOk(analytics);
+  try {
+    const analytics = await getFraudAnalytics(service, range);
+    return apiOk(analytics);
+  } catch {
+    return apiFail('ANALYTICS_UNAVAILABLE', 'Affiliate fraud analytics are temporarily unavailable', 503);
+  }
 }

@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 const clearMaturedCommissions = vi.fn();
 vi.mock('@/lib/affiliate/clearing', () => ({ clearMaturedCommissions }));
 
-const { POST } = await import('../route');
+const { GET, POST } = await import('../route');
 
 describe('POST /api/cron/clear-affiliate-commissions', () => {
   beforeEach(() => {
@@ -50,9 +50,19 @@ describe('POST /api/cron/clear-affiliate-commissions', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ cleared: 2, clearedAmountRM: 4.4, reversed: 1, skipped: 1, errors: 0 });
+    expect(body).toEqual({ cleared: 2, clearedAmountRM: 4.4, reversed: 1, skipped: 1, errors: 0, hasMore: false, busy: false });
     // No user/order/attribution ids in the response — counts only, same as the other cron routes.
     expect(JSON.stringify(body)).not.toMatch(/u1|u2|o1|o2|a1|a2/);
+  });
+
+  it('supports the Vercel GET contract with the same cron authentication', async () => {
+    clearMaturedCommissions.mockResolvedValue({ cleared: [], reversed: [], skipped: 0, errors: [], hasMore: true, busy: false });
+    const response = await GET(new Request('http://localhost/api/cron/clear-affiliate-commissions', {
+      method: 'GET', headers: { authorization: 'Bearer cron-test-secret' },
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ hasMore: true, busy: false });
+    expect(clearMaturedCommissions).toHaveBeenCalledTimes(1);
   });
 
   it('is safe to call twice in a row — a second run with nothing left to claim reports zero cleared', async () => {

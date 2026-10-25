@@ -771,6 +771,26 @@
     },
     "allAttributions": "All attributions",
     "allTime": "All time",
+    "pagination": {
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageOf": "Page {{page}} of {{total}}",
+      "showing": "Showing {{first}}–{{last}} of {{total}}"
+    },
+    "guestReview": {
+      "reason": "Guest contact matches the affiliate’s verified email. This is a review signal, not proof.",
+      "release": "Release to normal clearing",
+      "reject": "Reject this commission"
+    },
+    "maturityExposure": {
+      "title": "Affiliate commission exposure",
+      "description": "Amounts and counts grouped by recorded order status. An order still marked paid may have fulfilment that has not been recorded.",
+      "pending": "Pending commission",
+      "paid": "Confirmed on orders still marked paid",
+      "refunded": "Confirmed on refunded orders",
+      "other": "Confirmed on other order statuses",
+      "updated": "Snapshot: {{date}}"
+    },
     "analytics": {
       "bySeverity": "By severity",
       "byType": "By type",
@@ -829,7 +849,8 @@
       "saveTier": "Failed to save tier.",
       "selectOpenFlags": "Select open fraud flags first.",
       "accept": "Could not accept this commission.",
-      "reject": "Could not reject this commission."
+      "reject": "Could not reject this commission.",
+      "guestReview": "Could not resolve the guest commission review. Refresh and try again."
     },
     "exporting": "Exporting…",
     "exportPdf": "Export PDF",
@@ -900,7 +921,8 @@
       "batchFlags_one": "{{count}} fraud flags processed.",
       "batchFlags_other": "{{count}} fraud flags processed.",
       "accepted": "Commission accepted.",
-      "rejected": "Commission rejected."
+      "rejected": "Commission rejected.",
+      "guestReviewReleased": "Commission released to normal clearing."
     },
     "sweep": {
       "result": "Scanned {{links}} links, {{flags}} new flag(s)"
@@ -935,7 +957,11 @@
     "minSalesAmount": "Min sales (RM)",
     "activePeriodDays": "Active within (days)",
     "maxFraudRate": "Max fraud rate",
-    "noLimit": "—"
+    "noLimit": "—",
+    "jobs": {
+      "busy": "Another run is already processing this queue.",
+      "more": "More records remain; run again to continue."
+    }
   },
   "aiAssistant": {
     "ask": {

@@ -17,6 +17,8 @@ type UserEmailEventInput = {
   occurredAt?: string;
   /** Order checkout emails go to the contact email saved on this order, not the account email. */
   orderId?: string;
+  /** Persist the intent only; a scheduled outbox worker handles delivery. */
+  deferDelivery?: boolean;
 };
 
 export type VendorEmailEventInput = VendorEmailInput & {
@@ -193,6 +195,8 @@ export async function enqueueUserTransactionEmail(input: UserEmailEventInput): P
     reference: input.reference,
     occurredAt: input.occurredAt ?? new Date().toISOString(),
   });
+
+  if (input.deferDelivery) return;
 
   // Payment/status routes should deliver promptly, while failures remain in the outbox.
   try {

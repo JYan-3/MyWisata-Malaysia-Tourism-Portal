@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { clearMaturedRecommendationRewards } from '@/lib/recommendations/reward-clearing';
 import { runVendorSettlementMaintenance } from '@/lib/vendor/settlement';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { getFinancialOperationsHealth } from '@/lib/operations/queue-health';
 
 function currentMalaysiaMonthStart(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -45,5 +46,11 @@ export async function POST(request: Request) {
     p_period_start: periodStart, p_generated_by: 'scheduler',
   });
   if (reportError) return apiFail('REPORT_GENERATION_FAILED', 'Unable to generate the monthly payout report', 500);
-  return apiOk({ periodStart, escalated: Number(escalated ?? 0), rewardsCleared, vendorSettlements, report });
+  let financialOperationsHealth;
+  try {
+    financialOperationsHealth = await getFinancialOperationsHealth();
+  } catch {
+    financialOperationsHealth = { availability: 'unavailable', unavailableReasons: ['financial_operations_health_unavailable'] };
+  }
+  return apiOk({ periodStart, escalated: Number(escalated ?? 0), rewardsCleared, vendorSettlements, report, financialOperationsHealth });
 }

@@ -31,7 +31,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getFraudThresholds } from './settings';
-import { getVendorIneligibleRole } from './vendor-role-guard';
 
 /** Informational flags that are not evidence of abuse, so they never count toward a link's tier fraud rate. */
 export const FRAUD_RATE_EXCLUDED_FLAG_TYPES: readonly FraudFlagType[] = [
@@ -104,6 +103,19 @@ export async function logFraudFlag(service: SupabaseClient, input: LogFraudFlagI
   }
 
   return data.id as string;
+}
+
+async function logSweepFlag(service: SupabaseClient, input: LogFraudFlagInput): Promise<boolean> {
+  if (!input.linkId || !input.userId) return false;
+  const { data, error } = await service.rpc('log_affiliate_sweep_flag', {
+    p_link_id: input.linkId,
+    p_user_id: input.userId,
+    p_flag_type: input.flagType,
+    p_severity: input.severity,
+    p_detail: input.detail,
+  });
+  if (error) throw new Error('affiliate_sweep_flag_write_unavailable');
+  return typeof data === 'string';
 }
 
 /**
@@ -182,30 +194,45 @@ export interface DisabledLink {
   affiliateCode: string;
 }
 
-/** Every currently-disabled link, for the admin dashboard's re-enable list. */
-export async function getDisabledLinks(service: SupabaseClient): Promise<DisabledLink[]> {
-  const { data: linksData } = await service
+export interface DisabledLinksPage {
+  items: DisabledLink[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** A bounded slice of currently-disabled links, for the admin re-enable list. */
+export async function getDisabledLinks(service: SupabaseClient, page = 1): Promise<DisabledLinksPage> {
+  const pageSize = 10;
+  const { data: linksData, count, error } = await service
     .from('affiliate_links')
-    .select('id, user_id, affiliate_code')
-    .eq('is_active', false);
+    .select('id, user_id, affiliate_code', { count: 'exact' })
+    .eq('is_active', false)
+    .order('id', { ascending: true })
+    .range((page - 1) * pageSize, page * pageSize - 1);
+  if (error) throw new Error('disabled_affiliate_links_unavailable');
   const links = linksData ?? [];
-  if (!links.length) return [];
+  if (!links.length) return { items: [], total: count ?? 0, page, pageSize };
 
   const userIds = [...new Set(links.map((l) => l.user_id))];
-  const { data: usersData } = await service.from('users').select('id, full_name, email').in('id', userIds);
+  const { data: usersData, error: usersError } = await service.from('users').select('id, full_name').in('id', userIds);
+  if (usersError) throw new Error('disabled_affiliate_link_owners_unavailable');
   const usersById = new Map((usersData ?? []).map((u) => [u.id, u]));
 
-  return links.map((l) => ({
+  const items = links.map((l) => ({
     linkId: l.id,
     userId: l.user_id,
     userName: userDisplayName(usersById.get(l.user_id)),
     affiliateCode: l.affiliate_code,
   }));
+  return { items, total: count ?? 0, page, pageSize };
 }
 
 export interface FraudSweepResult {
   linksScanned: number;
   flagsCreated: { linkId: string; flagType: FraudFlagType; severity: FraudSeverity }[];
+  hasMore?: boolean;
+  busy?: boolean;
 }
 
 /**
@@ -216,28 +243,44 @@ export interface FraudSweepResult {
  */
 export async function runFraudSweep(service: SupabaseClient): Promise<FraudSweepResult> {
   const thresholds = await getFraudThresholds(service);
-  const velocityCutoff = new Date(Date.now() - thresholds.clickVelocityWindowMinutes * 60_000).toISOString();
-
-  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }] = await Promise.all([
-    service.from('affiliate_links').select('id, user_id, is_active'),
-    service.from('affiliate_clicks').select('id, link_id, ip_hash, created_at'),
-    service.from('affiliate_attributions').select('click_id'),
-  ]);
-
-  const links = linksData ?? [];
-  const clicks = clicksData ?? [];
-  const attributedClickIds = new Set((attributionsData ?? []).map((a) => a.click_id));
-
-  const clicksByLink = new Map<string, typeof clicks>();
-  for (const click of clicks) {
-    const list = clicksByLink.get(click.link_id) ?? [];
-    list.push(click);
-    clicksByLink.set(click.link_id, list);
+  const result: FraudSweepResult = { linksScanned: 0, flagsCreated: [], hasMore: false };
+  const claimed = await service.rpc('claim_affiliate_job', {
+    p_scope: 'fraud_sweep',
+    p_cutoff: new Date().toISOString(),
+    p_lease_seconds: 600,
+  });
+  if (claimed.error || !claimed.data || typeof claimed.data !== 'object') throw new Error('affiliate_fraud_sweep_claim_unavailable');
+  const claim = claimed.data as Record<string, unknown>;
+  if (claim.outcome === 'busy') return { ...result, busy: true, hasMore: true };
+  if (claim.outcome !== 'claimed' || typeof claim.token !== 'string' || typeof claim.cutoff !== 'string') {
+    throw new Error('affiliate_fraud_sweep_claim_invalid');
   }
+  const token = claim.token;
+  const cutoff = claim.cutoff;
+  const velocityCutoff = new Date(new Date(cutoff).getTime() - thresholds.clickVelocityWindowMinutes * 60_000).toISOString();
+  const batchSize = 50;
+  const maxBatchesPerRun = 3;
 
-  const result: FraudSweepResult = { linksScanned: links.length, flagsCreated: [] };
+  for (let batchNumber = 0; batchNumber < maxBatchesPerRun; batchNumber++) {
+    const batch = await service.rpc('get_affiliate_fraud_sweep_batch', {
+      p_token: token,
+      p_velocity_cutoff: velocityCutoff,
+      p_limit: batchSize,
+    });
+    if (batch.error || !Array.isArray(batch.data)) throw new Error('affiliate_fraud_sweep_batch_unavailable');
+    const links = batch.data as Array<{
+      id: string;
+      user_id: string;
+      is_active: boolean;
+      created_at: string;
+      total_clicks: number;
+      recent_clicks: number;
+      top_visitor_count: number;
+      has_referral: boolean;
+      ineligible_role: 'vendor_owner' | 'outlet_manager' | null;
+    }>;
 
-  for (const link of links) {
+    for (const link of links) {
     // ── vendor_ineligible (deactivation cleanup, item 3) ─────────
     // Team decision 2026-08-01 — see lib/affiliate/vendor-role-guard.ts.
     // This is cleanup, not the security boundary: onOrderPaid() already
@@ -245,16 +288,15 @@ export async function runFraudSweep(service: SupabaseClient): Promise<FraudSweep
     // this sweep has run yet. Only checked for still-active links — no
     // point re-flagging/re-disabling one already caught.
     if (link.is_active) {
-      const ineligibleRole = await getVendorIneligibleRole(service, link.user_id);
+      const ineligibleRole = link.ineligible_role;
       if (ineligibleRole) {
-        if (!(await hasRecentOpenFlag(service, link.id, 'vendor_ineligible'))) {
-          await logFraudFlag(service, {
-            linkId: link.id,
-            userId: link.user_id,
-            flagType: 'vendor_ineligible',
-            severity: 'low',
-            detail: { role: ineligibleRole, source: 'sweep' },
-          });
+        if (await logSweepFlag(service, {
+          linkId: link.id,
+          userId: link.user_id,
+          flagType: 'vendor_ineligible',
+          severity: 'low',
+          detail: { role: ineligibleRole, source: 'sweep' },
+        })) {
           result.flagsCreated.push({ linkId: link.id, flagType: 'vendor_ineligible', severity: 'low' });
         }
         await autoDisableLink(service, link.id, `auto-disabled: link owner is ${ineligibleRole}, ineligible for affiliate commission`, null);
@@ -262,78 +304,81 @@ export async function runFraudSweep(service: SupabaseClient): Promise<FraudSweep
       }
     }
 
-    const linkClicks = clicksByLink.get(link.id) ?? [];
-
     // ── click_velocity ──────────────────────────────────────────
-    const recentClicks = linkClicks.filter((c) => c.created_at >= velocityCutoff);
-    if (recentClicks.length > thresholds.clickVelocityMax) {
-      if (!(await hasRecentOpenFlag(service, link.id, 'click_velocity'))) {
-        const severity: FraudSeverity = recentClicks.length > thresholds.clickVelocityMax * 2 ? 'high' : 'medium';
-        await logFraudFlag(service, {
+    const recentClicks = Number(link.recent_clicks);
+    const totalClicks = Number(link.total_clicks);
+    const topVisitorCount = Number(link.top_visitor_count);
+    if (recentClicks > thresholds.clickVelocityMax) {
+      const severity: FraudSeverity = recentClicks > thresholds.clickVelocityMax * 2 ? 'high' : 'medium';
+      if (await logSweepFlag(service, {
           linkId: link.id,
           userId: link.user_id,
           flagType: 'click_velocity',
           severity,
           detail: {
-            clicksInWindow: recentClicks.length,
+            clicksInWindow: recentClicks,
             windowMinutes: thresholds.clickVelocityWindowMinutes,
             threshold: thresholds.clickVelocityMax,
           },
-        });
+        })) {
         result.flagsCreated.push({ linkId: link.id, flagType: 'click_velocity', severity });
       }
     }
 
     // ── visitor_clustering ──────────────────────────────────────
-    if (linkClicks.length >= thresholds.visitorClusteringMinClicks) {
-      const byVisitor = new Map<string, number>();
-      for (const click of linkClicks) {
-        if (!click.ip_hash) continue;
-        byVisitor.set(click.ip_hash, (byVisitor.get(click.ip_hash) ?? 0) + 1);
-      }
-      let topVisitorHash: string | null = null;
-      let topVisitorCount = 0;
-      for (const [hash, count] of byVisitor) {
-        if (count > topVisitorCount) {
-          topVisitorHash = hash;
-          topVisitorCount = count;
-        }
-      }
-      const ratio = linkClicks.length ? topVisitorCount / linkClicks.length : 0;
-      if (topVisitorHash && ratio > thresholds.visitorClusteringRatio) {
-        if (!(await hasRecentOpenFlag(service, link.id, 'visitor_clustering'))) {
-          await logFraudFlag(service, {
+    if (totalClicks >= thresholds.visitorClusteringMinClicks) {
+      const ratio = totalClicks ? topVisitorCount / totalClicks : 0;
+      if (topVisitorCount > 0 && ratio > thresholds.visitorClusteringRatio) {
+        if (await logSweepFlag(service, {
             linkId: link.id,
             userId: link.user_id,
             flagType: 'visitor_clustering',
             severity: 'medium',
             detail: {
-              totalClicks: linkClicks.length,
+              totalClicks,
               topVisitorClicks: topVisitorCount,
               ratio: Number(ratio.toFixed(2)),
               threshold: thresholds.visitorClusteringRatio,
             },
-          });
+          })) {
           result.flagsCreated.push({ linkId: link.id, flagType: 'visitor_clustering', severity: 'medium' });
         }
       }
     }
 
     // ── zero_conversion ─────────────────────────────────────────
-    if (linkClicks.length >= thresholds.zeroConversionMinClicks) {
-      const hasAnyReferral = linkClicks.some((c) => attributedClickIds.has(c.id));
-      if (!hasAnyReferral) {
-        if (!(await hasRecentOpenFlag(service, link.id, 'zero_conversion'))) {
-          await logFraudFlag(service, {
+    if (totalClicks >= thresholds.zeroConversionMinClicks) {
+      if (!link.has_referral) {
+        if (await logSweepFlag(service, {
             linkId: link.id,
             userId: link.user_id,
             flagType: 'zero_conversion',
             severity: 'medium',
-            detail: { totalClicks: linkClicks.length, threshold: thresholds.zeroConversionMinClicks },
-          });
+          detail: { totalClicks, threshold: thresholds.zeroConversionMinClicks },
+          })) {
           result.flagsCreated.push({ linkId: link.id, flagType: 'zero_conversion', severity: 'medium' });
         }
       }
+    }
+    }
+
+    result.linksScanned += links.length;
+    const complete = links.length < batchSize;
+    const last = links.at(-1);
+    const releaseLease = complete || batchNumber === maxBatchesPerRun - 1;
+    const advanced = await service.rpc('advance_affiliate_job', {
+      p_scope: 'fraud_sweep',
+      p_token: token,
+      p_created_at: last?.created_at ?? null,
+      p_id: last?.id ?? null,
+      p_complete: complete,
+      p_release_lease: releaseLease,
+    });
+    if (advanced.error || advanced.data !== true) throw new Error('affiliate_fraud_sweep_checkpoint_unavailable');
+    if (complete) return result;
+    if (releaseLease) {
+      result.hasMore = true;
+      return result;
     }
   }
 
@@ -355,6 +400,22 @@ export interface FraudFlagRow {
   reviewedAt: string | null;
 }
 
+export interface FraudFlagPageOptions {
+  page: number;
+  pageSize: 10 | 25 | 50;
+  flagType: FraudFlagType | null;
+  severity: FraudSeverity | null;
+  status: FraudFlagStatus | null;
+  search: string;
+}
+
+export interface FraudFlagPage {
+  items: FraudFlagRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface FraudCounters {
   selfReferralsBlocked: number;
   duplicatePayoutsPrevented: number;
@@ -362,46 +423,47 @@ export interface FraudCounters {
   linksDisabled: number;
 }
 
-function userDisplayName(row: { full_name: string | null; email: string } | undefined): string {
-  return row?.full_name ?? row?.email ?? 'Unknown user';
+function userDisplayName(row: { full_name: string | null } | undefined): string {
+  return row?.full_name?.trim() || 'Unknown user';
 }
 
-/** All flags, newest first, with the affiliate's name/code resolved for display. */
-export async function getFraudFlags(service: SupabaseClient): Promise<FraudFlagRow[]> {
-  const { data: flagsData } = await service
-    .from('affiliate_fraud_flags')
-    .select('id, link_id, user_id, order_id, flag_type, severity, detail, status, created_at, reviewed_at')
-    .order('created_at', { ascending: false });
-  const flags = flagsData ?? [];
+/** Filter and page the admin queue in PostgreSQL; never fetch the full flag history for the list UI. */
+export async function getFraudFlagPage(service: SupabaseClient, options: FraudFlagPageOptions): Promise<FraudFlagPage> {
+  const { data, error } = await service.rpc('get_affiliate_fraud_flag_page', {
+    p_page: options.page,
+    p_page_size: options.pageSize,
+    p_flag_type: options.flagType,
+    p_severity: options.severity,
+    p_status: options.status,
+    p_search: options.search,
+  });
+  if (error || !data || typeof data !== 'object') throw new Error('affiliate_fraud_flag_page_unavailable');
 
-  const userIds = [...new Set(flags.map((f) => f.user_id).filter((id): id is string => Boolean(id)))];
-  const linkIds = [...new Set(flags.map((f) => f.link_id).filter((id): id is string => Boolean(id)))];
+  const payload = data as { items?: unknown; total?: unknown; page?: unknown; page_size?: unknown };
+  if (!Array.isArray(payload.items) || typeof payload.total !== 'number'
+    || typeof payload.page !== 'number' || typeof payload.page_size !== 'number') {
+    throw new Error('affiliate_fraud_flag_page_invalid');
+  }
 
-  const [{ data: usersData }, { data: linksData }] = await Promise.all([
-    userIds.length
-      ? service.from('users').select('id, full_name, email').in('id', userIds)
-      : Promise.resolve({ data: [] as { id: string; full_name: string | null; email: string }[] }),
-    linkIds.length
-      ? service.from('affiliate_links').select('id, affiliate_code').in('id', linkIds)
-      : Promise.resolve({ data: [] as { id: string; affiliate_code: string }[] }),
-  ]);
-  const usersById = new Map((usersData ?? []).map((u) => [u.id, u]));
-  const codeByLink = new Map((linksData ?? []).map((l) => [l.id, l.affiliate_code]));
-
-  return flags.map((f) => ({
-    id: f.id,
-    linkId: f.link_id,
-    userId: f.user_id,
-    userName: f.user_id ? userDisplayName(usersById.get(f.user_id)) : 'Unknown user',
-    affiliateCode: f.link_id ? (codeByLink.get(f.link_id) ?? null) : null,
-    orderId: f.order_id,
-    flagType: f.flag_type,
-    severity: f.severity,
-    detail: f.detail,
-    status: f.status,
-    createdAt: f.created_at,
-    reviewedAt: f.reviewed_at,
-  }));
+  const items = payload.items.map((raw): FraudFlagRow => {
+    const item = raw as Record<string, unknown>;
+    const userId = typeof item.user_id === 'string' ? item.user_id : null;
+    return {
+      id: String(item.id),
+      linkId: typeof item.link_id === 'string' ? item.link_id : null,
+      userId,
+      userName: typeof item.user_name === 'string' ? item.user_name : 'Unknown user',
+      affiliateCode: typeof item.affiliate_code === 'string' ? item.affiliate_code : null,
+      orderId: typeof item.order_id === 'string' ? item.order_id : null,
+      flagType: item.flag_type as FraudFlagType,
+      severity: item.severity as FraudSeverity,
+      detail: typeof item.detail === 'object' && item.detail !== null ? item.detail as Record<string, unknown> : null,
+      status: item.status as FraudFlagStatus,
+      createdAt: String(item.created_at),
+      reviewedAt: typeof item.reviewed_at === 'string' ? item.reviewed_at : null,
+    };
+  });
+  return { items, total: payload.total, page: payload.page, pageSize: payload.page_size };
 }
 
 /** The "X self-referrals blocked, Y duplicate payouts prevented" counter — see CLAUDE-PHASE2.md Section 4. */
@@ -412,6 +474,8 @@ export async function getFraudCounters(service: SupabaseClient): Promise<FraudCo
     service.from('affiliate_fraud_flags').select('id', { count: 'exact', head: true }).eq('status', 'open'),
     service.from('affiliate_links').select('id', { count: 'exact', head: true }).eq('is_active', false),
   ]);
+  const results = [selfReferral, duplicateAttribution, openFlags, disabledLinks];
+  if (results.some((result) => result.error)) throw new Error('affiliate_fraud_counters_unavailable');
 
   return {
     selfReferralsBlocked: selfReferral.count ?? 0,

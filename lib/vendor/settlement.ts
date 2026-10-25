@@ -144,14 +144,16 @@ export async function settleOrderVendorEarnings(service: SupabaseClient, orderId
 /**
  * Raises (or releases) a pending settlement's platform fee so it always covers
  * the affiliate + recommendation payouts the order owes. Idempotent; run after
- * those payouts are created or rejected. Never throws.
+ * those payouts are created or rejected. Returns false when unavailable.
  */
-export async function applyOrderPlatformFeeFloor(service: SupabaseClient, orderId: string): Promise<void> {
+export async function applyOrderPlatformFeeFloor(service: SupabaseClient, orderId: string): Promise<boolean> {
   try {
     const { error } = await service.rpc('apply_order_platform_fee_floor', { p_order_id: orderId });
     if (error) console.error('[vendor-settlement] fee floor failed', orderId, error.message);
+    return !error;
   } catch (err) {
     console.error('[vendor-settlement] fee floor threw', orderId, err instanceof Error ? err.message : err);
+    return false;
   }
 }
 
@@ -203,7 +205,7 @@ export async function runVendorSettlementMaintenance(
   const { data: held, error: heldError } = await service.from('order_settlements').select('order_id').eq('status', 'pending');
   if (heldError) result.failed += 1;
   for (const orderId of new Set(((held ?? []) as { order_id: string }[]).map((row) => row.order_id))) {
-    await applyOrderPlatformFeeFloor(service, orderId);
+    if (!(await applyOrderPlatformFeeFloor(service, orderId))) result.failed += 1;
   }
 
   const { data: matured, error: maturityError } = await service.rpc('clear_matured_vendor_settlements');

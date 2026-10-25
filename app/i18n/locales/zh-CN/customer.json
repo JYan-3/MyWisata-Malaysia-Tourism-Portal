@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "loading": "加载中…",
     "contentTranslation": {
       "machineTranslated": "机器翻译",
       "showOriginal": "显示原文",
