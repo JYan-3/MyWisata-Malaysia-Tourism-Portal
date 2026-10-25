@@ -28,7 +28,7 @@ describe('durable PDF receipt dispatch', () => {
   });
   it('sends a paid registered order as a PDF through the receipt-aware lease', async () => {
     expect(await processEmailOutbox()).toEqual({ sent: 1, failed: 0, reviewRequired: 0 });
-    expect(mocks.rpc).toHaveBeenCalledWith('claim_email_outbox_delivery_v2', { p_limit: 20 });
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_email_outbox_delivery_v2', { p_limit: 2 });
     expect(filters).toContainEqual(['eq', 'id', orderId]);
     expect(filters).toContainEqual(['eq', 'user_id', owner]);
     expect(mocks.receipt).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: row.to_email, orderId, locale: 'ms', total: 25, accessUrl: `https://portal.example.test/customer/orders/${orderId}` }));
