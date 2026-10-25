@@ -134,8 +134,12 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
         const { data, error } = await db.rpc('begin_email_outbox_delivery', { p_id: row.id, p_token: row.lease_token });
         if (error) { stateUnavailable = true; throw new Error('email_state_unavailable'); }
         if (data !== true) {
-          const { data: current, error: currentError } = await db.from('email_outbox').select('status').eq('id', row.id).maybeSingle();
-          if (!currentError && current?.status === 'cancelled') {
+          let currentStatus: string | undefined;
+          try {
+            const { data: current, error: currentError } = await db.from('email_outbox').select('status').eq('id', row.id).maybeSingle();
+            if (!currentError) currentStatus = current?.status;
+          } catch { /* If the cancellation check is unavailable, fail closed below. */ }
+          if (currentStatus === 'cancelled') {
             cancelled = true;
             throw new EmailOutboxCancelledError('email_delivery_cancelled');
           }
