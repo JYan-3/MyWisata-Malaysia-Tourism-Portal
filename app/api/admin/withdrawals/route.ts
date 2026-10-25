@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
-import type { WithdrawalListResponse } from '@/lib/wallet/withdrawal-review';
+import { countCurrentCycleApprovals, type WithdrawalListResponse } from '@/lib/wallet/withdrawal-review';
 import { WITHDRAWAL_REVIEW_STATUSES } from '@/lib/wallet/withdrawal-display';
 import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
 
@@ -43,9 +43,9 @@ export async function GET(request: Request) {
   let query = service
     .from('withdrawal_requests')
     .select(`
-      id, user_id, amount, status, requires_dual_approval, created_at, updated_at,
+      id, user_id, amount, status, requires_dual_approval, approval_cycle, created_at, updated_at,
       users!inner(full_name, email),
-      withdrawal_approvals(approver_id, action),
+      withdrawal_approvals(approver_id, action, approval_cycle),
       ${riskRelation}
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
@@ -68,8 +68,8 @@ export async function GET(request: Request) {
   }
 
   const items = ((data ?? []) as Record<string, unknown>[]).map((row) => {
-    const approvals = (row.withdrawal_approvals as { approver_id: string; action: string }[] | null) ?? [];
-    const approvalCount = approvals.filter((a) => a.action === 'approve').length;
+    const approvals = (row.withdrawal_approvals as { approver_id: string; action: string; approval_cycle: number | null }[] | null) ?? [];
+    const approvalCycle = row.approval_cycle as number | null;
     const riskRelationValue = row.withdrawal_risk_assessments as { risk_level: string; overridden_at: string | null } | { risk_level: string; overridden_at: string | null }[] | null;
     const riskRow = Array.isArray(riskRelationValue) ? riskRelationValue[0] : riskRelationValue;
     const user = row.users as { full_name: string | null; email: string | null } | null;
@@ -80,7 +80,8 @@ export async function GET(request: Request) {
       amountSen:            Math.round((row.amount as number) * 100),
       status:               row.status as string,
       requiresDualApproval: row.requires_dual_approval as boolean,
-      approvalCount,
+      approvalCycle:        approvalCycle ?? 1,
+      approvalCount:        countCurrentCycleApprovals(approvals, approvalCycle),
       riskLevel:            (riskRow?.risk_level as 'low' | 'review' | 'high' | null) ?? null,
       riskOverridden:       riskRow?.overridden_at != null,
       createdAt:            row.created_at as string,

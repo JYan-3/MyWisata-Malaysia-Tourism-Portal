@@ -3270,6 +3270,9 @@
     },
     "timeline": {
       "auditNote": "Every decision is recorded in the audit timeline.",
+      "currentCycle": "Current approval round {{cycle}}",
+      "approvalCycle": "Round {{cycle}}",
+      "legacyCycle": "Legacy approval (round not recorded)",
       "noDecisions": "No decisions recorded yet.",
       "title": "Approval timeline"
     }

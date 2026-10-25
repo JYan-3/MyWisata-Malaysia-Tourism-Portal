@@ -3270,6 +3270,9 @@
     },
     "timeline": {
       "auditNote": "每项决策都会记录在审计时间线中。",
+      "currentCycle": "当前审批轮次：第 {{cycle}} 轮",
+      "approvalCycle": "第 {{cycle}} 轮",
+      "legacyCycle": "历史审批（未记录轮次）",
       "noDecisions": "尚未记录决策。",
       "title": "审批时间线"
     }
