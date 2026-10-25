@@ -11,6 +11,7 @@ function builder(result: unknown) {
 }
 
 vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffPermission: mocks.require }));
+vi.mock('@/lib/entitlements/admin-guard', () => ({ requireAccessControlSuperAdmin: vi.fn(async () => ({ response: new Response('forbidden', { status: 403 }) })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from }) }));
 
 import { GET } from '../route';

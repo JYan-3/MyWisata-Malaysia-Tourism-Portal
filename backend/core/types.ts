@@ -406,6 +406,7 @@ export interface LegacyStayBookingDetails {
 
 export interface Order {
   id: string;
+  displayId?: string | null;
   userId: string | null;
   contact?: { email: string | null; name: string | null; phone: string | null };
   stayDetails?: LegacyStayBookingDetails;

@@ -18,6 +18,11 @@ describe('exact guest order authorization',()=>{
   expect((await authorizeOrder(new Request('https://app.example'),ORDER))?.guestSubjectId).toBe('guest-a');
   expect(queries[0].filters).toContainEqual(['eq','id',ORDER]);expect(queries[0].filters).toContainEqual(['eq','guest_subject_id','guest-a']);expect(queries[0].filters).toContainEqual(['is','user_id',null]);
  });
+ it('requires an unrevoked order root for Guest subject access',async()=>{
+  mocks.serviceFrom.mockImplementation(table=>result(table,{id:ORDER,user_id:null,guest_subject_id:'guest-a'}));
+  await authorizeOrder(new Request('https://app.example'),ORDER);
+  expect(queries[0].filters).toContainEqual(['is','guest_session_revoked_at',null]);
+ });
  it('denies cross-guest, expired and cookie mutation CSRF',async()=>{
   mocks.serviceFrom.mockImplementation(table=>result(table,null));expect(await authorizeOrder(new Request('https://app.example'),ORDER)).toBeNull();
   mocks.resolveGuest.mockResolvedValue(null);expect(await authorizeOrder(new Request('https://app.example'),ORDER)).toBeNull();

@@ -25,7 +25,7 @@ const labels = {
     eventPickupQrInstructions: 'Show this QR code to the event vendor during the pickup date and time shown.',
     foodDineIn: 'Dine in', foodTakeaway: 'Takeaway', qrImageAlt: 'Pickup QR code',
     activity: 'Activity', variant: 'Variant', quantity: 'Qty', unitPrice: 'Unit Price', subtotal: 'Subtotal', discount: 'Discount', total: 'Total',
-    orderId: 'Order ID', date: 'Date', payment: 'Payment', customer: 'Customer', standard: 'Standard', guest: 'Guest',
+    orderId: 'Order number', date: 'Date', payment: 'Payment', customer: 'Customer', standard: 'Standard', guest: 'Guest',
     thanks: 'Thank you for booking with MyLawatan Malaysia!', questions: 'For support, contact us at support@mylawatan.my',
     seeYou: 'See you in Malaysia! 🌴', inviteAction: 'Complete vendor sign-up', inviteNote: 'Use the secure link below to continue.',
   },
