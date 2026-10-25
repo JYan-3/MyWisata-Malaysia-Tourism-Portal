@@ -47,6 +47,7 @@ function withdrawalQuery() {
       amount: 100,
       status: 'pending',
       requires_dual_approval: false,
+      approval_cycle: 2,
       destination_label: 'Stripe Connect',
       destination_provider: 'stripe_connect',
       destination_masked_ref: '···1234',
@@ -77,7 +78,10 @@ function withdrawalQuery() {
         reserved_earnings_sen: 0,
         withdrawn_earnings_sen: 0,
       },
-      withdrawal_approvals: [],
+      withdrawal_approvals: [
+        { approver_id: APPROVER_ID, action: 'approve', note: 'Earlier round', actioned_at: '2026-07-22T01:00:00.000Z', approval_cycle: 1, users: { full_name: 'Approver' } },
+        { approver_id: APPROVER_ID, action: 'approve', note: 'Current round', actioned_at: '2026-07-22T02:00:00.000Z', approval_cycle: 2, users: { full_name: 'Approver' } },
+      ],
       withdrawal_risk_assessments: [],
     },
     error: null,
@@ -136,6 +140,9 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
       fraudFlags: [],
     });
     expect(body.data.payoutExecution).toEqual({ locked: true, claimedAt: '2026-07-22T00:01:00.000Z' });
+    expect(body.data.approvalCycle).toBe(2);
+    expect(body.data.approvalCount).toBe(1);
+    expect(body.data.approvals.map((approval: { approvalCycle: number | null }) => approval.approvalCycle)).toEqual([1, 2]);
     expect(body.data.settlementProof).toMatchObject({
       provider: 'tng_direct_credit',
       delivery: { status: 'pending', attempts: 0 },
