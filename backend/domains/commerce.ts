@@ -181,6 +181,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
 
 type OrderRow = {
   id: string;
+  display_id?: string | null;
   user_id: string | null;
   contact_email?: string | null;
   contact_name?: string | null;
@@ -197,11 +198,12 @@ type OrderRow = {
 };
 
 export const ORDER_SELECT =
-  "id,user_id,contact_email,contact_name,contact_phone,stay_details,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,stay_details,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
+  "id,display_id,user_id,contact_email,contact_name,contact_phone,stay_details,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,nights,stay_details,unit_price,quantity,outlet_id,products(cover_url,categories(slug)))";
 
 export function mapOrder(row: OrderRow): Order {
   return {
     id: row.id,
+    displayId: row.display_id ?? null,
     userId: row.user_id,
     contact: { email: row.contact_email ?? null, name: row.contact_name ?? null, phone: row.contact_phone ?? null },
     stayDetails: row.stay_details && Object.keys(row.stay_details).length > 0 ? row.stay_details : undefined,

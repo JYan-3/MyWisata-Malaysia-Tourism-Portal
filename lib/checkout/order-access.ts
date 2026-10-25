@@ -17,15 +17,18 @@ export async function authorizeOrder(request: Request, orderId: string) {
   const service = createServiceClient();
   const guest = await resolveGuestSession(request);
   if (guest) {
-    const { data } = await service.from('orders').select('id,display_id,user_id,guest_subject_id,status,total_amount,contact_email,contact_name,contact_phone').eq('id', orderId).eq('guest_subject_id', guest.guestSubjectId).is('user_id', null).maybeSingle();
+    const { data } = await service.from('orders').select('id,display_id,user_id,guest_subject_id,status,total_amount,contact_email,contact_name,contact_phone').eq('id', orderId).eq('guest_subject_id', guest.guestSubjectId).is('user_id', null).is('guest_session_revoked_at', null).maybeSingle();
     if (data) return { db: service, order: data, userId: null, guestSubjectId: guest.guestSubjectId };
   }
   const token = readGuestCookie(request, true);
   if (!token) return null;
-  const { data: access } = await service.from('guest_order_access_sessions').select('order_id').eq('token_hash', hashGuestCredential(token)).eq('order_id', orderId).is('revoked_at', null).gt('expires_at', new Date().toISOString()).maybeSingle();
+  const { data: access } = await service.from('guest_order_access_sessions').select('order_id,created_at').eq('token_hash', hashGuestCredential(token)).eq('order_id', orderId).is('revoked_at', null).gt('expires_at', new Date().toISOString()).maybeSingle();
   if (!access) return null;
-  const { data } = await service.from('orders').select('id,display_id,user_id,guest_subject_id,status,total_amount,contact_email,contact_name,contact_phone').eq('id', orderId).is('user_id', null).maybeSingle();
-  return data?.guest_subject_id ? { db: service, order: data, userId: null, guestSubjectId: data.guest_subject_id as string } : null;
+  const { data } = await service.from('orders').select('id,display_id,user_id,guest_subject_id,guest_session_revoked_at,status,total_amount,contact_email,contact_name,contact_phone').eq('id', orderId).is('user_id', null).maybeSingle();
+  const sessionCreatedAt = Date.parse(access.created_at);
+  const revokedAt = data?.guest_session_revoked_at ? Date.parse(data.guest_session_revoked_at) : null;
+  const sessionIsCurrent = revokedAt === null || (Number.isFinite(sessionCreatedAt) && sessionCreatedAt >= revokedAt);
+  return data?.guest_subject_id && sessionIsCurrent ? { db: service, order: data, userId: null, guestSubjectId: data.guest_subject_id as string } : null;
 }
 export async function authorizeCheckoutSession(request: Request, sessionId: string) {
   if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return null;

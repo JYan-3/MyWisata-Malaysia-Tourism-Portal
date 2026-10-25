@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -12,20 +12,30 @@ export default function GuestOrderAccessPage() {
   const [email,setEmail] = useState('');
   const [message,setMessage] = useState('');
   const [sending,setSending] = useState(false);
+  const accessAttemptRef = useRef<Promise<string> | null>(null);
   useEffect(() => {
-    const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
-    window.history.replaceState(null,'',window.location.pathname);
-    // A missing one-time URL token immediately switches to the recovery form.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!token) { setFailed(true); return; }
-    fetch('/api/guest/orders/access',{ method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}) })
-      .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(body => router.replace(`/customer/orders/${body.data.orderId}`)).catch(()=>setFailed(true));
+    let active = true;
+    let attempt = accessAttemptRef.current;
+    if (!attempt) {
+      const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+      window.history.replaceState(null,'',window.location.pathname);
+      // A missing one-time URL token immediately switches to the recovery form.
+      if (!token) {
+        queueMicrotask(() => { if (active) setFailed(true); });
+        return () => { active = false; };
+      }
+      attempt = fetch('/api/guest/orders/access',{ method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}) })
+        .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+        .then(body => String(body.data.orderId));
+      accessAttemptRef.current = attempt;
+    }
+    void attempt.then(orderId => { if (active) router.replace(`/customer/orders/${orderId}`); }).catch(()=>{ if (active) setFailed(true); });
+    return () => { active = false; };
   },[router]);
   async function recover(event:React.FormEvent) {
     event.preventDefault();setSending(true);
     try {
-      const response=await fetch('/api/guest/orders/recover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId,email})});
+      const response=await fetch('/api/guest/orders/recover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderReference:orderId,email})});
       setMessage(response.ok ? t("guestCheckout.requested") : t("guestCheckout.requestFailed"));
     } catch {setMessage(t("guestCheckout.requestFailed"));}
     finally {setSending(false);}

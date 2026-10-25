@@ -17,6 +17,12 @@ describe("customer order detail actions", () => {
     expect(pageSource).not.toContain("defaultValue");
   });
 
+  it("shows and copies the complete customer-facing order reference", () => {
+    expect(pageSource).toContain("formatOrderReference(order.id, order.displayId)");
+    expect(pageSource).not.toContain("shortOrderId(order.id)");
+    expect(pageSource).toContain("navigator.clipboard.writeText(formatOrderReference(order.id, order.displayId))");
+  });
+
   it("shows the checkout date for one-night accommodation items", () => {
     expect(pageSource).toContain('item.categorySlug === "accommodation"');
     expect(pageSource).toContain('b.categorySlug === "accommodation"');

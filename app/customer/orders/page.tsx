@@ -17,6 +17,7 @@ import { activityHref } from "@/lib/customer/activity-navigation";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { formatMYR } from "@/lib/i18n/format";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
+import { formatOrderReference } from "@/lib/checkout/order-reference";
 
 type OrderFilterStatus = "all" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED" | "PENDING_PAYMENT";
 type OrderFilterType = "all" | "booking" | "product" | "mixed";
@@ -31,7 +32,6 @@ const STATUS_OPTIONS: { value: OrderFilterStatus; key: string }[] = [
 ];
 const PAGE_SIZE = 10;
 
-function shortOrderId(id: string) { return `#${id.slice(0, 8).toUpperCase()}`; }
 function orderType(order: Order): Exclude<OrderFilterType, "all"> {
   const hasBooking = order.items.some((item) => Boolean(item.slotStartsAt));
   const hasProduct = order.items.some((item) => !item.slotStartsAt);
@@ -104,7 +104,7 @@ export default function OrdersPage() {
       if (type !== "all" && orderType(order) !== type) return false;
       if (outletId !== "all" && !order.items.some((item) => item.outletId === outletId)) return false;
       if (!matchesDate(order.createdAt, from, to)) return false;
-      if (needle && ![order.id, ...order.items.flatMap((item) => [item.activityName, item.variantLabel, outletMap.get(item.outletId)?.name || ""])].join(" ").toLowerCase().includes(needle)) return false;
+      if (needle && ![order.id, order.displayId ?? "", ...order.items.flatMap((item) => [item.activityName, item.variantLabel, outletMap.get(item.outletId)?.name || ""])].join(" ").toLowerCase().includes(needle)) return false;
       return true;
     });
   }, [from, outletId, orders, outletMap, query, status, to, type]);
@@ -180,7 +180,7 @@ export default function OrdersPage() {
                   {/* Middle Left: Primary Details */}
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="font-[family-name:var(--font-mono)] text-xs font-bold text-primary">{shortOrderId(order.id)}</span>
+                      <span className="font-[family-name:var(--font-mono)] text-xs font-bold text-primary">{formatOrderReference(order.id, order.displayId)}</span>
                       <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">{tCustomer(typeLabelKey(kind))}</span>
                       <OrderStatusBadge status={order.status} refundedLabel={tCustomer("ui.orders.refunded")} />
                     </div>
