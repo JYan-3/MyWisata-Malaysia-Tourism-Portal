@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 import type { Trip } from "@/backend/domains/trips";
 import { ArrowUpRight, Calendar, Filter, Navigation, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { createTripAction, deleteTripAction } from "./actions";
+import { Button } from "@/components/ui/button";
+import { createTripAction, deleteTripAction, restoreLegacyTripsAction } from "./actions";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { filterTrips, type TripFilters, type TripFilterStatus, type TripSort } from "@/lib/customer/trip-filters";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
@@ -16,9 +17,11 @@ import { isMeaningfulTripIdea, nextDefaultTripName, tripDuration } from "@/lib/c
 const DEFAULT_TRIP_FILTERS: TripFilters = { query: "", status: "all", from: "", to: "", sort: "newest" };
 const TRIP_STATUS_OPTIONS: TripFilterStatus[] = ["all", "upcoming", "past", "unscheduled"];
 
-export function TripHubClient({ initialTrips, initialTripNameSequence }: { initialTrips: Trip[]; initialTripNameSequence: number }) {
+export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacyTrips=false }: { initialTrips: Trip[]; initialTripNameSequence: number; hasLegacyTrips?:boolean }) {
   const { t, i18n } = useTranslation("customer");
-  const { confirm } = useAppDialog();
+  const { confirm, alert } = useAppDialog();
+  const [legacyVisible,setLegacyVisible]=useState(hasLegacyTrips);
+  const [restoring,setRestoring]=useState(false);
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [isCreating, setIsCreating] = useState(false);
   const initialDateRange = useMemo(() => getMalaysiaDateRangeDefaults(), []);
@@ -126,8 +129,11 @@ export function TripHubClient({ initialTrips, initialTripNameSequence }: { initi
 
   const handleDelete = async (tripId: string) => {
     if (!(await confirm(t("ui.trip.confirmDelete")))) return;
-    setTrips(trips.filter((t) => t.id !== tripId));
-    await deleteTripAction(tripId);
+    const target=trips.find(trip=>trip.id === tripId);
+    if(!target) return;
+    const result=await deleteTripAction(tripId,target.updated_at);
+    if(result.ok) setTrips(current=>current.filter(trip=>trip.id !== tripId));
+    else await alert(t(result.code === "TRIP_CHANGED" ? "ui.trip.versionConflict" : "strictMigration.tripPlanner.scheduleFailed"));
   };
 
   return (
@@ -147,6 +153,15 @@ export function TripHubClient({ initialTrips, initialTripNameSequence }: { initi
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
+        {legacyVisible && <div className="mb-6 rounded-2xl border border-border bg-card p-5">
+          <p className="mb-3 text-sm text-muted-foreground">{t("ui.trip.legacyRestoreHint")}</p>
+          <Button disabled={restoring} onClick={async()=>{
+            if(!await confirm(t("ui.trip.legacyRestoreConfirm"))) return;
+            setRestoring(true);
+            try {const result=await restoreLegacyTripsAction();if(result.ok){setTrips(result.trips);setLegacyVisible(false);}else await alert(t("strictMigration.tripPlanner.scheduleFailed"));}
+            finally {setRestoring(false);}
+          }}>{t("ui.trip.legacyRestore")}</Button>
+        </div>}
         {isCreating && (
           <form action={createTripAction} className="mb-6 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
             <h2 className="mb-4 text-lg font-bold text-foreground">{t("ui.trip.newTitle")}</h2>

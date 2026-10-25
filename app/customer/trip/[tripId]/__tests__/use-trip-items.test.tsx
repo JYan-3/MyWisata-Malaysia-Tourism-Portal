@@ -10,12 +10,12 @@ import {useTripItems} from "../use-trip-items";
 let document:TestDocument;
 let createRoot:typeof import("react-dom/client").createRoot;
 beforeAll(async()=>{document=installTestDom();({createRoot}=await import("react-dom/client"));});
-const saved=<T,>(value:T)=>({ok:true as const,value});
+const saved=<T,>(value:T)=>({ok:true as const,value,version:"next-version"});
 const row:TripItem={id:"stored-id", trip_id:"trip", experience_id:null, sequence:0, scheduled_date:null,scheduled_time:null, created_at:"now",source:"location",lat:3,lng:101,label:"Old"};
 describe("canonical trip state",()=>{
   it("retains an origin on failed save and adopts the new stored ID",async()=>{
     let trip!:ReturnType<typeof useTripItems>;
-    function Probe({initial}:{initial:TripItem[]}) {trip=useTripItems("trip",initial);return null;}
+    function Probe({initial}:{initial:TripItem[]}) {trip=useTripItems("trip",initial,"initial-version");return null;}
     const container=document.createElement("div");document.body.appendChild(container);
     const root=createRoot(container as unknown as Element);
     await act(async()=>root.render(<Probe initial={[row]}/>));
@@ -38,7 +38,7 @@ describe("canonical trip state",()=>{
   it("keeps a newly saved daily origin in canonical sequence order",async()=>{
     let trip!:ReturnType<typeof useTripItems>;
     const stop={...row,id:"stop",sequence:0,scheduled_date:"2026-09-16",scheduled_time:"10:00"};
-    function Probe(){trip=useTripItems("trip",[stop]);return null;}
+    function Probe(){trip=useTripItems("trip",[stop],"initial-version");return null;}
     const container=document.createElement("div");const root=createRoot(container as unknown as Element);
     await act(async()=>root.render(<Probe/>));
     actions.addTripItemAction.mockResolvedValueOnce(saved({...row,id:"origin",sequence:0,scheduled_date:"2026-09-16",is_day_origin:true}));
@@ -50,7 +50,7 @@ describe("canonical trip state",()=>{
   });
   it("serializes quick edits, preserves failed deletes and clears only after success",async()=>{
     let trip!:ReturnType<typeof useTripItems>;
-    function Probe(){trip=useTripItems("trip",[row]);return null;}
+    function Probe(){trip=useTripItems("trip",[row],"initial-version");return null;}
     const container=document.createElement("div"); const root=createRoot(container as unknown as Element);
     await act(async()=>root.render(<Probe/>));
     let finish!:(value:TripItem)=>void;
@@ -70,7 +70,7 @@ describe("canonical trip state",()=>{
   it("reconciles canonical sequence after a move and preserves rows on rejection",async()=>{
     let trip!:ReturnType<typeof useTripItems>;
     const b={...row,id:"b",sequence:1};
-    function Probe(){trip=useTripItems("trip",[row,b]);return null;}
+    function Probe(){trip=useTripItems("trip",[row,b],"initial-version");return null;}
     const container=document.createElement("div");const root=createRoot(container as unknown as Element);
     await act(async()=>root.render(<Probe/>));
     actions.reorderTripItemsAction.mockResolvedValueOnce(saved([{...b,sequence:0},{...row,sequence:1}]));
@@ -85,7 +85,7 @@ describe("canonical trip state",()=>{
   it("keeps the intended move targets when an earlier queued deletion shifts indexes",async()=>{
     let trip!:ReturnType<typeof useTripItems>;
     const b={...row,id:"b",sequence:1};const c={...row,id:"c",sequence:2};
-    function Probe(){trip=useTripItems("trip",[row,b,c]);return null;}
+    function Probe(){trip=useTripItems("trip",[row,b,c],"initial-version");return null;}
     const container=document.createElement("div");const root=createRoot(container as unknown as Element);
     await act(async()=>root.render(<Probe/>));
     let finish!:()=>void;
@@ -94,7 +94,7 @@ describe("canonical trip state",()=>{
     let remove!:Promise<unknown>;let move!:Promise<unknown>;
     await act(async()=>{remove=trip.remove(row.id);move=trip.move(2,1);await Promise.resolve();});
     await act(async()=>{finish();await remove;await move;});
-    expect(actions.reorderTripItemsAction).toHaveBeenCalledWith("trip",["c","b"]);
+    expect(actions.reorderTripItemsAction).toHaveBeenCalledWith("trip",["c","b"],"next-version");
     expect(trip.items.map(item=>item.id)).toEqual(["c","b"]);
     await act(async()=>root.unmount());
   });

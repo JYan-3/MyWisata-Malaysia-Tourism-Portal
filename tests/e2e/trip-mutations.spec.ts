@@ -61,7 +61,7 @@ test('owned itinerary persists daily starts, rejects invalid origins and preserv
   const otherRow=(await rest<Array<{id:string}>>(request,'POST','trip_items',{...origin,id:randomUUID(),trip_id:otherTrip.id}))[0];
   const ownDb=authenticatedTestDatabase(customer,request);
   expect((await ownDb.from('trip_items').select('id').eq('id',otherRow.id)).data).toEqual([]);
-  expect((await ownDb.from('trip_items').update({label:'Forbidden'}).eq('id',otherRow.id).select('id')).data).toEqual([]);
+  expect((await ownDb.from('trip_items').update({label:'Forbidden'}).eq('id',otherRow.id).select('id')).error?.code).toBe('42501');
   // Register this extra Trip for cleanup by deleting it explicitly before account cleanup.
   await rest(request,'DELETE',`trips?id=eq.${otherTrip.id}&user_id=eq.${other.id}`);
   expect((await ownDb.from('trip_items').select('id').eq('id',daily.id)).data).toHaveLength(1);
