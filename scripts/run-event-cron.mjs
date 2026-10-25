@@ -8,6 +8,9 @@ const routes = {
   'kyc-prescreening': { path: '/api/cron/process-kyc-prescreening', method: 'POST' },
   'queue-health': { path: '/api/cron/process-kyc-prescreening', method: 'GET' },
   'email-outbox': { path: '/api/cron/process-email-outbox', method: 'GET' },
+  'affiliate-clearing': { path: '/api/cron/clear-affiliate-commissions', method: 'GET' },
+  'paid-orders': { path: '/api/cron/process-paid-orders', method: 'GET' },
+  'wallet-maintenance': { path: '/api/cron/wallet-maintenance', method: 'GET' },
   'recommendation-images': { path: '/api/cron/purge-recommendation-images', method: 'GET' },
 };
 /** @param {string} task @param {{APP_URL?: string, NEXT_PUBLIC_APP_URL?: string, CRON_SECRET?: string}} env */

@@ -26,9 +26,14 @@ describe('email delivery interruption boundaries', () => {
   });
   it('uses the guarded claim and records accepted delivery without raw row updates', async () => {
     expect(await processEmailOutbox()).toEqual({ sent: 1, failed: 0, reviewRequired: 0 });
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_email_outbox_delivery_v2', { p_limit: 2 });
     expect(mocks.rpc).toHaveBeenCalledWith('begin_email_outbox_delivery', { p_id: row.id, p_token: row.lease_token });
     expect(mocks.rpc).toHaveBeenCalledWith('finish_email_outbox_delivery', expect.objectContaining({ p_id: row.id, p_token: row.lease_token, p_outcome: 'sent', p_message_id: 'smtp-accepted' }));
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+  it('caps explicit outbox batches at two rows', async () => {
+    await processEmailOutbox(20);
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_email_outbox_delivery_v2', { p_limit: 2 });
   });
   it('dispatches the persisted recipient language and structured exception without a sender-language override', async () => {
     mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery_v2'

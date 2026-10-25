@@ -16,6 +16,17 @@ it('keeps existing tasks GET and rejects missing credentials before HTTP', async
   await expect(executeCron('expire', { APP_URL: 'https://mylawatan.my' }, fetch)).rejects.toThrow();
   expect(fetch).not.toHaveBeenCalled();
 });
+it.each([
+  ['affiliate-clearing', '/api/cron/clear-affiliate-commissions'],
+  ['paid-orders', '/api/cron/process-paid-orders'],
+  ['wallet-maintenance', '/api/cron/wallet-maintenance'],
+])('keeps the %s Hostinger task on its authenticated GET route', async (task, path) => {
+  const fetch = vi.fn().mockResolvedValue(Response.json({ processed: 0 }));
+  await executeCron(task, { APP_URL: 'https://mylawatan.my', CRON_SECRET: 'secret' }, fetch);
+  expect(fetch.mock.calls[0][0].pathname).toBe(path);
+  expect(fetch.mock.calls[0][1].method).toBe('GET');
+  expect(fetch.mock.calls[0][1].headers.authorization).toBe('Bearer secret');
+});
 it('does not send the cron credential to a mistakenly configured foreign origin', async () => {
   const fetch = vi.fn();
   await expect(executeCron('kyc-prescreening', { APP_URL: 'https://foreign.example', CRON_SECRET: 'secret' }, fetch)).rejects.toThrow('cron_origin_invalid');
