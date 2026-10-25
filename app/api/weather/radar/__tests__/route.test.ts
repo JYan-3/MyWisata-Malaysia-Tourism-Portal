@@ -124,4 +124,14 @@ describe("GET /api/weather/radar", () => {
     expect(serialized).not.toContain("/Users/private");
     expect(serialized).not.toContain("secret stack");
   });
+
+  it("returns explicit bounded backpressure when the caller has disconnected", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const disconnected = new Request("http://localhost/api/weather/radar?tripId=trip-1", { signal: controller.signal });
+    const response = await GET(disconnected);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("2");
+    expect(mocks.getRadar).not.toHaveBeenCalled();
+  });
 });

@@ -48,7 +48,12 @@ export async function GET(request: Request) {
       return privateResponse(apiFail("NO_VALID_COORDINATES", "Trip has no valid weather coordinates", 422));
     }
 
-    const radar = await withWeatherRadarProviderSlot(() => getRainViewerRadar());
+    const radar = await withWeatherRadarProviderSlot(() => getRainViewerRadar({ signal: request.signal }), request.signal);
+    if (radar === null) {
+      const response = privateResponse(apiFail("PROVIDER_BUSY", "Weather service is busy. Please try again shortly.", 503));
+      response.headers.set("Retry-After", "2");
+      return response;
+    }
     return privateResponse(apiOk(radar));
   } catch {
     return privateResponse(apiFail("RADAR_UNAVAILABLE", "Live radar is temporarily unavailable", 500));

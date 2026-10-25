@@ -113,6 +113,21 @@ describe("RainViewer radar adapter", () => {
     }
   });
 
+  it("aborts metadata work after the only caller disconnects", async () => {
+    let providerSignal: AbortSignal | undefined;
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      providerSignal = init?.signal as AbortSignal | undefined;
+      providerSignal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    }));
+    const controller = new AbortController();
+    const result = getRainViewerRadar({ fetcher: fetcher as typeof fetch, signal: controller.signal, now: () => new Date("2026-09-15T11:40:00.000Z") });
+
+    await vi.waitFor(() => expect(providerSignal).toBeDefined());
+    controller.abort();
+    expect(await result).toBeNull();
+    expect(providerSignal?.aborted).toBe(true);
+  });
+
   it("reuses fresh metadata and serves a bounded stale result after refresh failure", async () => {
     const fetcher = vi.fn(async () => response(payload()));
     const first = await getRainViewerRadar({ fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T11:40:00.000Z") });

@@ -77,6 +77,11 @@ export async function POST(request: Request) {
     coordinates,
     date: parsed.data.date,
     hour: parsed.data.hour,
-  }));
+  }, { signal: request.signal }), request.signal);
+  if (overlay === null) {
+    const response = privateResponse(apiFail("PROVIDER_BUSY", "Weather service is busy. Please try again shortly.", 503));
+    response.headers.set("Retry-After", "2");
+    return response;
+  }
   return privateResponse(apiOk(overlay));
 }

@@ -106,6 +106,21 @@ describe("POST /api/weather/overlay", () => {
     expect(mocks.getOverlay).not.toHaveBeenCalled();
   });
 
+  it("returns explicit bounded backpressure when the caller has disconnected", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const disconnected = new Request("http://localhost/api/weather/overlay", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tripId: trip.id, date: "2026-09-16", hour: 16 }),
+      signal: controller.signal,
+    });
+    const response = await POST(disconnected);
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("2");
+    expect(mocks.getOverlay).not.toHaveBeenCalled();
+  });
+
   it("rate-limits repeated batches per authenticated user", async () => {
     for (let index = 0; index < 6; index += 1) {
       expect((await POST(request({ tripId: trip.id, date: "2026-09-16", hour: 16 }))).status).toBe(200);

@@ -128,4 +128,44 @@ describe("Open-Meteo spatial overlay adapter", () => {
     const stale = await getOpenMeteoOverlay(input, { fetcher: failed as typeof fetch, now: () => new Date("2026-09-15T00:31:00.000Z") });
     expect(stale.stale).toBe(true);
   });
+
+  it("keeps coalesced provider work alive while another caller is subscribed", async () => {
+    let resolve!: (value: Response) => void;
+    let providerSignal: AbortSignal | undefined;
+    const pending = new Promise<Response>((done) => { resolve = done; });
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      providerSignal = init?.signal as AbortSignal | undefined;
+      return pending;
+    });
+    const controller = new AbortController();
+    const input = { coordinates: [coordinates[0]], date: "2026-09-16", hour: 16 };
+    const first = getOpenMeteoOverlay(input, { fetcher: fetcher as typeof fetch, signal: controller.signal, now: () => new Date("2026-09-15T00:00:00.000Z") });
+    const second = getOpenMeteoOverlay(input, { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") });
+
+    await vi.waitFor(() => expect(providerSignal).toBeDefined());
+    controller.abort();
+    expect(await first).toBeNull();
+    expect(providerSignal?.aborted).toBe(false);
+    resolve(jsonResponse([locationPayload(5.4, 100.3)]));
+    expect((await second)?.availability).toBe("forecast");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts the provider request when every coalesced caller disconnects", async () => {
+    let providerSignal: AbortSignal | undefined;
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      providerSignal = init?.signal as AbortSignal | undefined;
+      providerSignal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    }));
+    const controller = new AbortController();
+    const result = getOpenMeteoOverlay(
+      { coordinates: [coordinates[0]], date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, signal: controller.signal, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+
+    await vi.waitFor(() => expect(providerSignal).toBeDefined());
+    controller.abort();
+    expect(await result).toBeNull();
+    expect(providerSignal?.aborted).toBe(true);
+  });
 });
