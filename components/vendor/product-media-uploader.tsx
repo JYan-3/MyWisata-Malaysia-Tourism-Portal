@@ -4,6 +4,8 @@ import { useRef, useState } from 'react';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { FileUp, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ImageShapeHint, useImageCrop } from '@/components/shared/image-crop-dialog';
+import type { ImageShape } from '@/lib/media/image-aspect';
 
 interface UploadedMedia {
   url: string;
@@ -17,19 +19,27 @@ interface Props {
   vendorId: string;
   productId?: string;
   kind?: 'image' | 'digital';
+  /** Recommended shape for images; a photo of another shape is cropped before upload. */
+  shape?: ImageShape;
   value?: string | null;
   successMessage?: string;
   onUploaded: (media: UploadedMedia) => void;
   onError?: (message: string) => void;
 }
 
-export default function ProductMediaUploader({ vendorId, productId, kind = 'image', value, successMessage, onUploaded, onError }: Props) {
+export default function ProductMediaUploader({ vendorId, productId, kind = 'image', shape, value, successMessage, onUploaded, onError }: Props) {
   const { t } = useTranslation('vendor');
   const { showFeedback } = useActionFeedback();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { cropToShape, cropDialog } = useImageCrop();
 
-  async function upload(file: File) {
+  async function upload(selected: File) {
+    const file = kind === 'image' && shape ? await cropToShape(selected, shape) : selected;
+    if (!file) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
     setUploading(true);
     onError?.('');
     try {
@@ -83,9 +93,11 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
             {value ? t('media.replaceFile') : t('media.uploadFile')}
           </button>
           <p className="mt-1 text-[11px] text-gray-500 dark:text-muted-foreground">{kind === 'digital' ? t('media.digitalFormats') : t('media.imageFormats')}</p>
+          {kind === 'image' && shape && <ImageShapeHint shape={shape} className="mt-1 text-[11px] text-gray-500 dark:text-muted-foreground" />}
           <p className="mt-1 text-[10px] font-semibold text-primary/60">{t('media.dragFileHint')}</p>
         </div>
       </div>
+      {cropDialog}
     </div>
   );
 }

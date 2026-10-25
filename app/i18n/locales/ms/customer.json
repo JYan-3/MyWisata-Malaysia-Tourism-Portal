@@ -1463,6 +1463,7 @@
       "photos": "Tambah 1 hingga 5 foto",
       "choosePhotos": "Pilih foto",
       "photoHint": "JPEG, PNG atau WebP · sehingga 5 MB setiap satu",
+      "photoRejected": "Tidak ditambah: {{names}}. Foto mestilah JPEG, PNG atau WebP dan tidak melebihi 5 MB.",
       "photosLabel": "Tambah 1 hingga 5 foto",
       "uploadHint": "Klik kawasan muat naik untuk menambah foto.",
       "photoReplacementConfirm": "Anda sudah memilih 5 foto. Menambah foto baharu akan menggantikan foto paling lama dengan pilihan terbaharu. Teruskan?",

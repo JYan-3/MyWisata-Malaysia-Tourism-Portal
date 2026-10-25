@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import nextConfig from "../../../next.config";
+
+afterEach(() => vi.unstubAllEnvs());
 
 async function headerMap() {
   const rules = await nextConfig.headers!();
@@ -29,5 +31,28 @@ describe("security headers", () => {
     expect(csp).toContain("worker-src 'self' blob:");
     expect(csp).toMatch(/script-src[^;]*https:\/\/challenges\.cloudflare\.com/);
     expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com");
+  });
+});
+
+describe("single indexed host", () => {
+  it("redirects www to the public site permanently and names each page's canonical URL", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://mylawatan.my");
+    expect(await nextConfig.redirects!()).toEqual([{
+      source: "/:path*",
+      has: [{ type: "host", value: "www\\.mylawatan\\.my" }],
+      destination: "https://mylawatan.my/:path*",
+      permanent: true,
+    }]);
+    const canonical = (await nextConfig.headers!()).filter((rule) => rule.headers.some((header) => header.key === "Link"));
+    expect(canonical).toEqual([
+      { source: "/", headers: [{ key: "Link", value: '<https://mylawatan.my/>; rel="canonical"' }] },
+      { source: "/:path+", headers: [{ key: "Link", value: '<https://mylawatan.my/:path+>; rel="canonical"' }] },
+    ]);
+  });
+
+  it.each(["http://localhost:3000", "", "not a url"])("adds neither on localhost or without a site URL (%j)", async (siteUrl) => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", siteUrl);
+    expect(await nextConfig.redirects!()).toEqual([]);
+    expect((await nextConfig.headers!()).some((rule) => rule.headers.some((header) => header.key === "Link"))).toBe(false);
   });
 });

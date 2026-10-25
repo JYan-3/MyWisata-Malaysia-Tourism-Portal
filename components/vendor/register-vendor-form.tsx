@@ -354,6 +354,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
             </p>
             <VendorRegistrationImageField
               id="vendor-logo-file"
+              shape="square"
               label={t('registration.fields.logo')}
               file={logoFile}
               disabled={isSubmitting}
@@ -369,6 +370,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
             </p>
             <VendorRegistrationImageField
               id="vendor-cover-file"
+              shape="cover"
               label={t('registration.fields.coverImage')}
               file={coverFile}
               disabled={isSubmitting}

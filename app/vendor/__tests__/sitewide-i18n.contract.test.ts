@@ -111,6 +111,7 @@ const priorTaskFiles = new Set([
   'components/shared/global-command-palette.tsx',
   // Shared authentication challenge; it is outside the vendor translation task.
   'components/shared/human-verification.tsx',
+  'components/shared/image-crop-dialog.tsx',
   // Shared OTP countdown helper; its consumer owns the visible copy.
   'components/shared/use-otp-resend.ts',
   'components/shared/header-icon-button.ts',

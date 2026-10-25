@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { ImageShapeHint, useImageCrop } from "@/components/shared/image-crop-dialog";
 import type { HotelProfile } from "@/lib/validation/vendor-schemas";
 
 type AmenityOption = { code: string; label_en: string; label_ms: string; label_zh: string; icon: string };
@@ -32,6 +33,7 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
   const language = i18n.resolvedLanguage ?? i18n.language;
   const label = (amenity: AmenityOption) => (language === "ms" ? amenity.label_ms : language === "zh-CN" ? amenity.label_zh : amenity.label_en);
   const update = (patch: Partial<HotelProfile>) => setProfile((current) => ({ ...current, ...patch }));
+  const { cropToShape, cropDialog } = useImageCrop();
   const toggleAmenity = (code: string, on: boolean) => update({ amenityCodes: on ? [...profile.amenityCodes, code] : profile.amenityCodes.filter((item) => item !== code) });
   const movePhoto = (index: number) => update({ photos: profile.photos.map((url, i) => (i === index - 1 ? profile.photos[index] : i === index ? profile.photos[index - 1] : url)) });
   const status = data.pending
@@ -80,6 +82,7 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
       <div>
         <p className="text-sm font-medium text-foreground">{t("hotelProfile.fields.photos")}</p>
         <p className="text-xs text-muted-foreground">{t("hotelProfile.photoHint")}</p>
+        <ImageShapeHint shape="photo" className="text-xs text-muted-foreground" />
         <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {profile.photos.map((url, index) => (
             <li key={url} className="overflow-hidden rounded-xl border border-border bg-card">
@@ -96,8 +99,13 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
           {uploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
           {t("hotelProfile.addPhoto")}
           <Input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading || profile.photos.length >= 20}
-            onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file, (url) => update({ photos: [...profile.photos, url] })); event.target.value = ""; }} />
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void cropToShape(file, "photo").then((cropped) => { if (cropped) onUpload(cropped, (url) => update({ photos: [...profile.photos, url] })); });
+            }} />
         </label>
+        {cropDialog}
       </div>
 
       <div className="flex justify-end">

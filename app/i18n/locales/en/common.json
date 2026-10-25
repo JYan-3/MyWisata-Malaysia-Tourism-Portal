@@ -403,5 +403,13 @@
       "home": "Go to homepage",
       "reference": "Error reference: {{digest}}"
     }
+  },
+  "imageCrop": {
+    "title": "Crop photo",
+    "description": "Drag the photo to position it and zoom if needed. Customers see exactly what is inside the {{shape}} frame.",
+    "zoom": "Zoom",
+    "confirm": "Use this crop",
+    "failed": "This photo could not be cropped. Try another photo.",
+    "hint": "Recommended shape {{shape}} (for example {{size}} px). Photos of another shape can be cropped after you choose them."
   }
 }

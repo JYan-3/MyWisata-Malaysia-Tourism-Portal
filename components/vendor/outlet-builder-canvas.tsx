@@ -313,6 +313,7 @@ export default function OutletBuilderCanvas({
                     {t('builder.quickHeroUpload')}
                   </p>
                   <ProductMediaUploader
+                    shape="banner"
                     vendorId={vendorId}
                     value={document.hero.imageUrl}
                     onUploaded={(media) => onEditHero({ imageUrl: media.url })}

@@ -29,7 +29,7 @@
     "Wallet Settings": "钱包",
     "Wallet Approvers": "审批人",
     "Payout Reports": "提现",
-    "Reconciliation": "对账",
+    "Reconciliation": "订单分账",
     "Recommendations": "推荐",
     "Support Tickets": "支持",
     "Chat Reports": "聊天举报",
@@ -38,11 +38,11 @@
     "AI Assistant": "AI 助手",
     "Staff Conduct": "员工行为",
     "Access Control": "访问控制",
-    "Sponsored Placements": "赞助",
+    "Sponsored Placements": "赞助广告",
     "Promotion Campaigns": "活动",
     "Orders": "订单",
-    "Event Promos": "活动推广",
-    "Event Registrations": "报名审核",
+    "Event Promos": "活动广告",
+    "Event Registrations": "活动摊位",
     "Announcements": "公告",
     "System Settings": "系统设置"
   },
@@ -56,7 +56,7 @@
   },
   "sponsoredPlacements": {
     "eyebrow": "探索推广活动",
-    "title": "赞助展示位",
+    "title": "赞助广告",
     "description": "创建、审核和暂停带有清晰赞助标识的探索展示位。",
     "accessibility": {
       "lifecycleFilters": "活动生命周期筛选"
@@ -110,7 +110,7 @@
       "retail": "零售"
     },
     "list": {
-      "title": "活动",
+      "title": "展示位",
       "position": "第 {{position}} 位"
     },
     "lifecycle": {
@@ -1624,8 +1624,8 @@
     }
   },
   "reconciliation": {
-    "eyebrow": "资金对账",
-    "title": "订单对账",
+    "eyebrow": "资金去向",
+    "title": "订单资金明细",
     "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广联盟和推荐佣金。",
     "month": "月份",
     "reload": "重新加载",
@@ -3441,7 +3441,7 @@
   "promotionCampaigns": {
     "allLocationsCancelled": "所有地点已取消，此活动已从活动发现页面隐藏。",
     "eyebrow": "顾客活动",
-    "title": "商家市集活动管理",
+    "title": "活动",
     "description": "设置商家市集活动并发布——活动发布后，商家自行注册摊位加入。",
     "refresh": "刷新",
     "form": {
@@ -3497,7 +3497,12 @@
         "endsAt": "最后一天不能早于首日。",
         "posterUrl": "请选择有效的活动海报。",
         "operatingHours": "请填写有效的默认开门及关门时间。"
-      }
+      },
+      "liveEditing": "此活动正在进行中。保存的更改会立即向顾客显示。活动地址不可更改，海报可以替换但不能删除。日期不能排除仍在进行的地点。",
+      "slugLocked": "活动发布后地址即固定，以确保已分享的链接和二维码继续有效：",
+      "replacePoster": "替换海报",
+      "liveSaveConfirm": "此活动正在进行中。保存这些更改并立即向顾客显示吗？",
+      "liveSaved": "更改已保存并已上线"
     },
     "locations": {
       "changeReason": "修改原因",
@@ -3651,7 +3656,7 @@
     "stallUnchanged": "摊位号没有变化。",
     "stallNotificationDescription": "修改成功后，会通过邮件及站内通知告知商家负责人原摊位号和新摊位号。",
     "eyebrow": "治理",
-    "title": "活动摊位注册",
+    "title": "活动摊位报名",
     "description": "在上线前审核商家市集活动的摊位注册。",
     "loading": "加载中…",
     "backToQueue": "返回队列",
@@ -3757,7 +3762,7 @@
   },
   "eventPromotions": {
     "eyebrow": "治理",
-    "title": "活动推广",
+    "title": "外部活动广告",
     "description": "在上线前审核商家提交的外部活动推广。",
     "loading": "加载中…",
     "backToQueue": "返回队列",

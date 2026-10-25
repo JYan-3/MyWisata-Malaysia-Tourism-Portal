@@ -15,7 +15,7 @@ import { RECOMMENDATION_STATUSES, groupRecommendations } from "@/lib/customer/re
 import Link from "next/link";
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
-import { allowRecommendationImageSelection, appendSelectedRecommendationImages } from "@/lib/recommendations/submission";
+import { allowRecommendationImageSelection, appendSelectedRecommendationImages, partitionRecommendationImages } from "@/lib/recommendations/submission";
 import { useTranslation } from "react-i18next";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -87,6 +87,7 @@ export default function RecommendationsPage() {
   const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [photoError, setPhotoError] = useState("");
   const imagePreviews = useMemo(() => images.map((image) => ({ file: image, url: URL.createObjectURL(image) })), [images]);
   useEffect(() => () => imagePreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [imagePreviews]);
 
@@ -143,7 +144,9 @@ export default function RecommendationsPage() {
         if (cached) { stagedImageIds.push(cached); continue; }
         const upload = await fetch('/api/recommendations/images', { method: 'POST', signal: controller.signal, body: (() => { const data = new FormData(); data.append('image', image); return data; })() });
         const uploadBody = await upload.json().catch(() => ({}));
-        if (!upload.ok) throw new Error(uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError"));
+        if (!upload.ok) throw new Error(uploadBody?.error?.code === 'IMAGE_INVALID'
+          ? tCustomer("ui.recommendations.photoRejected", { names: image.name })
+          : uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError"));
         const id = uploadBody.data.stagedImageId as string;
         stagedImages.current.set(image, id); stagedImageIds.push(id);
       }
@@ -191,10 +194,14 @@ export default function RecommendationsPage() {
   }
 
   async function handlePhotoSelection(event: React.ChangeEvent<HTMLInputElement>) {
-    const selected = Array.from(event.currentTarget.files ?? []);
-    const allowed = await allowRecommendationImageSelection(images.length, selected.length, confirmPhotoReplacement);
-    if (allowed) appendSelectedRecommendationImages(selected, setImages);
-    event.currentTarget.value = "";
+    // Read and reset the input before awaiting: React clears currentTarget once the handler yields.
+    const input = event.currentTarget;
+    const { accepted, rejected } = partitionRecommendationImages(Array.from(input.files ?? []));
+    input.value = "";
+    setPhotoError(rejected.length ? tCustomer("ui.recommendations.photoRejected", { names: rejected.join(", ") }) : "");
+    if (!accepted.length) return;
+    const allowed = await allowRecommendationImageSelection(images.length, accepted.length, confirmPhotoReplacement);
+    if (allowed) appendSelectedRecommendationImages(accepted, setImages);
   }
 
   const visibleRecs = !loading && !list.error && list.key === requestKey ? recs ?? [] : [];
@@ -293,6 +300,7 @@ export default function RecommendationsPage() {
               <span className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.photoHint")}</span>
               <input aria-label={tCustomer("ui.recommendations.photosLabel")} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handlePhotoSelection} className="sr-only" />
             </label>
+            {photoError && <p role="alert" className="text-xs text-destructive">{photoError}</p>}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {imagePreviews.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{imagePreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative min-w-0 overflow-hidden rounded-xl border border-border bg-secondary"><img src={url} alt={file.name} className="h-28 w-full object-cover" /><button type="button" onClick={() => removeImage(index)} aria-label={tCustomer("ui.recommendations.removePhoto", { name: file.name })} className="absolute right-2 top-2 rounded-full bg-foreground/75 p-1.5 text-background opacity-0 transition group-hover:opacity-100 focus:opacity-100"><X size={14} aria-hidden="true" /></button><p className="break-words whitespace-normal px-2 py-1.5 text-[11px] text-muted-foreground">{file.name}</p></div>)}</div>}
             <p className="text-xs text-muted-foreground">{images.length > 0 ? tCustomer("ui.recommendations.photosSelected", { count: images.length, suffix: images.length === 1 ? "" : "s" }) : tCustomer("ui.recommendations.uploadHint")}</p>

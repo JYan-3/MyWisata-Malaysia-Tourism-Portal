@@ -5,6 +5,7 @@ import { Camera, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ProfileCameraDialog } from "@/components/profile/profile-camera-dialog";
+import { ImageShapeHint, useImageCrop } from "@/components/shared/image-crop-dialog";
 import { validateAvatarFileMetadata } from "@/lib/profile/avatar-validation";
 
 type ProfilePhotoPickerProps = {
@@ -27,18 +28,31 @@ export function ProfilePhotoPicker({
   const { t: tCustomer } = useTranslation("customer");
   const fileRef = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const { cropToShape, cropDialog } = useImageCrop();
 
-  function selectPhoto(file: File | null) {
+  function showValidationError(reason: "type" | "size") {
+    onError(tCustomer(reason === "type"
+      ? "ui.profileWizard.photoTypeValidation"
+      : "ui.profileWizard.photoSizeValidation"));
+  }
+
+  async function selectPhoto(file: File | null) {
     if (!file) return;
-    const validation = validateAvatarFileMetadata(file);
+    // Reject unsupported types before cropping, which would otherwise convert them.
+    const original = validateAvatarFileMetadata(file);
+    if (!original.ok && original.reason === "type") {
+      showValidationError("type");
+      return;
+    }
+    const cropped = await cropToShape(file, "square");
+    if (!cropped) return;
+    const validation = validateAvatarFileMetadata(cropped);
     if (!validation.ok) {
-      onError(tCustomer(validation.reason === "type"
-        ? "ui.profileWizard.photoTypeValidation"
-        : "ui.profileWizard.photoSizeValidation"));
+      showValidationError(validation.reason);
       return;
     }
     onError(null);
-    onPhotoSelected(file);
+    onPhotoSelected(cropped);
   }
 
   const actions = (
@@ -49,7 +63,7 @@ export function ProfilePhotoPicker({
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
         onChange={(event) => {
-          selectPhoto(event.target.files?.[0] ?? null);
+          void selectPhoto(event.target.files?.[0] ?? null);
           event.target.value = "";
         }}
       />
@@ -61,6 +75,7 @@ export function ProfilePhotoPicker({
       </Button>
     </div>
   );
+  const shapeHint = <ImageShapeHint shape="square" className="text-xs text-muted-foreground" />;
 
   return (
     <>
@@ -87,6 +102,7 @@ export function ProfilePhotoPicker({
             )}
           </div>
           {actions}
+          {shapeHint}
           {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
         </div>
       ) : (
@@ -101,6 +117,7 @@ export function ProfilePhotoPicker({
           )}
           <div className="space-y-2">
             {actions}
+            {shapeHint}
             {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
           </div>
         </div>
@@ -109,8 +126,9 @@ export function ProfilePhotoPicker({
       <ProfileCameraDialog
         open={cameraOpen}
         onOpenChange={setCameraOpen}
-        onPhotoCaptured={selectPhoto}
+        onPhotoCaptured={(file) => void selectPhoto(file)}
       />
+      {cropDialog}
     </>
   );
 }

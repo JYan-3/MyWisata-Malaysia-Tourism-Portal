@@ -113,7 +113,7 @@
     "Analytics": "Analytics",
     "Operations": "Operations",
     "Shop page": "Shop",
-    "Promotions": "Promotions",
+    "Promotions": "Promote Event",
     "Announcements": "Announcements",
     "Events": "Events",
     "Reservations": "Reservations"
@@ -1599,7 +1599,7 @@
       "save": "Save"
     },
     "eventPromotions": {
-      "title": "Event Promotions",
+      "title": "Promote an Event",
       "description": "Promote an event you're joining that wasn't created by us — submit it for review and it'll appear on the site once approved.",
       "newHeading": "Submit a new event",
       "editHeading": "Edit and resubmit",

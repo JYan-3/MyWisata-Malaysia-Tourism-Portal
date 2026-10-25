@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FileUp, Images, RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { ImageShapeHint, useImageCrop } from '@/components/shared/image-crop-dialog';
 import { MAX_VENDOR_GALLERY_IMAGES, validateVendorGalleryFiles } from '@/lib/vendor/gallery-files';
 
 interface Props {
@@ -28,21 +29,40 @@ export default function VendorRegistrationGalleryField({
   const { t } = useTranslation('vendor');
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrls = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
+  const { cropToShape, cropDialog } = useImageCrop();
 
   useEffect(() => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), [previewUrls]);
 
-  function selectFiles(list: FileList | readonly File[] | null) {
-    const nextFiles = Array.from(list ?? []);
+  function showValidationError(reason: 'count' | 'type' | 'size') {
+    const messageKey = reason === 'count'
+      ? 'registration.gallery.invalidCount'
+      : reason === 'type'
+        ? 'registration.gallery.invalidType'
+        : 'registration.gallery.tooLarge';
+    onError(t(messageKey));
+  }
+
+  async function selectFiles(list: FileList | readonly File[] | null) {
+    const selected = Array.from(list ?? []);
+    if (!selected.length) return;
+
+    // Count and type are checked on the originals (cropping would convert other types);
+    // size is checked after cropping, which can only make a photo smaller.
+    const original = validateVendorGalleryFiles(selected, { allowEmpty: false });
+    if (!original.ok && original.reason !== 'size') {
+      showValidationError(original.reason);
+      return;
+    }
+    const nextFiles: File[] = [];
+    for (const file of selected) {
+      const cropped = await cropToShape(file, 'photo');
+      if (cropped) nextFiles.push(cropped);
+    }
     if (!nextFiles.length) return;
 
     const validation = validateVendorGalleryFiles(nextFiles, { allowEmpty: false });
     if (!validation.ok) {
-      const messageKey = validation.reason === 'count'
-        ? 'registration.gallery.invalidCount'
-        : validation.reason === 'type'
-          ? 'registration.gallery.invalidType'
-          : 'registration.gallery.tooLarge';
-      onError(t(messageKey));
+      showValidationError(validation.reason);
       return;
     }
 
@@ -59,7 +79,7 @@ export default function VendorRegistrationGalleryField({
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
-        selectFiles(event.dataTransfer.files);
+        void selectFiles(event.dataTransfer.files);
       }}
     >
       <input
@@ -74,7 +94,7 @@ export default function VendorRegistrationGalleryField({
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          selectFiles(event.target.files);
+          void selectFiles(event.target.files);
           event.target.value = '';
         }}
       />
@@ -121,6 +141,7 @@ export default function VendorRegistrationGalleryField({
             <p id={`${id}-help`} className="mt-1 text-xs leading-5 text-muted-foreground">
               {t('registration.gallery.help', { count: MAX_VENDOR_GALLERY_IMAGES })}
             </p>
+            <ImageShapeHint shape="photo" className="mt-1 text-xs leading-5 text-muted-foreground" />
           </div>
           <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={disabled}>
             <FileUp aria-hidden="true" /> {t('registration.gallery.choose')}
@@ -130,6 +151,7 @@ export default function VendorRegistrationGalleryField({
 
       {files.length > 0 && <p id={`${id}-help`} className="mt-2 text-xs leading-5 text-muted-foreground">{t('registration.gallery.help', { count: MAX_VENDOR_GALLERY_IMAGES })}</p>}
       {error && <p id={`${id}-error`} role="alert" className="mt-2 text-xs font-medium text-destructive">{error}</p>}
+      {cropDialog}
     </div>
   );
 }

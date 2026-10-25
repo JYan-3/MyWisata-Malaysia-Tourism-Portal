@@ -194,6 +194,7 @@ export default function OutletBuilderInspector({
             <p className="text-xs font-semibold text-gray-600">{t("builder.inspector.heroImage")}</p>
             <div className="mt-1">
               <ProductMediaUploader
+                shape="banner"
                 vendorId={vendorId}
                 value={hero.imageUrl}
                 onUploaded={(media) => onUpdateHero({ imageUrl: media.url })}
@@ -414,6 +415,7 @@ export default function OutletBuilderInspector({
                   className="rounded-xl border border-gray-200 p-2"
                 >
                   <ProductMediaUploader
+                    shape="photo"
                     vendorId={vendorId}
                     value={item.url}
                     onUploaded={(media) =>
@@ -459,6 +461,7 @@ export default function OutletBuilderInspector({
               ))}
               {gallery.length < 50 && (
                 <ProductMediaUploader
+                  shape="photo"
                   vendorId={vendorId}
                   onUploaded={(media) =>
                     onUpdateGallery(

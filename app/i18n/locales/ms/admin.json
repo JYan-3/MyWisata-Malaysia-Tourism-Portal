@@ -29,7 +29,7 @@
     "Wallet Settings": "Dompet",
     "Wallet Approvers": "Pelulus",
     "Payout Reports": "Bayaran",
-    "Reconciliation": "Rekonsiliasi",
+    "Reconciliation": "Pecahan Pesanan",
     "Recommendations": "Cadangan",
     "Support Tickets": "Sokongan",
     "Chat Reports": "Laporan sembang",
@@ -38,11 +38,11 @@
     "AI Assistant": "Pembantu AI",
     "Staff Conduct": "Tatakelakuan",
     "Access Control": "Kawalan akses",
-    "Sponsored Placements": "Ditaja",
-    "Promotion Campaigns": "Kempen",
+    "Sponsored Placements": "Iklan Ditaja",
+    "Promotion Campaigns": "Acara",
     "Orders": "Pesanan",
-    "Event Promos": "Promo Acara",
-    "Event Registrations": "Pendaftaran",
+    "Event Promos": "Iklan Acara",
+    "Event Registrations": "Gerai Acara",
     "Announcements": "Pengumuman",
     "System Settings": "Tetapan Sistem"
   },
@@ -56,7 +56,7 @@
   },
   "sponsoredPlacements": {
     "eyebrow": "Kempen penemuan",
-    "title": "Penempatan ditaja",
+    "title": "Iklan ditaja",
     "description": "Cipta, semak dan jeda penempatan penemuan ditaja yang dilabel dengan jelas.",
     "accessibility": {
       "lifecycleFilters": "Penapis kitar hayat kempen"
@@ -110,7 +110,7 @@
       "retail": "Runcit"
     },
     "list": {
-      "title": "Kempen",
+      "title": "Penempatan",
       "position": "Kedudukan {{position}}"
     },
     "lifecycle": {
@@ -1624,8 +1624,8 @@
     }
   },
   "reconciliation": {
-    "eyebrow": "Penyata kewangan",
-    "title": "Penyata pesanan",
+    "eyebrow": "Ke mana wang pergi",
+    "title": "Pecahan wang pesanan",
     "description": "Pecahan setiap pesanan: bayaran pelanggan, bersih vendor, komisen platform, dan berapa banyak daripadanya membiayai pembayaran ahli gabungan dan cadangan.",
     "month": "Bulan",
     "reload": "Muat semula",
@@ -3441,7 +3441,7 @@
   "promotionCampaigns": {
     "allLocationsCancelled": "Semua lokasi telah dibatalkan. Acara ini disembunyikan daripada penemuan.",
     "eyebrow": "Acara pelanggan",
-    "title": "Pengurus acara pesta vendor",
+    "title": "Acara",
     "description": "Sediakan acara pesta vendor dan terbitkannya — vendor mendaftar gerai mereka sendiri apabila acara sudah diterbitkan.",
     "refresh": "Muat semula",
     "form": {
@@ -3497,7 +3497,12 @@
         "endsAt": "Pilih tarikh akhir pada atau selepas tarikh pertama.",
         "posterUrl": "Pilih poster acara yang sah.",
         "operatingHours": "Tetapkan waktu buka dan tutup lalai yang sah."
-      }
+      },
+      "liveEditing": "Acara ini sedang aktif. Perubahan yang disimpan terus dipaparkan kepada pelanggan. Alamat acara tidak boleh ditukar, dan poster boleh diganti tetapi tidak boleh dibuang. Tarikh tidak boleh mengecualikan lokasi yang masih aktif.",
+      "slugLocked": "Alamat ditetapkan sebaik sahaja acara diterbitkan, supaya pautan dan kod QR yang dikongsi terus berfungsi:",
+      "replacePoster": "Ganti poster",
+      "liveSaveConfirm": "Acara ini sedang aktif. Simpan perubahan ini dan paparkan kepada pelanggan sekarang?",
+      "liveSaved": "Perubahan disimpan dan kini aktif"
     },
     "locations": {
       "changeReason": "Sebab perubahan",
@@ -3651,7 +3656,7 @@
     "stallUnchanged": "Nombor gerai tidak berubah.",
     "stallNotificationDescription": "Perubahan yang berjaya menghantar e-mel dan pemberitahuan aplikasi kepada pemilik vendor dengan nombor gerai lama dan baharu.",
     "eyebrow": "Governans",
-    "title": "Pendaftaran Acara",
+    "title": "Pendaftaran Gerai",
     "description": "Semak pendaftaran gerai vendor untuk acara pesta vendor sebelum ia disiarkan.",
     "loading": "Memuatkan…",
     "backToQueue": "Kembali ke barisan",
@@ -3757,7 +3762,7 @@
   },
   "eventPromotions": {
     "eyebrow": "Governans",
-    "title": "Promosi Acara",
+    "title": "Iklan Acara Luar",
     "description": "Semak promosi acara luaran yang dihantar vendor sebelum ia disiarkan.",
     "loading": "Memuatkan…",
     "backToQueue": "Kembali ke barisan",

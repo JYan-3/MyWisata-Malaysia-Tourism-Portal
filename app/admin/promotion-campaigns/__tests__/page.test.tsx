@@ -33,7 +33,7 @@ function response(body: unknown) {
   return { ok: true, status: 200, json: async () => body } as Response;
 }
 
-function campaignPayload(status: "draft" | "pending_approval" = "draft") {
+function campaignPayload(status: "draft" | "pending_approval" | "approved" | "paused" | "archived" = "draft") {
   return response({ data: {
     campaigns: [{
       id: "campaign-1", slug: "heritage-walk-kl-current-offers", title: "Heritage Walk KL — Local Explorer Picks",
@@ -303,6 +303,47 @@ describe("Admin promotion campaign workbench", () => {
     expect(container.textContent).toContain("promotionCampaigns.form.removePoster");
     expect(container.textContent).not.toContain("promotionCampaigns.form.offerType");
     expect(container.textContent).not.toContain("promotionCampaigns.form.chooseSource");
+  });
+
+  it.each(["approved", "paused"] as const)("lets a %s event be corrected in place with the address locked and the poster replace-only", async (status) => {
+    mocks.fetch.mockResolvedValue(campaignPayload(status));
+    await renderLoadedPage();
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
+
+    expect(container.textContent).toContain("promotionCampaigns.form.liveEditing");
+    expect(findOne(container, (element) => element.tagName === "INPUT" && element.value === "heritage-walk-kl-current-offers").disabled).toBe(true);
+    expect(findOne(container, (element) => element.tagName === "INPUT" && element.value === "Heritage Walk KL — Local Explorer Picks").disabled).toBe(false);
+    expect(container.textContent).toContain("promotionCampaigns.form.replacePoster");
+    expect(container.textContent).not.toContain("promotionCampaigns.form.removePoster");
+    expect(findElements(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.form.saveDraft"))).toHaveLength(0);
+    expect(container.textContent).not.toContain("promotionCampaigns.form.checklistTitle");
+  });
+
+  it("asks before saving a live event and sends the unchanged address", async () => {
+    mocks.fetch.mockResolvedValue(campaignPayload("approved"));
+    await renderLoadedPage();
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
+    const submit = async () => act(async () => {
+      findOne(container, (element) => element.tagName === "FORM").dispatchEvent(new TestEvent("submit", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const patches = () => mocks.fetch.mock.calls.filter(([url, init]) => url === "/api/admin/promotion-campaigns/campaign-1" && (init as RequestInit | undefined)?.method === "PATCH");
+
+    mocks.confirm.mockResolvedValueOnce(false);
+    await submit();
+    expect(mocks.confirm).toHaveBeenCalledWith("promotionCampaigns.form.liveSaveConfirm");
+    expect(patches()).toHaveLength(0);
+
+    await submit();
+    expect(patches()).toHaveLength(1);
+    expect(JSON.parse(String((patches()[0][1] as RequestInit).body))).toMatchObject({ action: "save_draft", campaign: { slug: "heritage-walk-kl-current-offers" } });
+  });
+
+  it.each(["pending_approval", "archived"] as const)("keeps a %s event locked with no Edit action", async (status) => {
+    mocks.fetch.mockResolvedValue(campaignPayload(status));
+    await renderLoadedPage();
+    expect(findElements(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit"))).toHaveLength(0);
   });
 
   it("uses inclusive event dates and rejects equal daily opening and closing times", async () => {

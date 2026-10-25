@@ -113,7 +113,7 @@
     "Analytics": "Analitik",
     "Operations": "Operasi",
     "Shop page": "Kedai",
-    "Promotions": "Promosi",
+    "Promotions": "Promosi Acara",
     "Announcements": "Pengumuman",
     "Events": "Acara",
     "Reservations": "Tempahan"
@@ -1599,7 +1599,7 @@
       "save": "Simpan"
     },
     "eventPromotions": {
-      "title": "Promosi Acara",
+      "title": "Promosikan Acara",
       "description": "Promosikan acara yang anda sertai tetapi bukan dicipta oleh kami — hantar untuk semakan dan ia akan muncul di laman selepas diluluskan.",
       "newHeading": "Hantar acara baharu",
       "editHeading": "Sunting dan hantar semula",

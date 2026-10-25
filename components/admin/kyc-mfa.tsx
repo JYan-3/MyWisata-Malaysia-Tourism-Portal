@@ -12,6 +12,10 @@ import { safeKycReviewNext } from '@/lib/auth/safe-next';
 import { safeStaffVerificationNext } from '@/lib/auth/staff-route-boundaries';
 import { AuthPageShell } from '@/components/shared/auth-page-shell';
 
+// The real code field sits invisibly over the six display boxes. It must stay hidden while
+// disabled too, or Input's `disabled:opacity-50` shows the raw digits over the first box.
+export const STAFF_CODE_INPUT_CLASS = 'absolute inset-0 h-full w-full cursor-text opacity-0 disabled:opacity-0';
+
 export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string; available?: boolean; scope?: 'kyc' | 'staff' }) {
   const { t } = useTranslation('admin');
   const router = useRouter();
@@ -119,7 +123,7 @@ export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string
               {staff && <div aria-hidden="true" className="grid grid-cols-6 gap-2">
                 {Array.from({ length: 6 }, (_, index) => <span key={index} className={`flex h-12 min-w-0 items-center justify-center rounded-xl border bg-secondary/40 text-xl font-bold ${index === Math.min(code.length, 5) ? 'border-primary' : 'border-border'}${busy ? ' opacity-50' : ''}`}>{code[index] ?? ''}</span>)}
               </div>}
-              <Input ref={codeInput} id="kyc-mfa-code" className={staff ? 'absolute inset-0 h-full w-full cursor-text opacity-0' : undefined} value={code} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required disabled={busy} />
+              <Input ref={codeInput} id="kyc-mfa-code" className={staff ? STAFF_CODE_INPUT_CLASS : undefined} value={code} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required disabled={busy} />
             </div>
             <div className={staff ? 'flex flex-col gap-3' : 'flex gap-3'}>
               <Button type="submit" className={primaryClass} disabled={busy || code.length !== 6}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.verify')}</Button>

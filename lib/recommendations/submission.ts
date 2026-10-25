@@ -53,3 +53,14 @@ export function validateRecommendationImage(file: File): string | null {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return 'Use a JPEG, PNG, or WebP image';
   return null;
 }
+
+/** Splits a selection into photos the upload route will accept and the names of those it would reject. */
+export function partitionRecommendationImages(files: File[]): { accepted: File[]; rejected: string[] } {
+  const accepted: File[] = [];
+  const rejected: string[] = [];
+  for (const file of files) {
+    if (validateRecommendationImage(file)) rejected.push(file.name);
+    else accepted.push(file);
+  }
+  return { accepted, rejected };
+}

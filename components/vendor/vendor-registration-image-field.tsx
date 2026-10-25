@@ -4,11 +4,15 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FileUp, Image as ImageIcon, RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { ImageShapeHint, useImageCrop } from '@/components/shared/image-crop-dialog';
+import type { ImageShape } from '@/lib/media/image-aspect';
 import { validateAvatarFileMetadata } from '@/lib/profile/avatar-validation';
 
 interface Props {
   id: string;
   label: string;
+  /** Recommended shape; a photo of another shape is cropped when chosen. */
+  shape: ImageShape;
   file: File | null;
   disabled?: boolean;
   error?: string | null;
@@ -19,6 +23,7 @@ interface Props {
 export default function VendorRegistrationImageField({
   id,
   label,
+  shape,
   file,
   disabled = false,
   error,
@@ -27,21 +32,30 @@ export default function VendorRegistrationImageField({
 }: Props) {
   const { t } = useTranslation('vendor');
   const inputRef = useRef<HTMLInputElement>(null);
+  const { cropToShape, cropDialog } = useImageCrop();
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  function selectFile(nextFile: File | null) {
+  async function selectFile(nextFile: File | null) {
     if (!nextFile) return;
-    const validation = validateAvatarFileMetadata(nextFile);
+    // Reject unsupported types before cropping, which would otherwise convert them.
+    const original = validateAvatarFileMetadata(nextFile);
+    if (!original.ok && original.reason === 'type') {
+      onError(t('registration.images.invalidType'));
+      return;
+    }
+    const cropped = await cropToShape(nextFile, shape);
+    if (!cropped) return;
+    const validation = validateAvatarFileMetadata(cropped);
     if (!validation.ok) {
       onError(t(validation.reason === 'type' ? 'registration.images.invalidType' : 'registration.images.tooLarge'));
       return;
     }
     onError(null);
-    onFileChange(nextFile);
+    onFileChange(cropped);
   }
 
   return (
@@ -53,7 +67,7 @@ export default function VendorRegistrationImageField({
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
-        selectFile(event.dataTransfer.files?.[0] ?? null);
+        void selectFile(event.dataTransfer.files?.[0] ?? null);
       }}
     >
       <input
@@ -67,7 +81,7 @@ export default function VendorRegistrationImageField({
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          selectFile(event.target.files?.[0] ?? null);
+          void selectFile(event.target.files?.[0] ?? null);
           event.target.value = '';
         }}
       />
@@ -108,6 +122,7 @@ export default function VendorRegistrationImageField({
             <p id={`${id}-help`} className="mt-1 text-xs leading-5 text-muted-foreground">
               {t('registration.images.formats')}
             </p>
+            <ImageShapeHint shape={shape} className="mt-1 text-xs leading-5 text-muted-foreground" />
           </div>
           <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={disabled}>
             <FileUp aria-hidden="true" /> {t('registration.images.choose')}
@@ -117,6 +132,7 @@ export default function VendorRegistrationImageField({
 
       {file && <p id={`${id}-help`} className="mt-2 text-xs leading-5 text-muted-foreground">{t('registration.images.formats')}</p>}
       {error && <p id={`${id}-error`} role="alert" className="mt-2 text-xs font-medium text-destructive">{error}</p>}
+      {cropDialog}
     </div>
   );
 }

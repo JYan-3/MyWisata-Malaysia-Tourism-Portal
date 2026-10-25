@@ -29,7 +29,7 @@
     "Wallet Settings": "Wallet",
     "Wallet Approvers": "Approvers",
     "Payout Reports": "Payouts",
-    "Reconciliation": "Reconciliation",
+    "Reconciliation": "Order Breakdown",
     "Recommendations": "Recommendations",
     "Support Tickets": "Support",
     "Chat Reports": "Chat Reports",
@@ -38,11 +38,11 @@
     "AI Assistant": "AI Assistant",
     "Staff Conduct": "Staff Conduct",
     "Access Control": "Access Control",
-    "Sponsored Placements": "Sponsored",
-    "Promotion Campaigns": "Campaigns",
+    "Sponsored Placements": "Sponsored Ads",
+    "Promotion Campaigns": "Events",
     "Orders": "Orders",
-    "Event Promos": "Event Promos",
-    "Event Registrations": "Registrations",
+    "Event Promos": "Event Ads",
+    "Event Registrations": "Event Stalls",
     "Announcements": "Announcements",
     "System Settings": "System Settings"
   },
@@ -56,7 +56,7 @@
   },
   "sponsoredPlacements": {
     "eyebrow": "Discovery campaigns",
-    "title": "Sponsored placements",
+    "title": "Sponsored ads",
     "description": "Create, review and pause clearly labelled sponsored discovery placements.",
     "accessibility": {
       "lifecycleFilters": "Campaign lifecycle filters"
@@ -110,7 +110,7 @@
       "retail": "Retail"
     },
     "list": {
-      "title": "Campaigns",
+      "title": "Placements",
       "position": "Position {{position}}"
     },
     "lifecycle": {
@@ -1624,8 +1624,8 @@
     }
   },
   "reconciliation": {
-    "eyebrow": "Money reconciliation",
-    "title": "Order reconciliation",
+    "eyebrow": "Where the money goes",
+    "title": "Order money breakdown",
     "description": "Per-order breakdown: what the customer paid, the vendor's net, the platform commission, and how much of it funded affiliate and recommendation payouts.",
     "month": "Month",
     "reload": "Reload",
@@ -3441,7 +3441,7 @@
   "promotionCampaigns": {
     "allLocationsCancelled": "All locations have been cancelled. This event is hidden from discovery.",
     "eyebrow": "Customer events",
-    "title": "Vendor-fair event manager",
+    "title": "Events",
     "description": "Set up a vendor-fair event and publish it — vendors register their own stalls once it's live.",
     "refresh": "Refresh",
     "form": {
@@ -3497,7 +3497,12 @@
         "endsAt": "Choose a last date on or after the first date.",
         "posterUrl": "Choose a valid event poster.",
         "operatingHours": "Set valid default opening and closing times."
-      }
+      },
+      "liveEditing": "This event is live. Saved changes appear to customers right away. The event address cannot be changed, and the poster can be replaced but not removed. Dates cannot exclude a location that is still active.",
+      "slugLocked": "The address is fixed once an event is published, so shared links and QR codes keep working:",
+      "replacePoster": "Replace poster",
+      "liveSaveConfirm": "This event is live. Save these changes and show them to customers now?",
+      "liveSaved": "Changes saved and live"
     },
     "locations": {
       "changeReason": "Reason for the change",
@@ -3651,7 +3656,7 @@
     "stallUnchanged": "The stall number is unchanged.",
     "stallNotificationDescription": "A successful change sends the vendor owner an email and App notification with the old and new stall number.",
     "eyebrow": "Governance",
-    "title": "Event Registrations",
+    "title": "Stall Registrations",
     "description": "Review vendor stall registrations for vendor-fair events before they go live.",
     "loading": "Loading…",
     "backToQueue": "Back to queue",
@@ -3757,7 +3762,7 @@
   },
   "eventPromotions": {
     "eyebrow": "Governance",
-    "title": "Event Promotions",
+    "title": "External Event Ads",
     "description": "Review vendor-submitted external event promotions before they go live.",
     "loading": "Loading…",
     "backToQueue": "Back to queue",

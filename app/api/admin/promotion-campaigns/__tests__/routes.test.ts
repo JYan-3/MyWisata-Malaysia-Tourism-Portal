@@ -140,6 +140,15 @@ describe("Admin promotion campaign APIs", () => {
     expect(body.error.code).toBe("POSTER_REQUIRED");
   });
 
+  it("explains that a published event's address cannot change", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "promotion_campaign_slug_locked" } });
+    const response = await itemRoute.PATCH(request("PATCH", { action: "save_draft", campaign: { ...validCampaign, expectedUpdatedAt: UPDATED_AT } }), { params: Promise.resolve({ id: CAMPAIGN_ID }) });
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.code).toBe("SLUG_LOCKED");
+    expect(JSON.stringify(body)).not.toContain("promotion_campaign_slug_locked");
+  });
+
   it("returns stable unavailable errors instead of raw database messages", async () => {
     mocks.tables.promotion_campaigns = query({ data: null, error: { message: "secret database detail" } });
     const response = await collectionRoute.GET();
