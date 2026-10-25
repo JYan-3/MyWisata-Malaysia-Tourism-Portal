@@ -4,7 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { clearCurrentUser, setCurrentUser as setStoredCurrentUser } from "@/backend/domains/current-user";
+import { clearCurrentUser, setCurrentUserId } from "@/backend/domains/current-user";
 import { createClient } from "@/lib/supabase/client";
 import { pickDemoRole } from "@/lib/auth/demo-user-role";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       outletId: row.activeOutletIds[0] ?? undefined,
       };
       if (!isCurrentRequest(request)) return null;
-      setStoredCurrentUser(user);
+      setCurrentUserId(user.id);
       setCurrentUser(user);
       setCapabilities(row.capabilities);
       setVerificationFacts(row.verificationFacts);

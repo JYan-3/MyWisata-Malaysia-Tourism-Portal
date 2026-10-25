@@ -142,6 +142,7 @@ describe("AuthProvider request ownership", () => {
     expect(container?.textContent).toContain('"id":"user-b"');
     expect(container?.textContent).toContain("user-b.permission");
     expect(storedValues.get("tp_current_user_id")).toBe("user-b");
+    expect(storedValues.has("tp_current_user_data")).toBe(false);
 
     await act(async () => {
       requestA.resolve(new Response(JSON.stringify(profile("user-a")), { status: 200 }));
@@ -151,6 +152,7 @@ describe("AuthProvider request ownership", () => {
     expect(container?.textContent).toContain("user-b.permission");
     expect(container?.textContent).not.toContain("user-a.permission");
     expect(storedValues.get("tp_current_user_id")).toBe("user-b");
+    expect(storedValues.has("tp_current_user_data")).toBe(false);
   });
 
   it("does not restore a signed-out account when its profile request resolves late", async () => {
