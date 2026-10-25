@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "loading": "Memuatkan…",
     "contentTranslation": {
       "machineTranslated": "Terjemahan mesin",
       "showOriginal": "Tunjukkan teks asal",

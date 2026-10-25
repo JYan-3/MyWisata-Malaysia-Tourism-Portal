@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "loading": "Loading…",
     "contentTranslation": {
       "machineTranslated": "Machine translated",
       "showOriginal": "Show original",
