@@ -37,11 +37,11 @@ const campaign: PromotionCampaignPublic = {
   posterUrl: null,
   operatingHours: "10:00 AM - 6:00 PM",
   startsAt: "2026-09-25T12:00:00.000Z",
-  endsAt: "2026-10-25T12:00:00.000Z",
+  endsAt: "2026-12-25T12:00:00.000Z",
   visibility: "live",
   locations: [{
     id: "33333333-3333-4333-8333-333333333333", name: "Petaling Street", address: "Jalan Petaling, Kuala Lumpur",
-    lat: 3.1439, lng: 101.6977, startsOn: "2026-09-25", endsOn: "2026-10-25", opensAt: "10:00", closesAt: "18:00",
+    lat: 3.1439, lng: 101.6977, startsOn: "2026-09-25", endsOn: "2026-12-25", opensAt: "10:00", closesAt: "18:00",
   }],
   vendors: [vendor],
 };
@@ -84,7 +84,7 @@ describe("customer promotion campaign listing", () => {
 
   it("labels the start date for an upcoming campaign", async () => {
     mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({
-      campaigns: [{ ...campaign, visibility: "upcoming" }],
+      campaigns: [{ ...campaign, visibility: "upcoming", startsAt: "2026-11-25T12:00:00.000Z" }],
       error: false,
     });
 
@@ -98,10 +98,10 @@ describe("customer promotion campaign listing", () => {
     mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [{
       ...campaign,
       startsAt: "2026-09-30T16:00:00.000Z",
-      endsAt: "2026-10-08T15:59:59.999Z",
+      endsAt: "2026-12-08T15:59:59.999Z",
     }], error: false });
     const fullDayMarkup = renderToStaticMarkup(await CustomerEventsPage());
-    expect(fullDayMarkup).toContain("Oct 8, 2026");
+    expect(fullDayMarkup).toContain("Dec 8, 2026");
     expect(fullDayMarkup).not.toContain("11:59 PM");
 
     const legacyMarkup = renderToStaticMarkup(await CustomerEventsPage());
