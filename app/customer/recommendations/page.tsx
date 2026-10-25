@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Star, Plus, CheckCircle2, Clock, XCircle, ImagePlus, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -15,7 +15,7 @@ import { RECOMMENDATION_STATUSES, groupRecommendations } from "@/lib/customer/re
 import Link from "next/link";
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
-import { allowRecommendationImageSelection, appendSelectedRecommendationImages, partitionRecommendationImages } from "@/lib/recommendations/submission";
+import { allowRecommendationImageSelection, appendSelectedRecommendationImages, partitionRecommendationImages, type EditableRecommendation } from "@/lib/recommendations/submission";
 import { useTranslation } from "react-i18next";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -56,6 +56,11 @@ function recommendationErrorMessage(body: unknown, fallback: string, translate: 
 }
 
 export default function RecommendationsPage() {
+  const { currentUser } = useAuth();
+  return <RecommendationsContent key={currentUser?.id ?? "guest"} />;
+}
+
+function RecommendationsContent() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
@@ -72,6 +77,11 @@ export default function RecommendationsPage() {
   const requestKey = JSON.stringify([currentUser?.id, page, statusFilter, refresh]);
   const loading = Boolean(currentUser) && list.key !== requestKey;
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; version: string } | null>(null);
+  const [retainedImages, setRetainedImages] = useState<EditableRecommendation["images"]>([]);
+  const editorRequest = useRef<AbortController | null>(null);
+  const requestedEdit = useRef<string | null>(null);
+  const [editingLoading, setEditingLoading] = useState(false);
   const [categories, setCategories] = useState<CanonicalCategoryOption[]>([]);
   const [form, setForm] = useState({
     name: "",
@@ -119,6 +129,40 @@ export default function RecommendationsPage() {
     return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
   }, [currentUser, page, statusFilter, requestKey]);
 
+  const openEditor = useCallback(async (id: string) => {
+    if (!currentUser?.id) return;
+    editorRequest.current?.abort();
+    const controller = new AbortController();
+    editorRequest.current = controller;
+    setEditingLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/recommendations/${encodeURIComponent(id)}`, { signal: controller.signal, cache: "no-store" });
+      const body = await response.json() as { data?: { id: string; name: string; description: string; whyRecommend: string; editable: EditableRecommendation | null } };
+      if (controller.signal.aborted) return;
+      if (!response.ok || !body.data?.editable) throw new Error(tCustomer("ui.recommendations.editUnavailable"));
+      const detail = body.data;
+      const value = detail.editable!;
+      setEditing({ id: detail.id, version: value.version });
+      setForm({ name: detail.name, description: detail.description ?? "", whyRecommend: detail.whyRecommend ?? "", category: value.categoryId ?? "", phone: value.contact.phone ?? "", email: value.contact.email ?? "", website: value.contact.website ?? "", imageAttested: false });
+      setLocation(value.location);
+      setImages([]);
+      setRetainedImages(value.images);
+      stagedImages.current.clear();
+      setShowForm(true);
+    } catch {
+      if (!controller.signal.aborted) setError(tCustomer("ui.recommendations.editUnavailable"));
+    } finally {
+      if (!controller.signal.aborted) setEditingLoading(false);
+    }
+  }, [currentUser?.id, tCustomer]);
+
+  useEffect(() => {
+    const id = new URL(window.location.href).searchParams.get("edit");
+    if (id && requestedEdit.current !== id) { requestedEdit.current = id; void openEditor(id); }
+  }, [openEditor]);
+  useEffect(() => () => editorRequest.current?.abort(), []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) return;
@@ -130,7 +174,7 @@ export default function RecommendationsPage() {
     const selectedCategory = categories.find((category) => category.id === form.category);
     if (!selectedCategory) { setError(tCustomer("ui.recommendations.selectCategory")); return; }
     if (!location) { setError(tCustomer("ui.recommendations.selectLocation")); return; }
-    if (images.length < 1) { setError(tCustomer("ui.recommendations.addPhoto")); return; }
+    if (images.length + retainedImages.length < 1 || images.length + retainedImages.length > 5) { setError(tCustomer("ui.recommendations.addPhoto")); return; }
     if (!form.phone.trim() && !form.email.trim() && !form.website.trim()) { setError(tCustomer("ui.recommendations.addContact")); return; }
     if (!form.imageAttested) { setError(tCustomer("ui.recommendations.attestPhotos")); return; }
 
@@ -144,14 +188,12 @@ export default function RecommendationsPage() {
         if (cached) { stagedImageIds.push(cached); continue; }
         const upload = await fetch('/api/recommendations/images', { method: 'POST', signal: controller.signal, body: (() => { const data = new FormData(); data.append('image', image); return data; })() });
         const uploadBody = await upload.json().catch(() => ({}));
-        if (!upload.ok) throw new Error(uploadBody?.error?.code === 'IMAGE_INVALID'
-          ? tCustomer("ui.recommendations.photoRejected", { names: image.name })
-          : uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError"));
+        if (!upload.ok) throw new Error(uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError"));
         const id = uploadBody.data.stagedImageId as string;
         stagedImages.current.set(image, id); stagedImageIds.push(id);
       }
-      const res = await fetch('/api/recommendations', {
-        method: 'POST', signal: controller.signal,
+      const res = await fetch(editing ? `/api/recommendations/${editing.id}` : '/api/recommendations', {
+        method: editing ? 'PATCH' : 'POST', signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vendorName:  form.name.trim(),
@@ -161,21 +203,22 @@ export default function RecommendationsPage() {
           location,
           contact: { phone: form.phone.trim() || undefined, email: form.email.trim() || undefined, website: form.website.trim() || undefined },
           stagedImageIds,
+          ...(editing ? { expectedVersion: editing.version, retainedImageIds: retainedImages.map((image) => image.id) } : {}),
           imageAttested: form.imageAttested,
         }),
       });
       if (await gate.handleResponse(res, "/customer/recommendations")) return;
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(recommendationErrorMessage(body, tCustomer("ui.recommendations.submitError"), (key) => tCustomer(key)));
+        setError(res.status === 409 ? tCustomer("ui.recommendations.editConflict") : recommendationErrorMessage(body, tCustomer("ui.recommendations.submitError"), (key) => tCustomer(key)));
         return;
       }
       stagedImages.current.clear();
       setPage(1); setStatusFilter("all"); setRefresh((value) => value + 1);
       setShowForm(false);
       setForm({ name: "", description: "", whyRecommend: "", category: "", phone: "", email: "", website: "", imageAttested: false });
-      setLocation(null); setImages([]);
-      showFeedback("success", tCustomer("ui.recommendations.submitted"));
+      setLocation(null); setImages([]); setRetainedImages([]); setEditing(null);
+      showFeedback("success", tCustomer(editing ? "ui.recommendations.resubmitted" : "ui.recommendations.submitted"));
     } catch (err) {
       const message = err instanceof Error ? err.message : tCustomer("ui.recommendations.submitError");
       setError(message);
@@ -194,14 +237,15 @@ export default function RecommendationsPage() {
   }
 
   async function handlePhotoSelection(event: React.ChangeEvent<HTMLInputElement>) {
-    // Read and reset the input before awaiting: React clears currentTarget once the handler yields.
-    const input = event.currentTarget;
-    const { accepted, rejected } = partitionRecommendationImages(Array.from(input.files ?? []));
-    input.value = "";
-    setPhotoError(rejected.length ? tCustomer("ui.recommendations.photoRejected", { names: rejected.join(", ") }) : "");
-    if (!accepted.length) return;
-    const allowed = await allowRecommendationImageSelection(images.length, accepted.length, confirmPhotoReplacement);
-    if (allowed) appendSelectedRecommendationImages(accepted, setImages);
+    const selected = Array.from(event.currentTarget.files ?? []);
+    const { accepted, rejected } = partitionRecommendationImages(selected);
+    setPhotoError(rejected.length > 0 ? tCustomer("ui.recommendations.photoRejected", { names: rejected.join(", ") }) : "");
+    const allowed = await allowRecommendationImageSelection(images.length + retainedImages.length, accepted.length, confirmPhotoReplacement);
+    if (allowed) {
+      if (images.length + retainedImages.length + accepted.length > 5) setRetainedImages([]);
+      appendSelectedRecommendationImages(accepted, setImages);
+    }
+    event.currentTarget.value = "";
   }
 
   const visibleRecs = !loading && !list.error && list.key === requestKey ? recs ?? [] : [];
@@ -216,7 +260,10 @@ export default function RecommendationsPage() {
         title={tCustomer("ui.recommendations.title")}
         description={tCustomer("ui.recommendations.description")}
         icon={<Star size={14} className="text-accent" />}
-        actions={<Button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) setShowForm((v) => !v); }} className="flex items-center gap-2">
+        actions={<Button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) {
+            if (editing) { setEditing(null); setRetainedImages([]); setImages([]); setLocation(null); setForm({ name: "", description: "", whyRecommend: "", category: "", phone: "", email: "", website: "", imageAttested: false }); }
+            setShowForm((v) => !v);
+          } }} className="flex items-center gap-2">
           <Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend")}
         </Button>}
       />
@@ -235,9 +282,10 @@ export default function RecommendationsPage() {
         {!loading && list.error && <div role="alert" className="text-sm text-destructive">{tCustomer("ui.recommendations.historyError")} <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>{tCustomer("ui.recommendations.historyRetry")}</Button></div>}
       </div>
 
+      {(editingLoading || (!showForm && error)) && <p role="status" className="mb-4 text-sm text-muted-foreground">{editingLoading ? tCustomer("ui.states.loading") : error}</p>}
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
-          <h2 className="font-bold text-foreground">{tCustomer("ui.recommendations.new")}</h2>
+          <h2 className="font-bold text-foreground">{tCustomer(editing ? "ui.recommendations.editTitle" : "ui.recommendations.new")}</h2>
 
           <div className="space-y-1">
             <label htmlFor="recommendation-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.vendorBusinessName")}</label>
@@ -300,10 +348,15 @@ export default function RecommendationsPage() {
               <span className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.photoHint")}</span>
               <input aria-label={tCustomer("ui.recommendations.photosLabel")} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handlePhotoSelection} className="sr-only" />
             </label>
-            {photoError && <p role="alert" className="text-xs text-destructive">{photoError}</p>}
+            {retainedImages.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{retainedImages.map((image) => <div key={image.id} className="relative overflow-hidden rounded-xl border border-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={image.url} alt={tCustomer("ui.recommendations.photos")} className="h-28 w-full object-cover" />
+              <Button type="button" size="icon" variant="outline" className="absolute right-1 top-1" aria-label={tCustomer("ui.recommendations.removePhoto", { name: tCustomer("ui.recommendations.photos") })} onClick={() => setRetainedImages((current) => current.filter((entry) => entry.id !== image.id))}><X size={14} /></Button>
+            </div>)}</div>}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {imagePreviews.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{imagePreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative min-w-0 overflow-hidden rounded-xl border border-border bg-secondary"><img src={url} alt={file.name} className="h-28 w-full object-cover" /><button type="button" onClick={() => removeImage(index)} aria-label={tCustomer("ui.recommendations.removePhoto", { name: file.name })} className="absolute right-2 top-2 rounded-full bg-foreground/75 p-1.5 text-background opacity-0 transition group-hover:opacity-100 focus:opacity-100"><X size={14} aria-hidden="true" /></button><p className="break-words whitespace-normal px-2 py-1.5 text-[11px] text-muted-foreground">{file.name}</p></div>)}</div>}
             <p className="text-xs text-muted-foreground">{images.length > 0 ? tCustomer("ui.recommendations.photosSelected", { count: images.length, suffix: images.length === 1 ? "" : "s" }) : tCustomer("ui.recommendations.uploadHint")}</p>
+            {photoError && <p role="alert" className="text-xs text-destructive">{photoError}</p>}
           </div>
 
           <div className="space-y-2"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.contact")}</p><div className="grid gap-2 sm:grid-cols-3"><input aria-label={tCustomer("ui.recommendations.phone")} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={tCustomer("ui.recommendations.phone")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input aria-label={tCustomer("ui.recommendations.email")} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder={tCustomer("ui.recommendations.email")} type="email" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input aria-label={tCustomer("ui.recommendations.website")} value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder={tCustomer("ui.recommendations.website")} type="url" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div></div>
@@ -313,7 +366,7 @@ export default function RecommendationsPage() {
           {error && <p role="alert" aria-live="assertive" className="text-xs text-red-500">{error}</p>}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting || categories.length === 0} className="flex-1">
+            <Button type="submit" disabled={submitting || editingLoading || categories.length === 0} className="flex-1">
               {submitting ? tCustomer("ui.states.submitting") : tCustomer("ui.recommendations.submit")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setShowForm(false)}>{tCustomer("ui.actions.cancel")}</Button>
@@ -335,7 +388,7 @@ export default function RecommendationsPage() {
                   <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
                   {r.status === "pending" && <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.notEditable")}</p>}
-                  {r.status === "changes_requested" && <button type="button" onClick={() => setShowForm(true)} className="mt-1 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.updateDetails")}</button>}
+                  {r.status === "changes_requested" && <button type="button" onClick={() => void openEditor(r.id)} className="mt-1 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.updateDetails")}</button>}
                   {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                 </div>
                 <StatusBadge status={r.status} />

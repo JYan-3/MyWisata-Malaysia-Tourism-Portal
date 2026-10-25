@@ -1506,7 +1506,11 @@
       "historyLoading": "Loading recommendations…",
       "historyTotal": "{{total}} recommendations",
       "historyError": "Unable to load recommendations.",
-      "historyRetry": "Try again"
+      "historyRetry": "Try again",
+      "editTitle": "Update this recommendation",
+      "resubmitted": "Your updated recommendation is back in the review queue.",
+      "editConflict": "This recommendation changed. Your input is still here; reopen its latest details before submitting again.",
+      "editUnavailable": "Unable to open this recommendation for editing. Reload its details and try again."
     },
     "recommendationEarnings": {
       "title": "Recommendation earnings",

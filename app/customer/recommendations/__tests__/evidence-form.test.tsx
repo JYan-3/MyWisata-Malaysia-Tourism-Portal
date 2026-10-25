@@ -43,7 +43,7 @@ describe("recommendation evidence form contract", () => {
   it("rejects oversized or unsupported photos when they are picked, with a translated message", () => {
     expect(page).toContain("partitionRecommendationImages(");
     expect(page).toContain('tCustomer("ui.recommendations.photoRejected"');
-    expect(page).toMatch(/allowRecommendationImageSelection\(images\.length, accepted\.length/);
+    expect(page).toMatch(/allowRecommendationImageSelection\(images\.length \+ retainedImages\.length, accepted\.length/);
     expect(page).toMatch(/appendSelectedRecommendationImages\(accepted,/);
   });
 });

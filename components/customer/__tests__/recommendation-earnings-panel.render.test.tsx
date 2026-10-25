@@ -1,6 +1,6 @@
 import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { findElements, installTestDom, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
+import { findElements, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
 import type { RecommendationEarnings } from "@/lib/recommendations/earnings";
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn() }));
@@ -25,6 +25,11 @@ let root: ReturnType<typeof import("react-dom/client").createRoot> | undefined;
 function payload(overrides: Partial<RecommendationEarnings> = {}): RecommendationEarnings {
   return {
     totals: { pending: 12.5, lifetimeCleared: 18, convertedVendors: 2 },
+    totalCount: 3,
+    pageSize: 10,
+    hasMore: false,
+    nextCursor: null,
+    snapshotCutoff: "2026-03-10T00:00:00.000Z",
     commissions: [
       { id: "a", recommendationId: "rec-1", vendorName: "Aunty Lim", type: "bonus", rate: null, amount: 12.5, status: "pending", createdAt: "2026-03-05T00:00:00.000Z", clearsInDays: 5 },
       { id: "b", recommendationId: "rec-2", vendorName: "Nasi Kandar Deen", type: "ongoing", rate: 0.03, amount: 18, status: "confirmed", createdAt: "2026-03-01T00:00:00.000Z", clearsInDays: null },
@@ -89,9 +94,33 @@ describe("RecommendationEarningsPanel", () => {
   });
 
   it("scopes to a single recommendation when recommendationId is given", async () => {
-    mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: payload() }) });
+    mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: payload({
+      totals: { pending: 0, lifetimeCleared: 18, convertedVendors: 1 },
+      totalCount: 1,
+      commissions: [payload().commissions[1]],
+    }) }) });
     await render(<RecommendationEarningsPanel recommendationId="rec-2" />);
     expect(container.textContent).toContain("Nasi Kandar Deen");
     expect(container.textContent).not.toContain("Aunty Lim");
+    expect(String(mocks.fetch.mock.calls[0][0])).toContain("recommendationId=rec-2");
+  });
+
+  it("requests the next stable keyset page", async () => {
+    const nextCursor = { createdAt: "2026-03-01T00:00:00.000Z", id: "b" };
+    mocks.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: payload({ totalCount: 11, hasMore: true, nextCursor }) }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: payload({ totalCount: 11, hasMore: false, nextCursor: null }) }) });
+    await render(<RecommendationEarningsPanel />);
+    const next = findElements(container, (el) => el.tagName === "BUTTON" && el.textContent === "ui.pagination.nextPage")[0];
+    await act(async () => {
+      next.dispatchEvent(new TestEvent("click", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(String(mocks.fetch.mock.calls[1][0])).toContain("beforeCreatedAt=2026-03-01T00%3A00%3A00.000Z");
+    expect(String(mocks.fetch.mock.calls[1][0])).toContain("beforeId=b");
+    expect(String(mocks.fetch.mock.calls[1][0])).toContain("snapshotCutoff=2026-03-10T00%3A00%3A00.000Z");
   });
 });

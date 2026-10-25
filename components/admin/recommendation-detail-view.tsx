@@ -147,6 +147,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recommendationId,
+          expectedVersion: detail.version,
           action,
           internalNote: internalNote.trim() || undefined,
           customerMessage: action === "approve" ? undefined : customerMessage.trim(),

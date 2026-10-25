@@ -13,7 +13,6 @@
 // the order-total lookup RLS can't express).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { add } from '@/lib/money';
 
 export interface RecommendationCommissionRow {
   id: string;
@@ -41,21 +40,19 @@ export interface RecommendationEarnings {
   };
   /** Newest first. Includes reversed rows (shown, but excluded from totals). */
   commissions: RecommendationCommissionRow[];
+  totalCount: number;
+  pageSize: 10 | 25 | 50;
+  hasMore: boolean;
+  nextCursor: { createdAt: string; id: string } | null;
+  snapshotCutoff: string;
 }
 
-type CommissionQueryRow = {
-  id: string;
-  conversion_id: string | null;
-  commission_type: string;
-  amount: number | string;
-  commission_rate: number | string | null;
-  status: string;
-  hold_until: string | null;
-  created_at: string;
-  recommendation_conversions:
-    | { recommendation_id: string | null; vendor_recommendations: { id: string; vendor_name: string | null } | null }
-    | null;
-};
+export interface RecommendationEarningsQuery {
+  recommendationId?: string;
+  pageSize?: 10 | 25 | 50;
+  cursor?: { createdAt: string; id: string } | null;
+  snapshotCutoff?: string;
+}
 
 function clearsInDays(holdUntil: string | null): number | null {
   if (!holdUntil) return null;
@@ -63,53 +60,55 @@ function clearsInDays(holdUntil: string | null): number | null {
   return Math.max(0, Math.ceil(remainingMs / 86_400_000));
 }
 
-const EMPTY: RecommendationEarnings = {
-  totals: { pending: 0, lifetimeCleared: 0, convertedVendors: 0 },
-  commissions: [],
-};
-
 export async function getRecommendationEarnings(
   client: SupabaseClient,
-  userId: string,
+  query: RecommendationEarningsQuery = {},
 ): Promise<RecommendationEarnings> {
-  const { data, error } = await client
-    .from('recommendation_commissions')
-    .select(
-      'id, conversion_id, commission_type, amount, commission_rate, status, hold_until, created_at, ' +
-        'recommendation_conversions(recommendation_id, vendor_recommendations(id, vendor_name))',
-    )
-    .eq('recommender_id', userId)
-    .order('created_at', { ascending: false });
+  const pageSize = query.pageSize ?? 10;
+  const snapshotCutoff = query.snapshotCutoff ?? new Date().toISOString();
+  const { data, error } = await client.rpc('get_recommendation_earnings_page', {
+    p_recommendation_id: query.recommendationId ?? null,
+    p_snapshot_cutoff: snapshotCutoff,
+    p_page_size: pageSize,
+    p_before_created_at: query.cursor?.createdAt ?? null,
+    p_before_id: query.cursor?.id ?? null,
+  });
+  if (error || !data || typeof data !== 'object') throw new Error('recommendation_earnings_unavailable');
 
-  if (error || !data) return EMPTY;
+  const result = data as {
+    totals: RecommendationEarnings['totals'];
+    totalCount: number;
+    pageSize: 10 | 25 | 50;
+    hasMore: boolean;
+    nextCursor: RecommendationEarnings['nextCursor'];
+    snapshotCutoff: string;
+    commissions: Array<{
+      id: string;
+      conversionId: string | null;
+      commissionType: string;
+      amount: number | string;
+      commissionRate: number | string | null;
+      status: string;
+      holdUntil: string | null;
+      createdAt: string;
+      recommendationId: string | null;
+      vendorName: string | null;
+    }>;
+  };
 
-  const rows = data as unknown as CommissionQueryRow[];
-
-  const commissions: RecommendationCommissionRow[] = rows.map((row) => {
-    const rec = row.recommendation_conversions?.vendor_recommendations ?? null;
+  const commissions: RecommendationCommissionRow[] = result.commissions.map((row) => {
     const status = row.status === 'confirmed' || row.status === 'reversed' ? row.status : 'pending';
     return {
       id: row.id,
-      recommendationId: rec?.id ?? row.recommendation_conversions?.recommendation_id ?? null,
-      vendorName: rec?.vendor_name ?? null,
-      type: row.commission_type === 'bonus' ? 'bonus' : 'ongoing',
-      rate: row.commission_rate === null ? null : Number(row.commission_rate),
+      recommendationId: row.recommendationId,
+      vendorName: row.vendorName,
+      type: row.commissionType === 'bonus' ? 'bonus' : 'ongoing',
+      rate: row.commissionRate === null ? null : Number(row.commissionRate),
       amount: Number(row.amount),
       status,
-      createdAt: row.created_at,
-      clearsInDays: status === 'pending' ? clearsInDays(row.hold_until) : null,
+      createdAt: row.createdAt,
+      clearsInDays: status === 'pending' ? clearsInDays(row.holdUntil) : null,
     };
   });
-
-  const pending = commissions
-    .filter((c) => c.status === 'pending')
-    .reduce((sum, c) => add(sum, c.amount), 0);
-  const lifetimeCleared = commissions
-    .filter((c) => c.status === 'confirmed')
-    .reduce((sum, c) => add(sum, c.amount), 0);
-  const convertedVendors = new Set(
-    rows.filter((r) => r.status !== 'reversed' && r.conversion_id).map((r) => r.conversion_id),
-  ).size;
-
-  return { totals: { pending, lifetimeCleared, convertedVendors }, commissions };
+  return { ...result, commissions };
 }
