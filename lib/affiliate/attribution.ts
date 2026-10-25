@@ -39,7 +39,6 @@
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
-import { applyPercent } from '@/lib/money';
 import { getAttributionCookieDays } from './settings';
 import { getTierForUser } from './tier';
 import { logFraudFlag, autoDisableLink } from './fraud';
@@ -47,7 +46,6 @@ import { notifyCommissionEarned } from './notifications';
 import { getVendorIneligibleRole } from './vendor-role-guard';
 
 const MW_REF_COOKIE = 'mw_ref';
-const LIMITED_MONTHLY_COMMISSION_CAP_RM = 100;
 
 interface OrderPurchaseDetail {
   /** order_items.product_name is a name SNAPSHOT taken at purchase time — accurate even if the product's since been renamed/deleted. */
@@ -122,12 +120,7 @@ export async function onOrderPaid(orderId: string): Promise<boolean> {
     if (!order) return true;
     // Nothing to do until it is paid; the paid-order job retries later.
     if (order.status !== 'paid' && order.status !== 'completed') return true;
-    // Already attributed by an earlier run: quiet no-op (not a duplicate-payout flag).
-    const { count: existing } = await service
-      .from('affiliate_attributions')
-      .select('id', { count: 'exact', head: true })
-      .eq('order_id', orderId);
-    if ((existing ?? 0) > 0) return true;
+    // The database transaction performs the replay check under the order lock.
 
     // Lazy + memoized: only queried the first time a guard actually needs
     // it (the common happy-path attribution never touches order_items or
@@ -240,55 +233,25 @@ export async function onOrderPaid(orderId: string): Promise<boolean> {
     // historical commissions never get recomputed if the owner's tier (or
     // the tier's rate) changes later. See lib/affiliate/tier.ts.
     const { rate } = await getTierForUser(service, linkOwnerId);
-    const commission = applyPercent(Number(order.total_amount), rate * 100);
-
-    const { data: owner } = await service
-      .from('users')
-      .select('tier, kyc_status')
-      .eq('id', linkOwnerId)
-      .maybeSingle();
-    if (owner?.kyc_status === 'rejected') return true;
-    const fullAffiliate = owner?.tier === 'kyc_verified' && owner?.kyc_status === 'approved';
-    if (!fullAffiliate) {
-      const startOfMonth = new Date();
-      startOfMonth.setUTCDate(1);
-      startOfMonth.setUTCHours(0, 0, 0, 0);
-      const { data: monthlyRows } = await service
-        .from('affiliate_attributions')
-        .select('commission_amount')
-        .eq('status', 'pending')
-        .gte('created_at', startOfMonth.toISOString())
-        .in('click_id', (await service.from('affiliate_clicks').select('id').eq('link_id', click.link_id)).data?.map((row) => row.id) ?? []);
-      const monthlyTotal = (monthlyRows ?? []).reduce((sum, row) => sum + Number(row.commission_amount), 0);
-      if (monthlyTotal >= LIMITED_MONTHLY_COMMISSION_CAP_RM || monthlyTotal + commission > LIMITED_MONTHLY_COMMISSION_CAP_RM) return true;
+    const { data: creation, error: attributionError } = await service.rpc('create_affiliate_attribution', {
+      p_order_id: orderId,
+      p_click_id: click.id,
+      p_commission_rate: rate,
+    });
+    if (attributionError) throw attributionError;
+    if (!creation || typeof creation !== 'object' || !('outcome' in creation)) {
+      throw new Error('Affiliate attribution RPC returned an invalid result');
     }
-
-    const { data: attribution, error: attrErr } = await service
-      .from('affiliate_attributions')
-      .insert({
-        click_id: click.id,
-        order_id: orderId,
-        commission_rate: rate,
-        commission_amount: commission,
-        status: 'pending',
-      })
-      .select('id')
-      .single();
-
-    if (attrErr) {
-      // DUPLICATE-PAYOUT GUARD: 23505 = unique_violation on order_id. Another
-      // run (the background job and the checkout page's call can overlap)
-      // attributed this order first. Expected, not abuse: no fraud flag, which
-      // would otherwise count against the affiliate's tier fraud rate.
-      if (attrErr.code === '23505') return true;
-      throw attrErr;
+    const result = creation as { outcome: string; attribution_id?: string; amount_rm?: number };
+    if (result.outcome !== 'created') return true;
+    if (!result.attribution_id || typeof result.amount_rm !== 'number') {
+      throw new Error('Affiliate attribution RPC omitted the committed result');
     }
-    if (!attribution) return true;
 
     // CLAUDE-P4-EXTRAS.md Extra 3: fire-and-forget, never throws (see
     // lib/affiliate/notifications.ts's own header) — a notification failure
     // must not undo or mask the attribution that was just created above.
-    await notifyCommissionEarned(service, { userId: linkOwnerId, amountRM: commission, attributionId: attribution.id as string });
+    await notifyCommissionEarned(service, { userId: linkOwnerId, amountRM: result.amount_rm, attributionId: result.attribution_id });
 
     // No wallet credit here — see the Phase 2 note at the top of this file.
     // The mw_ref cookie is deliberately NOT cleared (decision 2026-10-08,

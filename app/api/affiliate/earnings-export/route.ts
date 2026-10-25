@@ -15,7 +15,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { apiFail } from '@/lib/validation/schemas';
 import { csvRow } from '@/lib/admin/csv';
-import { getAffiliateEarningsExport, type EarningsExportRange } from '@/lib/affiliate/earnings-export';
+import { getAffiliateEarningsExportPages, type EarningsExportRange, type EarningsExportRow } from '@/lib/affiliate/earnings-export';
 import {
   customerCapabilityFailure,
   resolveServerCustomerCapability,
@@ -46,29 +46,61 @@ export async function GET(request: Request) {
     ? (rangeParam as EarningsExportRange)
     : 'all';
 
-  const rows = await getAffiliateEarningsExport(supabase, user.id, range);
+  const iterator = getAffiliateEarningsExportPages(supabase, user.id, range);
+  let firstPage: IteratorResult<EarningsExportRow[], void>;
+  try {
+    firstPage = await iterator.next();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'affiliate_earnings_export_unavailable';
+    return apiFail(
+      reason === 'affiliate_earnings_export_limit_exceeded' ? 'EXPORT_LIMIT_EXCEEDED' : 'EXPORT_UNAVAILABLE',
+      reason === 'affiliate_earnings_export_limit_exceeded'
+        ? 'The selected export exceeds the supported row limit. Narrow the date range and try again.'
+        : 'Affiliate earnings export is temporarily unavailable',
+      reason === 'affiliate_earnings_export_limit_exceeded' ? 413 : 503,
+    );
+  }
 
-  const lines = [
-    csvRow(CSV_HEADER),
-    ...rows.map((r) =>
-      csvRow([
-        isoDate(r.date),
-        r.productName,
-        r.orderReference,
-        r.orderAmount !== null ? r.orderAmount.toFixed(2) : '',
-        (r.commissionRate * 100).toFixed(2),
-        r.commissionAmount.toFixed(2),
-        r.status,
-        isoDate(r.clearedAt),
-      ]),
-    ),
-  ];
-  // Leading BOM so Excel opens UTF-8 (e.g. non-ASCII product names) without
-  // mojibake — plain-ASCII readers/spreadsheets ignore it harmlessly.
-  const csv = '﻿' + lines.join('\r\n') + '\r\n';
+  const encoder = new TextEncoder();
+  let includeHeader = true;
+  let firstPagePending = true;
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const result = firstPagePending ? firstPage : await iterator.next();
+        firstPagePending = false;
+        if (result.done) {
+          if (includeHeader) {
+            controller.enqueue(encoder.encode(`﻿${csvRow(CSV_HEADER)}\r\n`));
+            includeHeader = false;
+          }
+          controller.close();
+          return;
+        }
+        const lines = result.value.map((row) => csvRow([
+          isoDate(row.date),
+          row.productName,
+          row.orderReference,
+          row.orderAmount !== null ? row.orderAmount.toFixed(2) : '',
+          (row.commissionRate * 100).toFixed(2),
+          row.commissionAmount.toFixed(2),
+          row.status,
+          isoDate(row.clearedAt),
+        ]));
+        const prefix = includeHeader ? `﻿${csvRow(CSV_HEADER)}\r\n` : '';
+        includeHeader = false;
+        controller.enqueue(encoder.encode(`${prefix}${lines.length ? `${lines.join('\r\n')}\r\n` : ''}`));
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+    async cancel() {
+      await iterator.return(undefined);
+    },
+  });
 
   const fileName = `mylawatan-affiliate-earnings-${range}-${new Date().toISOString().slice(0, 10)}.csv`;
-  return new Response(csv, {
+  return new Response(body, {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',

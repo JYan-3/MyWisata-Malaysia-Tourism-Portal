@@ -27,7 +27,12 @@ export async function GET(request: Request) {
     if (failure) return failure;
   }
 
-  const stats = await getAffiliateStats(supabase, user.id);
+  let stats;
+  try {
+    stats = await getAffiliateStats(supabase, user.id);
+  } catch {
+    return apiFail('AFFILIATE_STATS_UNAVAILABLE', 'Affiliate statistics are temporarily unavailable', 503);
+  }
   const origin = new URL(request.url).origin;
 
   return apiOk({

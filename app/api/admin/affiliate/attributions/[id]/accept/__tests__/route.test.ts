@@ -74,4 +74,10 @@ describe('POST /api/admin/affiliate/attributions/[id]/accept', () => {
     const response = await call();
     expect(response.status).toBe(200);
   });
+
+  it('prevents manual acceptance while a guest commission review is pending', async () => {
+    isSuperAdmin.mockResolvedValue(true);
+    acceptAttribution.mockResolvedValue({ outcome: 'review_required', error: 'Resolve the guest commission review first' });
+    expect((await call()).status).toBe(409);
+  });
 });

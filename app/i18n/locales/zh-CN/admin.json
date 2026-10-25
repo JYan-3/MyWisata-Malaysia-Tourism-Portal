@@ -771,6 +771,26 @@
     },
     "allAttributions": "全部归因",
     "allTime": "全部时间",
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页",
+      "pageOf": "第 {{page}} 页，共 {{total}} 页",
+      "showing": "显示 {{first}}–{{last}} 条，共 {{total}} 条"
+    },
+    "guestReview": {
+      "reason": "Guest 联系邮箱与联盟已验证邮箱匹配。这只是待审核信号，不是身份或欺诈结论。",
+      "release": "解除拦截并按正常规则清算",
+      "reject": "拒绝此佣金"
+    },
+    "maturityExposure": {
+      "title": "联盟佣金风险敞口",
+      "description": "按系统记录的订单状态汇总金额与笔数。订单仍显示已付款时，实际履约状态可能尚未记录。",
+      "pending": "待清算佣金",
+      "paid": "订单仍标记已付款的已确认佣金",
+      "refunded": "订单已退款的已确认佣金",
+      "other": "其他订单状态的已确认佣金",
+      "updated": "统计时间：{{date}}"
+    },
     "analytics": {
       "bySeverity": "按严重程度",
       "byType": "按类型",
@@ -829,7 +849,8 @@
       "saveTier": "无法保存等级。",
       "selectOpenFlags": "请先选择开放的欺诈标记。",
       "accept": "无法通过此佣金。",
-      "reject": "无法拒绝此佣金。"
+      "reject": "无法拒绝此佣金。",
+      "guestReview": "无法处理 Guest 佣金审核。请刷新后重试。"
     },
     "exporting": "导出中…",
     "exportPdf": "导出 PDF",
@@ -900,7 +921,8 @@
       "batchFlags_one": "{{count}} 个欺诈标记已处理。",
       "batchFlags_other": "{{count}} 个欺诈标记已处理。",
       "accepted": "佣金已通过。",
-      "rejected": "佣金已拒绝。"
+      "rejected": "佣金已拒绝。",
+      "guestReviewReleased": "佣金已解除拦截，将按正常规则清算。"
     },
     "sweep": {
       "result": "已扫描 {{links}} 个链接，发现 {{flags}} 个新标记"
@@ -935,7 +957,11 @@
     "minSalesAmount": "最低销售额 (RM)",
     "activePeriodDays": "活跃期限（天）",
     "maxFraudRate": "最高欺诈率",
-    "noLimit": "—"
+    "noLimit": "—",
+    "jobs": {
+      "busy": "另一个任务正在处理此队列。",
+      "more": "仍有记录待处理；请再次运行以继续。"
+    }
   },
   "aiAssistant": {
     "ask": {

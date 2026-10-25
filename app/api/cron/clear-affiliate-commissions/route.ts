@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { clearMaturedCommissions } from '@/lib/affiliate/clearing';
 
+export async function GET(request: Request) {
+  return POST(new Request(request.url, { method: 'POST', headers: request.headers }));
+}
+
 /**
  * POST /api/cron/clear-affiliate-commissions
  *
@@ -25,21 +29,25 @@ import { clearMaturedCommissions } from '@/lib/affiliate/clearing';
  * finds nothing left to claim. See that function's own doc comment.
  */
 export async function POST(request: Request) {
+  const startedAt = new Date();
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
   const service = createServiceClient();
+  console.info(`[cron/clear-affiliate-commissions] started=${startedAt.toISOString()}`);
   const result = await clearMaturedCommissions(service);
+  const finishedAt = new Date();
   const clearedAmountRM = result.cleared.reduce((sum, c) => sum + c.amountRM, 0);
   const criticalErrors = result.errors.filter((e) => e.critical).length;
 
   // Audit trail — counts and total amount, not per-user detail (matches the
   // other cron routes' "counts only" response shape).
   console.log(
-    `[cron/clear-affiliate-commissions] cleared=${result.cleared.length} amountRM=${clearedAmountRM.toFixed(2)} ` +
-      `reversed=${result.reversed.length} skipped=${result.skipped} errors=${result.errors.length} critical=${criticalErrors}`,
+    `[cron/clear-affiliate-commissions] finished=${finishedAt.toISOString()} elapsedMs=${finishedAt.getTime() - startedAt.getTime()} ` +
+      `cleared=${result.cleared.length} amountRM=${clearedAmountRM.toFixed(2)} ` +
+      `reversed=${result.reversed.length} skipped=${result.skipped} errors=${result.errors.length} critical=${criticalErrors} hasMore=${Boolean(result.hasMore)} busy=${Boolean(result.busy)}`,
   );
 
   return NextResponse.json({
@@ -48,5 +56,7 @@ export async function POST(request: Request) {
     reversed: result.reversed.length,
     skipped: result.skipped,
     errors: result.errors.length,
+    hasMore: Boolean(result.hasMore),
+    busy: Boolean(result.busy),
   });
 }

@@ -771,6 +771,26 @@
     },
     "allAttributions": "Semua atribusi",
     "allTime": "Sepanjang masa",
+    "pagination": {
+      "previous": "Halaman sebelumnya",
+      "next": "Halaman seterusnya",
+      "pageOf": "Halaman {{page}} daripada {{total}}",
+      "showing": "Memaparkan {{first}}–{{last}} daripada {{total}}"
+    },
+    "guestReview": {
+      "reason": "E-mel tetamu sepadan dengan e-mel afiliasi yang disahkan. Ini petunjuk semakan, bukan bukti.",
+      "release": "Lepaskan ke penyelesaian biasa",
+      "reject": "Tolak komisen ini"
+    },
+    "maturityExposure": {
+      "title": "Pendedahan komisen afiliasi",
+      "description": "Amaun dan bilangan mengikut status pesanan yang direkodkan. Pesanan berstatus dibayar mungkin mempunyai pemenuhan yang belum direkodkan.",
+      "pending": "Komisen tertunda",
+      "paid": "Disahkan pada pesanan berstatus dibayar",
+      "refunded": "Disahkan pada pesanan dipulangkan",
+      "other": "Disahkan pada status pesanan lain",
+      "updated": "Snapshot: {{date}}"
+    },
     "analytics": {
       "bySeverity": "Mengikut keterukan",
       "byType": "Mengikut jenis",
@@ -829,7 +849,8 @@
       "saveTier": "Gagal menyimpan peringkat.",
       "selectOpenFlags": "Pilih bendera penipuan terbuka dahulu.",
       "accept": "Tidak dapat menerima komisen ini.",
-      "reject": "Tidak dapat menolak komisen ini."
+      "reject": "Tidak dapat menolak komisen ini.",
+      "guestReview": "Tidak dapat menyelesaikan semakan komisen tetamu. Muat semula dan cuba lagi."
     },
     "exporting": "Mengeksport…",
     "exportPdf": "Eksport PDF",
@@ -900,7 +921,8 @@
       "batchFlags_one": "{{count}} bendera penipuan diproses.",
       "batchFlags_other": "{{count}} bendera penipuan diproses.",
       "accepted": "Komisen diterima.",
-      "rejected": "Komisen ditolak."
+      "rejected": "Komisen ditolak.",
+      "guestReviewReleased": "Komisen dilepaskan ke penyelesaian biasa."
     },
     "sweep": {
       "result": "Diimbas {{links}} pautan, {{flags}} bendera baharu"
@@ -935,7 +957,11 @@
     "minSalesAmount": "Jualan min (RM)",
     "activePeriodDays": "Aktif dalam (hari)",
     "maxFraudRate": "Kadar penipuan maks",
-    "noLimit": "—"
+    "noLimit": "—",
+    "jobs": {
+      "busy": "Proses lain sedang mengendalikan baris gilir ini.",
+      "more": "Masih ada rekod; jalankan sekali lagi untuk meneruskan."
+    }
   },
   "aiAssistant": {
     "ask": {

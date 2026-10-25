@@ -25,6 +25,7 @@ export async function POST(_request: Request, { params }: Props) {
   const service = createServiceClient();
   const result = await acceptAttribution(service, id);
   if (result.outcome === 'error') return apiFail('DB_ERROR', result.error ?? 'Could not accept this commission', 500);
+  if (result.outcome === 'review_required') return apiFail('INVALID_STATE', 'Resolve the guest commission review first', 409);
 
   return apiOk(result);
 }

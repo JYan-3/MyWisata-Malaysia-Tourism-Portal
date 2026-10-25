@@ -4,6 +4,9 @@ const mocks = vi.hoisted(() => ({
   tables: {} as Record<string, Array<Record<string, unknown>>>,
   inserts: [] as Array<{ table: string; row: Record<string, unknown> }>,
   insertError: null as { code: string } | null,
+  rpcResult: null as { outcome: string; attribution_id?: string; amount_rm?: number } | null,
+  rpcError: null as { message: string } | null,
+  rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
   logFraudFlag: vi.fn(),
   notify: vi.fn(),
 }));
@@ -11,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 /** A tiny in-memory stand-in for the Supabase query builder: eq filters, maybeSingle, head counts, insert. */
 function fakeService() {
   return {
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      mocks.rpcCalls.push({ name, args });
+      return { data: mocks.rpcResult, error: mocks.rpcError };
+    },
     from(table: string) {
       const filters: Array<[string, unknown]> = [];
       let head = false;
@@ -66,6 +73,9 @@ describe('onOrderPaid', () => {
     vi.clearAllMocks();
     mocks.inserts = [];
     mocks.insertError = null;
+    mocks.rpcResult = { outcome: 'created', attribution_id: 'attribution-1', amount_rm: 0.45 };
+    mocks.rpcError = null;
+    mocks.rpcCalls = [];
     // The job may run long after the order: 10 days later here.
     vi.useFakeTimers();
     vi.setSystemTime(new Date(orderPlaced.getTime() + 10 * DAY));
@@ -74,7 +84,7 @@ describe('onOrderPaid', () => {
   it('pays a referral placed within 7 days of the click, even when it is processed days later', async () => {
     seed({ clickDaysBeforeOrder: 6 });
     await onOrderPaid('order-1');
-    expect(mocks.inserts).toEqual([{ table: 'affiliate_attributions', row: expect.objectContaining({ order_id: 'order-1', click_id: 'click-1', commission_rate: 0.03, status: 'pending' }) }]);
+    expect(mocks.rpcCalls).toEqual([{ name: 'create_affiliate_attribution', args: { p_order_id: 'order-1', p_click_id: 'click-1', p_commission_rate: 0.03 } }]);
     expect(mocks.logFraudFlag).not.toHaveBeenCalled();
   });
 
@@ -94,14 +104,15 @@ describe('onOrderPaid', () => {
 
   it('is a quiet no-op for an order that already has a commission', async () => {
     seed({ alreadyAttributed: true });
+    mocks.rpcResult = { outcome: 'existing', attribution_id: 'old' };
     await onOrderPaid('order-1');
-    expect(mocks.inserts).toHaveLength(0);
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(mocks.logFraudFlag).not.toHaveBeenCalled();
   });
 
   it('treats losing a race to another run as normal, not as a fraud flag', async () => {
     seed();
-    mocks.insertError = { code: '23505' };
+    mocks.rpcResult = { outcome: 'existing', attribution_id: 'attribution-1' };
     await onOrderPaid('order-1');
     expect(mocks.logFraudFlag).not.toHaveBeenCalled();
     expect(mocks.notify).not.toHaveBeenCalled();
@@ -110,8 +121,9 @@ describe('onOrderPaid', () => {
   it('still blocks a commission on the owner\'s own purchase', async () => {
     seed();
     (mocks.tables.orders[0] as Record<string, unknown>).user_id = 'owner-1';
+    mocks.rpcResult = { outcome: 'skipped' };
     await onOrderPaid('order-1');
-    expect(mocks.inserts).toHaveLength(0);
+    expect(mocks.notify).not.toHaveBeenCalled();
     expect(mocks.logFraudFlag).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ flagType: 'self_referral', severity: 'low' }));
   });
 });
