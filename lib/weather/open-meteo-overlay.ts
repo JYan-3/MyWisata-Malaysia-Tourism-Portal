@@ -9,6 +9,7 @@ import {
   FORECAST_TTL_SECONDS,
   OPEN_METEO_PROVIDER,
 } from "@/lib/weather/open-meteo";
+import { startSharedProviderRequest, subscribeToSharedProviderRequest, type SharedProviderRequest } from "@/lib/weather/shared-provider-request";
 import type { WeatherOverlayResult, WeatherOverlaySample } from "@/lib/weather/types";
 
 type OverlayInput = {
@@ -20,7 +21,7 @@ type OverlayInput = {
 type CacheEntry = { value: WeatherOverlayResult; freshUntil: number; staleUntil: number };
 
 const completed = new Map<string, CacheEntry>();
-const inFlight = new Map<string, Promise<WeatherOverlayResult>>();
+const inFlight = new Map<string, SharedProviderRequest<WeatherOverlayResult>>();
 const nullableNumbers = z.array(z.number().finite().nullable()).min(1);
 const locationSchema = z.object({
   latitude: z.number().finite(),
@@ -141,14 +142,24 @@ function pruneCache() {
 }
 
 export function __resetOpenMeteoOverlayCacheForTests() {
+  for (const request of inFlight.values()) request.controller.abort();
   completed.clear();
   inFlight.clear();
 }
 
-export async function getOpenMeteoOverlay(
+export function getOpenMeteoOverlay(
   input: OverlayInput,
   options?: { fetcher?: typeof fetch; now?: () => Date },
-): Promise<WeatherOverlayResult> {
+): Promise<WeatherOverlayResult>;
+export function getOpenMeteoOverlay(
+  input: OverlayInput,
+  options: { fetcher?: typeof fetch; now?: () => Date; signal: AbortSignal },
+): Promise<WeatherOverlayResult | null>;
+export async function getOpenMeteoOverlay(
+  input: OverlayInput,
+  options?: { fetcher?: typeof fetch; now?: () => Date; signal?: AbortSignal },
+): Promise<WeatherOverlayResult | null> {
+  if (options?.signal?.aborted) return null;
   const now = options?.now?.() ?? new Date();
   const fetchedAt = now.toISOString();
   const days = dayDifference(input.date, now);
@@ -160,11 +171,16 @@ export async function getOpenMeteoOverlay(
   const cached = completed.get(key);
   if (cached && cached.freshUntil > nowMs) return cached.value;
   const pending = inFlight.get(key);
-  if (pending) return pending;
+  if (pending) {
+    return subscribeToSharedProviderRequest(pending, options?.signal, () => {
+      if (inFlight.get(key) === pending) inFlight.delete(key);
+    });
+  }
 
-  const request = (async () => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FORECAST_TIMEOUT_MS);
+  const request = startSharedProviderRequest(async (signal) => {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(() => timeoutController.abort(), FORECAST_TIMEOUT_MS);
+    const requestSignal = AbortSignal.any([signal, timeoutController.signal]);
     try {
       const url = new URL("https://api.open-meteo.com/v1/forecast");
       url.searchParams.set("latitude", input.coordinates.map(({ latitude }) => latitude.toFixed(4)).join(","));
@@ -183,7 +199,7 @@ export async function getOpenMeteoOverlay(
         "wind_direction_10m",
       ].join(","));
 
-      const response = await (options?.fetcher ?? fetch)(url, { cache: "no-store", redirect: "error", signal: controller.signal });
+      const response = await (options?.fetcher ?? fetch)(url, { cache: "no-store", redirect: "error", signal: requestSignal });
       if (!response.ok) throw new Error(`Open-Meteo returned ${response.status}`);
       const parsed = payloadSchema.safeParse(JSON.parse(await readResponseTextWithLimit(response)));
       if (!parsed.success) throw new Error("Open-Meteo overlay response is malformed");
@@ -214,10 +230,13 @@ export async function getOpenMeteoOverlay(
       return emptyResult(input, fetchedAt);
     } finally {
       clearTimeout(timeout);
-      inFlight.delete(key);
     }
-  })();
+  }, (settled) => {
+    if (inFlight.get(key) === settled) inFlight.delete(key);
+  });
 
   inFlight.set(key, request);
-  return request;
+  return subscribeToSharedProviderRequest(request, options?.signal, () => {
+    if (inFlight.get(key) === request) inFlight.delete(key);
+  });
 }
