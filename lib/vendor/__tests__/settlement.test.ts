@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getVendorSettlements } from '@/lib/vendor/settlement';
+import { applyOrderPlatformFeeFloor, getVendorSettlements, runVendorSettlementMaintenance } from '@/lib/vendor/settlement';
 
 function serviceFor(rows: unknown[], error: unknown = null) {
   const order = vi.fn(async () => ({ data: error ? null : rows, error }));
@@ -69,6 +69,40 @@ it('reports a failed settlement instead of claiming it succeeded', async () => {
   const { settleOrderVendorEarnings } = await import('@/lib/vendor/settlement');
   const result = await settleOrderVendorEarnings({ rpc: async () => ({ data: null, error: { message: 'temporary failure' } }) } as never, 'order');
   expect(result).toBe(false);
+});
+
+it('reports platform fee floor RPC failure to its caller', async () => {
+  await expect(applyOrderPlatformFeeFloor({ rpc: async () => ({ data: null, error: { message: 'temporary failure' } }) } as never, 'order'))
+    .resolves.toBe(false);
+  await expect(applyOrderPlatformFeeFloor({ rpc: async () => ({ data: { adjusted: 0 }, error: null }) } as never, 'order'))
+    .resolves.toBe(true);
+});
+
+it('counts a fee floor RPC failure in vendor maintenance', async () => {
+  const service = {
+    firstHoldQuery: true,
+    from(table: string) {
+      const chain: Record<string, unknown> = {};
+      chain.select = () => chain;
+      chain.eq = () => {
+        if (table === 'order_settlements' && service.firstHoldQuery) {
+          service.firstHoldQuery = false;
+          return Promise.resolve({ data: [{ order_id: 'order-1' }], error: null });
+        }
+        return chain;
+      };
+      chain.in = () => chain;
+      chain.order = () => chain;
+      chain.limit = async () => ({ data: [], error: null });
+      return chain;
+    },
+    rpc: async (name: string) => {
+      if (name === 'apply_order_platform_fee_floor') return { data: null, error: { message: 'temporary failure' } };
+      return { data: name === 'recompute_vendor_fee_tiers' ? 0 : [], error: null };
+    },
+  };
+
+  await expect(runVendorSettlementMaintenance(service as never)).resolves.toMatchObject({ failed: 1 });
 });
 
 it('separates simulated settlements from withdrawable totals', async () => {

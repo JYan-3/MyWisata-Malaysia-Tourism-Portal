@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
   rewardThrows: false,
   rewardCreated: false,
   markError: null as { message: string } | null,
+  notificationError: null as { message: string } | null,
+  emailReject: false,
+  feeFloorOk: true,
+  emailKeys: [] as string[],
+  notificationKeys: [] as string[],
   pendingOrders: [] as Array<{ id: string }>,
 }));
 
@@ -18,13 +23,13 @@ vi.mock('@/lib/recommendations/reward-attribution', () => ({
     return mocks.rewardCreated ? { kind: 'created', rewards: [{ commissionId: 'c1', recommenderId: 'r1', amountSen: 5000 }] } : { kind: 'skipped' };
   },
 }));
-vi.mock('@/lib/vendor/settlement', () => ({ applyOrderPlatformFeeFloor: async () => { mocks.steps.push('fee floor'); } }));
-vi.mock('@/lib/email/events', () => ({ enqueueUserTransactionEmail: async () => { mocks.steps.push('reward email'); } }));
+vi.mock('@/lib/vendor/settlement', () => ({ applyOrderPlatformFeeFloor: async () => { mocks.steps.push('fee floor'); return mocks.feeFloorOk; } }));
+vi.mock('@/lib/email/events', () => ({ enqueueUserTransactionEmail: async (input: { eventKey: string }) => { mocks.steps.push('reward email'); mocks.emailKeys.push(input.eventKey); if (mocks.emailReject) throw new Error('email unavailable'); } }));
 
 function service() {
   return {
     from: (table: string) => {
-      if (table === 'notifications') return { insert: async () => { mocks.steps.push('reward notification'); return { error: null }; } };
+      if (table === 'notifications') return { upsert: async (row: { event_key: string }) => { mocks.steps.push('reward notification'); mocks.notificationKeys.push(row.event_key); return { error: mocks.notificationError }; } };
       const chain: Record<string, unknown> = {};
       for (const method of ['select', 'eq', 'in', 'is', 'gte', 'order']) chain[method] = () => chain;
       chain.maybeSingle = async () => ({ data: { status: mocks.status } });
@@ -32,6 +37,9 @@ function service() {
       chain.update = () => ({ eq: async () => { mocks.steps.push('mark processed'); return { error: mocks.markError }; } });
       return chain;
     },
+    rpc: async (name: string) => name === 'claim_paid_order_effects'
+      ? { data: mocks.pendingOrders.map(({ id }) => ({ order_id: id, lease_token: `lease-${id}` })), error: null }
+      : { data: true, error: null },
   } as never;
 }
 
@@ -39,7 +47,7 @@ import { processPaidOrders, runPaidOrderEffects } from '../paid-order-effects';
 
 describe('runPaidOrderEffects', () => {
   beforeEach(() => {
-    Object.assign(mocks, { steps: [], status: 'paid', onOrderPaidOk: true, rewardThrows: false, rewardCreated: false, markError: null, pendingOrders: [] });
+    Object.assign(mocks, { steps: [], status: 'paid', onOrderPaidOk: true, rewardThrows: false, rewardCreated: false, markError: null, notificationError: null, emailReject: false, feeFloorOk: true, emailKeys: [], notificationKeys: [], pendingOrders: [] });
   });
 
   it('runs commission, rewards, the fee floor and only then marks the order done', async () => {
@@ -51,6 +59,29 @@ describe('runPaidOrderEffects', () => {
     mocks.rewardCreated = true;
     await runPaidOrderEffects(service(), 'order-1');
     expect(mocks.steps).toEqual(expect.arrayContaining(['reward notification', 'reward email']));
+    expect(mocks.emailKeys).toEqual(['reward_pending:email:c1']);
+    expect(mocks.notificationKeys).toEqual(['reward_pending:in_app:c1']);
+  });
+
+  it('keeps the order retryable when the email intent cannot be saved', async () => {
+    mocks.rewardCreated = true;
+    mocks.emailReject = true;
+    expect(await runPaidOrderEffects(service(), 'order-1')).toBe(false);
+    expect(mocks.steps).not.toContain('mark processed');
+  });
+
+  it('keeps the order retryable when the platform fee floor RPC fails', async () => {
+    mocks.feeFloorOk = false;
+    expect(await runPaidOrderEffects(service(), 'order-1')).toBe(false);
+    expect(mocks.steps).not.toContain('mark processed');
+  });
+
+  it('does not mark an order processed when a fulfilled notification write returns an error', async () => {
+    mocks.rewardCreated = true;
+    mocks.notificationError = { message: 'synthetic write failure' };
+
+    expect(await runPaidOrderEffects(service(), 'order-1')).toBe(false);
+    expect(mocks.steps).not.toContain('mark processed');
   });
 
   it('leaves an unpaid order alone so it is processed once paid', async () => {
@@ -74,7 +105,7 @@ describe('runPaidOrderEffects', () => {
 
 describe('processPaidOrders', () => {
   beforeEach(() => {
-    Object.assign(mocks, { steps: [], status: 'paid', onOrderPaidOk: true, rewardThrows: false, rewardCreated: false, markError: null, pendingOrders: [] });
+    Object.assign(mocks, { steps: [], status: 'paid', onOrderPaidOk: true, rewardThrows: false, rewardCreated: false, markError: null, notificationError: null, emailReject: false, feeFloorOk: true, emailKeys: [], notificationKeys: [], pendingOrders: [] });
   });
 
   it('processes each waiting paid order and counts failures separately', async () => {

@@ -6,6 +6,18 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261025102757_financial_operations_aggregate_scan_optimization.sql",
+  "20261025102035_financial_operations_lifetime_totals.sql",
+  "20261025093457_redact_affiliate_fraud_queue_email.sql",
+  "20261025093216_redact_affiliate_admin_email_fallbacks.sql",
+  "20261025090830_financial_operations_health.sql",
+  "20261025090825_financial_ledger_reconciliation.sql",
+  "20261025090821_bounded_financial_history_reads.sql",
+  "20261025090817_paid_order_effects_retry_progress.sql",
+  "20261025045647_affiliate_processing_bounds.sql",
+  "20261025041829_affiliate_maturity_exposure.sql",
+  "20261025041419_affiliate_guest_commission_review.sql",
+  "20261025041102_affiliate_attribution_limits.sql",
   "20261025133820_guest_order_access_resume.sql",
   "20261025133821_guest_order_contact_correction.sql",
   "20261025140023_guest_contact_correction_unknown_item_blocker.sql",

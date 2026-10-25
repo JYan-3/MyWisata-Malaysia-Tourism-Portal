@@ -60,6 +60,10 @@ export async function verifyCommerceRisk({ db, query }) {
   await apply('supabase/legacy-migrations/089_payout_report_pending_amounts.sql');
   await apply('supabase/migrations/20261004083124_private_generate_monthly_payout_report.sql');
   await apply('supabase/migrations/20261016022142_commerce_risk_exposure.sql');
+  await sql(`ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS paid_effects_processed_at timestamptz;
+    CREATE INDEX IF NOT EXISTS orders_paid_effects_pending_idx ON public.orders(created_at)
+      WHERE paid_effects_processed_at IS NULL AND status IN ('paid', 'completed')`);
+  await apply('supabase/migrations/20261025090817_paid_order_effects_retry_progress.sql');
   await sql(`SELECT set_config('request.jwt.claim.sub','',false),
     set_config('request.jwt.claim.role','service_role',false)`);
   assert.equal(Number((await sql('SELECT count(*) FROM public.settlement_clawback_shortfalls')).rows[0].count), 0,
@@ -96,6 +100,40 @@ export async function verifyCommerceRisk({ db, query }) {
     assert.deepEqual(settlements.rows[0], { net: 8500, is_simulated: !isLive });
     return { owner, vendor, order };
   }
+
+  await sql(`UPDATE public.orders SET paid_effects_processed_at = now()`);
+  const retryCase = await createPaidOrder(false);
+  const starvationIds = Array.from({ length: 51 }, () => crypto.randomUUID());
+  await sql(`INSERT INTO public.orders(id,user_id,status,subtotal,total_amount,created_at)
+    SELECT id,$1,'paid',100,100,now() - make_interval(secs => n)
+    FROM unnest($2::uuid[]) WITH ORDINALITY AS batch(id,n)`, [retryCase.owner, starvationIds]);
+  await sql(`SET ROLE service_role`);
+  let claimed;
+  try {
+    claimed = await sql(`SELECT * FROM public.claim_paid_order_effects(50)`);
+    assert.equal(claimed.rowCount, 50, 'one invocation must stay within its 50-order cap');
+    for (const row of claimed.rows) {
+      const finished = await sql(`SELECT public.finish_paid_order_effects($1,$2,false,'synthetic_failure') AS finished`,
+        [row.order_id, row.lease_token]);
+      assert.equal(finished.rows[0].finished, true);
+    }
+    const nextBatch = await sql(`SELECT * FROM public.claim_paid_order_effects(50)`);
+    assert.equal(nextBatch.rowCount, 2, 'failed older work must back off so the remaining orders can proceed');
+    const staleToken = await sql(`SELECT public.finish_paid_order_effects($1,$2,true,NULL) AS finished`,
+      [claimed.rows[0].order_id, claimed.rows[0].lease_token]);
+    assert.equal(staleToken.rows[0].finished, false, 'a lease token cannot finish after its claim was released');
+  } finally {
+    await sql('RESET ROLE');
+  }
+  for (const role of ['anon', 'authenticated']) {
+    await sql(`SET ROLE ${role}`);
+    try {
+      await assert.rejects(() => sql(`SELECT * FROM public.claim_paid_order_effects(1)`), { code: '42501' });
+    } finally {
+      await sql('RESET ROLE');
+    }
+  }
+  passed('paid-order retry claim is bounded, backoffs failures, and fences stale leases');
 
   async function wallet(owner) {
     return (await sql(`SELECT pending_earnings_sen::int pending,earnings_sen::int earnings
@@ -215,6 +253,10 @@ export async function verifyCommerceRisk({ db, query }) {
   await verifyAffiliateClearing({ db, query });
   const { verifyStaffAccess } = await import('./staff-access-db.mjs');
   await verifyStaffAccess({ db, query });
+  const { verifyFinancialReconciliation } = await import('./financial-reconciliation-db.test.mjs');
+  await verifyFinancialReconciliation({ query: sql });
+  const { verifyFinancialOperationsHealth } = await import('./financial-operations-health-db.test.mjs');
+  await verifyFinancialOperationsHealth({ query: sql });
   console.log('commerce risk dynamic acceptance passed (synthetic only; no platform-cash or reserve certification)');
 }
 
