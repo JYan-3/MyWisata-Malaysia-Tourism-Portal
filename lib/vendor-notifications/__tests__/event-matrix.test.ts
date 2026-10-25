@@ -26,7 +26,6 @@ describe('vendor notification event matrix', () => {
       'app/api/dev/simulate-purchase/route.ts',
       'app/api/orders/[orderId]/refund/route.ts',
       'app/api/vendors/[vendorId]/orders/[orderItemId]/fulfil/route.ts',
-      'app/api/admin/catalogue/reviews/route.ts',
       'app/api/admin/vendors/[id]/approve/route.ts',
       'app/api/admin/vendors/[id]/suspend/route.ts',
       'app/api/vendors/[vendorId]/outlet-managers/route.ts',
@@ -36,6 +35,10 @@ describe('vendor notification event matrix', () => {
     for (const path of producers) {
       expect(read(path), path).toContain('emitVendorNotification');
     }
+    const catalogueReview = read('app/api/admin/catalogue/reviews/route.ts');
+    expect(catalogueReview).toContain('review_catalogue_item');
+    expect(catalogueReview).toContain('scheduleEmailDelivery');
+    expect(catalogueReview.lastIndexOf('scheduleEmailDelivery')).toBeGreaterThan(catalogueReview.indexOf('await db.rpc'));
     const checkInRoute = read('app/api/vendors/[vendorId]/bookings/[bookingId]/checkin/route.ts');
     const checkInOperation = read('lib/vendor/booking-checkin.ts');
     expect(checkInRoute).toContain('checkInBooking(');
