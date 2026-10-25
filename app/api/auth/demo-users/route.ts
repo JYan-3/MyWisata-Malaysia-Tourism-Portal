@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { createServiceClient } from '@/lib/supabase/service';
 import { pickDemoAssignment, pickDemoRole } from '@/lib/auth/demo-user-role';
 import { isDemoToolRuntimeEnabled } from '@/lib/demo/runtime';
@@ -26,20 +27,20 @@ type DemoUserRow = {
  * seeded demo identity/role projection; the service key stays server-side.
  * The anon role can enumerate users but cannot read user_roles after RLS is
  * enabled, which would make every account appear to be a customer.
- * Also filters to accounts with a real auth.users login — most of the 170
- * seeded vendor-owner rows are data-only and cannot sign in.
+ * Auth identity existence is checked against the bounded server-side demo ID
+ * projection; this avoids paging through the platform's complete Auth table.
  */
 export async function GET() {
   if (!isDemoToolRuntimeEnabled()) return NextResponse.json([]);
   try {
     const db = createServiceClient();
-    const [{ data, error }, { data: authData, error: authError }] = await Promise.all([
+    const [{ data: loginableData, error: authError }, { data, error }] = await Promise.all([
+      db.rpc('list_loginable_demo_user_ids'),
       db
         .from('users')
         .select('id,email,full_name,city,tier,user_roles(vendor_id,outlet_id,roles(name),vendors(name),outlets(name))')
         .like('email', '%@demo.local')
         .order('email'),
-      db.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
 
     if (error) throw error;
@@ -51,7 +52,7 @@ export async function GET() {
     //
     // Most per-vendor-owner seed rows are data-only and intentionally have no
     // password, so the Auth identity check remains necessary as well.
-    const loginableIds = new Set(authData.users.map((authUser) => authUser.id));
+    const loginableIds = new Set((loginableData ?? []).map((row: { user_id: string }) => row.user_id));
 
     const users = ((data || []) as DemoUserRow[])
       .filter((row) => (
@@ -83,9 +84,11 @@ export async function GET() {
     });
 
     return NextResponse.json(users);
-  } catch (error) {
+  } catch {
+    const requestId = randomUUID();
+    console.error('Demo account lookup failed', { requestId, code: 'DEMO_ACCOUNTS_UNAVAILABLE' });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unable to load demo accounts' },
+      { error: { code: 'DEMO_ACCOUNTS_UNAVAILABLE', requestId } },
       { status: 500 },
     );
   }
