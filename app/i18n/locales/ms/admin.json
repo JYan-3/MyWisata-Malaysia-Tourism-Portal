@@ -1670,6 +1670,52 @@
         "zero": "Sifar",
         "negative": "Negatif"
       }
+    },
+    "funds": {
+      "title": "Dana platform",
+      "description": "Angka sepanjang masa, berasingan daripada bulan di atas. Bahagian platform sudah berada dalam akaun syarikat; ini menunjukkan jumlah yang masih terhutang kepada pihak lain dan jumlah yang telah dipindahkan keluar.",
+      "refresh": "Muat semula",
+      "loadError": "Dana platform tidak dapat dimuatkan.",
+      "saveError": "Pemindahan tidak dapat disimpan.",
+      "owed": {
+        "title": "Wang yang masih terhutang",
+        "readyToWithdraw": "Pendapatan vendor dan afiliat sedia untuk dikeluarkan",
+        "onHold": "Pendapatan ditahan",
+        "withdrawalsInProgress": "Pengeluaran sedang dibayar",
+        "customerTopUp": "Baki tambah nilai pelanggan",
+        "refundsPending": "Bayaran balik diluluskan tetapi belum dibayar",
+        "total": "Jumlah terhutang"
+      },
+      "earnings": {
+        "title": "Pendapatan platform",
+        "earned": "Diperoleh daripada penyelesaian yang disahkan",
+        "transferred": "Sudah dipindahkan keluar",
+        "available": "Tersedia untuk dipindahkan",
+        "hint": "Hanya penyelesaian yang telah melepasi tempoh tahanan dikira. Merekod pemindahan tidak memindahkan wang; ia mencatat pemindahan yang telah dibuat oleh bahagian kewangan ke akaun syarikat."
+      },
+      "recordButton": "Rekod pemindahan",
+      "nothingAvailable": "Belum ada jumlah yang tersedia untuk dipindahkan.",
+      "recordConfirm": "Rekod pemindahan {{amount}} daripada pendapatan platform?",
+      "voidPrompt": "Mengapa anda membatalkan pemindahan {{amount}} ({{reference}})? Tindakan ini tidak boleh dibuat asal.",
+      "history": {
+        "title": "Sejarah pemindahan",
+        "empty": "Belum ada pemindahan direkodkan.",
+        "recordedBy": "Direkod oleh {{name}}",
+        "voided": "Dibatalkan: {{reason}}",
+        "void": "Batalkan"
+      },
+      "dialog": {
+        "title": "Rekod pemindahan",
+        "description": "Catat wang yang telah dipindahkan daripada pendapatan platform ke akaun syarikat. Tersedia: {{available}}.",
+        "amount": "Jumlah (RM)",
+        "amountInvalid": "Masukkan jumlah melebihi sifar dengan paling banyak dua tempat perpuluhan.",
+        "overAvailable": "Jumlah ini melebihi yang tersedia untuk dipindahkan.",
+        "date": "Tarikh pemindahan",
+        "reference": "Rujukan bank",
+        "referencePlaceholder": "cth. MBB-778899",
+        "note": "Catatan (pilihan)",
+        "submit": "Rekod pemindahan"
+      }
     }
   },
   "payouts": {

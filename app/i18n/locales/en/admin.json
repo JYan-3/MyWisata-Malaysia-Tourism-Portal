@@ -1670,6 +1670,52 @@
         "zero": "Zero",
         "negative": "Negative"
       }
+    },
+    "funds": {
+      "title": "Platform funds",
+      "description": "All-time figures, separate from the month above. The platform's share is already in the company account; this shows what is still owed to others and what has been moved out.",
+      "refresh": "Refresh",
+      "loadError": "Platform funds could not be loaded.",
+      "saveError": "The transfer could not be saved.",
+      "owed": {
+        "title": "Money still owed",
+        "readyToWithdraw": "Vendor and affiliate earnings ready to withdraw",
+        "onHold": "Earnings on hold",
+        "withdrawalsInProgress": "Withdrawals being paid out",
+        "customerTopUp": "Customer top-up balances",
+        "refundsPending": "Refunds approved but not yet paid",
+        "total": "Total owed"
+      },
+      "earnings": {
+        "title": "Platform earnings",
+        "earned": "Earned on confirmed settlements",
+        "transferred": "Already transferred out",
+        "available": "Available to transfer",
+        "hint": "Only settlements past their hold period count. Recording a transfer does not move money; it logs a transfer finance already made to the company account."
+      },
+      "recordButton": "Record transfer",
+      "nothingAvailable": "Nothing is available to transfer yet.",
+      "recordConfirm": "Record a transfer of {{amount}} out of platform earnings?",
+      "voidPrompt": "Why are you voiding the {{amount}} transfer ({{reference}})? This cannot be undone.",
+      "history": {
+        "title": "Transfer history",
+        "empty": "No transfers recorded yet.",
+        "recordedBy": "Recorded by {{name}}",
+        "voided": "Voided: {{reason}}",
+        "void": "Void"
+      },
+      "dialog": {
+        "title": "Record transfer",
+        "description": "Log money already moved from platform earnings to the company account. Available: {{available}}.",
+        "amount": "Amount (RM)",
+        "amountInvalid": "Enter an amount above zero with at most two decimal places.",
+        "overAvailable": "This is more than is available to transfer.",
+        "date": "Transfer date",
+        "reference": "Bank reference",
+        "referencePlaceholder": "e.g. MBB-778899",
+        "note": "Note (optional)",
+        "submit": "Record transfer"
+      }
     }
   },
   "payouts": {
