@@ -6,6 +6,7 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261025175421_catalogue_review_delivery_source_guard.sql",
   "20261025102757_financial_operations_aggregate_scan_optimization.sql",
   "20261025102035_financial_operations_lifetime_totals.sql",
   "20261025093457_redact_affiliate_fraud_queue_email.sql",
