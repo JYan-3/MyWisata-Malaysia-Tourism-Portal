@@ -20,7 +20,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
 vi.mock("lucide-react", () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
-  return { Accessibility: Icon, BedDouble: Icon, CheckCircle: Icon, Clock: Icon, Clock3: Icon, ImageOff: Icon, Info: Icon, MapPin: Icon, Star: Icon, Store: Icon };
+  return { Accessibility: Icon, BedDouble: Icon, CheckCircle: Icon, Clock: Icon, Clock3: Icon, ImageOff: Icon, Info: Icon, MapPin: Icon, Star: Icon, Store: Icon, XIcon: Icon };
 });
 vi.mock("@/components/providers/wishlist", () => ({
   useWishlist: () => ({ savedIds: new Set<string>(), savedOutletIds: new Set<string>(), toggleSaved: vi.fn(), toggleSavedOutlet: vi.fn() }),
@@ -91,22 +91,24 @@ describe("ActivityCard expanding details", () => {
     document.body.removeChild(container);
   });
 
-  it("has no info button; hover, keyboard focus or a touch screen opens the details", async () => {
+  it("has no info button and marks the media as the keyboard-accessible mobile preview trigger", async () => {
     await renderCard();
 
     expect(container.textContent).toContain("Brinchang, Pahang");
     expect(() => findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "View Details")).toThrow();
+    const mediaLink = findOne(container, (element) => element.getAttribute("data-card-preview-trigger") === "true");
+    expect(mediaLink.getAttribute("aria-haspopup")).toBe("dialog");
   });
 
-  it("keeps the details and the action together in the drawer under the price", async () => {
+  it("keeps details in the desktop drawer and the primary action in its own visible row", async () => {
     await renderCard();
 
-    const drawer = findOne(container, (element) => element.className.includes("mw-card-cta-drawer"));
-    const details = findOne(drawer, (element) => element.getAttribute("data-card-details-inline") === "true");
-    const action = findOne(drawer, (element) => element.getAttribute("data-card-primary-cta") === "true");
+    const details = findOne(container, (element) => element.getAttribute("data-card-details-inline") === "true");
+    const action = findOne(container, (element) => element.getAttribute("data-card-primary-cta") === "true");
     expect(details.textContent).toContain("Brinchang, Pahang");
     expect(details.className).not.toContain("bg-primary");
     expect(action.textContent).toBe("Book Now");
+    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
   });
 
   it("puts the price and full-width primary action in separate footer rows", async () => {
@@ -116,7 +118,7 @@ describe("ActivityCard expanding details", () => {
     const price = findOne(footer, (element) => element.getAttribute("data-testid") === "activity-card-price");
     const action = findOne(footer, (element) => element.getAttribute("data-card-primary-cta") === "true");
     expect((price.parentNode as TestElement | null)?.className).toContain("mw-card-price-row");
-    expect(((action.parentNode as TestElement | null)?.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
+    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
     expect(action.textContent).toBe("Book Now");
     expect(action.className).toContain("w-full");
     expect(action.className).toContain("h-9");

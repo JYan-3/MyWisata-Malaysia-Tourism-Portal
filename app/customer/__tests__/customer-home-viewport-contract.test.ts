@@ -63,24 +63,42 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("stroke-dashoffset: 0;");
   });
 
-  it("shows four curated destinations per page with a selected progress state", () => {
-    expect(homeSource).toContain("DESTINATIONS_PER_PAGE = 4");
+  it("uses responsive snap pages without changing the selected destination", () => {
     expect(homeSource).toContain('"Kuala Lumpur", "Penang", "Sabah", "Melaka"');
-    expect(homeSource).toContain('String(destinationPage + 1).padStart(2, "0")');
-    expect(homeSource).toContain('String(destinationPageCount).padStart(2, "0")');
+    expect(homeSource).toContain("scroll-snap-type: x mandatory");
+    // The app handles horizontal swipe gestures and leaves vertical panning to the browser.
+    const pagerRule = homeSource.match(/\.atlas-destination-pager \{([^}]*)\}/)?.[1] ?? "";
+    expect(pagerRule).toContain("overflow-x: auto");
+    expect(pagerRule).toMatch(/touch-action:\s*pan-y/);
+    expect(homeSource).toContain("scroll-snap-align: none");
+    expect(homeSource).toContain("nth-child(2n + 1)");
+    expect(homeSource).toContain("nth-child(4n + 1)");
+    expect(homeSource).toContain("scroll-snap-stop: always");
+    expect(homeSource).toContain("--per-page: 2");
+    expect(homeSource).toContain("--per-page: 4");
+    // The trailing padding shrinks the content box by one gap, so a page of N cards plus N gaps equals the viewport only
+    // when each card subtracts (N - 1) gaps.
+    expect(homeSource).toContain("flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));");
+    expect(homeSource).toContain("padding-right: var(--destination-gap)");
+    expect(homeSource).toContain("useHomeDestinationPager(");
+    expect(homeSource).toContain('import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide-react"');
+    expect(homeSource).toContain('aria-label={t("ui.home.viewDestination")}');
+    expect(homeSource).not.toContain('{t("ui.home.viewDestination")} <ArrowRight');
     expect(homeSource).toContain("aria-pressed={isSelected}");
     expect(homeSource).toContain("selectDestination(destination.state)");
-    expect(homeSource).toContain("selectDestination(nextPageDestinations[0].state)");
     expect(homeSource).toContain("atlas-selected-progress");
     expect(homeSource).toContain('aria-label={t("ui.home.destinationCarousel")');
 
-    const cardMappingStart = homeSource.indexOf("currentPageDestinations.map((destination) => {");
+    const cardMappingStart = homeSource.indexOf("HOME_DESTINATIONS.map((destination) => {");
     const cardMappingEnd = homeSource.indexOf("          </nav>", cardMappingStart);
     const cardMapping = homeSource.slice(cardMappingStart, cardMappingEnd);
     expect(cardMapping).toContain("<SaveToggleButton");
     expect(cardMapping).toContain("savedStates.has(destination.state)");
     expect(cardMapping).toContain("toggleSaved(destination.state)");
+    expect(cardMapping).toContain('data-home-destination-save="true"');
     expect(cardMapping).toMatch(/<\/button>\s*<SaveToggleButton/);
+    expect(homeSource).toContain("sizes={{ dot: 11, pill: 36, gap: 8 }}");
+    expect(homeSource).toContain("sizes={{ dot: 14, pill: 50, gap: 10 }}");
   });
 
   it("keeps the hero photo animation while limiting its zoom", () => {
@@ -129,14 +147,13 @@ describe("customer home first viewport", () => {
     expect(nextConfigSource).toContain("qualities: [75, 90]");
   });
 
-  it("exposes keyboard-accessible paging controls for the destination carousel", () => {
-    expect(homeSource).toContain("ChevronLeft");
-    expect(homeSource).toContain("ChevronRight");
-    expect(homeSource).toContain('aria-label={t("ui.map.previous")');
-    expect(homeSource).toContain('aria-label={t("ui.map.next")');
-    expect(homeSource).toContain("changeDestinationPage(direction:");
-    expect(homeSource).toContain("destinationPageCount");
-    expect(homeSource).toContain("HOME_DESTINATIONS.slice(");
+  it("exposes clickable Worm page controls instead of arrow buttons", () => {
+    expect(homeSource).toContain("HomeDestinationWormIndicator");
+    expect(homeSource).toContain('label={t("ui.home.destinationCarouselControls")}');
+    expect(homeSource).not.toContain("ChevronLeft");
+    expect(homeSource).not.toContain("ChevronRight");
+    expect(homeSource).not.toContain("changeDestinationPage(direction:");
+    expect(homeSource).not.toContain("HOME_DESTINATIONS.slice(");
   });
 
   it("keeps the homepage discovery shelf under the Featured Highlights label", () => {

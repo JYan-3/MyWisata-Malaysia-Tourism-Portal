@@ -12,14 +12,16 @@ const logoSource = readFileSync(
 );
 
 describe("customer header reference contract", () => {
-  it("keeps the compact header composition from the latest commit", () => {
+  it("keeps the shared navigation and a slightly taller primary header row", () => {
     expect(customerLayoutSource).not.toContain('data-customer-header="true"');
-    expect(customerLayoutSource).toContain("h-16");
+    expect(customerLayoutSource).toContain("h-17");
     expect(customerLayoutSource).toContain("max-w-7xl mx-auto");
     expect(customerLayoutSource).toContain("text-sm font-medium");
     expect(customerLayoutSource).toContain("ml-auto flex shrink-0");
     expect(customerLayoutSource).not.toContain("h-[104px]");
     expect(customerLayoutSource).not.toContain("markSize={56}");
+    expect(customerLayoutSource.match(/CUSTOMER_NAV\.map/g) ?? []).toHaveLength(2);
+    expect(customerLayoutSource).toContain("<item.icon size={16}");
   });
 
   it("keeps the shared Customer header fixed at the top while routes scroll", () => {
@@ -30,7 +32,7 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=2"');
     expect(customerLayoutSource).toContain("width={758}");
     expect(customerLayoutSource).toContain("height={306}");
-    expect(customerLayoutSource).toContain("h-16");
+    expect(customerLayoutSource).toContain("h-17");
   });
 
   it("keeps the logo as one shared, non-shifting lockup", () => {
@@ -41,7 +43,7 @@ describe("customer header reference contract", () => {
 
   it("closes the header content wrapper before the mobile navigation row", () => {
     expect(customerLayoutSource).toContain(
-      "        </div>\n\n        {/* Mobile bottom-ish secondary row",
+      "        </div>\n\n        {/* Responsive secondary row",
     );
   });
 
@@ -51,16 +53,12 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).not.toContain("max-md:hidden");
   });
 
-  it("keeps Saved in mobile navigation without a desktop utility shortcut", () => {
-    expect(customerLayoutSource.match(/href="\/customer\/saved"/g) ?? []).toHaveLength(1);
-    expect(customerLayoutSource).toContain('import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react"');
-    expect(customerLayoutSource).toContain('<Bookmark size={13} aria-hidden="true" fill={savedCount > 0 ? "currentColor" : "none"} />');
-
-    const utilityRowStart = customerLayoutSource.indexOf('className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1"');
-    const cartLinkStart = customerLayoutSource.indexOf('href="/customer/cart"', utilityRowStart);
-    const desktopUtilities = customerLayoutSource.slice(utilityRowStart, cartLinkStart);
-    expect(desktopUtilities).not.toContain('href="/customer/saved"');
-    expect(desktopUtilities).not.toContain("<Bookmark");
+  it("keeps Saved in the account menu and removes mobile-only Saved and Trip shortcuts", () => {
+    expect(customerLayoutSource.match(/href="\/customer\/saved"/g) ?? []).toHaveLength(0);
+    expect(customerLayoutSource).not.toContain("tripCount");
+    expect(customerLayoutSource).not.toContain("/api/trips/count");
+    expect(customerLayoutSource).toContain('item.href === "/customer/saved" && savedCount > 0');
+    expect(customerLayoutSource).not.toContain("<Bookmark size={13}");
   });
 
   it("compresses the customer utility row at phone widths to keep account controls visible", () => {

@@ -2077,6 +2077,7 @@
       "savedToAtlas": "Saved to your atlas",
       "saveFeeling": "Save this feeling",
       "destinationCarousel": "Destination carousel",
+      "destinationPage": "Page {{page}} of {{total}}",
       "exploreDestinations": "Explore Destinations",
       "swipeDestinations": "Swipe to explore all {{count}} states.",
       "forYou": "For You",

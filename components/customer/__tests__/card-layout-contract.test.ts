@@ -35,7 +35,7 @@ describe("shared card layout contract", () => {
     expect(cardRule).toContain("overflow: visible");
     expect(rowRule).toContain("height: 2.25rem");
     expect(drawerRule).toContain("position: absolute");
-    expect(drawerRule).toContain("top: 0");
+    expect(drawerRule).toContain("top: 2.25rem");
   });
 
   it("keeps closed drawer details readable by screen readers (collapsed, not visibility: hidden)", () => {
@@ -47,12 +47,12 @@ describe("shared card layout contract", () => {
     expect(closedRule).not.toContain("visibility");
   });
 
-  it("shows the activity-card details in normal flow on touch screens", () => {
+  it("uses the mobile dialog instead of forcing details open inline on touch screens", () => {
     const styles = read("app/globals.css");
     const touch = styles.slice(styles.indexOf("@media (hover: none) {"));
 
-    expect(touch).toContain(".mw-card-expand-card .mw-card-cta-drawer {\n    position: static;");
-    expect(touch).toContain(".mw-card-expand-card .mw-card-details-expand {\n    grid-template-rows: 1fr;");
+    expect(touch).toContain(".mw-card-expand-card .mw-card-cta-drawer {\n    display: none;");
+    expect(touch).not.toContain("grid-template-rows: 1fr;");
   });
 
   it("keeps media consumer backgrounds from being overwritten", () => {

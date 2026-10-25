@@ -2077,6 +2077,7 @@
       "savedToAtlas": "已保存到你的地图册",
       "saveFeeling": "保存这种感觉",
       "destinationCarousel": "目的地轮播",
+      "destinationPage": "第 {{page}} 页，共 {{total}} 页",
       "exploreDestinations": "探索目的地",
       "swipeDestinations": "滑动探索全部 {{count}} 个州和联邦直辖区。",
       "forYou": "为你推荐",
