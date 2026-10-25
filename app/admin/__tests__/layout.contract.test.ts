@@ -48,7 +48,7 @@ describe('admin navigation shell', () => {
 
   it('exposes the same personal notification inbox to every signed-in Admin staff role', () => {
     expect(layoutSource).toContain('pathname !== "/admin/notifications"');
-    expect(layoutSource).toContain('<NotificationBell scope="staff" allHref="/admin/notifications" />');
+    expect(layoutSource).toContain('staffPermissionKeys.includes("admin.withdrawal.approve") && <NotificationBell scope="staff" allHref="/admin/notifications" />');
     expect(readFileSync(resolve(process.cwd(), 'app/admin/notifications/page.tsx'), 'utf8')).toContain('<NotificationCenter scope="staff"');
   });
 
@@ -59,6 +59,8 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toContain('pendingCounts.catalogue');
     expect(layoutSource).toContain('pendingCounts.withdrawals');
     expect(layoutSource).toContain('pendingCounts.chatReports');
+    expect(layoutSource).not.toContain('currentUser.role === "staff" ? 0');
+    expect(layoutSource).not.toContain('!staffAccessReady || !currentUser || currentUser.role === "staff"');
   });
 
   it('shows content-review queues only to content reviewers and withdrawals only to wallet approvers', () => {

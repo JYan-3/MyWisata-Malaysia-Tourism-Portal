@@ -39,7 +39,7 @@ const EMPTY_PENDING_COUNTS: PendingCounts = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
+  const { currentUser, staffPermissionKeys = [], staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
   const staffAccessReady = !staffMfaRequired && (!staffPasskeyRequired || staffVerified);
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
@@ -122,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [currentUser, staffAccessReady]);
 
   useEffect(() => {
-    if (!staffAccessReady || !currentUser || currentUser.role === "staff") return;
+    if (!staffAccessReady || !currentUser) return;
     let cancelled = false;
     async function pollPendingCounts() {
       try {
@@ -214,7 +214,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     label: section.labelKey ? tAdmin(section.labelKey) : section.label,
     items: section.items.map((item) => {
         // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
-        const count = currentUser.role === "staff" ? 0 : item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
+        const count = item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
         return {
           href: item.href,
           label: item.labelKey ? tAdmin(item.labelKey) : item.label,
@@ -267,7 +267,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <kbd className="ml-1 shrink-0 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{commandShortcutLabel}</kbd>
           </button>}
           <div className="flex items-center gap-2">
-            <NotificationBell scope="staff" allHref="/admin/notifications" />
+            {staffPermissionKeys.includes("admin.withdrawal.approve") && <NotificationBell scope="staff" allHref="/admin/notifications" />}
             <Link
               href="/admin/help"
               aria-label={tAdmin("staffHelp.headerLink")}

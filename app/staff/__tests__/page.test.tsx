@@ -15,4 +15,9 @@ describe("Staff home", () => {
     expect(source).toContain("destinations.length === 0");
     expect(source).toContain("staffHome.empty");
   });
+
+  it("reuses the Staff notification entry for assigned staff", () => {
+    expect(source).toContain('<NotificationBell scope="staff" allHref="/admin/notifications" />');
+    expect(source).toContain('staffPermissionKeys.includes("admin.withdrawal.approve")');
+  });
 });

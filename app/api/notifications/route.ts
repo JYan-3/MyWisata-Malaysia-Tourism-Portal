@@ -1,3 +1,4 @@
+import { STAFF_NOTIFICATION_TYPES, STAFF_NOTIFICATION_FILTER, CUSTOMER_LEGACY_NOTIFICATION_FILTER } from '@/lib/notifications/scope';
 import { createClient } from '@/lib/supabase/server';
 import { authorizeVendor, type VendorAccess } from '@/lib/vendor-authorization';
 import { requireStaffNotificationAccess } from '@/lib/notifications/staff-access';
@@ -39,7 +40,9 @@ export async function GET(request: Request) {
   }
 
   let query = queryDb.from('notifications').select('id,type,title,body,link,category,metadata,read_at,created_at', { count: 'exact', head: countOnly }).eq('user_id', user.id);
-  if (!countOnly) query = query.order('created_at', { ascending: false });
+  if (scope === 'staff') query = query.or(STAFF_NOTIFICATION_FILTER);
+  if (scope === 'customer') query = query.not('type','in',`(${STAFF_NOTIFICATION_TYPES})`).or(CUSTOMER_LEGACY_NOTIFICATION_FILTER);
+  if (!countOnly) query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
   if (scope === 'vendor' && scopedVendor) {
     query = query.eq('vendor_id', scopedVendor.vendorId);
     if (scopedVendor.isOutletManager) {
@@ -53,6 +56,6 @@ export async function GET(request: Request) {
   if (scope === 'vendor' ? category !== 'all' : CATEGORIES.has(category)) query = query.eq('category', category);
   const from = (page - 1) * pageSize;
   const { data, count, error } = await query.range(from, from + pageSize - 1);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) return apiFail('DB_ERROR', 'Notification request unavailable', 500);
   return apiOk({ items: countOnly ? [] : (data ?? []).map((row) => ({ id: row.id, type: row.type, title: row.title, body: row.body, link: row.link, category: row.category ?? 'account_security', metadata: row.metadata ?? {}, readAt: row.read_at, createdAt: row.created_at })), page, pageSize, total: count ?? 0, totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)) });
 }

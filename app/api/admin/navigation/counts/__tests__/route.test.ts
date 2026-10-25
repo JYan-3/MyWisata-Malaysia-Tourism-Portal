@@ -6,11 +6,12 @@ vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({ ...(await imp
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   roleFrom: vi.fn(),
+  staffAccess: vi.fn(),
   from: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.roleFrom })),
+  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.roleFrom, rpc: mocks.staffAccess })),
 }));
 
 vi.mock('@/lib/supabase/service', () => ({
@@ -20,11 +21,21 @@ vi.mock('@/lib/supabase/service', () => ({
 import { GET } from '../route';
 
 function mockRoles(...names: string[]) {
+  const roleResult = { data: names.map((name) => ({ roles: { name } })), error: null };
+  const scope = { is: vi.fn() };
+  scope.is.mockImplementation(() => scope);
+  const query = { is: vi.fn() };
+  query.is.mockReturnValueOnce(scope);
+  scope.is.mockResolvedValue(roleResult);
   mocks.roleFrom.mockReturnValue({
     select: vi.fn(() => ({
-      eq: vi.fn(async () => ({ data: names.map((name) => ({ roles: { name } })), error: null })),
+      eq: vi.fn(() => query),
     })),
   });
+}
+
+function mockPermissions(...keys: string[]) {
+  mocks.staffAccess.mockResolvedValue({ data: { permissionKeys: keys }, error: null });
 }
 
 function countQuery(count: number, error: { message: string } | null = null) {
@@ -41,6 +52,7 @@ describe('GET /api/admin/navigation/counts', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-id' } }, error: null });
     mockRoles('super_admin');
+    mockPermissions('admin.vendor.manage', 'admin.catalogue.review', 'admin.kyc.review', 'admin.withdrawal.approve', 'admin.recommendation.review');
     mocks.from.mockImplementation((table: string) => {
       const counts: Record<string, number> = {
         vendors: 2,
@@ -86,6 +98,7 @@ describe('GET /api/admin/navigation/counts', () => {
 
   it('does not query or return withdrawal metadata to a content admin', async () => {
     mockRoles('admin');
+    mockPermissions('admin.vendor.manage', 'admin.catalogue.review', 'admin.kyc.review', 'admin.recommendation.review');
 
     const response = await GET();
     const body = await response.json();
@@ -98,6 +111,7 @@ describe('GET /api/admin/navigation/counts', () => {
 
   it('only queries and returns withdrawal metadata to an approver', async () => {
     mockRoles('approver');
+    mockPermissions('admin.withdrawal.approve');
 
     const response = await GET();
     const body = await response.json();
@@ -112,6 +126,64 @@ describe('GET /api/admin/navigation/counts', () => {
     const response = await GET();
     const body = await response.json();
     expect(body.data).toEqual({ vendors: 2, catalogue: 8, kyc: 5, withdrawals: 6, refunds: 7, chatReports: 8, recommendations: 9 });
+  });
+
+  it('returns only wallet tasks for a custom Staff approver', async () => {
+    mockRoles('staff');
+    mockPermissions('admin.withdrawal.approve');
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: { withdrawals: 6 } });
+    expect(mocks.from.mock.calls).toEqual([['withdrawal_requests']]);
+  });
+
+  it('returns only recommendation tasks for a custom recommendation reviewer', async () => {
+    mockRoles('staff');
+    mockPermissions('admin.recommendation.review');
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: { recommendations: 9 } });
+    expect(mocks.from.mock.calls).toEqual([['vendor_recommendations']]);
+  });
+
+  it('returns only authorized queues for a Staff member with mixed permissions', async () => {
+    mockRoles('staff');
+    mockPermissions('admin.kyc.review', 'admin.withdrawal.approve');
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: { kyc: 5, withdrawals: 6 } });
+    expect(mocks.from.mock.calls).toEqual([['kyc_submissions'], ['withdrawal_requests']]);
+  });
+
+  it('does not query any queue after a custom Staff assignment is revoked', async () => {
+    mockRoles('staff');
+    mockPermissions();
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: {} });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('does not use an inactive Admin coarse role to read system queue counts', async () => {
+    mockRoles('admin');
+    mockPermissions();
+
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: {} });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('fails closed if effective permissions cannot be loaded', async () => {
+    mockRoles('staff');
+    mocks.staffAccess.mockResolvedValue({ data: null, error: new Error('unavailable') });
+    const response = await GET();
+    expect(response.status).toBe(503);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it('does not expose database error details', async () => {
