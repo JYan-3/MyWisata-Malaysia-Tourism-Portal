@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
@@ -24,8 +24,9 @@ import { useAuth } from "@/components/providers/auth";
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import { EventPartnersSection, type EventPartner } from "@/components/customer/event-partners-section";
+import { HomeDestinationWormIndicator } from "@/components/customer/home-destination-worm-indicator";
+import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
 
-const DESTINATIONS_PER_PAGE = 4;
 const HERO_CROSSFADE_DURATION_MS = 240;
 const FEATURED_DESTINATION_STATES = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
 const FEATURED_DESTINATIONS = FEATURED_DESTINATION_STATES.flatMap((state) =>
@@ -97,18 +98,13 @@ export function CustomerHomeClient({
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const activeStateRef = useRef(activeState);
+  const destinationPagerRef = useRef<HTMLDivElement>(null);
   const heroCrossfadeTimeoutRef = useRef<number | null>(null);
+  const destinationPager = useHomeDestinationPager(destinationPagerRef);
   const activeDestination = HOME_DESTINATIONS.find((destination) => destination.state === activeState) ?? HOME_DESTINATIONS[0];
   const outgoingHeroDestination = outgoingHeroState
     ? HOME_DESTINATIONS.find((destination) => destination.state === outgoingHeroState) ?? null
     : null;
-  const activeIndex = HOME_DESTINATIONS.findIndex((destination) => destination.state === activeDestination.state);
-  const destinationPageCount = Math.ceil(HOME_DESTINATIONS.length / DESTINATIONS_PER_PAGE);
-  const destinationPage = Math.floor(activeIndex / DESTINATIONS_PER_PAGE);
-  const currentPageDestinations = HOME_DESTINATIONS.slice(
-    destinationPage * DESTINATIONS_PER_PAGE,
-    (destinationPage + 1) * DESTINATIONS_PER_PAGE,
-  );
   const activeHeroImage = activeDestination.image;
 
   function clearHeroCrossfadeTimeout() {
@@ -202,15 +198,6 @@ export function CustomerHomeClient({
     );
   }
 
-  function changeDestinationPage(direction: "previous" | "next") {
-    const nextPage = (destinationPage + (direction === "next" ? 1 : -1) + destinationPageCount) % destinationPageCount;
-    const nextPageDestinations = HOME_DESTINATIONS.slice(
-      nextPage * DESTINATIONS_PER_PAGE,
-      (nextPage + 1) * DESTINATIONS_PER_PAGE,
-    );
-    if (nextPageDestinations[0]) selectDestination(nextPageDestinations[0].state);
-  }
-
   const highlightItems = groupAccommodationByProperty(popular).slice(0, 4);
   const highlightIds = new Set(highlightItems.map((activity) => activity.id));
   const forYouItems = groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
@@ -271,56 +258,28 @@ export function CustomerHomeClient({
           </header>
 
           <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-enter atlas-delay-2 mt-10 w-full">
-            <div className="mb-3 flex items-center justify-between gap-4 sm:mb-1">
+            <div className="mb-3 flex items-center gap-3 sm:mb-1">
               <div className="flex items-center gap-3">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
                 <Link href={destinationHref(activeDestination.state)} className="inline-flex items-center gap-1 text-xs font-semibold text-white/85 transition hover:text-[#f4bd00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd00] sm:text-sm">
                   {t("ui.home.viewDestination")} <ArrowRight size={14} />
                 </Link>
-                <SaveToggleButton
-                  appearance="pill"
-                  saved={savedStates.has(activeDestination.state)}
-                  aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}
-                  onClick={() => {
-                    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
-                    void toggleSaved(activeDestination.state);
-                  }}
-                  className="px-2.5 py-1 text-[11px] sm:px-3 sm:text-xs"
-                  iconSize={13}
-                >
-                  {savedStates.has(activeDestination.state) ? t("ui.home.savedDestination") : t("ui.home.saveDestination")}
-                </SaveToggleButton>
-              </div>
-              <div className="flex items-center gap-3 sm:gap-5">
-                <p aria-live="polite" className="min-w-[54px] text-right text-xs font-bold tracking-[0.08em] text-white/70 sm:text-sm">
-                  <span className="text-[#f4bd00]">{String(destinationPage + 1).padStart(2, "0")}</span>
-                  {" "}<span className="mx-1.5 text-white/35">/</span>{" "}
-                  {String(destinationPageCount).padStart(2, "0")}
-                </p>
-                <div className="flex items-center gap-2" aria-label={t("ui.home.destinationCarouselControls")}>
-                  <button type="button" onClick={() => changeDestinationPage("previous")} aria-label={t("ui.map.previous")} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#f4bd00]/80 text-[#f4bd00] transition duration-300 hover:bg-[#f4bd00] hover:text-[#071426] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/35 sm:h-10 sm:w-10">
-                    <ChevronLeft size={17} />
-                  </button>
-                  <button type="button" onClick={() => changeDestinationPage("next")} aria-label={t("ui.map.next")} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#f4bd00]/80 text-[#f4bd00] transition duration-300 hover:bg-[#f4bd00] hover:text-[#071426] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/35 sm:h-10 sm:w-10">
-                    <ChevronRight size={17} />
-                  </button>
-                </div>
               </div>
             </div>
-            <div key={destinationPage} className="atlas-destination-grid grid grid-cols-2 gap-x-3 gap-y-5 pb-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4 lg:gap-4">
-              {currentPageDestinations.map((destination) => {
+            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
+              {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
                 const isSaved = savedStates.has(destination.state);
                 const saveLabel = t(isSaved ? "ui.map.savedToAtlas" : "ui.map.saveToAtlas");
                 return (
-                  <div key={destination.state} className="relative min-w-0">
+                  <div key={destination.state} className="atlas-destination-card relative min-w-0">
                     <button
                       type="button"
                       onClick={() => selectDestination(destination.state)}
                       aria-pressed={isSelected}
                       className={`group relative block h-[108px] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 sm:h-[138px] lg:h-[168px] ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
                     >
-                      <Image src={destination.image} alt="" fill sizes="(max-width: 639px) 44vw, (max-width: 1023px) 45vw, 340px" className="object-cover transition duration-700 group-hover:scale-[1.045]" />
+                      <Image src={destination.image} alt="" fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover transition duration-700 group-hover:scale-[1.045]" />
                       <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
                       <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
                     </button>
@@ -339,6 +298,28 @@ export function CustomerHomeClient({
                   </div>
                 );
               })}
+            </div>
+            <div className="mt-2 lg:hidden">
+              <HomeDestinationWormIndicator
+                count={8}
+                progress={destinationPager.progress}
+                current={destinationPager.page}
+                sizes={{ dot: 13, pill: 42, gap: 10 }}
+                label={t("ui.home.destinationCarouselControls")}
+                pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
+                onSelect={destinationPager.goToPage}
+              />
+            </div>
+            <div className="mt-2 hidden lg:block">
+              <HomeDestinationWormIndicator
+                count={4}
+                progress={destinationPager.progress}
+                current={destinationPager.page}
+                sizes={{ dot: 16, pill: 58, gap: 13 }}
+                label={t("ui.home.destinationCarouselControls")}
+                pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
+                onSelect={destinationPager.goToPage}
+              />
             </div>
           </nav>
         </div>
@@ -506,7 +487,30 @@ export function CustomerHomeClient({
           stroke-dashoffset: 1;
           animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
         }
-        .atlas-destination-grid { animation: atlas-enter 480ms var(--atlas-ease-out) both; }
+        .atlas-destination-pager {
+          --per-page: 2;
+          --destination-gap: 0.75rem;
+          display: flex;
+          gap: var(--destination-gap);
+          overflow-x: auto;
+          padding-right: var(--destination-gap);
+          scroll-snap-type: x mandatory;
+          overscroll-behavior-x: contain;
+          scrollbar-width: none;
+        }
+
+        .atlas-destination-pager::-webkit-scrollbar { display: none; }
+
+        .atlas-destination-card {
+          flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));
+          scroll-snap-align: none;
+          animation: atlas-enter 480ms var(--atlas-ease-out) both;
+        }
+
+        .atlas-destination-card:nth-child(2n + 1) {
+          scroll-snap-align: start;
+          scroll-snap-stop: always;
+        }
 
         .atlas-discover-title {
           background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 25%, var(--malaysia-yellow) 43%, color-mix(in srgb, var(--malaysia-red) 55%, #fff1d2) 58%, #f1b948 76%, #f1b948 100%);
@@ -550,7 +554,7 @@ export function CustomerHomeClient({
         @media (prefers-reduced-motion: reduce) {
           .atlas-enter,
           .atlas-title-accent,
-          .atlas-destination-grid,
+          .atlas-destination-card,
           :global(.atlas-hero-photo) {
             animation: none;
           }
@@ -566,6 +570,23 @@ export function CustomerHomeClient({
           .atlas-title-accent__stroke {
             stroke-dashoffset: 0;
             animation: none;
+          }
+        }
+
+        @media (min-width: 1024px) {
+          .atlas-destination-pager {
+            --per-page: 4;
+            --destination-gap: 1rem;
+          }
+
+          .atlas-destination-card:nth-child(2n + 1) {
+            scroll-snap-align: none;
+            scroll-snap-stop: normal;
+          }
+
+          .atlas-destination-card:nth-child(4n + 1) {
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
           }
         }
       `}</style>

@@ -100,11 +100,10 @@ describe("customer voucher hub UI contract", () => {
     expect(source).toContain('role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}');
   });
 
-  it("places the desktop My Vouchers action after the cart in the customer header", () => {
+  it("keeps My Vouchers in the account menu instead of a standalone header link", () => {
     const source = read("app/customer/layout.tsx");
-    const cartPosition = source.indexOf('href="/customer/cart"');
-    const vouchersPosition = source.indexOf('href="/customer/vouchers" aria-label={tCustomer("accountItems.vouchers.label")}');
-    expect(cartPosition).toBeGreaterThanOrEqual(0);
-    expect(vouchersPosition).toBeGreaterThan(cartPosition);
+    // The mobile nav row used to hard-code a My Vouchers link; it now lives only in the avatar account menu.
+    expect(source).toContain('aria-label={item.href === "/customer/vouchers" ? tCustomer("accountItems.vouchers.label") : undefined}');
+    expect(source).not.toContain('<Link href="/customer/vouchers"');
   });
 });

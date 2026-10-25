@@ -66,13 +66,16 @@ describe("customer home Discover Malaysia hero", () => {
     const destinationCarousel = markup.match(
       /<nav aria-label="ui\.home\.destinationCarousel"[\s\S]*?<\/nav>/,
     )?.[0] ?? "";
-    const visibleDestinations = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
-    const destinationPositions = visibleDestinations.map((destination) =>
+    const firstPageDestinations = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
+    const destinationPositions = firstPageDestinations.map((destination) =>
       destinationCarousel.indexOf(`>${destination}</span>`),
     );
 
-    expect(destinationCarousel).toMatch(/>01<\/span> <span[^>]*>\/<\/span> 04/);
-    expect(destinationCarousel.match(/<button[^>]*aria-pressed="(?:true|false)"[^>]*class="group relative block/g)).toHaveLength(4);
+    expect(destinationCarousel).not.toMatch(/>01<\/span> <span[^>]*>\/<\/span> 04/);
+    expect(destinationCarousel).not.toContain('aria-label="ui.map.previous"');
+    expect(destinationCarousel).not.toContain('aria-label="ui.map.next"');
+    expect(destinationCarousel).toContain('aria-label="ui.home.destinationCarouselControls"');
+    expect(destinationCarousel.match(/<button[^>]*aria-pressed="(?:true|false)"[^>]*class="group relative block/g)).toHaveLength(MALAYSIA_DESTINATIONS.length);
     expect(destinationPositions.every((position) => position >= 0)).toBe(true);
     expect(destinationPositions).toEqual([...destinationPositions].sort((left, right) => left - right));
   });
@@ -89,12 +92,9 @@ describe("customer home Discover Malaysia hero", () => {
       ([, label]) => label,
     );
 
-    expect(saveLabels).toEqual([
-      "ui.map.saveToAtlas",
-      "ui.map.savedToAtlas",
-      "ui.map.saveToAtlas",
-      "ui.map.saveToAtlas",
-    ]);
+    expect(saveLabels).toHaveLength(MALAYSIA_DESTINATIONS.length);
+    expect(saveLabels[0]).toBe("ui.map.saveToAtlas");
+    expect(saveLabels[1]).toBe("ui.map.savedToAtlas");
   });
 
   it("uses the refreshed local photography for the first four destinations", () => {

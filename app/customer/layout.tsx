@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react";
+import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import dynamic from "next/dynamic";
@@ -400,7 +400,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Mobile bottom-ish secondary row for the rest of nav */}
         <div className="flex items-center gap-4 overflow-x-auto px-4 pb-2 hide-scrollbar md:hidden">
-          <Link href="/customer/vouchers" aria-label={tCustomer("accountItems.vouchers.label")} className="flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap" aria-current={isCustomerNavActive(pathname, "/customer/vouchers") ? "page" : undefined} style={{ color: isCustomerNavActive(pathname, "/customer/vouchers") ? "var(--primary)" : "var(--muted-foreground)" }}><Tag size={13} /> {tCustomer("accountItems.vouchers.label")}</Link>
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}

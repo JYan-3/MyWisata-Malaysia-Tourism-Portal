@@ -53,7 +53,7 @@ describe("customer header reference contract", () => {
 
   it("keeps Saved in mobile navigation without a desktop utility shortcut", () => {
     expect(customerLayoutSource.match(/href="\/customer\/saved"/g) ?? []).toHaveLength(1);
-    expect(customerLayoutSource).toContain('import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react"');
+    expect(customerLayoutSource).toContain('import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store } from "lucide-react"');
     expect(customerLayoutSource).toContain('<Bookmark size={13} aria-hidden="true" fill={savedCount > 0 ? "currentColor" : "none"} />');
 
     const utilityRowStart = customerLayoutSource.indexOf('className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1"');
