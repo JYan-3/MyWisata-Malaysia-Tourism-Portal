@@ -329,6 +329,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             </div>
           </div>
           <ProductMediaUploader
+            shape="photo"
             vendorId={vendorId}
             productId={initialData?.id}
             value={watch('coverUrl')}
@@ -347,6 +348,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             </div>
             {gallery.length < 8 && (
               <ProductMediaUploader
+                shape="photo"
                 vendorId={vendorId}
                 productId={initialData?.id}
                 value={null}

@@ -113,7 +113,7 @@
     "Analytics": "分析",
     "Operations": "运营",
     "Shop page": "店铺",
-    "Promotions": "推广",
+    "Promotions": "推广活动",
     "Announcements": "公告",
     "Events": "活动",
     "Reservations": "预订"
@@ -1599,7 +1599,7 @@
       "save": "保存"
     },
     "eventPromotions": {
-      "title": "活动推广",
+      "title": "推广你的活动",
       "description": "推广您参与但并非由我们创建的活动——提交后将进入审核，获批后会显示在网站上。",
       "newHeading": "提交新活动",
       "editHeading": "修改并重新提交",

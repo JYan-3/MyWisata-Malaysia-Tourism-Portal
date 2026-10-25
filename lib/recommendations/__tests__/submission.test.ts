@@ -3,7 +3,20 @@ import {
   allowRecommendationImageSelection,
   appendSelectedRecommendationImages,
   mergeRecommendationImages,
+  partitionRecommendationImages,
 } from '@/lib/recommendations/submission';
+
+describe('partitionRecommendationImages', () => {
+  it('keeps photos the upload route accepts and names the ones it would reject', () => {
+    const photo = (name: string, type: string, size: number) => ({ name, type, size }) as File;
+    const ok = photo('beach.jpg', 'image/jpeg', 5 * 1024 * 1024);
+    const webp = photo('stall.webp', 'image/webp', 1024);
+    const result = partitionRecommendationImages([ok, photo('huge.png', 'image/png', 5 * 1024 * 1024 + 1), webp, photo('anim.gif', 'image/gif', 10)]);
+
+    expect(result.accepted).toEqual([ok, webp]);
+    expect(result.rejected).toEqual(['huge.png', 'anim.gif']);
+  });
+});
 
 describe('mergeRecommendationImages', () => {
   it('keeps existing photos when more photos are selected later', () => {

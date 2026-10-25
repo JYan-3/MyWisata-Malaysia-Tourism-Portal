@@ -78,11 +78,44 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
 ];
 
+/**
+ * The one public origin search engines should index (e.g. https://mylawatan.my). The www host
+ * redirects to it and every page names it as canonical, so the site is not indexed twice.
+ * Null on localhost or when unset, so development is unaffected.
+ */
+function publicSiteUrl() {
+  try {
+    const url = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? '');
+    return ['localhost', '127.0.0.1'].includes(url.hostname) ? null : url;
+  } catch {
+    return null;
+  }
+}
+
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/(.*)', headers: securityHeaders }];
+    const site = publicSiteUrl();
+    return [
+      { source: '/(.*)', headers: securityHeaders },
+      // Canonical as an HTTP Link header (honoured by Google) instead of a <link> in every page's metadata.
+      // The root needs its own rule: an empty `:path*` is left uninterpolated in header values.
+      ...(site ? [
+        { source: '/', headers: [{ key: 'Link', value: `<${site.origin}/>; rel="canonical"` }] },
+        { source: '/:path+', headers: [{ key: 'Link', value: `<${site.origin}/:path+>; rel="canonical"` }] },
+      ] : []),
+    ];
+  },
+  async redirects() {
+    const site = publicSiteUrl();
+    if (!site || site.hostname.startsWith('www.')) return [];
+    return [{
+      source: '/:path*',
+      has: [{ type: 'host' as const, value: `www.${site.hostname}`.replace(/\./g, '\\.') }],
+      destination: `${site.origin}/:path*`,
+      permanent: true,
+    }];
   },
   serverExternalPackages: ['pdfkit', 'tesseract.js', 'tesseract.js-core'],
   outputFileTracingIncludes: {

@@ -25,7 +25,7 @@ export function RoomDetailsContent({ room }: { room: OutletRendererProduct }) {
         <div className="grid grid-cols-2 gap-2 self-start">
           {photos.map((url, index) => (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img key={url} src={url} alt={t("ui.hotel.photoAlt", { room: room.name, index: index + 1 })} className={`w-full rounded-xl object-cover ${index === 0 ? "col-span-2 aspect-[4/3]" : "aspect-square"}`} />
+            <img key={url} src={url} alt={t("ui.hotel.photoAlt", { room: room.name, index: index + 1 })} className={`w-full rounded-xl object-cover ${index === 0 ? "col-span-2 aspect-[4/3]" : "aspect-[4/3]"}`} />
           ))}
         </div>
       )}

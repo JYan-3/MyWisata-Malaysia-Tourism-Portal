@@ -5,8 +5,16 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), refres
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ auth: { mfa: {} } }) }));
 vi.mock('@/components/shared/language-switcher', () => ({ LanguageSwitcher: () => <button aria-label="Language">English</button> }));
 vi.mock('@/components/customer/customer-site-footer', () => ({ CustomerSiteFooter: () => <footer data-site-footer="slim">Legal links</footer> }));
-const { KycMfa } = await import('../kyc-mfa');
+const { KycMfa, STAFF_CODE_INPUT_CLASS } = await import('../kyc-mfa');
+const { Input } = await import('@/components/ui/input');
 describe('KYC MFA entry', () => {
+  it('keeps the staff code field invisible while a code is being verified', () => {
+    const html = renderToStaticMarkup(<Input disabled className={STAFF_CODE_INPUT_CLASS} />);
+    const classes = html.match(/class="([^"]*)"/)?.[1].split(' ') ?? [];
+    expect(classes).toContain('opacity-0');
+    expect(classes).toContain('disabled:opacity-0');
+    expect(classes).not.toContain('disabled:opacity-50');
+  });
   it('reuses the original ceremony with staff-wide copy without generating any factor', () => {
     const html = renderToStaticMarkup(<KycMfa next="/admin/promotion-campaigns" scope="staff" />);
     expect(html).toContain('staffMfa.title');

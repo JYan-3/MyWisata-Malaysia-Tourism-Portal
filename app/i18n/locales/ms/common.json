@@ -403,5 +403,13 @@
       "home": "Ke halaman utama",
       "reference": "Rujukan ralat: {{digest}}"
     }
+  },
+  "imageCrop": {
+    "title": "Pangkas foto",
+    "description": "Seret foto untuk melaraskan kedudukan dan zum jika perlu. Pelanggan akan melihat tepat apa yang berada dalam bingkai {{shape}}.",
+    "zoom": "Zum",
+    "confirm": "Guna potongan ini",
+    "failed": "Foto ini tidak dapat dipangkas. Cuba foto lain.",
+    "hint": "Bentuk disyorkan {{shape}} (contohnya {{size}} piksel). Foto berbentuk lain boleh dipangkas selepas anda memilihnya."
   }
 }

@@ -50,11 +50,11 @@ export function PlaceActivityCard({
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:flex-row">
       {href ? (
-        <Link href={href} className="group/place-media relative block aspect-[16/10] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
+        <Link href={href} className="group/place-media relative block aspect-[4/3] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
           {media}
         </Link>
       ) : (
-        <div className="relative block aspect-[16/10] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
+        <div className="relative block aspect-[4/3] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
           {media}
         </div>
       )}

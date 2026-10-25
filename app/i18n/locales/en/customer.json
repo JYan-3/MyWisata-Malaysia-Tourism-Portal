@@ -1463,6 +1463,7 @@
       "photos": "Add 1 to 5 photos",
       "choosePhotos": "Choose photos",
       "photoHint": "JPEG, PNG or WebP · up to 5 MB each",
+      "photoRejected": "Not added: {{names}}. Photos must be JPEG, PNG or WebP and 5 MB or smaller.",
       "photosLabel": "Add 1 to 5 photos",
       "uploadHint": "Click the upload area to add photos.",
       "photoReplacementConfirm": "You already have 5 photos. Adding more will replace the oldest photos with your newest selection. Continue?",

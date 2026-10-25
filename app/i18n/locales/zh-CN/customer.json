@@ -1463,6 +1463,7 @@
       "photos": "添加 1 至 5 张照片",
       "choosePhotos": "选择照片",
       "photoHint": "JPEG、PNG 或 WebP · 每张最大 5 MB",
+      "photoRejected": "未添加：{{names}}。照片须为 JPEG、PNG 或 WebP 格式，且不超过 5 MB。",
       "photosLabel": "添加 1 至 5 张照片",
       "uploadHint": "点击上传区域添加照片。",
       "photoReplacementConfirm": "您已经选择了 5 张照片。继续添加会用最新选择的照片替换最旧的照片。是否继续？",

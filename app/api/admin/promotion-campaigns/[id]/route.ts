@@ -15,6 +15,7 @@ function databaseFailure(error: { message?: string; code?: string } | null) {
     return apiFail("FORBIDDEN", "You do not have permission to manage promotion campaigns", 403);
   }
   if (message.includes("not_found")) return apiFail("NOT_FOUND", "Campaign was not found", 404);
+  if (message.includes("slug_locked")) return apiFail("SLUG_LOCKED", "A published event's address cannot be changed", 409);
   if (message.includes("stale") || message.includes("changed")) return apiFail("CONFLICT", "This campaign changed. Refresh it and try again.", 409);
   if (message.includes("poster_required")) {
     return apiFail("POSTER_REQUIRED", "Upload an event poster before submitting or approving this campaign", 409);

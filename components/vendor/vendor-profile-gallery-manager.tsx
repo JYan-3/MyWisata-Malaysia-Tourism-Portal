@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileUp, Images, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { ImageShapeHint, useImageCrop } from '@/components/shared/image-crop-dialog';
 import { MAX_VENDOR_GALLERY_IMAGES, validateVendorGalleryFiles } from '@/lib/vendor/gallery-files';
 import { vendorImageUrl } from '@/lib/storage/vendor-image';
 
@@ -23,6 +24,7 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const previewUrls = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
+  const { cropToShape, cropDialog } = useImageCrop();
 
   useEffect(() => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), [previewUrls]);
 
@@ -43,17 +45,34 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
 
   const loading = loadedVendorId !== vendorId;
 
-  function selectFiles(list: FileList | null) {
-    const nextFiles = Array.from(list ?? []);
+  function showSelectionError(reason: 'count' | 'type' | 'size') {
+    const messageKey = reason === 'count'
+      ? 'ui.profile.galleryCountError'
+      : reason === 'type'
+        ? 'ui.profile.galleryImageTypeError'
+        : 'ui.profile.galleryImageSizeError';
+    setSelectionError(t(messageKey));
+  }
+
+  async function selectFiles(list: FileList | null) {
+    const selected = Array.from(list ?? []);
+    if (!selected.length) return;
+    // Count and type are checked on the originals (cropping would convert other types);
+    // size is checked after cropping, which can only make a photo smaller.
+    const original = validateVendorGalleryFiles(selected, { allowEmpty: false });
+    if (!original.ok && original.reason !== 'size') {
+      showSelectionError(original.reason);
+      return;
+    }
+    const nextFiles: File[] = [];
+    for (const file of selected) {
+      const cropped = await cropToShape(file, 'photo');
+      if (cropped) nextFiles.push(cropped);
+    }
     if (!nextFiles.length) return;
     const validation = validateVendorGalleryFiles(nextFiles, { allowEmpty: false });
     if (!validation.ok) {
-      const messageKey = validation.reason === 'count'
-        ? 'ui.profile.galleryCountError'
-        : validation.reason === 'type'
-          ? 'ui.profile.galleryImageTypeError'
-          : 'ui.profile.galleryImageSizeError';
-      setSelectionError(t(messageKey));
+      showSelectionError(validation.reason);
       return;
     }
     setSelectionError(null);
@@ -143,7 +162,7 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
             aria-label={t('ui.profile.galleryChoose')}
             className="sr-only"
             disabled={saving}
-            onChange={(event) => { selectFiles(event.target.files); event.target.value = ''; }}
+            onChange={(event) => { void selectFiles(event.target.files); event.target.value = ''; }}
           />
 
           {files.length > 0 ? (
@@ -177,7 +196,8 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
           )}
 
           <p className="text-xs leading-5 text-gray-500 dark:text-muted-foreground">{files.length ? t('ui.profile.gallerySelectedCount', { count: files.length }) : t('ui.profile.galleryHelp')}</p>
-          {selectionError && <p role="alert" className="text-xs font-medium text-red-700 dark:text-red-200">{selectionError}</p>}
+          <ImageShapeHint shape="photo" className="text-xs leading-5 text-gray-500 dark:text-muted-foreground" />
+          {selectionError &&<p role="alert" className="text-xs font-medium text-red-700 dark:text-red-200">{selectionError}</p>}
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={() => inputRef.current?.click()} disabled={saving}>
@@ -210,6 +230,7 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
           )}
         </>
       )}
+      {cropDialog}
     </section>
   );
 }

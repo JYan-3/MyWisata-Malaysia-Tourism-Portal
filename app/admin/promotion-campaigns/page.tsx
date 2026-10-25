@@ -133,6 +133,8 @@ export default function PromotionCampaignsPage() {
   const [clock, setClock] = useState(() => new Date());
   const childEditing = formLocationEditing || listLocationEditing;
   const awaitingApproval = editing?.status === "pending_approval";
+  // Live and paused events can be corrected in place; the address stays fixed (shared links).
+  const live = editing?.status === "approved" || editing?.status === "paused";
   const actualLocations = editing ? [...(campaigns.find(row => row.id === editing.id)?.locations ? toEditableLocations(campaigns.find(row => row.id === editing.id)?.locations) : toEditableLocations(editing.locations)), ...formLocations] : formLocations;
   let draftFields: Record<string, unknown>;
   try { draftFields = { ...form, startsAt: malaysiaCalendarDateToIso(form.startsAt, "start"), endsAt: malaysiaCalendarDateToIso(form.endsAt, "end") }; }
@@ -291,6 +293,7 @@ export default function PromotionCampaignsPage() {
       setError(t("promotionCampaigns.form.completeChecklist"));
       return;
     }
+    if (live && !await confirm(t("promotionCampaigns.form.liveSaveConfirm"))) return;
     setBusy(true); setError(null);
     let saved = editing;
     try {
@@ -317,7 +320,7 @@ export default function PromotionCampaignsPage() {
       }
       if (!saved) throw new Error(t("promotionCampaigns.errors.save"));
       if (publish) await publishCampaign(saved, setEditing);
-      showFeedback("success", t(publish ? "promotionCampaigns.form.published" : "promotionCampaigns.form.draftSaved"));
+      showFeedback("success", t(publish ? "promotionCampaigns.form.published" : live ? "promotionCampaigns.form.liveSaved" : "promotionCampaigns.form.draftSaved"));
       resetForm();
       await load();
     } catch (reason) {
@@ -384,10 +387,11 @@ export default function PromotionCampaignsPage() {
             </div>
             {dirty && <p className="text-xs text-muted-foreground">{t("promotionCampaigns.form.unsaved")}</p>}
             {awaitingApproval && <p role="status" className="text-sm text-muted-foreground">{t("promotionCampaigns.form.pendingRecovery")}</p>}
+            {live && <p role="status" data-live-event-edit className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">{t("promotionCampaigns.form.liveEditing")}</p>}
             <div className="grid gap-4 md:grid-cols-2">
               <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.name")}<Input {...fieldProps("title")} required minLength={3} maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background dark:bg-background px-3 font-normal" />{fieldError("title")}</label>
-              <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.slug")}<Input {...fieldProps("slug")} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" minLength={3} maxLength={120} value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value.toLowerCase().replace(/\s+/g, "-") })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background dark:bg-background px-3 font-normal" />{fieldError("slug")}</label>
-              <p className="text-xs text-muted-foreground md:col-span-2">{t("promotionCampaigns.form.slugHint")} <span className="break-all font-mono">/customer/events/{form.slug || "event-name"}</span></p>
+              <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.slug")}<Input {...fieldProps("slug")} disabled={busy || awaitingApproval || live} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" minLength={3} maxLength={120} value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value.toLowerCase().replace(/\s+/g, "-") })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background dark:bg-background px-3 font-normal" />{fieldError("slug")}</label>
+              <p className="text-xs text-muted-foreground md:col-span-2">{t(live ? "promotionCampaigns.form.slugLocked" : "promotionCampaigns.form.slugHint")} <span className="break-all font-mono">/customer/events/{form.slug || "event-name"}</span></p>
               <label className="text-sm font-semibold text-foreground md:col-span-2">{t("promotionCampaigns.form.summary")}<Input {...fieldProps("summary")} required minLength={10} maxLength={240} value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background dark:bg-background px-3 font-normal" />{fieldError("summary")}</label>
               <label className="text-sm font-semibold text-foreground md:col-span-2">{t("promotionCampaigns.form.description")}<Textarea {...fieldProps("description")} required minLength={10} maxLength={5000} rows={4} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="mt-2 w-full rounded-lg border border-input bg-background dark:bg-background px-3 py-2 font-normal" />{fieldError("description")}</label>
               <label className="text-sm font-semibold text-foreground">{t("promotionCampaigns.form.startsAt")}<Input {...fieldProps("startsAt")} required type="date" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-background dark:bg-background px-3 font-normal" />{fieldError("startsAt")}</label>
@@ -411,7 +415,14 @@ export default function PromotionCampaignsPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.posterUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
                   </button>
-                  <Button type="button" variant="destructive" size="sm" disabled={busy || awaitingApproval} onClick={removePoster}><X size={14} aria-hidden="true" /> {t("promotionCampaigns.form.removePoster")}</Button>
+                  {live ? (
+                    // A live event must keep a poster, so it can be replaced but not removed.
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">
+                      {uploading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}
+                      {t("promotionCampaigns.form.replacePoster")}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handlePosterChange(event)} disabled={uploading || busy} />
+                    </label>
+                  ) : <Button type="button" variant="destructive" size="sm" disabled={busy || awaitingApproval} onClick={removePoster}><X size={14} aria-hidden="true" /> {t("promotionCampaigns.form.removePoster")}</Button>}
                 </div>
               ) : (
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">
@@ -434,14 +445,14 @@ export default function PromotionCampaignsPage() {
               />
             </div>
             {isInvalidMalaysiaDateRange(form.startsAt, form.endsAt) && <p role="alert" className="text-sm text-destructive">{t("promotionCampaigns.form.invalidRange")}</p>}
-            <section className="rounded-xl border border-border bg-background p-4" aria-label={t("promotionCampaigns.form.checklistTitle")}>
+            {!live && <section className="rounded-xl border border-border bg-background p-4" aria-label={t("promotionCampaigns.form.checklistTitle")}>
               <h3 className="text-sm font-semibold">{t("promotionCampaigns.form.checklistTitle")}</h3>
               <ul className="mt-2 grid gap-2 text-xs sm:grid-cols-2">{publishChecks.map(check => <li key={check.key} className={check.done ? "text-foreground" : "text-muted-foreground"}>{t(check.done ? "promotionCampaigns.form.checkDone" : "promotionCampaigns.form.checkMissing", { item: t(`promotionCampaigns.form.checks.${check.key}`) })}</li>)}</ul>
               {!publishReady && <p className="mt-2 text-xs text-muted-foreground">{t("promotionCampaigns.form.completeChecklist")}</p>}
-            </section>
+            </section>}
             <div className="flex flex-wrap gap-2">
               <Button type="submit" name="intent" value="draft" variant="outline" disabled={busy || uploading || childEditing || !basicReady || awaitingApproval}><Save size={15} /> {editing ? t("promotionCampaigns.form.saveChanges") : t("promotionCampaigns.form.saveOnly")}</Button>
-              <Button type="submit" name="intent" value="publish" disabled={busy || uploading || childEditing || !publishReady}><Send size={15} /> {t("promotionCampaigns.form.saveDraft")}</Button>
+              {!live && <Button type="submit" name="intent" value="publish" disabled={busy || uploading || childEditing || !publishReady}><Send size={15} /> {t("promotionCampaigns.form.saveDraft")}</Button>}
               <span className="self-center text-xs text-muted-foreground">{t("promotionCampaigns.form.timezone")}</span>
             </div>
           </form>
@@ -475,7 +486,7 @@ export default function PromotionCampaignsPage() {
               <div><span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
               <p className="mt-2 text-xs text-muted-foreground">{t("promotionCampaigns.list.scheduleLine", { status: t(`promotionCampaigns.schedule.${getAdminEventScheduleStatus(campaign, clock)}`) })}</p>
               {campaign.locations?.length && campaign.locations.every((location) => location.status === "cancelled") ? <p className="text-xs text-destructive">{t("promotionCampaigns.allLocationsCancelled")}</p> : null}</div>
-              <div className="flex flex-wrap gap-2 xl:justify-end"><Button type="button" variant="outline" size="sm" disabled={childEditing || busy || uploading} aria-expanded={openLocationsFor === campaign.id} onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}><MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}</Button>{(campaign.status === "draft" || campaign.status === "rejected") && <Button type="button" variant="outline" size="sm" disabled={busy || childEditing || uploading} onClick={() => void editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy || childEditing || uploading || editing?.id === campaign.id || ((action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign))} title={(action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign) ? t("promotionCampaigns.form.rowNotReady") : undefined} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
+              <div className="flex flex-wrap gap-2 xl:justify-end"><Button type="button" variant="outline" size="sm" disabled={childEditing || busy || uploading} aria-expanded={openLocationsFor === campaign.id} onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}><MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}</Button>{(campaign.status === "draft" || campaign.status === "rejected" || campaign.status === "approved" || campaign.status === "paused") && <Button type="button" variant="outline" size="sm" disabled={busy || childEditing || uploading} onClick={() => void editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy || childEditing || uploading || editing?.id === campaign.id || ((action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign))} title={(action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign) ? t("promotionCampaigns.form.rowNotReady") : undefined} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
             </article>)}</div>}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
               <span>{tCommon("pagination.showing", { first: filteredCampaigns.length ? (pagedCampaigns.page - 1) * pageSize + 1 : 0, last: Math.min(pagedCampaigns.page * pageSize, filteredCampaigns.length), total: filteredCampaigns.length })}</span>
