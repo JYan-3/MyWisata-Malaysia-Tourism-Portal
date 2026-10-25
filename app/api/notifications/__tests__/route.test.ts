@@ -26,9 +26,10 @@ describe('GET /api/notifications', () => {
     const query = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       is: vi.fn().mockReturnThis(),
-      not: vi.fn().mockReturnThis(),
       range: vi.fn().mockResolvedValue({
         data: [{ id: 'n1', type: 'withdrawal_hold', title: 'Needs review', body: 'More information is needed.', link: '/customer/support', category: 'wallet', metadata: {}, read_at: null, created_at: '2026-07-20T00:00:00.000Z' }],
         count: 16,
@@ -52,6 +53,13 @@ describe('GET /api/notifications', () => {
     expect(body.data.totalPages).toBe(1);
     expect(body.data.items[0].readAt).toBeNull();
     expect(mocks.from).toHaveBeenCalledWith('notifications');
+  });
+
+  it('uses a stable id tie-breaker for notifications with the same creation time', async () => {
+    await GET(request('?page=1&pageSize=15'));
+    const query = mocks.from.mock.results[0]?.value;
+    expect(query.order).toHaveBeenNthCalledWith(1, 'created_at', { ascending: false });
+    expect(query.order).toHaveBeenNthCalledWith(2, 'id', { ascending: false });
   });
 
   it('accepts the messages category (chat notifications) as a real filter', async () => {

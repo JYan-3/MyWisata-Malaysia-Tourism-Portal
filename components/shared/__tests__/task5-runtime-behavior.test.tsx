@@ -208,6 +208,9 @@ describe("Task 5 shared runtime behavior", () => {
     mocks.fetch.mockResolvedValueOnce(response({
       data: {
         items: [{ id: "n1", title: "Vendor supplied title", body: "User supplied body", link: null, category: "wallet", readAt: null, createdAt: "2026-03-05T14:06:00.000Z" }],
+        page: 1,
+        pageSize: 15,
+        total: 16,
         totalPages: 2,
       },
     }));
@@ -221,9 +224,28 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("loads the staff inbox through the staff-authorized notification scope", async () => {
-    mocks.fetch.mockResolvedValueOnce(response({ data: { items: [], totalPages: 1 } }));
+    mocks.fetch.mockResolvedValueOnce(response({ data: { items: [], page: 1, pageSize: 15, total: 0, totalPages: 1 } }));
     await render(<NotificationCenter scope="staff" categories={[{ value: "all", label: "All" }, { value: "wallet", label: "Wallet" }]} />);
     expect(String(mocks.fetch.mock.calls[0]?.[0])).toContain("scope=staff");
+  });
+
+  it("hides the previous user's notifications immediately after an account switch", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-a" } });
+    mocks.fetch.mockResolvedValueOnce(response({ data: {
+      items: [{ id: "a-notice", title: "Private A notice", body: "A", link: null, category: "wallet", readAt: null, createdAt: "2026-03-05T14:06:00.000Z" }],
+      page: 1, pageSize: 15, total: 1, totalPages: 1,
+    } }));
+    await render(<NotificationCenter />);
+    expect(container.textContent).toContain("Private A notice");
+
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-b" } });
+    mocks.fetch.mockResolvedValueOnce(response({ data: {
+      items: [{ id: "b-notice", title: "Private B notice", body: "B", link: null, category: "wallet", readAt: null, createdAt: "2026-03-05T14:06:00.000Z" }],
+      page: 1, pageSize: 15, total: 1, totalPages: 1,
+    } }));
+    await render(<NotificationCenter />);
+    expect(container.textContent).not.toContain("Private A notice");
+    expect(container.textContent).toContain("Private B notice");
   });
 
   it("loads the next vendor notification page inside the bell without linking to a separate page", async () => {

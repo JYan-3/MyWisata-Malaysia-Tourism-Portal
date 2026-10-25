@@ -22,6 +22,7 @@ const approvedForwardMigrations = [
   "20261025133821_guest_order_contact_correction.sql",
   "20261025140023_guest_contact_correction_unknown_item_blocker.sql",
   "20261025012659_edit_live_promotion_campaigns.sql",
+  "20261024211808_scope_staff_withdrawal_alert_resolution.sql",
   "20261024205800_review_mail_intents_and_delivery_bounds.sql",
   "20261024202041_demo_loginable_identity_projection.sql",
   "20261024010000_recommendation_images_bucket_limits.sql",

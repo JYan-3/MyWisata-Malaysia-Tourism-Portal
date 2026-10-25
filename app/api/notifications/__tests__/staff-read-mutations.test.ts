@@ -18,6 +18,8 @@ function updateQuery() {
   const query = {
     update: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
     then: vi.fn(),
   };
@@ -41,6 +43,7 @@ describe("staff notification read mutations", () => {
     expect(mocks.staffAccess).toHaveBeenCalledWith(expect.any(Object), userId);
     expect(query.eq).toHaveBeenCalledWith("id", "n1");
     expect(query.eq).toHaveBeenCalledWith("user_id", userId);
+    expect(query.or).toHaveBeenCalledWith(expect.stringContaining("withdrawal_approval_task"));
   });
 
   it("marks all staff notifications read only for the signed-in user", async () => {
@@ -50,6 +53,7 @@ describe("staff notification read mutations", () => {
     expect(response.status).toBe(200);
     expect(mocks.staffAccess).toHaveBeenCalledWith(expect.any(Object), userId);
     expect(query.eq).toHaveBeenCalledWith("user_id", userId);
+    expect(query.or).toHaveBeenCalledWith(expect.stringContaining("withdrawal_approval_task"));
     expect(query.is).toHaveBeenCalledWith("read_at", null);
   });
 

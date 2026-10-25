@@ -8,11 +8,12 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
+import { NotificationBell } from "@/components/shared/notification-bell";
 
 export default function StaffHomePage() {
   const router = useRouter();
   const { t } = useTranslation("auth");
-  const { currentUser, staffRoleNames, staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["staff"]);
+  const { currentUser, staffRoleNames, staffPermissionKeys = [], staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["staff"]);
   const destinations = staffModules;
 
   async function signOut() {
@@ -30,6 +31,7 @@ export default function StaffHomePage() {
           <h1 className="mt-2 text-3xl font-black text-foreground">{t("staffHome.title", { name: currentUser.name })}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{staffRoleNames.length ? staffRoleNames.join(" · ") : t("staffHome.noRole")}</p>
         </div>
+        {staffPermissionKeys.includes("admin.withdrawal.approve") && <NotificationBell scope="staff" allHref="/admin/notifications" />}
         {staffPasskeyRequired && <Link href="/auth/staff-verification?next=%2Fstaff" className="rounded-full border border-border px-4 py-2 text-sm">{t("staffSecurity")}</Link>}
         <Button type="button" variant="outline" onClick={signOut} className="gap-2"><LogOut size={16} />{t("staffHome.signOut")}</Button>
       </header>

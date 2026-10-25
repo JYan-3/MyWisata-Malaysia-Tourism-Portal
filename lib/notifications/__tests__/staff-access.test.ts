@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const mocks = vi.hoisted(() => ({ assurance: vi.fn(), from: vi.fn() }));
+const mocks = vi.hoisted(() => ({ assurance: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/staff-assurance", () => ({ requireStaffAssurance: mocks.assurance }));
 
@@ -23,13 +23,14 @@ describe("requireStaffNotificationAccess", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.assurance.mockResolvedValue(null);
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
   });
 
   it("requires active global staff membership after assurance", async () => {
     const profileQuery = resultQuery({ data: { status: "active" }, error: null });
     const rolesQuery = resultQuery({ data: [{ roles: { name: "approver" } }], error: null });
     mocks.from.mockImplementation((table: string) => table === "users" ? profileQuery : rolesQuery);
-    const db = { from: mocks.from } as unknown as SupabaseClient;
+    const db = { from: mocks.from, rpc: mocks.rpc } as unknown as SupabaseClient;
     expect(await requireStaffNotificationAccess(db, "11111111-1111-4111-8111-111111111111")).toBeNull();
     expect(mocks.assurance).toHaveBeenCalledWith(db);
     expect(rolesQuery.is).toHaveBeenCalledWith("vendor_id", null);
@@ -40,7 +41,7 @@ describe("requireStaffNotificationAccess", () => {
     mocks.from.mockImplementation((table: string) => resultQuery(table === "users"
       ? { data: { status: "active" }, error: null }
       : { data: [{ roles: { name: "vendor_owner" } }], error: null }));
-    const db = { from: mocks.from } as unknown as SupabaseClient;
+    const db = { from: mocks.from, rpc: mocks.rpc } as unknown as SupabaseClient;
     const response = await requireStaffNotificationAccess(db, "11111111-1111-4111-8111-111111111111");
     expect(response?.status).toBe(403);
   });
@@ -49,8 +50,30 @@ describe("requireStaffNotificationAccess", () => {
     mocks.from.mockImplementation((table: string) => resultQuery(table === "users"
       ? { data: { status: "active" }, error: null }
       : { data: null, error: new Error("database unavailable") }));
-    const db = { from: mocks.from } as unknown as SupabaseClient;
+    const db = { from: mocks.from, rpc: mocks.rpc } as unknown as SupabaseClient;
     const response = await requireStaffNotificationAccess(db, "11111111-1111-4111-8111-111111111111");
     expect(response?.status).toBe(503);
+  });
+
+  it("allows a custom Staff role with an effective review permission", async () => {
+    mocks.from.mockImplementation((table: string) => resultQuery(table === "users"
+      ? { data: { status: "active" }, error: null }
+      : { data: [{ roles: { name: "staff" } }], error: null }));
+    const db = { from: mocks.from, rpc: mocks.rpc } as unknown as SupabaseClient;
+    expect(await requireStaffNotificationAccess(db, "11111111-1111-4111-8111-111111111111")).toBeNull();
+    expect(mocks.rpc).toHaveBeenCalledWith("has_staff_permission", {
+      p_user_id: "11111111-1111-4111-8111-111111111111",
+      p_permission_key: "admin.withdrawal.approve",
+    });
+  });
+
+  it("denies Staff notifications after the last effective permission is revoked", async () => {
+    mocks.from.mockImplementation((table: string) => resultQuery(table === "users"
+      ? { data: { status: "active" }, error: null }
+      : { data: [{ roles: { name: "staff" } }], error: null }));
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    const db = { from: mocks.from, rpc: mocks.rpc } as unknown as SupabaseClient;
+    const response = await requireStaffNotificationAccess(db, "11111111-1111-4111-8111-111111111111");
+    expect(response?.status).toBe(403);
   });
 });
