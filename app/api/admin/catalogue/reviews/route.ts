@@ -1,7 +1,7 @@
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { contentReviewSchema } from '@/lib/validation/vendor-schemas';
 import { createServiceClient } from '@/lib/supabase/service';
-import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { scheduleEmailDelivery } from '@/lib/email/events';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { revalidateTag } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireCatalogueReview();
   if ('error' in auth) return auth.error;
-  const { db, serviceDb } = auth;
+  const { db } = auth;
   const parsed = await parseBody(request, contentReviewSchema);
   if (!parsed.ok) return parsed.response;
   const { entityType, entityId, action, note, expectedVersion } = parsed.data;
@@ -65,28 +65,12 @@ export async function POST(request: Request) {
 
   const receipt = data as { reviewId: string; entityId: string; entityType: string; status: string; reviewedBy: string; reviewedAt: string; vendorId: string | null };
   if (!receipt?.reviewId) return apiFail('DB_ERROR', 'Review transaction returned no receipt', 500);
-  if (entityType === 'hotel_profile' || entityType === 'product') revalidateTag('activities', { expire: 0 });
-
-  if (receipt.vendorId) {
-    try {
-      await emitVendorNotification({
-        eventKey: `listing:review:${receipt.reviewId}`,
-        vendorId: receipt.vendorId,
-        audience: 'owner',
-        category: 'vendor_products',
-        type: `vendor_listing_${action}`,
-        title: `Listing ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'changes requested'}`,
-        body: note ? `Your ${entityType} review was ${action === 'change_requested' ? 'returned for changes' : `${action}ed`}: ${note}` : `Your ${entityType} review was ${action === 'change_requested' ? 'returned for changes' : `${action}ed`}.`,
-        link: entityType === 'hotel_profile' || entityType === 'outlet' ? '/vendor/outlets' : '/vendor/products',
-        email: true,
-        reference: entityId,
-        metadata: { entityType, status: receipt.status, reviewId: receipt.reviewId },
-        serviceDb,
-      });
-    } catch (notificationError) {
-      console.error('[vendor-notifications] committed catalogue review notice delivery failed', { reviewId: receipt.reviewId, entityType, entityId, error: notificationError });
-    }
+  if (entityType === 'hotel_profile' || entityType === 'product') {
+    try { revalidateTag('activities', { expire: 0 }); }
+    catch { console.warn('[catalogue-review] committed decision requires cache refresh'); }
   }
+  // The review transaction already persisted the owner notification and email.
+  if (receipt.vendorId) scheduleEmailDelivery();
 
   return apiOk({ ...receipt, id: entityId, review_status: receipt.status });
 }
