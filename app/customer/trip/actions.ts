@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createTrip, deleteTrip, getTripById, getTripItems, getTripNameSequence } from "@/backend/domains/trips";
-import type { AddTripItemInput } from "@/backend/domains/trips";
+import { createTrip, deleteTrip, getTripById, getTripItems, getTripNameSequence, getTrips } from "@/backend/domains/trips";
+import type { AddTripItemInput, TripWrite } from "@/backend/domains/trips";
 import { searchTripActivities } from "@/backend/domains/catalogue";
 import { getCachedDiscoveryActivityData } from "@/lib/cache/catalogue-cache";
 import { getTripDiscoveryAnchor } from "@/lib/customer/trip-planner";
@@ -58,73 +58,85 @@ export async function createTripAction(formData: FormData) {
   }
 }
 
-export async function deleteTripAction(tripId: string) {
-  const db = await createClient();
-  await deleteTrip(tripId, db);
-  revalidatePath("/customer/trip");
+export async function deleteTripAction(tripId: string, version: string) {
+  return mutateTrip(tripId,"delete",async()=>deleteTrip(tripId,await createClient(),version));
 }
 
-export type TripMutationResult<T> = {ok:true;value:T} | {ok:false};
+export type TripMutationResult<T> = {ok:true;value:T;version:string;refreshRequired?:true} | {ok:false;code?:"TRIP_CHANGED"};
 
-async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<T>):Promise<TripMutationResult<T>> {
+async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<TripWrite<T>>):Promise<TripMutationResult<T>> {
   try {
-    const value=await write();
-    revalidatePath(`/customer/trip/${tripId}`);
-    return {ok:true,value};
+    const receipt=await write();
+    try {
+      revalidatePath(`/customer/trip/${tripId}`);
+      return {ok:true,...receipt};
+    } catch {
+      console.warn("Trip mutation committed; cache refresh deferred",{operation});
+      return {ok:true,...receipt,refreshRequired:true};
+    }
   } catch(error) {
     // Expected rejection is data, so the framework does not navigate away from preserved UI state.
     // Never log database messages or transport headers: they may contain private input or credentials.
     const code=typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
     console.warn("Trip mutation rejected",{operation,code:/^[A-Z0-9_]{2,32}$/.test(code) ? code : "UNAVAILABLE"});
-    return {ok:false};
+    return {ok:false,...(code === "TRIP_CHANGED" ? {code:"TRIP_CHANGED" as const} : {})};
   }
 }
 
-export async function addTripItemAction(input: AddTripItemInput) {
+export async function addTripItemAction(input: AddTripItemInput,version:string) {
   return mutateTrip(input.trip_id,"add",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.addTripItem(input,db));
+    return import("@/backend/domains/trips").then(m=>m.addTripItem(input,db,version));
   });
 }
 
-export async function deleteTripItemAction(tripId:string,itemId:string) {
+export async function deleteTripItemAction(tripId:string,itemId:string,version:string) {
   return mutateTrip(tripId,"remove",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.deleteTripItem(itemId,db));
+    return import("@/backend/domains/trips").then(m=>m.deleteTripItem(itemId,db,tripId,version));
   });
 }
 
-export async function reorderTripItemsAction(tripId:string,reorderedItemIds:string[]) {
+export async function reorderTripItemsAction(tripId:string,reorderedItemIds:string[],version:string) {
   return mutateTrip(tripId,"reorder",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.reorderTripItems(tripId,reorderedItemIds,db));
+    return import("@/backend/domains/trips").then(m=>m.reorderTripItems(tripId,reorderedItemIds,db,version));
   });
 }
 
-export async function updateTripItemScheduleAction(tripId:string,itemId:string,updates:{scheduled_date:string | null;scheduled_time:string | null}) {
+export async function updateTripItemScheduleAction(tripId:string,itemId:string,updates:{scheduled_date:string | null;scheduled_time:string | null},version:string) {
   return mutateTrip(tripId,"schedule",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.updateTripItem(itemId,updates,db));
+    return import("@/backend/domains/trips").then(m=>m.updateTripItem(itemId,updates,db,tripId,version));
   });
 }
 
-export async function updateTripItemLocationAction(tripId:string,itemId:string,updates:{label:string;lat:number;lng:number}) {
+export async function updateTripItemLocationAction(tripId:string,itemId:string,updates:{label:string;lat:number;lng:number},version:string) {
   return mutateTrip(tripId,"location",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.updateTripItemLocation(itemId,updates,db));
+    return import("@/backend/domains/trips").then(m=>m.updateTripItemLocation(itemId,updates,db,tripId,version));
   });
 }
 
-export async function clearTripItemsAction(tripId:string) {
+export async function clearTripItemsAction(tripId:string,version:string) {
   return mutateTrip(tripId,"clear",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.clearTripItems(tripId,db));
+    return import("@/backend/domains/trips").then(m=>m.clearTripItems(tripId,db,version));
   });
 }
 
-export async function replaceTripItemAction(tripId:string,itemId:string,replacement:{experience_id:string;outlet_id?:string | null}) {
+export async function replaceTripItemAction(tripId:string,itemId:string,replacement:{experience_id:string;outlet_id?:string | null},version:string) {
   return mutateTrip(tripId,"replace",async()=>{
     const db=await createClient();
-    return import("@/backend/domains/trips").then(m=>m.replaceTripItem(itemId,replacement,db));
+    return import("@/backend/domains/trips").then(m=>m.replaceTripItem(itemId,replacement,db,tripId,version));
   });
+}
+
+export async function restoreLegacyTripsAction() {
+  try {
+    const db=await createClient();
+    await import("@/backend/domains/trips").then(m=>m.restoreLegacyCustomerTrips(db));
+    revalidatePath("/customer/trip");
+    return {ok:true as const,trips:await getTrips(db)};
+  } catch {return {ok:false as const};}
 }

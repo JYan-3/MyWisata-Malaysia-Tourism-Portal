@@ -677,6 +677,7 @@
       "search": "搜索",
       "searching": "搜索中…",
       "noMatches": "暂无匹配结果，请继续输入。",
+      "searchUnavailable": "地点搜索暂时不可用。您仍可手动设置地图图钉或使用 GPS。",
       "mapRegion": "互动地图",
       "dragToSetLocation": "拖动以设置您的位置",
       "youAreHere": "您在这里",
@@ -2394,7 +2395,11 @@
         "conflict": "预计少了约 {{minutes}} 分钟",
         "fits_estimate": "按当前交通估算可衔接",
         "unknown": "游览时长或交通估算未知"
-      }
+      },
+      "versionConflict": "此行程已在其他会话中更改。你的输入已保留，请重新加载行程后再保存。",
+      "legacyRestore": "恢复旧行程",
+      "legacyRestoreHint": "此浏览器中有旧版保存的行程。如仍需要，可手动恢复一次。",
+      "legacyRestoreConfirm": "将这些旧行程恢复到当前账号？已恢复过的行程不会重复添加。"
     },
     "outletPage": {
       "notFound": "未找到门店",
