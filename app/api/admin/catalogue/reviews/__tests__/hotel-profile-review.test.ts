@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ auditAndNotify: vi.fn(async () => undefined) }));
-vi.mock("@/lib/vendor-notifications/emit", () => ({ emitVendorNotification: vi.fn(async () => undefined) }));
+vi.mock("@/lib/email/events", () => ({ scheduleEmailDelivery: vi.fn() }));
 vi.mock("@/lib/staff-permissions/server", () => ({ requireStaffPermission: vi.fn(async () => ({
   user: { id: "admin-1" },
   db: { rpc: async (name: string, args: unknown) => {
