@@ -789,7 +789,7 @@
       "paid": "Disahkan pada pesanan berstatus dibayar",
       "refunded": "Disahkan pada pesanan dipulangkan",
       "other": "Disahkan pada status pesanan lain",
-      "updated": "Snapshot: {{date}}"
+      "updated": "Data setakat: {{date}}"
     },
     "analytics": {
       "bySeverity": "Mengikut keterukan",
@@ -3270,6 +3270,9 @@
     },
     "timeline": {
       "auditNote": "Setiap keputusan direkodkan dalam garis masa audit.",
+      "currentCycle": "Pusingan kelulusan semasa {{cycle}}",
+      "approvalCycle": "Pusingan {{cycle}}",
+      "legacyCycle": "Kelulusan lama (pusingan tidak direkodkan)",
       "noDecisions": "Tiada keputusan direkodkan lagi.",
       "title": "Garis masa kelulusan"
     }

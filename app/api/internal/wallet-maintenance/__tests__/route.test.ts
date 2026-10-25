@@ -24,7 +24,7 @@ describe('/api/internal/wallet-maintenance', () => {
   it('runs escalation, reward clearance, vendor settlement and current Malaysia report', async () => {
     const response = await POST(new Request('http://localhost/api/internal/wallet-maintenance', { method: 'POST', headers: { authorization: 'Bearer test-secret' } }));
     expect(response.status).toBe(200);
-    expect(mocks.rpc.mock.calls.map((call) => call[0])).toEqual(['escalate_withdrawals', 'generate_monthly_payout_report']);
+    expect(mocks.rpc.mock.calls.map((call) => call[0])).toEqual(['escalate_withdrawals', 'generate_monthly_payout_report', 'financial_operations_health']);
     expect(mocks.clearRewards).toHaveBeenCalledOnce();
     expect(mocks.vendorSettlements).toHaveBeenCalledOnce();
   });
