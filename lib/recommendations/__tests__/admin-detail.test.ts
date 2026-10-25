@@ -6,7 +6,7 @@ describe('buildAdminRecommendationDetail', () => {
     const detail = buildAdminRecommendationDetail({
       recommendation: {
         id: 'rec-1',
-        recommender_id: 'user-1',
+        updated_at: "2026-10-25T00:00:00.000001+00:00", recommender_id: 'user-1',
         vendor_name: 'Kedai Kopi',
         description: 'A detailed description',
         why_recommend: 'Excellent local food',
@@ -73,7 +73,7 @@ describe('buildAdminRecommendationDetail', () => {
     const detail = buildAdminRecommendationDetail({
       recommendation: {
         id: 'legacy-1',
-        recommender_id: 'user-1',
+        updated_at: "2026-10-25T00:00:00.000001+00:00", recommender_id: 'user-1',
         vendor_name: 'Legacy Vendor',
         description: null,
         why_recommend: null,
@@ -114,7 +114,7 @@ describe('buildAdminRecommendationDetail', () => {
   it('exposes only translation drafts and internal Place summaries to the authorized admin view', () => {
     const detail = buildAdminRecommendationDetail({
       recommendation: {
-        id: 'rec-1', recommender_id: 'user-1', vendor_name: 'Kedai Amanah', description: null, why_recommend: null,
+        id: 'rec-1', updated_at: "2026-10-25T00:00:00.000001+00:00", recommender_id: 'user-1', vendor_name: 'Kedai Amanah', description: null, why_recommend: null,
         category_id: null, state: null, vendor_address: null, google_place_id: 'google-place-id', location_name: 'Kedai Amanah', formatted_address: '1 Jalan Example', latitude: 4.6, longitude: 101.08,
         contact_phone: '+60123456789', contact_email: 'vendor@example.com', contact_website: null, image_attested_at: null, status: 'approved', reviewer_id: null, reviewed_at: null,
         rejection_reason: null, changes_requested_at: null, changes_requested_reason: null, converted_vendor_id: null, created_at: '2026-08-07T00:00:00Z', categories: null,

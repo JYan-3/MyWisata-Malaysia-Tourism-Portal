@@ -1,82 +1,60 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { getRecommendationEarnings } from '@/lib/recommendations/earnings';
 
-const USER = 'rec-user-1';
-
-function serviceFor(rows: unknown[], error: unknown = null) {
-  const order = vi.fn(async () => ({ data: error ? null : rows, error }));
-  const eq = vi.fn(() => ({ order }));
-  const select = vi.fn(() => ({ eq }));
-  const from = vi.fn(() => ({ select }));
-  return { service: { from } as never, from, select, eq, order };
+function serviceFor(data: unknown, error: unknown = null) {
+  const rpc = vi.fn(async () => ({ data, error }));
+  return { service: { rpc } as never, rpc };
 }
 
-function row(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'c1',
-    conversion_id: 'conv-1',
-    commission_type: 'ongoing',
-    amount: 18,
-    commission_rate: 0.03,
-    status: 'pending',
-    hold_until: null,
-    created_at: '2026-03-05T00:00:00.000Z',
-    recommendation_conversions: {
-      recommendation_id: 'rec-1',
-      vendor_recommendations: { id: 'rec-1', vendor_name: 'Aunty Lim Kitchen' },
-    },
-    ...overrides,
-  };
-}
+const result = {
+  totals: { pending: 12.5, lifetimeCleared: 18, convertedVendors: 2 },
+  totalCount: 3,
+  pageSize: 10 as const,
+  hasMore: false,
+  nextCursor: null,
+  snapshotCutoff: '2026-03-10T00:00:00.000Z',
+  commissions: [
+    { id: 'a', conversionId: 'conv-a', commissionType: 'bonus', amount: 12.5, commissionRate: null, status: 'pending', holdUntil: '2026-03-15T00:00:00.000Z', createdAt: '2026-03-05T00:00:00.000Z', recommendationId: 'rec-1', vendorName: 'Aunty Lim Kitchen' },
+    { id: 'b', conversionId: 'conv-b', commissionType: 'ongoing', amount: 18, commissionRate: 0.03, status: 'confirmed', holdUntil: null, createdAt: '2026-03-04T00:00:00.000Z', recommendationId: 'rec-1', vendorName: 'Aunty Lim Kitchen' },
+  ],
+};
 
 describe('getRecommendationEarnings', () => {
-  beforeEach(() => {
+  it('returns database totals independently from the bounded commission page', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-10T00:00:00.000Z'));
-  });
-  afterEach(() => vi.useRealTimers());
+    const { service, rpc } = serviceFor(result);
+    const response = await getRecommendationEarnings(service);
 
-  it('buckets pending / confirmed / reversed and totals only the active ones', async () => {
-    const { service } = serviceFor([
-      row({ id: 'a', status: 'pending', amount: 12.5, commission_type: 'bonus', commission_rate: null, hold_until: '2026-03-15T00:00:00.000Z', conversion_id: 'conv-a' }),
-      row({ id: 'b', status: 'confirmed', amount: 18, conversion_id: 'conv-b' }),
-      row({ id: 'c', status: 'reversed', amount: 9.75, conversion_id: 'conv-c' }),
-    ]);
-
-    const result = await getRecommendationEarnings(service, USER);
-
-    expect(result.totals).toEqual({ pending: 12.5, lifetimeCleared: 18, convertedVendors: 2 });
-    expect(result.commissions.map((c) => c.status)).toEqual(['pending', 'confirmed', 'reversed']);
-  });
-
-  it('derives clearsInDays from hold_until for pending rows only', async () => {
-    const { service } = serviceFor([
-      row({ id: 'a', status: 'pending', hold_until: '2026-03-15T00:00:00.000Z' }), // 5 days out
-      row({ id: 'b', status: 'pending', hold_until: '2026-03-01T00:00:00.000Z' }), // already past -> 0
-      row({ id: 'c', status: 'confirmed', hold_until: '2026-03-20T00:00:00.000Z' }),
-    ]);
-
-    const [a, b, c] = (await getRecommendationEarnings(service, USER)).commissions;
-    expect(a.clearsInDays).toBe(5);
-    expect(b.clearsInDays).toBe(0);
-    expect(c.clearsInDays).toBeNull();
+    expect(rpc).toHaveBeenCalledWith('get_recommendation_earnings_page', {
+      p_recommendation_id: null,
+      p_snapshot_cutoff: '2026-03-10T00:00:00.000Z',
+      p_page_size: 10,
+      p_before_created_at: null,
+      p_before_id: null,
+    });
+    expect(response.totals).toEqual(result.totals);
+    expect(response.totalCount).toBe(3);
+    expect(response.commissions).toHaveLength(2);
+    expect(response.commissions[0]).toMatchObject({ vendorName: 'Aunty Lim Kitchen', recommendationId: 'rec-1', type: 'bonus', amount: 12.5, clearsInDays: 5 });
+    vi.useRealTimers();
   });
 
-  it('maps vendor name + recommendation id, tolerating a missing join', async () => {
-    const { service } = serviceFor([
-      row({ id: 'a' }),
-      row({ id: 'b', recommendation_conversions: null }),
-    ]);
-
-    const [a, b] = (await getRecommendationEarnings(service, USER)).commissions;
-    expect(a).toMatchObject({ vendorName: 'Aunty Lim Kitchen', recommendationId: 'rec-1', type: 'ongoing', rate: 0.03 });
-    expect(b).toMatchObject({ vendorName: null, recommendationId: null });
+  it('passes recommendation filter, page size and stable keyset cursor to SQL', async () => {
+    const { service, rpc } = serviceFor(result);
+    await getRecommendationEarnings(service, {
+      recommendationId: 'rec-1', pageSize: 25,
+      snapshotCutoff: '2026-03-10T00:00:00.000Z',
+      cursor: { createdAt: '2026-03-04T00:00:00.000Z', id: 'b' },
+    });
+    expect(rpc).toHaveBeenCalledWith('get_recommendation_earnings_page', {
+      p_recommendation_id: 'rec-1', p_snapshot_cutoff: '2026-03-10T00:00:00.000Z', p_page_size: 25,
+      p_before_created_at: '2026-03-04T00:00:00.000Z', p_before_id: 'b',
+    });
   });
 
-  it('scopes the query to the recommender and returns empty on error', async () => {
-    const { service, eq } = serviceFor([], { message: 'boom' });
-    const result = await getRecommendationEarnings(service, USER);
-    expect(eq).toHaveBeenCalledWith('recommender_id', USER);
-    expect(result).toEqual({ totals: { pending: 0, lifetimeCleared: 0, convertedVendors: 0 }, commissions: [] });
+  it('fails closed instead of showing a database failure as zero earnings', async () => {
+    const { service } = serviceFor(null, { message: 'boom' });
+    await expect(getRecommendationEarnings(service)).rejects.toThrow('recommendation_earnings_unavailable');
   });
 });

@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
 
-function serviceFor(options: { rpcError?: { code?: string; message: string }; rpcData?: string | null; attributionEndsAt?: string | null; vendorIds?: string[]; lineTotals?: Record<string, number>; firstSaleAwarded?: boolean } = {}) {
-  const rpc = vi.fn().mockResolvedValue({ data: options.rpcData === undefined ? 'commission-1' : options.rpcData, error: options.rpcError ?? null });
+function serviceFor(options: { rpcError?: { code?: string; message: string }; failVendorId?: string; rpcData?: string | null; attributionEndsAt?: string | null; vendorIds?: string[]; lineTotals?: Record<string, number>; firstSaleAwarded?: boolean } = {}) {
+  const rpc = vi.fn(async (_name: string, args: { p_user_id: string }) => ({
+    data: options.rpcData === undefined ? 'commission-1' : options.rpcData,
+    error: options.failVendorId && args.p_user_id === `recommender-${options.failVendorId}`
+      ? { code: '23505', message: 'unrelated uniqueness violation' }
+      : options.rpcError ?? null,
+  }));
   const service = {
     from(table: string) {
       if (table === 'orders') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'order-1', status: 'PAID', total_amount: 200 } }) }) }) };
@@ -17,6 +22,9 @@ function serviceFor(options: { rpcError?: { code?: string; message: string }; rp
         };
         return builder;
       } }) };
+      if (table === 'recommendation_commissions') return {
+        select: () => ({ eq: () => ({ order: async () => ({ data: options.rpcData === null || options.rpcError || rpc.mock.calls.length === 0 ? [] : (options.vendorIds ?? ['vendor-1']).map((vendorId) => ({ id: `commission-${vendorId}`, recommender_id: `recommender-${vendorId}`, amount: options.firstSaleAwarded ? (options.lineTotals?.[vendorId] ?? 100) * 0.03 : 50 })) }) }) }),
+      };
       throw new Error(`unexpected table ${table}`);
     },
     rpc,
@@ -37,6 +45,22 @@ describe('attributeRecommendationReward', () => {
 
     await expect(attributeRecommendationReward(service as never, 'order-1')).resolves.toEqual({ kind: 'skipped' });
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a failed reward eligible for retry', async () => {
+    const { service } = serviceFor({
+      rpcError: { code: '57014', message: 'synthetic cancellation' },
+    });
+
+    await expect(attributeRecommendationReward(service as never, 'order-1'))
+      .rejects.toThrow('recommendation_reward_credit_unavailable');
+  });
+
+  it('does not hide a later vendor failure after an earlier vendor was credited', async () => {
+    const { service, rpc } = serviceFor({ vendorIds: ['vendor-1', 'vendor-2'], failVendorId: 'vendor-2' });
+    await expect(attributeRecommendationReward(service as never, 'order-1'))
+      .rejects.toThrow('recommendation_reward_credit_unavailable');
+    expect(rpc).toHaveBeenCalledTimes(2);
   });
 
   it('creates one pending reward for every converted vendor in a paid order', async () => {

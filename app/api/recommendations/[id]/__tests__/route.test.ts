@@ -41,7 +41,9 @@ describe('GET /api/recommendations/[id]', () => {
     mocks.ownerMaybeSingle.mockResolvedValue({ data: {
       id: '11111111-1111-4111-8111-111111111111', recommender_id: 'customer-1', vendor_name: 'Kedai Makan', description: 'Local food', why_recommend: 'Authentic', status: 'changes_requested', state: 'Penang', created_at: '2026-08-24T00:00:00Z', reviewed_at: '2026-08-25T00:00:00Z', changes_requested_at: '2026-08-25T00:00:00Z', changes_requested_reason: 'Please add opening hours.', rejection_reason: null, converted_vendor_id: null, categories: { name: 'Food' },
     }, error: null });
-    mocks.serviceFrom.mockImplementation((table: string) => table === 'recommendation_review_events'
+    const imageQuery = {select: vi.fn(),eq:vi.fn(),is:vi.fn(),order:vi.fn(),limit:vi.fn(async()=>({data:[{id:'22222222-2222-4222-8222-222222222222'}],error:null}))};
+    imageQuery.select.mockReturnValue(imageQuery); imageQuery.eq.mockReturnValue(imageQuery); imageQuery.is.mockReturnValue(imageQuery);imageQuery.order.mockReturnValue(imageQuery);
+    mocks.serviceFrom.mockImplementation((table: string) => table === 'recommendation_images' ? imageQuery : table === 'recommendation_review_events'
       ? { select: mocks.eventSelect }
       : { select: mocks.vendorSelect });
     mocks.eventSelect.mockReturnValue({ eq: mocks.eventEq });
@@ -64,6 +66,8 @@ describe('GET /api/recommendations/[id]', () => {
     expect(body.data.events[0].message).toBe('Please add opening hours.');
     expect(JSON.stringify(body)).not.toContain('internal_note');
     expect(JSON.stringify(body)).not.toContain('qualityScore');
+    expect(body.data.editable.images[0].url).toBe('/api/recommendations/images?imageId=22222222-2222-4222-8222-222222222222');
+    expect(JSON.stringify(body)).not.toContain('storage_path');
   });
 
   it('returns 404 for a foreign or missing recommendation before service queries', async () => {

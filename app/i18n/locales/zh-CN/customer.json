@@ -1506,7 +1506,11 @@
       "historyLoading": "正在读取推荐…",
       "historyTotal": "共 {{total}} 条推荐",
       "historyError": "暂时无法读取推荐记录。",
-      "historyRetry": "重试"
+      "historyRetry": "重试",
+      "editTitle": "更新这份推荐申请",
+      "resubmitted": "更新后的推荐申请已重新进入审核队列。",
+      "editConflict": "这份申请已有更新。你的输入仍保留，请重新打开最新资料后再提交。",
+      "editUnavailable": "暂时无法编辑这份申请，请重新加载详情后再试。"
     },
     "recommendationEarnings": {
       "title": "推荐收益",

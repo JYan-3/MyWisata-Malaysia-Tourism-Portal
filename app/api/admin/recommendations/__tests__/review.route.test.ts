@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   rpc: vi.fn(),
   serviceFrom: vi.fn(),
+  schedule: vi.fn(),
 }));
+
+vi.mock('@/lib/email/events', () => ({ scheduleEmailDelivery: mocks.schedule }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -27,13 +30,14 @@ describe('POST /api/admin/recommendations/review', () => {
     mocks.getUser.mockReset();
     mocks.rpc.mockReset();
     mocks.serviceFrom.mockReset();
+    mocks.schedule.mockReset();
 
     mocks.getUser.mockResolvedValue({
       data: { user: { id: '11111111-1111-4111-8111-111111111111' } },
     });
     mocks.rpc.mockImplementation(async (name: string) => {
       if (name === 'can_review_recommendation') return { data: true, error: null };
-      if (name === 'admin_review_recommendation') {
+      if (name === 'admin_review_recommendation_versioned') {
         return {
           data: {
             recommendationId: '33333333-3333-4333-8333-333333333333',
@@ -48,55 +52,25 @@ describe('POST /api/admin/recommendations/review', () => {
     });
   });
 
-  it('enqueues an idempotent email after approving a recommendation', async () => {
-    const upsert = vi.fn(() => ({
-      select: () => ({
-        maybeSingle: async () => ({ data: { id: 'outbox-1' }, error: null }),
-      }),
-    }));
-
-    mocks.serviceFrom.mockImplementation((table: string) => {
-      if (table === 'users') {
-        return {
-          select: () => ({
-            eq: () => ({
-              single: async () => ({
-                data: { email: 'customer@example.com', full_name: 'Aina' },
-                error: null,
-              }),
-            }),
-          }),
-        };
-      }
-      if (table === 'email_outbox') return { upsert };
-      throw new Error(`Unexpected table ${table}`);
-    });
-
+  it('schedules delivery after the database returns its committed review receipt', async () => {
     const response = await POST(new Request('http://localhost/api/admin/recommendations/review', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         recommendationId: '33333333-3333-4333-8333-333333333333',
-        action: 'approve',
+        action: 'approve', expectedVersion: '2026-10-25T00:00:00Z',
       }),
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_review_recommendation', {
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_review_recommendation_versioned', {
       p_rec_id: '33333333-3333-4333-8333-333333333333',
-      p_action: 'approve',
+      p_action: 'approve', p_expected_updated_at: '2026-10-25T00:00:00Z',
       p_internal_note: null,
       p_customer_message: null,
     });
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
-      event_key: 'recommendation_approved:33333333-3333-4333-8333-333333333333',
-      user_id: '22222222-2222-4222-8222-222222222222',
-      to_email: 'customer@example.com',
-      event_type: 'recommendation_approved',
-    }), expect.objectContaining({
-      onConflict: 'event_key',
-      ignoreDuplicates: true,
-    }));
+    expect(mocks.schedule).toHaveBeenCalledOnce();
+    expect(mocks.serviceFrom).not.toHaveBeenCalled();
   });
 
   it('rejects callers without the recommendation review capability before loading the submission', async () => {
@@ -107,7 +81,7 @@ describe('POST /api/admin/recommendations/review', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         recommendationId: '33333333-3333-4333-8333-333333333333',
-        action: 'approve',
+        action: 'approve', expectedVersion: '2026-10-25T00:00:00Z',
       }),
     }));
 
@@ -124,16 +98,16 @@ describe('POST /api/admin/recommendations/review', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         recommendationId: '33333333-3333-4333-8333-333333333333',
-        action: 'request_changes',
+        action: 'request_changes', expectedVersion: '2026-10-25T00:00:00Z',
         internalNote: 'Possible duplicate; compare before next review.',
         customerMessage: 'Please add a clearer storefront photo.',
       }),
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_review_recommendation', {
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_review_recommendation_versioned', {
       p_rec_id: '33333333-3333-4333-8333-333333333333',
-      p_action: 'request_changes',
+      p_action: 'request_changes', p_expected_updated_at: '2026-10-25T00:00:00Z',
       p_internal_note: 'Possible duplicate; compare before next review.',
       p_customer_message: 'Please add a clearer storefront photo.',
     });
@@ -150,7 +124,7 @@ describe('POST /api/admin/recommendations/review', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         recommendationId: '33333333-3333-4333-8333-333333333333',
-        action: 'approve',
+        action: 'approve', expectedVersion: '2026-10-25T00:00:00Z',
       }),
     }));
     const body = await response.json();

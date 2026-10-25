@@ -27,6 +27,25 @@ export const recommendationSubmissionSchema = z.object({
   imageAttested: z.literal(true),
 }).strict();
 
+export const recommendationResubmissionSchema = recommendationSubmissionSchema.omit({ stagedImageIds: true }).extend({
+  expectedVersion: z.string().min(1).max(64),
+  retainedImageIds: z.array(z.string().uuid()).max(5),
+  stagedImageIds: z.array(z.string().uuid()).max(5),
+}).superRefine((value, context) => {
+  const ids = [...value.retainedImageIds, ...value.stagedImageIds];
+  if (ids.length < 1 || ids.length > 5 || new Set(ids).size !== ids.length) {
+    context.addIssue({ code: 'custom', path: ['stagedImageIds'], message: 'Keep one to five unique photos' });
+  }
+});
+
+export type EditableRecommendation = {
+  version: string;
+  categoryId: string | null;
+  location: { placeId: string | null; name: string; formattedAddress: string; latitude: number; longitude: number };
+  contact: { phone: string | null; email: string | null; website: string | null };
+  images: Array<{ id: string; url: string }>;
+};
+
 export function mergeRecommendationImages(current: File[], selected: File[]): File[] {
   return [...current, ...selected].slice(-5);
 }
