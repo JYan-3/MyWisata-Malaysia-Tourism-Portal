@@ -19,7 +19,7 @@ describe('scheduled durable mail processing', () => {
     const request = () => new Request('http://localhost/cron', { headers: { authorization: 'Bearer fixture-cron' } });
     process.mockResolvedValueOnce({ sent: 1, failed: 1 });
     expect(await (await GET(request())).json()).toEqual({ sent: 1, failed: 1 });
-    expect(process).toHaveBeenCalledWith(20);
+    expect(process).toHaveBeenCalledWith(2);
     process.mockRejectedValueOnce(new Error('private database details'));
     const failure = await GET(request());
     expect(failure.status).toBe(503);
@@ -31,7 +31,7 @@ describe('scheduled durable mail processing', () => {
     const response = await GET(new Request('http://localhost/cron', { headers: { authorization: 'Bearer fixture-cron' } }));
     expect(response.status).toBe(503);
     expect(await response.text()).not.toContain('private details');
-    expect(process).toHaveBeenCalledWith(20);
+    expect(process).toHaveBeenCalledWith(2);
   });
   it('keeps ambiguous or exhausted delivery visible as an operational failure', async () => {
     process.mockResolvedValue({ sent: 0, failed: 0, reviewRequired: 2 });

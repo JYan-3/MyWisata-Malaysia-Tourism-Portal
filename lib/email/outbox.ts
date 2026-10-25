@@ -111,12 +111,12 @@ export async function enqueueEmail(input: EmailOutboxInput, db = createServiceCl
   return { inserted: Boolean(data), id: data?.id as string | undefined };
 }
 
-export async function processEmailOutbox(limit = 20): Promise<{ sent: number; failed: number; reviewRequired: number }> {
+export async function processEmailOutbox(limit = 2): Promise<{ sent: number; failed: number; reviewRequired: number }> {
   if (await isPlatformOperationEnabled(PLATFORM_OPERATION_KEYS.pauseCustomDelivery)) {
     return { sent: 0, failed: 0, reviewRequired: 0 };
   }
   const db = createServiceClient();
-  const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox_delivery_v2', { p_limit: limit });
+  const { data: claimed, error: claimError } = await db.rpc('claim_email_outbox_delivery_v2', { p_limit: Math.max(1, Math.min(Number.isFinite(limit) ? Math.floor(limit) : 2, 2)) });
   if (claimError || !claimed || !Array.isArray(claimed.rows)) throw new Error('email_claim_unavailable');
 
   let sent = 0;
