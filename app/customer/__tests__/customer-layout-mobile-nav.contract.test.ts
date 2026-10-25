@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const layoutSource = readFileSync(resolve(process.cwd(), "app/customer/layout.tsx"), "utf8");
 const headerNavigationSource = readFileSync(resolve(process.cwd(), "lib/customer/header-navigation.ts"), "utf8");
-const mobileRowStart = layoutSource.indexOf("{/* Mobile bottom-ish secondary row for the rest of nav */}");
+const mobileRowStart = layoutSource.indexOf("{/* Responsive secondary row");
 const mobileRow = layoutSource.slice(mobileRowStart, layoutSource.indexOf("</nav>", mobileRowStart));
 
 describe("customer mobile navigation", () => {
@@ -12,5 +12,16 @@ describe("customer mobile navigation", () => {
     expect(mobileRowStart).toBeGreaterThanOrEqual(0);
     expect(mobileRow).not.toContain('href="/customer/vouchers"');
     expect(headerNavigationSource).toContain('href: "/customer/vouchers"');
+  });
+
+  it("renders the same shared five destinations on mobile without mobile-only counters", () => {
+    expect(mobileRow).toContain("CUSTOMER_NAV.map");
+    expect(mobileRow).toContain("<item.icon size={16}");
+    expect(mobileRow).not.toContain("tripCount");
+    expect(mobileRow).not.toContain('href="/customer/saved"');
+  });
+
+  it("keeps the mobile nav horizontally scrollable", () => {
+    expect(mobileRow).toContain("overflow-x-auto");
   });
 });

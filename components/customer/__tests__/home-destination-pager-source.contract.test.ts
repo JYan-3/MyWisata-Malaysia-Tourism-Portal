@@ -11,4 +11,13 @@ describe("home destination pager hook", () => {
     expect(sync).not.toContain("pendingPageRef.current =");
     expect(hook).toContain("pendingPageRef.current ?? Math.round(viewport.scrollLeft / metricsRef.current.pageStep)");
   });
+
+  it("routes each mobile horizontal touch gesture through the one-page helper", () => {
+    expect(hook).toContain('import { decideTouchPageTurn } from "@/lib/customer/touch-page-turn"');
+    expect(hook).toContain('addEventListener("pointerdown", onPointerDown)');
+    expect(hook).toContain('addEventListener("pointerup", onPointerUp)');
+    expect(hook).toContain("decideTouchPageTurn({");
+    expect(hook).toContain("startPage: gesture.startPage");
+    expect(hook).toContain("suppressCardClickUntilRef");
+  });
 });

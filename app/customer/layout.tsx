@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRightLeft, Bell, Bookmark, ChevronDown, ShoppingCart, Store } from "lucide-react";
+import { ArrowRightLeft, Bell, ChevronDown, ShoppingCart, Store } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import dynamic from "next/dynamic";
@@ -61,7 +61,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { savedIds } = useWishlist();
   const { savedStates } = useSavedDestinations();
   const savedCount = savedIds.size + savedStates.size;
-  const [tripCount, setTripCount] = useState(0);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const partnerMenuRef = useRef<HTMLDivElement>(null);
@@ -99,25 +98,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [currentUser]);
-
-  // Fetch actual trip count for the badge (reads from cookie-based mock store via API)
-  useEffect(() => {
-    if (!currentUser) return;
-    let cancelled = false;
-    async function loadTripCount() {
-      try {
-        const res = await fetch("/api/trips/count");
-        if (!cancelled && res.ok) {
-          const body = await res.json() as { count: number };
-          setTripCount(body.count);
-        }
-      } catch {
-        // best-effort
-      }
-    }
-    void loadTripCount();
-    return () => { cancelled = true; };
   }, [currentUser]);
 
   // Vendor-chat unread count moved into SupportChatProvider — it's now the
@@ -205,7 +185,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-16">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-17">
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
                 src="/branding/mylawatan-logo-transparent.png?v=2"
@@ -226,6 +206,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                   aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                   style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
                 >
+                  <item.icon size={16} aria-hidden="true" />
                   <span>{tCustomer(item.labelKey)}</span>
                 </Link>
               ))}
@@ -325,10 +306,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
               {accountMenuOpen && (
               // max-height derived from the real, known layout numbers, not a
-              // guessed px: the nav row is h-16 (4rem) and this menu opens
-              // top-[calc(100%+0.75rem)] below it, so 4.75rem is exactly how
-              // far down the viewport this menu's own top edge sits — plus a
-              // little breathing room so it doesn't touch the viewport edge.
+              // guessed px: the nav row is h-17 (4.25rem) and this menu opens
+              // top-[calc(100%+0.75rem)] below it, so 5rem is how far down the
+              // viewport this menu starts, with a little breathing room.
               // overflow-y-auto only shows a scrollbar once content actually
               // exceeds that height; overflow-x-hidden keeps the rounded
               // corners clean now that overflow-hidden (which clipped both
@@ -337,7 +317,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                   role="menu"
                   aria-label={tCommon("account.menu")}
                 className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
-                style={{ maxHeight: "calc(100vh - 5.75rem)" }}
+                style={{ maxHeight: "calc(100vh - 6rem)" }}
                 >
                   <div className="border-b border-border px-3 pb-3 pt-2">
                     <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
@@ -398,8 +378,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile bottom-ish secondary row for the rest of nav */}
-        <div className="flex items-center gap-4 overflow-x-auto px-4 pb-2 hide-scrollbar md:hidden">
+        {/* Responsive secondary row: the same navigation scrolls horizontally on mobile */}
+        <div className="flex items-center gap-4 overflow-x-auto px-4 py-2 hide-scrollbar md:hidden">
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}
@@ -408,26 +388,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
-              <item.icon size={13} /> {tCustomer(item.labelKey)}
-              {item.href === "/customer/trip" && tripCount > 0 && (
-                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
-              )}
+              <item.icon size={16} aria-hidden="true" /> {tCustomer(item.labelKey)}
             </Link>
           ))}
-          <Link
-            href="/customer/saved"
-            aria-current={isCustomerNavActive(pathname, "/customer/saved") ? "page" : undefined}
-            className="relative flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap"
-            style={{ color: isCustomerNavActive(pathname, "/customer/saved") ? "var(--primary)" : "var(--muted-foreground)" }}
-          >
-            <Bookmark size={13} aria-hidden="true" fill={savedCount > 0 ? "currentColor" : "none"} />
-            {tCustomer("accountItems.saved.label")}
-            {savedCount > 0 && (
-              <span className="min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">
-                {savedCount > 99 ? "99+" : savedCount}
-              </span>
-            )}
-          </Link>
         </div>
       </nav>
 

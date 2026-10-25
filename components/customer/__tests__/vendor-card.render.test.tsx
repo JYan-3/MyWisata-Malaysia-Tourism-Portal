@@ -44,7 +44,7 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(drawer).toContain("2.1 km away");
     expect(drawer).toContain("charcoal-roasted coffee");
     expect(drawer).toContain("2 outlets");
-    expect(drawer).toMatch(/<a [^>]*href="\/customer\/vendor\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendor\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
   });
 
   it("has no info button and no caption strip", () => {
@@ -52,6 +52,7 @@ describe("VendorCard on the shared ExpandCard", () => {
 
     expect(markup).not.toContain("aria-expanded");
     expect(markup).not.toContain("View Details");
+    expect(markup).toContain('data-card-preview-trigger="true" aria-haspopup="dialog"');
   });
 
   it("renders the initials tile when the vendor has no cover", () => {

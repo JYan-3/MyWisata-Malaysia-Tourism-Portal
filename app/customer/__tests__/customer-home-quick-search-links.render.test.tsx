@@ -75,6 +75,8 @@ describe("customer home Discover Malaysia hero", () => {
     expect(destinationCarousel).not.toContain('aria-label="ui.map.previous"');
     expect(destinationCarousel).not.toContain('aria-label="ui.map.next"');
     expect(destinationCarousel).toContain('aria-label="ui.home.destinationCarouselControls"');
+    expect(destinationCarousel).toContain('aria-label="ui.home.viewDestination"');
+    expect(destinationCarousel).not.toContain(">ui.home.viewDestination</a>");
     expect(destinationCarousel.match(/<button[^>]*aria-pressed="(?:true|false)"[^>]*class="group relative block/g)).toHaveLength(MALAYSIA_DESTINATIONS.length);
     expect(destinationPositions.every((position) => position >= 0)).toBe(true);
     expect(destinationPositions).toEqual([...destinationPositions].sort((left, right) => left - right));

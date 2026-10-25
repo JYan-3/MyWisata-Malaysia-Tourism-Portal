@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
@@ -26,6 +26,7 @@ import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import { EventPartnersSection, type EventPartner } from "@/components/customer/event-partners-section";
 import { HomeDestinationWormIndicator } from "@/components/customer/home-destination-worm-indicator";
 import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
+import { Button } from "@/components/ui/button";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
 const FEATURED_DESTINATION_STATES = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
@@ -261,12 +262,18 @@ export function CustomerHomeClient({
             <div className="mb-3 flex items-center gap-3 sm:mb-1">
               <div className="flex items-center gap-3">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
-                <Link href={destinationHref(activeDestination.state)} className="inline-flex items-center gap-1 text-xs font-semibold text-white/85 transition hover:text-[#f4bd00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd00] sm:text-sm">
-                  {t("ui.home.viewDestination")} <ArrowRight size={14} />
-                </Link>
+                <Button asChild variant="outline" size="icon" className="rounded-full border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                  <Link
+                    href={destinationHref(activeDestination.state)}
+                    aria-label={t("ui.home.viewDestination")}
+                    title={t("ui.home.viewDestination")}
+                  >
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </Link>
+                </Button>
               </div>
             </div>
-            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
+            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3" onClickCapture={destinationPager.suppressClickAfterTouch}>
               {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
                 const isSaved = savedStates.has(destination.state);
@@ -288,6 +295,7 @@ export function CustomerHomeClient({
                       saved={isSaved}
                       aria-label={saveLabel}
                       title={saveLabel}
+                      data-home-destination-save="true"
                       onClick={() => {
                         if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
                         void toggleSaved(destination.state);
@@ -304,7 +312,7 @@ export function CustomerHomeClient({
                 count={8}
                 progress={destinationPager.progress}
                 current={destinationPager.page}
-                sizes={{ dot: 13, pill: 42, gap: 10 }}
+                sizes={{ dot: 11, pill: 36, gap: 8 }}
                 label={t("ui.home.destinationCarouselControls")}
                 pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
                 onSelect={destinationPager.goToPage}
@@ -315,7 +323,7 @@ export function CustomerHomeClient({
                 count={4}
                 progress={destinationPager.progress}
                 current={destinationPager.page}
-                sizes={{ dot: 16, pill: 58, gap: 13 }}
+                sizes={{ dot: 14, pill: 50, gap: 10 }}
                 label={t("ui.home.destinationCarouselControls")}
                 pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
                 onSelect={destinationPager.goToPage}
@@ -496,6 +504,7 @@ export function CustomerHomeClient({
           padding-right: var(--destination-gap);
           scroll-snap-type: x mandatory;
           overscroll-behavior-x: contain;
+          touch-action: pan-y;
           scrollbar-width: none;
         }
 

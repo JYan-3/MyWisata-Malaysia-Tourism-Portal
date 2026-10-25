@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import {
   decideWheelTurn,
   INITIAL_WHEEL_TURN_STATE,
 } from "@/lib/customer/wheel-page-turn";
+import { decideTouchPageTurn } from "@/lib/customer/touch-page-turn";
+
+const TOUCH_PAGE_TURN_THRESHOLD_PX = 48;
 
 type PagerState = {
   page: number;
@@ -20,6 +23,13 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
   const wheelTurnRef = useRef(INITIAL_WHEEL_TURN_STATE);
   const pendingPageRef = useRef<number | null>(null);
   const pendingPageTimerRef = useRef<number | null>(null);
+  const touchGestureRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startPage: number;
+  } | null>(null);
+  const suppressCardClickUntilRef = useRef(0);
   const frameRef = useRef<number | null>(null);
 
   const sync = useCallback(() => {
@@ -56,6 +66,12 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
     viewport.scrollTo({ left: page * pageStep, behavior: reducedMotion ? "auto" : "smooth" });
   }, [viewportRef]);
 
+  const suppressClickAfterTouch = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (performance.now() >= suppressCardClickUntilRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -83,20 +99,64 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
       event.preventDefault();
       goToPage(targetPage);
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || event.isPrimary === false) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest("[data-home-destination-save], a, input, select, textarea")) return;
+      const { pageStep, pageCount } = metricsRef.current;
+      if (pageStep === 0) return;
+
+      const startPage = pendingPageRef.current ?? Math.round(viewport.scrollLeft / pageStep);
+      touchGestureRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startPage: Math.min(Math.max(startPage, 0), pageCount - 1),
+      };
+      viewport.setPointerCapture(event.pointerId);
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      const gesture = touchGestureRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+      touchGestureRef.current = null;
+
+      const deltaX = event.clientX - gesture.startX;
+      const deltaY = event.clientY - gesture.startY;
+      if (Math.abs(deltaX) < TOUCH_PAGE_TURN_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+      suppressCardClickUntilRef.current = performance.now() + 500;
+      const targetPage = decideTouchPageTurn({
+        startPage: gesture.startPage,
+        deltaX,
+        thresholdPx: TOUCH_PAGE_TURN_THRESHOLD_PX,
+        pageCount: metricsRef.current.pageCount,
+      });
+      if (targetPage !== gesture.startPage) goToPage(targetPage);
+      event.preventDefault();
+    };
+    const onPointerCancel = (event: PointerEvent) => {
+      if (touchGestureRef.current?.pointerId === event.pointerId) touchGestureRef.current = null;
+    };
     const observer = new ResizeObserver(sync);
 
     sync();
     observer.observe(viewport);
     viewport.addEventListener("scroll", scheduleSync, { passive: true });
     viewport.addEventListener("wheel", onWheel, { passive: false });
+    viewport.addEventListener("pointerdown", onPointerDown);
+    viewport.addEventListener("pointerup", onPointerUp);
+    viewport.addEventListener("pointercancel", onPointerCancel);
     return () => {
       observer.disconnect();
       viewport.removeEventListener("scroll", scheduleSync);
       viewport.removeEventListener("wheel", onWheel);
+      viewport.removeEventListener("pointerdown", onPointerDown);
+      viewport.removeEventListener("pointerup", onPointerUp);
+      viewport.removeEventListener("pointercancel", onPointerCancel);
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
       if (pendingPageTimerRef.current !== null) window.clearTimeout(pendingPageTimerRef.current);
     };
   }, [goToPage, sync, viewportRef]);
 
-  return { ...pager, goToPage };
+  return { ...pager, goToPage, suppressClickAfterTouch };
 }

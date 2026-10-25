@@ -66,10 +66,10 @@ describe("customer home first viewport", () => {
   it("uses responsive snap pages without changing the selected destination", () => {
     expect(homeSource).toContain('"Kuala Lumpur", "Penang", "Sabah", "Melaka"');
     expect(homeSource).toContain("scroll-snap-type: x mandatory");
-    // Touch users swipe the rail sideways; restricting touch to vertical panning would block that.
+    // The app handles horizontal swipe gestures and leaves vertical panning to the browser.
     const pagerRule = homeSource.match(/\.atlas-destination-pager \{([^}]*)\}/)?.[1] ?? "";
     expect(pagerRule).toContain("overflow-x: auto");
-    expect(pagerRule).not.toMatch(/touch-action:\s*pan-y/);
+    expect(pagerRule).toMatch(/touch-action:\s*pan-y/);
     expect(homeSource).toContain("scroll-snap-align: none");
     expect(homeSource).toContain("nth-child(2n + 1)");
     expect(homeSource).toContain("nth-child(4n + 1)");
@@ -81,6 +81,9 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));");
     expect(homeSource).toContain("padding-right: var(--destination-gap)");
     expect(homeSource).toContain("useHomeDestinationPager(");
+    expect(homeSource).toContain('import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide-react"');
+    expect(homeSource).toContain('aria-label={t("ui.home.viewDestination")}');
+    expect(homeSource).not.toContain('{t("ui.home.viewDestination")} <ArrowRight');
     expect(homeSource).toContain("aria-pressed={isSelected}");
     expect(homeSource).toContain("selectDestination(destination.state)");
     expect(homeSource).toContain("atlas-selected-progress");
@@ -92,7 +95,10 @@ describe("customer home first viewport", () => {
     expect(cardMapping).toContain("<SaveToggleButton");
     expect(cardMapping).toContain("savedStates.has(destination.state)");
     expect(cardMapping).toContain("toggleSaved(destination.state)");
+    expect(cardMapping).toContain('data-home-destination-save="true"');
     expect(cardMapping).toMatch(/<\/button>\s*<SaveToggleButton/);
+    expect(homeSource).toContain("sizes={{ dot: 11, pill: 36, gap: 8 }}");
+    expect(homeSource).toContain("sizes={{ dot: 14, pill: 50, gap: 10 }}");
   });
 
   it("keeps the hero photo animation while limiting its zoom", () => {
