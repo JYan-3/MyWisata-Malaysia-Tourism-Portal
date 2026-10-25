@@ -12,7 +12,8 @@ describe("auth state error handling", () => {
   it("handles a failed profile load without an unhandled promise rejection", () => {
     const source = readFileSync(resolve(process.cwd(), "components/providers/auth.tsx"), "utf8");
 
-    expect(source).toMatch(/loadSupabaseUser\(session\.user\.id\)\s*\.catch\(/);
+    expect(source).toMatch(/loadSupabaseUser\(session\.user\.id, authRequest\)\s*\.catch\(/);
+    expect(source).toContain("if (!active || !isCurrentRequest(authRequest)) return;");
     expect(source).toContain("setCurrentUser(null)");
     expect(source).toMatch(/\.finally\(\(\) => \{[\s\S]*setLoading\(false\)/);
   });
@@ -21,7 +22,7 @@ describe("auth state error handling", () => {
     const source = readFileSync(resolve(process.cwd(), "components/providers/auth.tsx"), "utf8");
 
     expect(source).toMatch(
-      /const switchUser = useCallback\([\s\S]*?try \{[\s\S]*?fetch\('\/api\/auth\/demo-signin'[\s\S]*?loadSupabaseUser\(id\)[\s\S]*?\} catch \{[\s\S]*?supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?throw new Error\(tAuth\('signIn\.error'\)\)/,
+      /const switchUser = useCallback\([\s\S]*?try \{[\s\S]*?fetch\('\/api\/auth\/demo-signin'[\s\S]*?loadSupabaseUser\(id, request\)[\s\S]*?\} catch \{[\s\S]*?supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?throw new Error\(tAuth\('signIn\.error'\)\)/,
     );
   });
 });
