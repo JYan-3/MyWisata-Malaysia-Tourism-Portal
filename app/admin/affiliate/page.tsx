@@ -2,8 +2,8 @@
 
 // P4 — Member 4: admin affiliate oversight. See CLAUDE.md Step 9.
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, RefreshCw, Share2, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, RefreshCw, Share2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -37,6 +37,13 @@ interface AdminAffiliateStats {
     totalReferrals: number;
     totalCommission: number;
   };
+  maturityExposure: {
+    generatedAt: string;
+    pending: { count: number; amountRM: number };
+    confirmedOnPaidOrders: { count: number; amountRM: number };
+    confirmedOnRefundedOrders: { count: number; amountRM: number };
+    confirmedOnOtherStatuses: { count: number; amountRM: number };
+  };
   tiers: AdminTier[];
   topEarners: { userId: string; userName: string; referrals: number; commission: number; tierName: string }[];
   attributions: {
@@ -49,8 +56,27 @@ interface AdminAffiliateStats {
     commissionAmount: number;
     status: string;
     createdAt: string;
+    reviewStatus: 'pending' | 'released' | 'rejected' | null;
+    reviewVersion: number | null;
+    reviewEvidence: string | null;
   }[];
+  attributionTotalCount: number;
+  attributionPageSize: number;
+  attributionHasMore: boolean;
+  attributionNextCursor: { sortValue: string; createdAt: string; id: string } | null;
+  attributionSnapshotCutoff: string;
   funnel: Funnel;
+}
+
+type AdminAttributionRow = AdminAffiliateStats["attributions"][number];
+type AdminAttributionCursor = { sortValue: string; createdAt: string; id: string };
+interface AdminAttributionPage {
+  items: AdminAttributionRow[];
+  totalCount: number;
+  pageSize: number;
+  hasMore: boolean;
+  nextCursor: AdminAttributionCursor | null;
+  snapshotCutoff: string;
 }
 
 interface FraudFlag {
@@ -134,6 +160,14 @@ export default function AdminAffiliatePage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [attributionPage, setAttributionPage] = useState(1);
+  const [attributionCursorHistory, setAttributionCursorHistory] = useState<(AdminAttributionCursor | null)[]>([null]);
+  const attributionSnapshotCutoff = useRef<string | null>(null);
+  const [attributionResult, setAttributionResult] = useState<AdminAttributionPage | null>(null);
+  const [attributionLoading, setAttributionLoading] = useState(true);
+  const [attributionUnavailable, setAttributionUnavailable] = useState(false);
+  const [attributionRefreshKey, setAttributionRefreshKey] = useState(0);
+  const attributionRequestId = useRef(0);
   const [clearing, setClearing] = useState(false);
   const [clearingResult, setClearingResult] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -142,8 +176,14 @@ export default function AdminAffiliatePage() {
   const [tierError, setTierError] = useState<string | null>(null);
 
   const [fraudFlags, setFraudFlags] = useState<FraudFlag[] | null | undefined>(undefined);
+  const [fraudTotal, setFraudTotal] = useState(0);
+  const [fraudPage, setFraudPage] = useState(1);
+  const fraudPageSize = 10;
   const [fraudCounters, setFraudCounters] = useState<FraudCounters | null>(null);
   const [disabledLinks, setDisabledLinks] = useState<DisabledLink[]>([]);
+  const [disabledLinksTotal, setDisabledLinksTotal] = useState(0);
+  const [disabledLinksPage, setDisabledLinksPage] = useState(1);
+  const disabledLinksPageSize = 10;
   const [fraudTypeFilter, setFraudTypeFilter] = useState("all");
   const [fraudSeverityFilter, setFraudSeverityFilter] = useState("all");
   const [fraudStatusFilter, setFraudStatusFilter] = useState("open");
@@ -180,6 +220,50 @@ export default function AdminAffiliatePage() {
     }
   }
 
+  const currentAttributionCursor = attributionCursorHistory[attributionPage - 1] ?? null;
+
+  useEffect(() => {
+    const requestId = ++attributionRequestId.current;
+    const timer = window.setTimeout(() => {
+      setAttributionLoading(true);
+      setAttributionUnavailable(false);
+      const params = new URLSearchParams({
+        status: statusFilter,
+        search: search.trim(),
+        sortKey,
+        sortDir,
+        pageSize: "10",
+      });
+      if (currentAttributionCursor) params.set("cursor", JSON.stringify(currentAttributionCursor));
+      if (attributionSnapshotCutoff.current) params.set("snapshotCutoff", attributionSnapshotCutoff.current);
+      void fetch(`/api/admin/affiliate/attributions?${params.toString()}`, { cache: "no-store" })
+        .then(async (response) => {
+          const body = await response.json() as { data: AdminAttributionPage | null };
+          if (requestId !== attributionRequestId.current) return;
+          if (!response.ok || !body.data) {
+            setAttributionUnavailable(true);
+            setAttributionResult(null);
+            return;
+          }
+          setAttributionResult(body.data);
+          attributionSnapshotCutoff.current = body.data.snapshotCutoff;
+        })
+        .catch(() => {
+          if (requestId === attributionRequestId.current) {
+            setAttributionUnavailable(true);
+            setAttributionResult(null);
+          }
+        })
+        .finally(() => {
+          if (requestId === attributionRequestId.current) setAttributionLoading(false);
+        });
+    }, 200);
+    return () => {
+      window.clearTimeout(timer);
+      attributionRequestId.current += 1;
+    };
+  }, [attributionPage, attributionCursorHistory, attributionRefreshKey, currentAttributionCursor, search, sortDir, sortKey, statusFilter]);
+
   async function saveTier(tier: AdminTier) {
     if (!tier.id) return; // sentinel fallback tier — nothing to PATCH
     const draft = tierDrafts[tier.id];
@@ -213,23 +297,36 @@ export default function AdminAffiliatePage() {
     }
   }
 
-  async function loadFraudFlags() {
+  const loadFraudFlags = useCallback(async () => {
+    setFraudFlags(undefined);
     try {
-      const res = await fetch("/api/admin/affiliate/fraud-flags");
+      const params = new URLSearchParams({ page: String(fraudPage), pageSize: String(fraudPageSize), disabledPage: String(disabledLinksPage), type: fraudTypeFilter, severity: fraudSeverityFilter, status: fraudStatusFilter });
+      if (fraudSearch.trim()) params.set("search", fraudSearch.trim());
+      const res = await fetch(`/api/admin/affiliate/fraud-flags?${params.toString()}`, { cache: "no-store" });
       const body = (await res.json()) as {
-        data: { flags: FraudFlag[]; counters: FraudCounters; disabledLinks: DisabledLink[] } | null;
+        data: { flags: FraudFlag[]; total: number; counters: FraudCounters; disabledLinks: DisabledLink[]; disabledLinksTotal: number; disabledLinksPage: number } | null;
       };
       if (res.ok && body.data) {
+        const maxPage = Math.max(1, Math.ceil(body.data.total / fraudPageSize));
+        if (fraudPage > maxPage) {
+          setFraudPage(maxPage);
+          return;
+        }
         setFraudFlags(body.data.flags);
+        setFraudTotal(body.data.total);
         setFraudCounters(body.data.counters);
         setDisabledLinks(body.data.disabledLinks);
+        setDisabledLinksTotal(body.data.disabledLinksTotal);
+        if (disabledLinksPage > Math.max(1, Math.ceil(body.data.disabledLinksTotal / disabledLinksPageSize))) {
+          setDisabledLinksPage(Math.max(1, Math.ceil(body.data.disabledLinksTotal / disabledLinksPageSize)));
+        }
       } else {
         setFraudFlags(null);
       }
     } catch {
       setFraudFlags(null);
     }
-  }
+  }, [disabledLinksPage, disabledLinksPageSize, fraudPage, fraudPageSize, fraudSearch, fraudSeverityFilter, fraudStatusFilter, fraudTypeFilter]);
 
   async function loadFraudAnalytics(range: FraudAnalyticsRange) {
     try {
@@ -262,9 +359,17 @@ export default function AdminAffiliatePage() {
 
   useEffect(() => {
     (async () => {
-      await Promise.all([loadStats(), loadFraudFlags()]);
+      await loadStats();
     })();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadFraudFlags(); }, 200);
+    return () => window.clearTimeout(timer);
+  }, [loadFraudFlags]);
+
+  const fraudTotalPages = Math.ceil(fraudTotal / fraudPageSize);
+  const attributionTotalPages = Math.max(1, Math.ceil((attributionResult?.totalCount ?? 0) / 10));
 
   useEffect(() => {
     (async () => {
@@ -308,11 +413,16 @@ export default function AdminAffiliatePage() {
     try {
       const res = await fetch("/api/admin/affiliate/fraud-sweep", { method: "POST" });
       const body = (await res.json()) as {
-        data: { linksScanned: number; flagsCreated: unknown[] } | null;
+        data: { linksScanned: number; flagsCreated: unknown[]; hasMore?: boolean; busy?: boolean } | null;
         error: { message: string } | null;
       };
       if (res.ok && body.data) {
-        setSweepResult(t("affiliate.sweep.result", { links: body.data.linksScanned, flags: body.data.flagsCreated.length }));
+        const progress = body.data.busy
+          ? t("affiliate.jobs.busy")
+          : body.data.hasMore
+            ? t("affiliate.jobs.more")
+            : "";
+        setSweepResult([t("affiliate.sweep.result", { links: body.data.linksScanned, flags: body.data.flagsCreated.length }), progress].filter(Boolean).join(" "));
         await Promise.all([loadFraudFlags(), loadFraudAnalytics(fraudRange)]);
       } else {
         setSweepResult(body.error?.message ?? t("affiliate.errors.fraudSweep"));
@@ -395,6 +505,7 @@ export default function AdminAffiliatePage() {
           : t("affiliate.success.rejected"),
       );
       await loadStats();
+      setAttributionRefreshKey((key) => key + 1);
     } catch {
       showFeedback(
         "error",
@@ -407,6 +518,30 @@ export default function AdminAffiliatePage() {
     }
   }
 
+  async function reviewGuestCommission(id: string, version: number, action: "release" | "reject") {
+    if (reviewingId) return;
+    setReviewingId(id);
+    try {
+      const response = await fetch(`/api/admin/affiliate/attributions/${id}/guest-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, version }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showFeedback("error", body.error?.message ?? t("affiliate.errors.guestReview"));
+        return;
+      }
+      showFeedback("success", action === "release" ? t("affiliate.success.guestReviewReleased") : t("affiliate.success.rejected"));
+      await loadStats();
+      setAttributionRefreshKey((key) => key + 1);
+    } catch {
+      showFeedback("error", t("affiliate.errors.guestReview"));
+    } finally {
+      setReviewingId(null);
+    }
+  }
+
   async function runClearing() {
     if (clearing) return;
     setClearing(true);
@@ -414,14 +549,21 @@ export default function AdminAffiliatePage() {
     try {
       const res = await fetch("/api/admin/affiliate/run-clearing", { method: "POST" });
       const body = (await res.json()) as {
-        data: { cleared: unknown[]; reversed: unknown[]; skipped: number; errors: unknown[] } | null;
+        data: { cleared: unknown[]; reversed: unknown[]; skipped: number; errors: unknown[]; hasMore?: boolean; busy?: boolean } | null;
         error: { message: string } | null;
       };
       if (res.ok && body.data) {
-        setClearingResult(
+        const progress = body.data.busy
+          ? t("affiliate.jobs.busy")
+          : body.data.hasMore
+            ? t("affiliate.jobs.more")
+            : "";
+        setClearingResult([
           t("affiliate.clearing.result", { cleared: body.data.cleared.length, reversed: body.data.reversed.length, skipped: body.data.skipped, errors: body.data.errors.length ? t("affiliate.clearing.errors", { count: body.data.errors.length }) : "" }),
-        );
+          progress,
+        ].filter(Boolean).join(" "));
         await loadStats();
+        setAttributionRefreshKey((key) => key + 1);
       } else {
         setClearingResult(body.error?.message ?? t("affiliate.errors.clearing"));
       }
@@ -432,39 +574,36 @@ export default function AdminAffiliatePage() {
     }
   }
 
-  const filteredAttributions = useMemo(() => {
-    if (!stats) return [];
-    let rows = stats.attributions;
-    if (statusFilter !== "all") rows = rows.filter((r) => r.status === statusFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      rows = rows.filter((r) => r.userName.toLowerCase().includes(q) || (r.productName ?? "").toLowerCase().includes(q));
-    }
-    return [...rows].sort((a, b) => {
-      let diff = 0;
-      if (sortKey === "createdAt") diff = a.createdAt < b.createdAt ? -1 : 1;
-      else if (sortKey === "userName") diff = a.userName.localeCompare(b.userName);
-      else if (sortKey === "productName") diff = (a.productName ?? "").localeCompare(b.productName ?? "");
-      else diff = a.status.localeCompare(b.status);
-      return sortDir === "asc" ? diff : -diff;
-    });
-  }, [stats, statusFilter, search, sortKey, sortDir]);
+  const filteredAttributions = attributionResult?.items ?? [];
 
-  const filteredFraudFlags = (fraudFlags ?? []).filter((flag) =>
-    (fraudTypeFilter === "all" || flag.flagType === fraudTypeFilter)
-    && (fraudSeverityFilter === "all" || flag.severity === fraudSeverityFilter)
-    && (fraudStatusFilter === "all" || flag.status === fraudStatusFilter)
-    && (!fraudSearch.trim() || [flag.userName, flag.affiliateCode ?? "", flag.orderId ?? "", flag.flagType]
-      .some((value) => value.toLowerCase().includes(fraudSearch.trim().toLowerCase()))),
-  );
+  const filteredFraudFlags = fraudFlags ?? [];
+
+  function resetAttributionPagination() {
+    setAttributionPage(1);
+    setAttributionCursorHistory([null]);
+    attributionSnapshotCutoff.current = null;
+  }
 
   function toggleSort(key: SortKey) {
+    resetAttributionPagination();
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
       setSortDir("desc");
     }
+  }
+
+  function goToNextAttributionPage() {
+    const nextCursor = attributionResult?.nextCursor;
+    if (!nextCursor || !attributionResult.hasMore) return;
+    setAttributionCursorHistory((history) => [...history.slice(0, attributionPage), nextCursor]);
+    setAttributionPage((page) => page + 1);
+  }
+
+  function goToPreviousAttributionPage() {
+    if (attributionPage <= 1) return;
+    setAttributionPage((page) => page - 1);
   }
 
   if (stats === undefined) {
@@ -600,6 +739,18 @@ export default function AdminAffiliatePage() {
           { label: t("affiliate.metrics.commission"), value: formatMYR(stats.totals.totalCommission) },
       ]} />
 
+      <div className="rounded-xl border border-border bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">{t("affiliate.maturityExposure.title")}</p>
+        <p className="text-xs text-muted-foreground mb-3">{t("affiliate.maturityExposure.description")}</p>
+        <AdminMetricGrid items={[
+          { label: t("affiliate.maturityExposure.pending"), value: `${formatMYR(stats.maturityExposure.pending.amountRM)} · ${stats.maturityExposure.pending.count}` },
+          { label: t("affiliate.maturityExposure.paid"), value: `${formatMYR(stats.maturityExposure.confirmedOnPaidOrders.amountRM)} · ${stats.maturityExposure.confirmedOnPaidOrders.count}` },
+          { label: t("affiliate.maturityExposure.refunded"), value: `${formatMYR(stats.maturityExposure.confirmedOnRefundedOrders.amountRM)} · ${stats.maturityExposure.confirmedOnRefundedOrders.count}` },
+          { label: t("affiliate.maturityExposure.other"), value: `${formatMYR(stats.maturityExposure.confirmedOnOtherStatuses.amountRM)} · ${stats.maturityExposure.confirmedOnOtherStatuses.count}` },
+        ]} />
+        <p className="mt-2 text-[0.6875rem] text-muted-foreground">{t("affiliate.maturityExposure.updated", { date: new Date(stats.maturityExposure.generatedAt).toLocaleString(locale) })}</p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
@@ -671,6 +822,15 @@ export default function AdminAffiliatePage() {
               ))}
             </div>
           )}
+          {disabledLinksTotal > disabledLinksPageSize && (
+            <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>{t("affiliate.pagination.showing", { first: (disabledLinksPage - 1) * disabledLinksPageSize + 1, last: Math.min(disabledLinksPage * disabledLinksPageSize, disabledLinksTotal), total: disabledLinksTotal })}</span>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" aria-label={t("affiliate.pagination.previous")} disabled={disabledLinksPage <= 1} onClick={() => setDisabledLinksPage((page) => Math.max(1, page - 1))}><ChevronLeft size={14} /></Button>
+                <Button size="sm" variant="outline" aria-label={t("affiliate.pagination.next")} disabled={disabledLinksPage >= Math.ceil(disabledLinksTotal / disabledLinksPageSize)} onClick={() => setDisabledLinksPage((page) => page + 1)}><ChevronRight size={14} /></Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -679,7 +839,7 @@ export default function AdminAffiliatePage() {
           <AlertTriangle size={13} /> {t("affiliate.fraudAnalytics")}
         </p>
         <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-          {(["7d", "30d", "all"] as FraudAnalyticsRange[]).map((r) => (
+          {(["7d", "30d", "90d"] as FraudAnalyticsRange[]).map((r) => (
             <button
               key={r}
               onClick={() => setFraudRange(r)}
@@ -687,7 +847,7 @@ export default function AdminAffiliatePage() {
                 fraudRange === r ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {r === "all" ? t("affiliate.allTime") : r.toUpperCase()}
+              {r.toUpperCase()}
             </button>
           ))}
         </div>
@@ -755,7 +915,7 @@ export default function AdminAffiliatePage() {
       <AdminFilterBar className="mb-3">
         <input
           value={fraudSearch}
-          onChange={(event) => setFraudSearch(event.target.value)}
+          onChange={(event) => { setFraudSearch(event.target.value); setFraudPage(1); setSelectedFlagIds(new Set()); }}
           placeholder={t("affiliate.searchPlaceholder")}
           aria-label={t("affiliate.searchPlaceholder")}
           className={`${adminFilterControlClassName} min-w-[220px] flex-1`}
@@ -763,7 +923,7 @@ export default function AdminAffiliatePage() {
         <div className="flex items-center gap-2">
           <select
             value={fraudTypeFilter}
-            onChange={(e) => setFraudTypeFilter(e.target.value)}
+            onChange={(e) => { setFraudTypeFilter(e.target.value); setFraudPage(1); setSelectedFlagIds(new Set()); }}
             className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allTypes")}</option>
@@ -775,7 +935,7 @@ export default function AdminAffiliatePage() {
           </select>
           <select
             value={fraudSeverityFilter}
-            onChange={(e) => setFraudSeverityFilter(e.target.value)}
+            onChange={(e) => { setFraudSeverityFilter(e.target.value); setFraudPage(1); setSelectedFlagIds(new Set()); }}
             className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allSeverities")}</option>
@@ -785,7 +945,7 @@ export default function AdminAffiliatePage() {
           </select>
           <select
             value={fraudStatusFilter}
-            onChange={(e) => setFraudStatusFilter(e.target.value)}
+            onChange={(e) => { setFraudStatusFilter(e.target.value); setFraudPage(1); setSelectedFlagIds(new Set()); }}
             className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allStatuses")}</option>
@@ -872,19 +1032,31 @@ export default function AdminAffiliatePage() {
           </tbody>
         </table>
       </div>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{t("affiliate.pagination.showing", { first: fraudTotal ? (fraudPage - 1) * fraudPageSize + 1 : 0, last: Math.min(fraudPage * fraudPageSize, fraudTotal), total: fraudTotal })}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={fraudPage <= 1} aria-label={t("affiliate.pagination.previous")} onClick={() => { setFraudPage((page) => Math.max(1, page - 1)); setSelectedFlagIds(new Set()); }}>
+            <ChevronLeft size={14} /> {t("affiliate.pagination.previous")}
+          </Button>
+          <span className="min-w-24 text-center">{t("affiliate.pagination.pageOf", { page: fraudPage, total: Math.max(1, fraudTotalPages) })}</span>
+          <Button variant="outline" size="sm" disabled={fraudPage >= fraudTotalPages || fraudTotalPages === 0} aria-label={t("affiliate.pagination.next")} onClick={() => { setFraudPage((page) => page + 1); setSelectedFlagIds(new Set()); }}>
+            {t("affiliate.pagination.next")} <ChevronRight size={14} />
+          </Button>
+        </div>
+      </div>
 
       <AdminFilterBar className="mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("affiliate.allAttributions")}</p>
         <div className="flex min-w-[220px] flex-1 items-center gap-2">
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { resetAttributionPagination(); setSearch(e.target.value); }}
             placeholder={t("affiliate.searchPlaceholder")}
             className={`${adminFilterControlClassName} min-w-0 flex-1`}
           />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { resetAttributionPagination(); setStatusFilter(e.target.value); }}
             className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allStatuses")}</option>
@@ -920,7 +1092,11 @@ export default function AdminAffiliatePage() {
             </tr>
           </thead>
           <tbody>
-            {filteredAttributions.length === 0 ? (
+            {attributionLoading ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("affiliate.loading")}</td></tr>
+            ) : attributionUnavailable ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-destructive">{t("affiliate.errors.loadDescription")}</td></tr>
+            ) : filteredAttributions.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   {t("affiliate.noAttributions")}
@@ -937,7 +1113,17 @@ export default function AdminAffiliatePage() {
                     {formatMYR(r.commissionAmount)}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    {r.status === "pending" ? (
+                    {r.status === "pending" && r.reviewStatus === "pending" && r.reviewVersion !== null ? (
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="max-w-64 text-right text-xs text-amber-700">{t("affiliate.guestReview.reason")}</span>
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled={reviewingId === r.id}
+                            onClick={() => reviewGuestCommission(r.id, r.reviewVersion!, "release")}>{t("affiliate.guestReview.release")}</Button>
+                          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs text-destructive hover:text-destructive" disabled={reviewingId === r.id}
+                            onClick={() => reviewGuestCommission(r.id, r.reviewVersion!, "reject")}>{t("affiliate.guestReview.reject")}</Button>
+                        </div>
+                      </div>
+                    ) : r.status === "pending" ? (
                       <div className="flex justify-end gap-1.5">
                         <Button
                           size="sm"
@@ -967,6 +1153,20 @@ export default function AdminAffiliatePage() {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-3 flex items-center justify-center gap-3">
+        <Button variant="outline" size="sm" disabled={attributionPage <= 1 || attributionLoading} aria-label={t("affiliate.pagination.previous")}
+          onClick={goToPreviousAttributionPage}>
+          <ChevronLeft size={14} /> {t("affiliate.pagination.previous")}
+        </Button>
+        <span className="min-w-24 text-center text-sm text-muted-foreground">
+          {t("affiliate.pagination.pageOf", { page: attributionPage, total: attributionTotalPages })}
+          {attributionResult ? ` · ${attributionResult.totalCount}` : ""}
+        </span>
+        <Button variant="outline" size="sm" disabled={!attributionResult?.hasMore || attributionLoading} aria-label={t("affiliate.pagination.next")}
+          onClick={goToNextAttributionPage}>
+          {t("affiliate.pagination.next")} <ChevronRight size={14} />
+        </Button>
       </div>
     </AdminPageShell>
   );

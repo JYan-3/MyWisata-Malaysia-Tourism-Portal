@@ -771,6 +771,26 @@
     },
     "allAttributions": "Semua atribusi",
     "allTime": "Sepanjang masa",
+    "pagination": {
+      "previous": "Halaman sebelumnya",
+      "next": "Halaman seterusnya",
+      "pageOf": "Halaman {{page}} daripada {{total}}",
+      "showing": "Memaparkan {{first}}–{{last}} daripada {{total}}"
+    },
+    "guestReview": {
+      "reason": "E-mel tetamu sepadan dengan e-mel afiliasi yang disahkan. Ini petunjuk semakan, bukan bukti.",
+      "release": "Lepaskan ke penyelesaian biasa",
+      "reject": "Tolak komisen ini"
+    },
+    "maturityExposure": {
+      "title": "Pendedahan komisen afiliasi",
+      "description": "Amaun dan bilangan mengikut status pesanan yang direkodkan. Pesanan berstatus dibayar mungkin mempunyai pemenuhan yang belum direkodkan.",
+      "pending": "Komisen tertunda",
+      "paid": "Disahkan pada pesanan berstatus dibayar",
+      "refunded": "Disahkan pada pesanan dipulangkan",
+      "other": "Disahkan pada status pesanan lain",
+      "updated": "Data setakat: {{date}}"
+    },
     "analytics": {
       "bySeverity": "Mengikut keterukan",
       "byType": "Mengikut jenis",
@@ -829,7 +849,8 @@
       "saveTier": "Gagal menyimpan peringkat.",
       "selectOpenFlags": "Pilih bendera penipuan terbuka dahulu.",
       "accept": "Tidak dapat menerima komisen ini.",
-      "reject": "Tidak dapat menolak komisen ini."
+      "reject": "Tidak dapat menolak komisen ini.",
+      "guestReview": "Tidak dapat menyelesaikan semakan komisen tetamu. Muat semula dan cuba lagi."
     },
     "exporting": "Mengeksport…",
     "exportPdf": "Eksport PDF",
@@ -900,7 +921,8 @@
       "batchFlags_one": "{{count}} bendera penipuan diproses.",
       "batchFlags_other": "{{count}} bendera penipuan diproses.",
       "accepted": "Komisen diterima.",
-      "rejected": "Komisen ditolak."
+      "rejected": "Komisen ditolak.",
+      "guestReviewReleased": "Komisen dilepaskan ke penyelesaian biasa."
     },
     "sweep": {
       "result": "Diimbas {{links}} pautan, {{flags}} bendera baharu"
@@ -935,7 +957,11 @@
     "minSalesAmount": "Jualan min (RM)",
     "activePeriodDays": "Aktif dalam (hari)",
     "maxFraudRate": "Kadar penipuan maks",
-    "noLimit": "—"
+    "noLimit": "—",
+    "jobs": {
+      "busy": "Proses lain sedang mengendalikan baris gilir ini.",
+      "more": "Masih ada rekod; jalankan sekali lagi untuk meneruskan."
+    }
   },
   "aiAssistant": {
     "ask": {
@@ -3290,6 +3316,9 @@
     },
     "timeline": {
       "auditNote": "Setiap keputusan direkodkan dalam garis masa audit.",
+      "currentCycle": "Pusingan kelulusan semasa {{cycle}}",
+      "approvalCycle": "Pusingan {{cycle}}",
+      "legacyCycle": "Kelulusan lama (pusingan tidak direkodkan)",
       "noDecisions": "Tiada keputusan direkodkan lagi.",
       "title": "Garis masa kelulusan"
     }
@@ -3437,6 +3466,37 @@
     "unknownCustomer": "Butiran pelanggan tidak tersedia",
     "fulfilment": "Pemenuhan",
     "paymentPending": "Rekod pembayaran tidak tersedia",
+    "contactCorrection": {
+      "action": "Betulkan e-mel Guest",
+      "title": "Betulkan hubungan pesanan Guest",
+      "description": "Semak kelayakan, rekod tiket sokongan dan kaedah pengesahan pihak yang menuntut, kemudian sahkan pembetulan.",
+      "order": "Pesanan {{order}}",
+      "current": "Hubungan semasa: {{email}}",
+      "loading": "Menyemak status penghantaran dan pemenuhan…",
+      "newEmailLabel": "E-mel hubungan baharu yang disahkan",
+      "supportCaseLabel": "UUID tiket sokongan",
+      "evidenceLabel": "Kaedah pengesahan pihak yang menuntut",
+      "providerEvidence": "Penyedia pembayaran mengesahkan kawalan pembayar",
+      "accessEvidence": "Pihak yang menuntut menunjukkan akses pesanan sedia ada",
+      "paymentLabel": "Rekod pembayaran berjaya",
+      "selectPayment": "Pilih rekod pembayaran",
+      "oldLinkWarning": "Pautan dan sesi sedia ada akan dibatalkan. E-mel yang telah dihantar atau fail yang dimuat turun tidak boleh ditarik balik. Jangan letakkan e-mel baharu atau bukti pembayaran dalam tiket sokongan.",
+      "cancel": "Batal",
+      "submit": "Betulkan e-mel",
+      "saving": "Menghantar…",
+      "queued": "Hubungan dibetulkan. E-mel keselamatan baharu telah dimasukkan ke barisan, penghantaran belum disahkan.",
+      "eligibility": {
+        "eligible": "Layak dibetulkan. {{count}} mesej alamat lama akan disemak secara atomik.",
+        "order_not_eligible": "Hanya pesanan Guest yang telah dibayar atau selesai boleh dibetulkan.",
+        "fulfilment_reissue_required": "Pesanan ini mempunyai kelayakan pemenuhan berasingan yang masih boleh digunakan. Selesaikan semakan pemenuhan manual dahulu.",
+        "manual_mail_review_required": "Lebih 100 mesej lama perlu disemak. Hubungi operasi sokongan sebelum menukar e-mel.",
+        "delivery_unknown": "Status penghantaran mesej terdahulu tidak diketahui. Selesaikannya sebelum menukar e-mel.",
+        "delivery_busy": "Mesej terdahulu sedang dihantar. Cuba semula selepas penghantaran selesai."
+      },
+      "noPayment": "Tiada rekod pembayaran berjaya untuk menyokong pengesahan pembayar.",
+      "confirm": "Betulkan e-mel hubungan {{order}} daripada {{oldEmail}} kepada {{newEmail}}? Pautan Guest lama akan dibatalkan.",
+      "error": "E-mel hubungan pesanan Guest tidak dapat dibetulkan dengan selamat."
+    },
     "count": "{{total}} pesanan",
     "previous": "Sebelumnya",
     "next": "Seterusnya",

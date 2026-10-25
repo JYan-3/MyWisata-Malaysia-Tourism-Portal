@@ -14,6 +14,7 @@ export type ReceiptItem = {
 export type ReceiptData = {
   locale?: AppLocale;
   orderId: string;
+  orderReference?: string;
   recipientName: string;
   createdAt: string;
   paymentMethod: string;
@@ -47,7 +48,7 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.moveDown(0.5);
 
     // Order details
-    doc.fontSize(10).font(bold).text(copy.orderId + ':', { continued: true }).font(regular).text(`  ${data.orderId}`);
+    doc.fontSize(10).font(bold).text(copy.orderId + ':', { continued: true }).font(regular).text(`  ${data.orderReference ?? data.orderId}`);
     doc.font(bold).text(copy.date + ':', { continued: true }).font(regular).text(`  ${emailTime(data.createdAt, data.locale)}`);
     doc.font(bold).text(copy.payment + ':', { continued: true }).font(regular).text(`  ${emailPaymentMethod(data.paymentMethod, data.locale)}`);
     doc.font(bold).text(copy.customer + ':', { continued: true }).font(regular).text(`  ${data.recipientName}`);

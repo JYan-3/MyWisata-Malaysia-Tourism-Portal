@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { requireAccessControlSuperAdmin } from '@/lib/entitlements/admin-guard';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
@@ -21,6 +22,8 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 export async function GET(request: Request) {
   const { response } = await requireStaffPermission('admin.orders.read');
   if (response) return response;
+  const superAdmin = await requireAccessControlSuperAdmin();
+  const canCorrectGuestContact = !superAdmin.response;
 
   const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return apiFail('VALIDATION_FAILED', 'Invalid order query parameters.', 422, parsed.error.flatten());
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
   try {
     const service = createServiceClient();
     let ordersQuery = service.from('orders')
-      .select('id,display_id,user_id,contact_name,contact_email,status,subtotal,discount_amount,total_amount,currency,payment_method,voucher_code,paid_at,created_at', { count: 'exact' })
+      .select('id,display_id,user_id,guest_subject_id,contact_name,contact_email,status,subtotal,discount_amount,total_amount,currency,payment_method,voucher_code,paid_at,created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     if (status !== 'all') ordersQuery = ordersQuery.eq('status', status);
@@ -43,7 +46,7 @@ export async function GET(request: Request) {
     const orderRows = orders ?? [];
     const orderIds = orderRows.map((order) => order.id);
     const userIds = [...new Set(orderRows.map((order) => order.user_id).filter(Boolean))];
-    if (orderIds.length === 0) return apiOk({ orders: [], page, pageSize: PAGE_SIZE, total: count ?? 0 });
+    if (orderIds.length === 0) return apiOk({ orders: [], page, pageSize: PAGE_SIZE, total: count ?? 0, canCorrectGuestContact });
 
     const [usersResult, itemsResult, paymentsResult] = await Promise.all([
       userIds.length > 0
@@ -55,7 +58,7 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: true })
         .limit(1000),
       service.from('payments')
-        .select('order_id,method,provider,status,amount,created_at')
+        .select('id,order_id,method,provider,status,amount,created_at')
         .in('order_id', orderIds)
         .order('created_at', { ascending: false })
         .limit(250),
@@ -83,6 +86,8 @@ export async function GET(request: Request) {
     return apiOk({
       orders: orderRows.map((order) => ({
         ...order,
+        isGuest: order.user_id === null && Boolean(order.guest_subject_id),
+        canCorrectGuestContact,
         customer: (() => {
           const customer = usersById.get(order.user_id);
           return { name: customer?.full_name ?? order.contact_name ?? "Guest", email: customer?.email ?? order.contact_email ?? null };
@@ -106,6 +111,7 @@ export async function GET(request: Request) {
       page,
       pageSize: PAGE_SIZE,
       total: count ?? 0,
+      canCorrectGuestContact,
     });
   } catch {
     return apiFail('ORDERS_UNAVAILABLE', 'Unable to load orders right now.', 503);

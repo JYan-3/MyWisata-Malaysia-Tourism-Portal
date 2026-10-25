@@ -5,8 +5,6 @@
 // (lib/affiliate/commission.ts, deleted) in lib/affiliate/attribution.ts.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createServiceClient } from '@/lib/supabase/service';
-import { FRAUD_RATE_EXCLUDED_FLAG_TYPES } from '@/lib/affiliate/fraud';
 
 export interface CommissionTier {
   id: string;
@@ -52,12 +50,13 @@ const FALLBACK_TIER: CommissionTier = {
 
 /** All active affiliate tiers, ascending by threshold. */
 export async function getActiveTiers(service: SupabaseClient): Promise<CommissionTier[]> {
-  const { data } = await service
+  const { data, error } = await service
     .from('commission_rules')
     .select('id, tier_name, ongoing_rate, min_conversions, min_sales_amount_sen, active_period_days, max_fraud_rate_percent')
     .eq('rule_type', 'affiliate')
     .eq('is_active', true)
     .order('min_conversions', { ascending: true });
+  if (error) throw new Error('affiliate_tiers_unavailable');
 
   const tiers = (data ?? [])
     .filter((r) => r.tier_name)
@@ -81,47 +80,28 @@ export async function getActiveTiers(service: SupabaseClient): Promise<Commissio
  * fraud-flag rate over their own clicks.
  */
 async function getReferralSignals(service: SupabaseClient, userId: string): Promise<TierSignals> {
-  const empty: TierSignals = { referralCount: 0, salesAmountSen: 0, daysSinceLastConfirmed: null, fraudRatePercent: 0 };
+  const { data, error } = await service.rpc('affiliate_tier_signals', { p_user_id: userId });
+  if (error || !data || typeof data !== 'object') throw new Error('affiliate_tier_signals_unavailable');
 
-  const { data: link } = await service.from('affiliate_links').select('id').eq('user_id', userId).maybeSingle();
-  if (!link) return empty;
-
-  const { data: clicks } = await service.from('affiliate_clicks').select('id').eq('link_id', link.id);
-  const clickIds = (clicks ?? []).map((c) => c.id);
-  const clickCount = clickIds.length;
-  if (!clickCount) return empty;
-
-  const [{ data: confirmed }, { count: flagCount }] = await Promise.all([
-    service
-      .from('affiliate_attributions')
-      .select('order_id, created_at')
-      .in('click_id', clickIds)
-      .eq('status', 'confirmed'),
-    service
-      .from('affiliate_fraud_flags')
-      .select('id', { count: 'exact', head: true })
-      .eq('link_id', link.id)
-      .neq('status', 'dismissed')
-      .not('flag_type', 'in', `(${FRAUD_RATE_EXCLUDED_FLAG_TYPES.join(',')})`),
-  ]);
-  const confirmedRows = confirmed ?? [];
-
-  const referralCount = confirmedRows.length;
-  const fraudRatePercent = clickCount > 0 ? (flagCount ?? 0) / clickCount * 100 : 0;
-
-  let salesAmountSen = 0;
-  let daysSinceLastConfirmed: number | null = null;
-  if (confirmedRows.length > 0) {
-    const orderIds = [...new Set(confirmedRows.map((r) => r.order_id))];
-    const { data: orders } = await createServiceClient().from('orders').select('id, total_amount').in('id', orderIds);
-    const totalByOrder = new Map((orders ?? []).map((o) => [o.id, Number(o.total_amount)]));
-    salesAmountSen = confirmedRows.reduce((sum, r) => sum + Math.round((totalByOrder.get(r.order_id) ?? 0) * 100), 0);
-
-    const lastConfirmedAt = confirmedRows.reduce((latest, r) => (r.created_at > latest ? r.created_at : latest), confirmedRows[0].created_at);
-    daysSinceLastConfirmed = Math.floor((Date.now() - new Date(lastConfirmedAt).getTime()) / 86_400_000);
+  const result = data as Record<string, unknown>;
+  const clickCount = Number(result.click_count);
+  const flagCount = Number(result.flag_count);
+  const referralCount = Number(result.referral_count);
+  const salesAmountSen = Number(result.sales_amount_sen);
+  const lastConfirmedAt = typeof result.last_confirmed_at === 'string' ? result.last_confirmed_at : null;
+  if (![clickCount, flagCount, referralCount, salesAmountSen].every(Number.isFinite)
+    || clickCount < 0 || flagCount < 0 || referralCount < 0 || salesAmountSen < 0) {
+    throw new Error('affiliate_tier_signals_invalid');
   }
-
-  return { referralCount, salesAmountSen, daysSinceLastConfirmed, fraudRatePercent };
+  const daysSinceLastConfirmed = lastConfirmedAt
+    ? Math.floor((Date.now() - new Date(lastConfirmedAt).getTime()) / 86_400_000)
+    : null;
+  return {
+    referralCount,
+    salesAmountSen,
+    daysSinceLastConfirmed,
+    fraudRatePercent: clickCount > 0 ? flagCount / clickCount * 100 : 0,
+  };
 }
 
 function meetsTier(tier: CommissionTier, signals: TierSignals): boolean {

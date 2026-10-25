@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "loading": "Loading…",
     "contentTranslation": {
       "machineTranslated": "Machine translated",
       "showOriginal": "Show original",
@@ -1505,7 +1506,11 @@
       "historyLoading": "Loading recommendations…",
       "historyTotal": "{{total}} recommendations",
       "historyError": "Unable to load recommendations.",
-      "historyRetry": "Try again"
+      "historyRetry": "Try again",
+      "editTitle": "Update this recommendation",
+      "resubmitted": "Your updated recommendation is back in the review queue.",
+      "editConflict": "This recommendation changed. Your input is still here; reopen its latest details before submitting again.",
+      "editUnavailable": "Unable to open this recommendation for editing. Reload its details and try again."
     },
     "recommendationEarnings": {
       "title": "Recommendation earnings",
@@ -1964,7 +1969,7 @@
       "paymentLinkUnavailable": "We could not verify an active payment link. Try checking again or contact support before making another payment.",
       "checkPaymentAgain": "Check again",
       "orderItems": "Purchased Items",
-      "copyOrderId": "Copy Order ID",
+      "copyOrderId": "Copy order number",
       "brandName": "MyLawatan",
       "portalName": "Malaysia Tourism Portal",
       "paymentMethods": {
@@ -1988,7 +1993,7 @@
       "title": "Your orders",
       "description": "Track purchases, bookings, payment status and receipts.",
       "backToOrders": "Back to orders",
-      "orderId": "Order ID: #{{id}}",
+      "orderId": "Order number: {{id}}",
       "slot": "Slot: {{time}}",
       "bookingId": "Booking ID: {{id}}",
       "refundReasonPrompt": "Why are you requesting a refund?",
@@ -3803,7 +3808,7 @@
     "unavailable": "Guest checkout is temporarily unavailable.",
     "accessTitle": "Access your guest order",
     "recoveryHint": "Request a new private link using the order number and email provided at checkout.",
-    "orderNumber": "Order number",
+    "orderNumber": "Order number (e.g. ORD-1000)",
     "emailLink": "Email me an order link",
     "requested": "If the details match a guest order, an access link will be emailed.",
     "requestFailed": "Unable to request a link. Please try again later.",

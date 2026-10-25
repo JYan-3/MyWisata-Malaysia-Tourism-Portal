@@ -1,7 +1,7 @@
 "use client";
 
 import { resolveAppLocale } from "@/lib/i18n/locale";
-import { FormEvent, Suspense, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trans, useTranslation } from "react-i18next";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import type { Role, User } from "@/backend/core/types";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
 type AuthMode = "signin" | "signup" | "verify" | "forgot";
+type DemoLoadState = "loading" | "ready" | "error";
 
 export default function LoginPage() {
   return (
@@ -42,6 +43,9 @@ function LoginContent() {
   const supabase = createClient();
 
   const [users, setUsers] = useState<DemoUser[]>([]);
+  const [demoLoadState, setDemoLoadState] = useState<DemoLoadState>("loading");
+  const [demoRetryKey, setDemoRetryKey] = useState(0);
+  const demoRequestGeneration = useRef(0);
   const [roleFilter, setRoleFilter] = useState<Role | null>(null);
   const [mode, setMode] = useState<AuthMode>(() =>
     searchParams.get("mode") === "signup" ? "signup" : "signin",
@@ -71,14 +75,29 @@ function LoginContent() {
     } else if (queryError) {
       setError(GENERIC_ERROR);
     }
-    fetch("/api/auth/demo-users")
+    const controller = new AbortController();
+    const generation = ++demoRequestGeneration.current;
+    setDemoLoadState("loading");
+    setUsers([]);
+    fetch("/api/auth/demo-users", { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error(tAuth("errors.demoLoad"));
-        return response.json() as Promise<DemoUser[]>;
+        if (!response.ok) throw new Error("Demo account lookup failed");
+        const payload: unknown = await response.json();
+        if (!Array.isArray(payload)) throw new Error("Demo account lookup returned an invalid response");
+        return payload as DemoUser[];
       })
-      .then(setUsers)
-      .catch(() => setError(tAuth("errors.demoLoad")));
-  }, [GENERIC_ERROR, tAuth]);
+      .then((loadedUsers) => {
+        if (controller.signal.aborted || generation !== demoRequestGeneration.current) return;
+        setUsers(loadedUsers);
+        setDemoLoadState("ready");
+      })
+      .catch(() => {
+        if (controller.signal.aborted || generation !== demoRequestGeneration.current) return;
+        setUsers([]);
+        setDemoLoadState("error");
+      });
+    return () => controller.abort();
+  }, [GENERIC_ERROR, demoRetryKey]);
 
   function resetFeedback() {
     setError(null);
@@ -699,6 +718,16 @@ function LoginContent() {
 
           {/* Demo Accounts List - Elongated to show more accounts comfortably */}
           <div className="mt-3 max-h-[520px] xl:max-h-[580px] space-y-1.5 overflow-y-auto pr-0.5">
+            {demoLoadState === "loading" && <p role="status" className="rounded-lg bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">{tAuth("demo.loading")}</p>}
+            {demoLoadState === "error" && (
+              <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                <p>{tAuth("errors.demoLoad")}</p>
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setDemoRetryKey((key) => key + 1)}>
+                  {tAuth("demo.retry")}
+                </Button>
+              </div>
+            )}
+            {demoLoadState === "ready" && users.length === 0 && <p className="rounded-lg bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">{tAuth("demo.empty")}</p>}
             {visibleUsers.map((user) => (
               <button
                 key={user.id}

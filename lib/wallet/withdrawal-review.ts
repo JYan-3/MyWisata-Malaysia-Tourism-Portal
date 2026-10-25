@@ -22,6 +22,7 @@ export type WithdrawalReviewDetail = {
   amountSen: number;
   status: string;
   requiresDualApproval: boolean;
+  approvalCycle: number;
   approvalCount: number;
   riskLevel: WithdrawalRiskLevel;
   riskOverridden: boolean;
@@ -45,6 +46,7 @@ export type WithdrawalReviewDetail = {
     actorId: string;
     actorLabel: string;
     action: string;
+    approvalCycle: number | null;
     note: string | null;
     createdAt: string;
   }>;
@@ -94,6 +96,7 @@ export type WithdrawalListItem = {
   amountSen: number;
   status: string;
   requiresDualApproval: boolean;
+  approvalCycle: number;
   approvalCount: number;
   riskLevel: WithdrawalRiskLevel | null;
   riskOverridden: boolean;
@@ -108,3 +111,15 @@ export type WithdrawalListResponse = {
   pageSize: number;
   totalPages: number;
 };
+
+export function countCurrentCycleApprovals(
+  approvals: ReadonlyArray<{ approver_id?: unknown; action?: unknown; approval_cycle?: unknown }>,
+  currentCycle: number | null,
+): number {
+  if (currentCycle === null) return 0;
+  return new Set(approvals
+    .filter((approval) => approval.action === 'approve' && approval.approval_cycle === currentCycle)
+    .map((approval) => approval.approver_id)
+    .filter((approverId): approverId is string => typeof approverId === 'string'))
+    .size;
+}

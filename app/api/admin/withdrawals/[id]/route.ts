@@ -1,7 +1,7 @@
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
-import type { WithdrawalReviewDetail } from '@/lib/wallet/withdrawal-review';
+import { countCurrentCycleApprovals, type WithdrawalReviewDetail } from '@/lib/wallet/withdrawal-review';
 import { deriveWithdrawalAvailableActions } from '@/lib/wallet/withdrawal-capabilities';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function GET(
   const { data: row, error } = await service
     .from('withdrawal_requests')
     .select(`
-      id, user_id, amount, status, requires_dual_approval, destination_label,
+      id, user_id, amount, status, requires_dual_approval, approval_cycle, destination_label,
       destination_provider, destination_masked_ref,
       payout_provider, payout_provider_event_id, payout_failure_code,
       payout_failure_message, payout_failure_category, payout_failure_at,
@@ -45,7 +45,7 @@ export async function GET(
         reserved_earnings_sen, withdrawn_earnings_sen
       ),
       withdrawal_approvals(
-        id, approver_id, action, note, actioned_at,
+        id, approver_id, action, note, actioned_at, approval_cycle,
         users!inner(full_name, email)
       ),
       withdrawal_risk_assessments(
@@ -92,6 +92,7 @@ export async function GET(
   const riskRelationValue = r.withdrawal_risk_assessments as Record<string, unknown> | Record<string, unknown>[] | null;
   const risk = Array.isArray(riskRelationValue) ? riskRelationValue[0] : riskRelationValue;
   const approvals = (r.withdrawal_approvals as Record<string, unknown>[] | null) ?? [];
+  const approvalCycle = r.approval_cycle as number | null;
 
   // Mask Stripe Connect account ID — show only last 8 chars for receipt reference.
   const rawConnectId = u.stripe_connect_account_id as string | null;
@@ -107,7 +108,12 @@ export async function GET(
     amountSen:           Math.round((r.amount as number) * 100),
     status:              r.status as string,
     requiresDualApproval: r.requires_dual_approval as boolean,
-    approvalCount:       approvals.filter((a) => a.action === 'approve').length,
+    approvalCycle:       approvalCycle ?? 1,
+    approvalCount:       countCurrentCycleApprovals(approvals.map((approval) => ({
+      approver_id: approval.approver_id,
+      action: approval.action,
+      approval_cycle: approval.approval_cycle,
+    })), approvalCycle),
     riskLevel:           (risk?.risk_level as 'low' | 'review' | 'high') ?? 'low',
     riskOverridden:      risk?.overridden_at != null,
     customer: {
@@ -132,6 +138,7 @@ export async function GET(
         actorId:    a.approver_id as string,
         actorLabel: actor?.full_name as string ?? 'Unknown',
         action:     a.action as string,
+        approvalCycle: typeof a.approval_cycle === 'number' ? a.approval_cycle : null,
         note:       a.note as string | null,
         createdAt:  a.actioned_at as string,
       };

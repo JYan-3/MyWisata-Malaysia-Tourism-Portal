@@ -36,10 +36,7 @@ import { formatMYR } from "@/lib/i18n/format";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { RefundRequestDialog } from "@/components/customer/refund-request-dialog";
 import { useAuth } from "@/components/providers/auth";
-
-function shortOrderId(id: string) {
-  return `#${id.slice(0, 8).toUpperCase()}`;
-}
+import { formatOrderReference } from "@/lib/checkout/order-reference";
 
 function dateLabel(value: string, locale: string) {
   return new Date(value).toLocaleDateString(locale === "en" ? "en-MY" : locale, {
@@ -201,7 +198,7 @@ export default function OrderDetailPage() {
 
   function copyOrderId() {
     if (!order) return;
-    void navigator.clipboard.writeText(order.id);
+    void navigator.clipboard.writeText(formatOrderReference(order.id, order.displayId));
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   }
@@ -355,7 +352,7 @@ export default function OrderDetailPage() {
                   title={tCustomer("ui.orders.copyOrderId")}
                   className="group inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-2.5 py-1 font-[family-name:var(--font-mono)] text-xs font-bold text-primary transition hover:border-primary/40 hover:bg-secondary"
                 >
-                  <span>{shortOrderId(order.id)}</span>
+                  <span>{formatOrderReference(order.id, order.displayId)}</span>
                   {copiedId ? (
                     <Check size={12} className="text-primary" />
                   ) : (
@@ -717,7 +714,7 @@ export default function OrderDetailPage() {
       {/* ========================================================================= */}
       <RefundRequestDialog
         open={refundModalOpen}
-        summary={`${shortOrderId(order.id)} · ${formatMYR(order.total)}`}
+        summary={`${formatOrderReference(order.id, order.displayId)} · ${formatMYR(order.total)}`}
         items={order.items.map((item) => ({
           qty: item.qty,
           label: `${item.activityName}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
@@ -753,7 +750,7 @@ export default function OrderDetailPage() {
               {tCustomer("ui.orders.orderDate")}: {dateLabel(order.createdAt, locale)}
             </p>
             <p className="text-xs font-mono text-gray-500 dark:text-muted-foreground">
-              {tCustomer("ui.orders.orderId", { id: order.id })}
+              {tCustomer("ui.orders.orderId", { id: formatOrderReference(order.id, order.displayId) })}
             </p>
           </div>
         </div>

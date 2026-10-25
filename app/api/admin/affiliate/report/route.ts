@@ -18,12 +18,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { getAffiliateAdminStats } from '@/lib/affiliate/admin-stats';
+import { getAdminAffiliateAttributionPage, getAffiliateAdminStats } from '@/lib/affiliate/admin-stats';
 import { getFraudCounters } from '@/lib/affiliate/fraud';
 import { getFraudAnalytics, type FraudAnalyticsRange } from '@/lib/affiliate/fraud-analytics';
 import { generateAffiliateReportPdf } from '@/lib/pdf/affiliate-report';
 
-const VALID_RANGES: FraudAnalyticsRange[] = ['7d', '30d', 'all'];
+const VALID_RANGES: FraudAnalyticsRange[] = ['7d', '30d', '90d'];
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -39,18 +39,34 @@ export async function GET(request: Request) {
     : '30d';
 
   const service = createServiceClient();
-  const [stats, fraudCounters, fraudAnalytics] = await Promise.all([
-    getAffiliateAdminStats(supabase),
-    getFraudCounters(service),
-    getFraudAnalytics(service, range),
-  ]);
+  let pdfBuffer: Buffer;
+  try {
+    const [stats, fraudCounters, fraudAnalytics] = await Promise.all([
+      getAffiliateAdminStats(service, { pageSize: 50 }),
+      getFraudCounters(service),
+      getFraudAnalytics(service, range),
+    ]);
 
-  const pdfBuffer = await generateAffiliateReportPdf({
-    generatedAt: new Date().toISOString(),
-    stats,
-    fraudCounters,
-    fraudAnalytics,
-  });
+    while (stats.attributions.length < 150 && stats.attributionHasMore && stats.attributionNextCursor) {
+      const page = await getAdminAffiliateAttributionPage(service, {
+        pageSize: 50,
+        cursor: stats.attributionNextCursor,
+        snapshotCutoff: stats.attributionSnapshotCutoff,
+      });
+      stats.attributions.push(...page.items);
+      stats.attributionHasMore = page.hasMore;
+      stats.attributionNextCursor = page.nextCursor;
+    }
+
+    pdfBuffer = await generateAffiliateReportPdf({
+      generatedAt: new Date().toISOString(),
+      stats,
+      fraudCounters,
+      fraudAnalytics,
+    });
+  } catch {
+    return apiFail('UNAVAILABLE', 'Affiliate report data is temporarily unavailable', 503);
+  }
 
   const fileName = `mylawatan-affiliate-report-${range}-${new Date().toISOString().slice(0, 10)}.pdf`;
   return new Response(new Uint8Array(pdfBuffer), {

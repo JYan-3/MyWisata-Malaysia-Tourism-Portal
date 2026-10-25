@@ -1,3 +1,4 @@
+import { STAFF_NOTIFICATION_TYPES, STAFF_NOTIFICATION_FILTER, CUSTOMER_LEGACY_NOTIFICATION_FILTER } from '@/lib/notifications/scope';
 import { createClient } from '@/lib/supabase/server';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { requireStaffNotificationAccess } from '@/lib/notifications/staff-access';
@@ -27,6 +28,8 @@ export async function POST(request: Request) {
     queryDb = access.access.serviceDb as typeof db;
   }
   let query = queryDb.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', user.id).is('read_at', null);
+  if (scope === 'staff') query = query.or(STAFF_NOTIFICATION_FILTER);
+  if (scope === 'customer') query = query.not('type','in',`(${STAFF_NOTIFICATION_TYPES})`).or(CUSTOMER_LEGACY_NOTIFICATION_FILTER);
   if (scope === 'vendor' && access?.ok) {
     query = query.eq('vendor_id', access.access.vendorId);
     if (access.access.isOutletManager) {
@@ -34,6 +37,6 @@ export async function POST(request: Request) {
     }
   }
   const { error } = await query;
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) return apiFail('DB_ERROR', 'Notification request unavailable', 500);
   return apiOk({ readAll: true });
 }

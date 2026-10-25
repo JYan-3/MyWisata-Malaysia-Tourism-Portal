@@ -66,7 +66,7 @@ type OutboxRow = {
     count?: number;
     actionPath?: '/vendor/orders' | '/vendor/wallet';
   };
-  status: 'pending' | 'sending' | 'sent' | 'failed';
+  status: 'pending' | 'sending' | 'sent' | 'failed' | 'cancelled';
   attempts: number;
   lease_token: string;
 };
@@ -74,6 +74,8 @@ type OutboxRow = {
 export function makeEmailEventKey(eventType: EmailEventType, reference: string): string {
   return `${eventType}:${reference}`;
 }
+
+class EmailOutboxCancelledError extends Error {}
 
 export async function enqueueEmail(input: EmailOutboxInput, db = createServiceClient()): Promise<{ inserted: boolean; id?: string }> {
   const payload: OutboxRow['payload'] = {
@@ -125,11 +127,25 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
     const copy = emailCopy(locale);
     let started = false;
     let stateUnavailable = false;
+    let cancelled = false;
     const delivery: EmailDelivery = {
       messageId: `<outbox-${row.id}@mylawatan.my>`,
       beforeSend: async () => {
         const { data, error } = await db.rpc('begin_email_outbox_delivery', { p_id: row.id, p_token: row.lease_token });
-        if (error || data !== true) { stateUnavailable = true; throw new Error('email_state_unavailable'); }
+        if (error) { stateUnavailable = true; throw new Error('email_state_unavailable'); }
+        if (data !== true) {
+          let currentStatus: string | undefined;
+          try {
+            const { data: current, error: currentError } = await db.from('email_outbox').select('status').eq('id', row.id).maybeSingle();
+            if (!currentError) currentStatus = current?.status;
+          } catch { /* If the cancellation check is unavailable, fail closed below. */ }
+          if (currentStatus === 'cancelled') {
+            cancelled = true;
+            throw new EmailOutboxCancelledError('email_delivery_cancelled');
+          }
+          stateUnavailable = true;
+          throw new Error('email_state_unavailable');
+        }
         started = true;
       },
     };
@@ -150,7 +166,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
         const isGuest = Boolean(row.payload.guestAccessToken);
         if (!isGuest && !row.user_id) throw new Error('receipt_owner_unavailable');
         let orderQuery = db.from('orders')
-          .select('id,user_id,guest_subject_id,status,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,voucher_code,order_items(product_name,variant_name,unit_price,quantity)')
+          .select('id,display_id,user_id,guest_subject_id,status,contact_email,contact_name,created_at,payment_method,subtotal,discount_amount,total_amount,voucher_code,order_items(product_name,variant_name,unit_price,quantity)')
           .eq('id', row.payload.receiptOrderId ?? row.payload.reference);
         orderQuery = isGuest ? orderQuery.is('user_id', null) : orderQuery.eq('user_id', row.user_id!);
         const { data: order, error } = await orderQuery.single();
@@ -189,7 +205,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
         });
         accepted = await sendOrderReceiptEmail({
           delivery, locale,
-          recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
+          recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,orderReference:order.display_id ?? order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
           items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? copy.standard,unitPrice:Number(item.unit_price),qty:item.quantity})),
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
           accessUrl: isGuest ? `${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}` : orderUrl.toString(),
@@ -240,12 +256,24 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           to: row.to_email,
         });
       } else {
+        let reference = String(row.payload?.reference ?? row.id);
+        if (row.payload?.guestAccessToken) {
+          const { data: order, error: orderError } = await db.from('orders')
+            .select('id,display_id,contact_email,guest_subject_id,user_id')
+            .eq('id', reference)
+            .is('user_id', null)
+            .maybeSingle();
+          if (orderError || !order?.guest_subject_id || order.contact_email?.trim().toLowerCase() !== row.to_email.trim().toLowerCase()) {
+            throw new Error('guest_recovery_recipient_unavailable');
+          }
+          reference = order.display_id ?? order.id;
+        }
         accepted = await sendTransactionEmail({
           delivery, locale,
           eventType: row.event_type as TransactionEmailType,
           recipientName: row.payload?.recipientName ?? null,
           amountRm: Number(row.payload?.amountRm ?? 0),
-          reference: String(row.payload?.reference ?? row.id),
+          reference,
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
           reason: row.payload?.reason,
           accessUrl: row.payload?.guestAccessToken ? `${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}` : undefined,
@@ -253,6 +281,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
         });
       }
     } catch (error) {
+      if (cancelled && !started && error instanceof EmailOutboxCancelledError) continue;
       if (stateUnavailable) throw new Error('email_state_unavailable');
       const retrySafe = error instanceof EmailDeliveryError ? error.retrySafe : !started;
       await finish(retrySafe ? 'retry' : 'unknown');

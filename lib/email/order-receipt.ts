@@ -42,7 +42,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
       <ul style="margin:0 0 12px;padding-left:20px">${pass.details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join('')}</ul>
       <img src="cid:${pass.cid}" alt="${escapeHtml(copy.qrImageAlt)}" width="256" height="256" style="display:block;width:256px;height:256px;max-width:100%;background:#fff" />
     </section>`).join('');
-  const orderRef = payload.orderId.slice(-8).toUpperCase();
+  const orderRef = payload.orderReference ?? payload.orderId;
   const subject = `${copy.receiptSubject} – ${orderRef}`;
 
   const html = `
@@ -76,7 +76,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
   </table>
   ${pickupHtml}
   ${payload.accessUrl ? `<p><a href="${escapeHtml(payload.accessUrl)}">${copy.viewOrder}</a> — ${copy.privateLink}</p>` : ""}
-  <p style="color:#777;font-size:13px">${copy.orderId}: ${payload.orderId}</p>
+  <p style="color:#777;font-size:13px">${copy.orderId}: ${escapeHtml(orderRef)}</p>
   <p style="color:#777;font-size:13px">${copy.questions}</p>
   <p>${copy.seeYou}</p>
 </body>
@@ -100,7 +100,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
       `${copy.qrImageAlt}: [inline image ${pass.cid}]`,
       '',
     ]) : []),
-    `${copy.orderId}: ${payload.orderId}`,
+    `${copy.orderId}: ${orderRef}`,
     payload.accessUrl ? `${copy.viewOrder}: ${payload.accessUrl}` : "",
   ].filter(line => line !== undefined).join('\n');
 

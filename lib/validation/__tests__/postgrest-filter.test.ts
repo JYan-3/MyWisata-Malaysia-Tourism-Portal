@@ -38,6 +38,8 @@ const REVIEWED_SERVER_VALUES: Record<string, string> = {
   'lib/integrations/outbox-worker.ts': 'server-generated timestamp',
   'lib/recommendations/reward-attribution.ts': 'server-generated timestamp',
   'lib/vendor-dashboard.ts': 'outlet ids from the server-side vendor scope',
+  'lib/affiliate/earnings-export.ts': 'cursor timestamps and ids come from the previous database page',
+  'app/api/admin/orders/[orderId]/guest-contact/route.ts': 'orderId is UUID-validated before constructing the PostgREST filter',
 };
 
 function sourceFiles(dir: string): string[] {

@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "loading": "Memuatkan…",
     "contentTranslation": {
       "machineTranslated": "Terjemahan mesin",
       "showOriginal": "Tunjukkan teks asal",
@@ -1505,7 +1506,11 @@
       "historyLoading": "Memuatkan cadangan…",
       "historyTotal": "{{total}} cadangan",
       "historyError": "Tidak dapat memuatkan cadangan.",
-      "historyRetry": "Cuba lagi"
+      "historyRetry": "Cuba lagi",
+      "editTitle": "Kemas kini cadangan ini",
+      "resubmitted": "Cadangan yang dikemas kini telah kembali ke barisan semakan.",
+      "editConflict": "Cadangan ini telah berubah. Input anda masih disimpan; buka butiran terkini sebelum menghantar semula.",
+      "editUnavailable": "Cadangan ini tidak dapat dibuka untuk dikemas kini. Muat semula butirannya dan cuba lagi."
     },
     "recommendationEarnings": {
       "title": "Pendapatan cadangan",
@@ -1964,7 +1969,7 @@
       "paymentLinkUnavailable": "Pautan pembayaran aktif tidak dapat disahkan. Cuba semak semula atau hubungi sokongan sebelum membuat bayaran lain.",
       "checkPaymentAgain": "Semak semula",
       "orderItems": "Item yang dibeli",
-      "copyOrderId": "Salin ID Pesanan",
+      "copyOrderId": "Salin nombor pesanan",
       "brandName": "MyLawatan",
       "portalName": "Portal Pelancongan Malaysia",
       "paymentMethods": {
@@ -1988,7 +1993,7 @@
       "title": "Pesanan anda",
       "description": "Jejaki pembelian, tempahan, status bayaran dan resit.",
       "backToOrders": "Kembali ke pesanan",
-      "orderId": "ID Pesanan: #{{id}}",
+      "orderId": "Nombor pesanan: {{id}}",
       "slot": "Slot: {{time}}",
       "bookingId": "ID Tempahan: {{id}}",
       "refundReasonPrompt": "Mengapakah anda memohon bayaran balik?",
@@ -3803,7 +3808,7 @@
     "unavailable": "Pembayaran tetamu tidak tersedia buat sementara waktu.",
     "accessTitle": "Akses pesanan tetamu anda",
     "recoveryHint": "Minta pautan peribadi baharu menggunakan nombor pesanan dan e-mel semasa pembayaran.",
-    "orderNumber": "Nombor pesanan",
+    "orderNumber": "Nombor pesanan (cth. ORD-1000)",
     "emailLink": "Hantar pautan pesanan melalui e-mel",
     "requested": "Jika maklumat sepadan dengan pesanan tetamu, pautan akses akan dihantar melalui e-mel.",
     "requestFailed": "Pautan tidak dapat diminta. Sila cuba lagi kemudian.",

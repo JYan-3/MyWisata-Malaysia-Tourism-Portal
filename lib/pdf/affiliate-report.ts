@@ -55,7 +55,7 @@ function isoDate(value: string): string {
 }
 
 function rangeLabel(range: FraudAnalyticsRange): string {
-  return range === 'all' ? 'All time' : range.toUpperCase();
+  return range.toUpperCase();
 }
 
 function ensureSpace(doc: PDFKit.PDFDocument, needed: number): void {
@@ -250,12 +250,12 @@ export function generateAffiliateReportPdf(data: AffiliateReportData): Promise<B
     // table, so it starts fresh rather than splitting awkwardly mid-section.
     doc.addPage();
     const attributions = data.stats.attributions.slice(0, ATTRIBUTIONS_LIMIT);
-    const truncated = data.stats.attributions.length > ATTRIBUTIONS_LIMIT;
+    const truncated = data.stats.attributionTotalCount > attributions.length;
     sectionTitle(
       doc,
       truncated
-        ? `Attributions (most recent ${ATTRIBUTIONS_LIMIT} of ${data.stats.attributions.length})`
-        : `Attributions (${data.stats.attributions.length})`,
+        ? `Attributions (most recent ${attributions.length} of ${data.stats.attributionTotalCount})`
+        : `Attributions (${data.stats.attributionTotalCount})`,
     );
     if (attributions.length === 0) {
       doc.fontSize(9).font('Helvetica').fillColor('#666666').text('No attributions yet.');

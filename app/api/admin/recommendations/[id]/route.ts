@@ -51,7 +51,7 @@ export async function GET(
       contact_website, image_attested_at, status, reviewer_id, reviewed_at,
       rejection_reason, changes_requested_at, changes_requested_reason,
       converted_vendor_id, suggested_place_id, resolved_place_id,
-      assigned_to, claimed_at, created_at, categories(name)
+      assigned_to, claimed_at, created_at, updated_at, categories(name)
     `)
     .eq('id', id)
     .maybeSingle();
@@ -146,7 +146,7 @@ export async function GET(
     id: string;
     from_status: string;
     to_status: string;
-    action: 'approve' | 'request_changes' | 'reject';
+    action: 'approve' | 'request_changes' | 'reject' | 'resubmit';
     actor_id: string | null;
     actor_role: string;
     internal_note: string | null;

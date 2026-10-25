@@ -90,4 +90,10 @@ describe("hotel stay order snapshot", () => {
       specialRequest: "Quiet room, if available.",
     });
   });
+
+  it("maps the public display number without changing the internal order id", () => {
+    const order = mapOrder({ ...orderRow(1), display_id: "ORD-1000" } as Parameters<typeof mapOrder>[0]);
+    expect(order.id).toBe("order-1");
+    expect(order.displayId).toBe("ORD-1000");
+  });
 });

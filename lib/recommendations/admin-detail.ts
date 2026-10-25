@@ -11,6 +11,7 @@ export type RecommendationReviewStatus =
 
 export interface AdminRecommendationDetail {
   id: string;
+  version: string;
   name: string;
   description: string | null;
   whyRecommend: string | null;
@@ -54,7 +55,7 @@ export interface AdminRecommendationDetail {
     id: string;
     fromStatus: string;
     toStatus: string;
-    action: 'approve' | 'request_changes' | 'reject';
+    action: 'approve' | 'request_changes' | 'reject' | 'resubmit';
     actor: { id: string | null; name: string };
     actorRole: string;
     internalNote: string | null;
@@ -117,6 +118,7 @@ export interface RecommendationDetailRow {
   suggested_place_id?: string | null;
   resolved_place_id?: string | null;
   created_at: string;
+  updated_at: string;
   assigned_to?: string | null;
   claimed_at?: string | null;
   categories: { name: string } | Array<{ name: string }> | null;
@@ -176,7 +178,7 @@ export function buildAdminRecommendationDetail(input: {
     id: string;
     from_status: string;
     to_status: string;
-    action: 'approve' | 'request_changes' | 'reject';
+    action: 'approve' | 'request_changes' | 'reject' | 'resubmit';
     actor_id: string | null;
     actor_role: string;
     internal_note: string | null;
@@ -204,6 +206,7 @@ export function buildAdminRecommendationDetail(input: {
 
   return {
     id: row.id,
+    version: row.updated_at,
     name: row.vendor_name,
     description: row.description,
     whyRecommend: row.why_recommend,

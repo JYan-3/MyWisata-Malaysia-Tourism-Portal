@@ -771,6 +771,26 @@
     },
     "allAttributions": "All attributions",
     "allTime": "All time",
+    "pagination": {
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageOf": "Page {{page}} of {{total}}",
+      "showing": "Showing {{first}}–{{last}} of {{total}}"
+    },
+    "guestReview": {
+      "reason": "Guest contact matches the affiliate’s verified email. This is a review signal, not proof.",
+      "release": "Release to normal clearing",
+      "reject": "Reject this commission"
+    },
+    "maturityExposure": {
+      "title": "Affiliate commission exposure",
+      "description": "Amounts and counts grouped by recorded order status. An order still marked paid may have fulfilment that has not been recorded.",
+      "pending": "Pending commission",
+      "paid": "Confirmed on orders still marked paid",
+      "refunded": "Confirmed on refunded orders",
+      "other": "Confirmed on other order statuses",
+      "updated": "Snapshot: {{date}}"
+    },
     "analytics": {
       "bySeverity": "By severity",
       "byType": "By type",
@@ -829,7 +849,8 @@
       "saveTier": "Failed to save tier.",
       "selectOpenFlags": "Select open fraud flags first.",
       "accept": "Could not accept this commission.",
-      "reject": "Could not reject this commission."
+      "reject": "Could not reject this commission.",
+      "guestReview": "Could not resolve the guest commission review. Refresh and try again."
     },
     "exporting": "Exporting…",
     "exportPdf": "Export PDF",
@@ -900,7 +921,8 @@
       "batchFlags_one": "{{count}} fraud flags processed.",
       "batchFlags_other": "{{count}} fraud flags processed.",
       "accepted": "Commission accepted.",
-      "rejected": "Commission rejected."
+      "rejected": "Commission rejected.",
+      "guestReviewReleased": "Commission released to normal clearing."
     },
     "sweep": {
       "result": "Scanned {{links}} links, {{flags}} new flag(s)"
@@ -935,7 +957,11 @@
     "minSalesAmount": "Min sales (RM)",
     "activePeriodDays": "Active within (days)",
     "maxFraudRate": "Max fraud rate",
-    "noLimit": "—"
+    "noLimit": "—",
+    "jobs": {
+      "busy": "Another run is already processing this queue.",
+      "more": "More records remain; run again to continue."
+    }
   },
   "aiAssistant": {
     "ask": {
@@ -3290,6 +3316,9 @@
     },
     "timeline": {
       "auditNote": "Every decision is recorded in the audit timeline.",
+      "currentCycle": "Current approval round {{cycle}}",
+      "approvalCycle": "Round {{cycle}}",
+      "legacyCycle": "Legacy approval (round not recorded)",
       "noDecisions": "No decisions recorded yet.",
       "title": "Approval timeline"
     }
@@ -3437,6 +3466,37 @@
     "unknownCustomer": "Customer details unavailable",
     "fulfilment": "Fulfilment",
     "paymentPending": "Payment record unavailable",
+    "contactCorrection": {
+      "action": "Correct Guest email",
+      "title": "Correct Guest order contact",
+      "description": "Review eligibility, record the support case and the claimant verification method, then confirm the correction.",
+      "order": "Order {{order}}",
+      "current": "Current contact: {{email}}",
+      "loading": "Checking delivery and fulfilment state…",
+      "newEmailLabel": "Verified new contact email",
+      "supportCaseLabel": "Support ticket UUID",
+      "evidenceLabel": "Claimant verification method",
+      "providerEvidence": "Payment provider confirmed payer control",
+      "accessEvidence": "Claimant demonstrated existing order access",
+      "paymentLabel": "Successful payment record",
+      "selectPayment": "Select payment record",
+      "oldLinkWarning": "Existing links and sessions will be revoked. Emails already sent or downloaded files cannot be recalled. Do not put the new email or payment evidence in the support ticket.",
+      "cancel": "Cancel",
+      "submit": "Correct email",
+      "saving": "Submitting…",
+      "queued": "Contact corrected. The new secure email is queued, not confirmed delivered.",
+      "eligibility": {
+        "eligible": "Eligible for correction. {{count}} old-address message(s) will be reviewed atomically.",
+        "order_not_eligible": "Only paid or completed Guest orders can be corrected.",
+        "fulfilment_reissue_required": "This order has a separate usable fulfilment credential. Complete manual fulfilment review first.",
+        "manual_mail_review_required": "More than 100 old messages need review. Contact support operations before changing this email.",
+        "delivery_unknown": "An earlier message has unknown delivery state. Resolve it before changing this email.",
+        "delivery_busy": "An earlier message is being sent. Retry after delivery finishes."
+      },
+      "noPayment": "No successful payment record is available to support payer verification.",
+      "confirm": "Correct {{order}} contact from {{oldEmail}} to {{newEmail}}? The old Guest links will be revoked.",
+      "error": "Could not safely correct this Guest order contact."
+    },
     "count": "{{total}} orders",
     "previous": "Previous",
     "next": "Next",

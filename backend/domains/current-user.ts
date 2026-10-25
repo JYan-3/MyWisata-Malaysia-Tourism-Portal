@@ -19,6 +19,12 @@ export function setCurrentUser(user: User): void {
   window.localStorage.setItem(CURRENT_USER_DATA_KEY, JSON.stringify(user));
 }
 
+export function clearCurrentUser(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(CURRENT_USER_KEY);
+  window.localStorage.removeItem(CURRENT_USER_DATA_KEY);
+}
+
 export function getStoredCurrentUser(id: string): User | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(CURRENT_USER_DATA_KEY);

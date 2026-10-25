@@ -87,6 +87,13 @@ export const rejectAttributionSchema = z.object({
 
 export type RejectAttributionInput = z.infer<typeof rejectAttributionSchema>;
 
+export const resolveGuestCommissionReviewSchema = z.object({
+  action: z.enum(['release', 'reject']),
+  version: z.number().int().positive(),
+}).strict();
+
+export type ResolveGuestCommissionReviewInput = z.infer<typeof resolveGuestCommissionReviewSchema>;
+
 // ── Affiliate Copilot (CLAUDE-AFFILIATE-COPILOT.md) ─────────────────────────
 
 export const copilotCaptionSchema = z.object({

@@ -16,7 +16,7 @@ vi.mock("@/lib/auth/customer-capabilities.server", async (importOriginal) => ({
   resolveServerCustomerCapability: mocks.resolveCapability,
 }));
 vi.mock("@/lib/affiliate/stats", () => ({ getAffiliateStats: mocks.getStats }));
-vi.mock("@/lib/affiliate/earnings-export", () => ({ getAffiliateEarningsExport: mocks.getExport }));
+vi.mock("@/lib/affiliate/earnings-export", () => ({ getAffiliateEarningsExportPages: mocks.getExport }));
 vi.mock("@/lib/affiliate/insight", () => ({
   generateUserInsight: mocks.generateInsight,
   ruleBasedUserInsight: vi.fn(() => "fallback"),

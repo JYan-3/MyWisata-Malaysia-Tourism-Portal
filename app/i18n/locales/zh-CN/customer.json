@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "loading": "加载中…",
     "contentTranslation": {
       "machineTranslated": "机器翻译",
       "showOriginal": "显示原文",
@@ -1505,7 +1506,11 @@
       "historyLoading": "正在读取推荐…",
       "historyTotal": "共 {{total}} 条推荐",
       "historyError": "暂时无法读取推荐记录。",
-      "historyRetry": "重试"
+      "historyRetry": "重试",
+      "editTitle": "更新这份推荐申请",
+      "resubmitted": "更新后的推荐申请已重新进入审核队列。",
+      "editConflict": "这份申请已有更新。你的输入仍保留，请重新打开最新资料后再提交。",
+      "editUnavailable": "暂时无法编辑这份申请，请重新加载详情后再试。"
     },
     "recommendationEarnings": {
       "title": "推荐收益",
@@ -1988,7 +1993,7 @@
       "title": "你的订单",
       "description": "查看购买、预订、付款状态和收据。",
       "backToOrders": "返回订单",
-      "orderId": "订单编号：#{{id}}",
+      "orderId": "订单编号：{{id}}",
       "slot": "时段：{{time}}",
       "bookingId": "预订编号：{{id}}",
       "refundReasonPrompt": "请说明申请退款的原因。",
@@ -3803,7 +3808,7 @@
     "unavailable": "游客结账暂时无法使用。",
     "accessTitle": "查看游客订单",
     "recoveryHint": "使用下单时的订单编号和联系邮箱，申请新的私人订单链接。",
-    "orderNumber": "订单编号",
+    "orderNumber": "订单编号（例如 ORD-1000）",
     "emailLink": "发送订单链接到邮箱",
     "requested": "如果资料与游客订单匹配，我们会发送订单访问链接到邮箱。",
     "requestFailed": "暂时无法申请链接，请稍后再试。",

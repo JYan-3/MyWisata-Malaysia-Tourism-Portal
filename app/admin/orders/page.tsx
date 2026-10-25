@@ -5,6 +5,8 @@ import { RefreshCw, Search } from 'lucide-react';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +24,8 @@ type OrderItem = {
 
 type AdminOrder = {
   id: string;
+  isGuest: boolean;
+  canCorrectGuestContact: boolean;
   display_id: string | null;
   status: string;
   subtotal: number;
@@ -34,8 +38,15 @@ type AdminOrder = {
   created_at: string;
   customer: { name: string | null; email: string | null };
   items: OrderItem[];
-  payments?: { method: string; provider: string | null; status: string; amount: number }[];
-  payment: { method: string; provider: string | null; status: string; amount: number } | null;
+  payments?: { id: string; method: string; provider: string | null; status: string; amount: number }[];
+  payment: { id: string; method: string; provider: string | null; status: string; amount: number } | null;
+};
+
+type ContactCorrectionPreview = {
+  order: { id: string; displayId: string | null; status: string; contactEmail: string | null; totalAmount: number; currency: string };
+  eligibility: string;
+  pendingOldAddressMailCount: number;
+  successfulPayments: { id: string; method: string; provider: string | null; amount: number }[];
 };
 
 const PAGE_SIZE = 25;
@@ -57,6 +68,15 @@ export default function AdminOrdersPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [correctionOrder, setCorrectionOrder] = useState<AdminOrder | null>(null);
+  const [correctionPreview, setCorrectionPreview] = useState<ContactCorrectionPreview | null>(null);
+  const [newEmail, setNewEmail] = useState('');
+  const [supportTicketId, setSupportTicketId] = useState('');
+  const [evidenceKind, setEvidenceKind] = useState<'existing_order_access' | 'provider_confirmed_payer'>('provider_confirmed_payer');
+  const [paymentId, setPaymentId] = useState('');
+  const [correctionRequestId, setCorrectionRequestId] = useState('');
+  const [correctionBusy, setCorrectionBusy] = useState(false);
+  const [correctionMessage, setCorrectionMessage] = useState('');
 
   const loadOrders = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -109,6 +129,64 @@ export default function AdminOrdersPage() {
       if (!saved.ok) throw new Error(t('eventOperations.conflict'));
       await loadOrders();
     } catch { setError(t('eventOperations.conflict')); }
+  }
+
+  async function openGuestContactCorrection(order: AdminOrder) {
+    if (!order.isGuest || !order.canCorrectGuestContact || !order.customer.email) return;
+    setError('');
+    setCorrectionMessage('');
+    setCorrectionOrder(order);
+    setCorrectionPreview(null);
+    setNewEmail('');
+    setSupportTicketId('');
+    setEvidenceKind('provider_confirmed_payer');
+    setPaymentId('');
+    setCorrectionRequestId(window.crypto.randomUUID());
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/guest-contact`, { cache: 'no-store' });
+      const body = await response.json() as { data?: ContactCorrectionPreview; error?: { message?: string } };
+      if (!response.ok || !body.data) throw new Error(body.error?.message ?? t('orderOperations.contactCorrection.error'));
+      setCorrectionPreview(body.data);
+      if (body.data.order.contactEmail) setCorrectionOrder((current) => current ? { ...current, customer: { ...current.customer, email: body.data!.order.contactEmail } } : current);
+      setPaymentId(body.data.successfulPayments[0]?.id ?? '');
+    } catch (reason) {
+      setCorrectionOrder(null);
+      setError(reason instanceof Error ? reason.message : t('orderOperations.contactCorrection.error'));
+    }
+  }
+
+  async function submitGuestContactCorrection(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!correctionOrder?.customer.email || !correctionPreview || correctionPreview.eligibility !== 'eligible') return;
+    if (evidenceKind === 'provider_confirmed_payer' && !paymentId) { setCorrectionMessage(t('orderOperations.contactCorrection.noPayment')); return; }
+    if (!await confirm(t('orderOperations.contactCorrection.confirm', { order: correctionOrder.display_id ?? correctionOrder.id, oldEmail: correctionOrder.customer.email, newEmail }))) return;
+    setCorrectionBusy(true);
+    setCorrectionMessage('');
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(correctionOrder.id)}/guest-contact`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ requestId: correctionRequestId, expectedContactEmail: correctionOrder.customer.email, newEmail, supportTicketId, evidenceKind, paymentId: evidenceKind === 'provider_confirmed_payer' ? paymentId : null }),
+      });
+      const body = await response.json() as { error?: { message?: string } };
+      if (!response.ok) {
+        if (response.status === 409) {
+          const previewResponse = await fetch(`/api/admin/orders/${encodeURIComponent(correctionOrder.id)}/guest-contact`, { cache: 'no-store' });
+          const previewBody = await previewResponse.json() as { data?: ContactCorrectionPreview };
+          if (previewResponse.ok && previewBody.data) {
+            setCorrectionPreview(previewBody.data);
+            if (previewBody.data.order.contactEmail) setCorrectionOrder((current) => current ? { ...current, customer: { ...current.customer, email: previewBody.data!.order.contactEmail } } : current);
+            setCorrectionRequestId(window.crypto.randomUUID());
+          }
+        }
+        throw new Error(body.error?.message ?? t('orderOperations.contactCorrection.error'));
+      }
+      setCorrectionMessage(t('orderOperations.contactCorrection.queued'));
+      await loadOrders();
+    } catch (reason) {
+      setCorrectionMessage(reason instanceof Error ? reason.message : t('orderOperations.contactCorrection.error'));
+    } finally {
+      setCorrectionBusy(false);
+    }
   }
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -172,6 +250,7 @@ export default function AdminOrdersPage() {
                       <p className="font-mono text-xs font-semibold text-foreground">{order.display_id ?? order.id}</p>
                       {order.display_id && <p className="mt-1 font-mono text-[10px] text-muted-foreground">{order.id}</p>}
                       <p className="mt-1 capitalize text-muted-foreground">{t(`orderOperations.statuses.${STATUS_OPTIONS.includes(order.status as typeof STATUS_OPTIONS[number]) ? order.status : 'all'}`)}</p>
+                      {order.isGuest && order.canCorrectGuestContact && ['paid', 'completed'].includes(order.status) && order.customer.email && <Button className="mt-2" size="sm" variant="outline" onClick={() => void openGuestContactCorrection(order)}>{t('orderOperations.contactCorrection.action')}</Button>}
                     </td>
                     <td className="px-4 py-4">
                       <p className="font-medium">{order.customer.name ?? t('orderOperations.unknownCustomer')}</p>
@@ -218,6 +297,28 @@ export default function AdminOrdersPage() {
           </div>
         </footer>
       </section>
+      <Dialog open={Boolean(correctionOrder)} onOpenChange={(open) => { if (!open && !correctionBusy) setCorrectionOrder(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('orderOperations.contactCorrection.title')}</DialogTitle>
+            <DialogDescription>{t('orderOperations.contactCorrection.description')}</DialogDescription>
+          </DialogHeader>
+          {correctionOrder && <form onSubmit={submitGuestContactCorrection} className="space-y-4">
+            <p className="text-sm">{t('orderOperations.contactCorrection.order', { order: correctionOrder.display_id ?? correctionOrder.id })}</p>
+            <p className="text-sm text-muted-foreground">{t('orderOperations.contactCorrection.current', { email: correctionOrder.customer.email })}</p>
+            {!correctionPreview ? <p role="status" className="text-sm text-muted-foreground">{t('orderOperations.contactCorrection.loading')}</p> : <>
+              <p role="status" className="rounded-lg border border-border p-3 text-sm">{t(`orderOperations.contactCorrection.eligibility.${correctionPreview.eligibility}`, { count: correctionPreview.pendingOldAddressMailCount })}</p>
+              <label className="block text-sm">{t('orderOperations.contactCorrection.newEmailLabel')}<Input required type="email" autoComplete="email" maxLength={254} className="mt-1 w-full" value={newEmail} onChange={(event) => { setNewEmail(event.target.value); setCorrectionRequestId(window.crypto.randomUUID()); setCorrectionMessage(''); }} /></label>
+              <label className="block text-sm">{t('orderOperations.contactCorrection.supportCaseLabel')}<Input required className="mt-1 w-full" value={supportTicketId} onChange={(event) => { setSupportTicketId(event.target.value); setCorrectionRequestId(window.crypto.randomUUID()); setCorrectionMessage(''); }} /></label>
+              <label className="block text-sm">{t('orderOperations.contactCorrection.evidenceLabel')}<select required className={`${adminFilterControlClassName} mt-1 w-full`} value={evidenceKind} onChange={(event) => { setEvidenceKind(event.target.value as typeof evidenceKind); setCorrectionRequestId(window.crypto.randomUUID()); setCorrectionMessage(''); }}><option value="provider_confirmed_payer">{t('orderOperations.contactCorrection.providerEvidence')}</option><option value="existing_order_access">{t('orderOperations.contactCorrection.accessEvidence')}</option></select></label>
+              {evidenceKind === 'provider_confirmed_payer' && <label className="block text-sm">{t('orderOperations.contactCorrection.paymentLabel')}<select required className={`${adminFilterControlClassName} mt-1 w-full`} value={paymentId} onChange={(event) => { setPaymentId(event.target.value); setCorrectionRequestId(window.crypto.randomUUID()); setCorrectionMessage(''); }}><option value="">{t('orderOperations.contactCorrection.selectPayment')}</option>{correctionPreview.successfulPayments.map((payment) => <option key={payment.id} value={payment.id}>{payment.provider ?? payment.method} · {formatMoney(payment.amount, correctionOrder.currency || 'MYR', locale)} · {payment.id}</option>)}</select></label>}
+              <p className="text-xs text-muted-foreground">{t('orderOperations.contactCorrection.oldLinkWarning')}</p>
+            </>}
+            {correctionMessage && <p role="status" className="text-sm text-muted-foreground">{correctionMessage}</p>}
+            <DialogFooter><Button type="button" variant="outline" disabled={correctionBusy} onClick={() => setCorrectionOrder(null)}>{t('orderOperations.contactCorrection.cancel')}</Button><Button type="submit" disabled={correctionBusy || !correctionPreview || correctionPreview.eligibility !== 'eligible'}>{correctionBusy ? t('orderOperations.contactCorrection.saving') : t('orderOperations.contactCorrection.submit')}</Button></DialogFooter>
+          </form>}
+        </DialogContent>
+      </Dialog>
     </AdminPageShell>
   );
 }

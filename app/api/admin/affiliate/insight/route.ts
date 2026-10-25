@@ -10,10 +10,11 @@
 // identified to the LLM only by affiliate_code — never a name or email.
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getAffiliateAdminStats } from '@/lib/affiliate/admin-stats';
-import { getFraudFlags } from '@/lib/affiliate/fraud';
+import { getFraudFlagPage } from '@/lib/affiliate/fraud';
 import { generateAdminInsight, ruleBasedAdminInsight, type AdminInsightStats, type AdminAnomaly } from '@/lib/affiliate/insight';
 
 export async function GET() {
@@ -24,13 +25,14 @@ export async function GET() {
     return apiFail('FORBIDDEN', 'Only Super Admin can view affiliate insight', 403);
   }
 
+  const service = createServiceClient();
   const [stats, flags] = await Promise.all([
-    getAffiliateAdminStats(supabase),
-    getFraudFlags(supabase),
+    getAffiliateAdminStats(service),
+    getFraudFlagPage(service, { page: 1, pageSize: 50, flagType: 'zero_conversion', severity: null, status: 'open', search: '' }),
   ]);
 
-  const anomalies: AdminAnomaly[] = flags
-    .filter((f) => f.flagType === 'zero_conversion' && f.status === 'open' && f.affiliateCode)
+  const anomalies: AdminAnomaly[] = flags.items
+    .filter((f) => f.affiliateCode)
     .map((f) => ({
       affiliateCode: f.affiliateCode as string,
       clicks: Number((f.detail as Record<string, unknown> | null)?.totalClicks ?? 0),

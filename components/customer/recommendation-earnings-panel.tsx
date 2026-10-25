@@ -5,12 +5,13 @@
 // detail page). Reporting only — reads GET /api/recommendations/earnings,
 // which reads recommendation_commissions; no money path involved.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatMYR } from "@/lib/i18n/format";
 import type { RecommendationEarnings } from "@/lib/recommendations/earnings";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   /** Limit the list to a single recommendation (detail page). */
@@ -21,25 +22,38 @@ interface Props {
 
 export function RecommendationEarningsPanel({ recommendationId, showEmpty = false }: Props) {
   const { t } = useTranslation("customer");
-  const [data, setData] = useState<RecommendationEarnings | null | undefined>(undefined);
+  const [dataState, setDataState] = useState<{ recommendationId?: string; data: RecommendationEarnings | null | undefined }>(() => ({ recommendationId, data: undefined }));
+  const [cursorState, setCursorState] = useState<{ recommendationId?: string; history: Array<{ createdAt: string; id: string } | null> }>(() => ({ recommendationId, history: [null] }));
+  const cursorHistory = cursorState.recommendationId === recommendationId ? cursorState.history : [null];
+  const cursor = cursorHistory[cursorHistory.length - 1] ?? null;
+  const data = dataState.recommendationId === recommendationId ? dataState.data : undefined;
+  const snapshotCutoffRef = useRef<{ recommendationId?: string; snapshotCutoff: string } | null>(null);
 
   useEffect(() => {
+    if (snapshotCutoffRef.current?.recommendationId !== recommendationId) snapshotCutoffRef.current = null;
     (async () => {
       try {
-        const res = await fetch("/api/recommendations/earnings");
+        const params = new URLSearchParams({ pageSize: "10" });
+        if (recommendationId) params.set("recommendationId", recommendationId);
+        const snapshot = snapshotCutoffRef.current;
+        if (snapshot && snapshot.recommendationId === recommendationId) params.set("snapshotCutoff", snapshot.snapshotCutoff);
+        if (cursor) {
+          params.set("beforeCreatedAt", cursor.createdAt);
+          params.set("beforeId", cursor.id);
+        }
+        const res = await fetch(`/api/recommendations/earnings?${params.toString()}`);
         const body = (await res.json()) as { data: RecommendationEarnings | null };
-        setData(res.ok ? body.data ?? null : null);
+        setDataState({ recommendationId, data: res.ok ? body.data ?? null : null });
+        if (res.ok && body.data) snapshotCutoffRef.current = { recommendationId, snapshotCutoff: body.data.snapshotCutoff };
       } catch {
-        setData(null);
+        setDataState({ recommendationId, data: null });
       }
     })();
-  }, []);
+  }, [recommendationId, cursor]);
 
   if (data === undefined || data === null) return null; // loading / failed — not critical
 
-  const commissions = recommendationId
-    ? data.commissions.filter((c) => c.recommendationId === recommendationId)
-    : data.commissions;
+  const commissions = data.commissions;
 
   if (commissions.length === 0) {
     if (!showEmpty) return null;
@@ -50,16 +64,9 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
     );
   }
 
-  // On the detail page the page-level totals (across every recommendation)
-  // would be misleading next to a single-recommendation list — derive from
-  // the filtered rows instead.
   const scoped = recommendationId;
-  const pending = scoped
-    ? commissions.filter((c) => c.status === "pending").reduce((s, c) => s + c.amount, 0)
-    : data.totals.pending;
-  const lifetime = scoped
-    ? commissions.filter((c) => c.status === "confirmed").reduce((s, c) => s + c.amount, 0)
-    : data.totals.lifetimeCleared;
+  const pending = data.totals.pending;
+  const lifetime = data.totals.lifetimeCleared;
 
   return (
     <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
@@ -125,6 +132,26 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
           );
         })}
       </div>
+      {data.totalCount > 10 && (
+        <div className="flex items-center justify-between border-t border-border px-5 py-3">
+          <p className="text-xs text-muted-foreground">
+            {t("ui.pagination.showing", {
+              from: cursorHistory.length === 1 ? 1 : (cursorHistory.length - 1) * 10 + 1,
+              to: Math.min(cursorHistory.length * 10, data.totalCount),
+              total: data.totalCount,
+              items: t("ui.recommendationEarnings.title"),
+            })}
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" disabled={cursorHistory.length <= 1} onClick={() => setCursorState({ recommendationId, history: cursorHistory.slice(0, -1) })}>
+              {t("ui.pagination.previousPage")}
+            </Button>
+            <Button size="sm" variant="outline" disabled={!data.hasMore || !data.nextCursor} onClick={() => data.nextCursor && setCursorState({ recommendationId, history: [...cursorHistory, data.nextCursor] })}>
+              {t("ui.pagination.nextPage")}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

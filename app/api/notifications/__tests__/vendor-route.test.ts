@@ -15,6 +15,7 @@ vi.mock('@/lib/vendor-authorization', () => ({
 }));
 
 import { GET } from '../route';
+import { PATCH as markOne } from '../[id]/read/route';
 import { POST as markAll } from '../read-all/route';
 
 const ownerId = '11111111-1111-4111-8111-111111111111';
@@ -29,9 +30,10 @@ function queryFor(rows: unknown[] = []) {
   const query = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
-    not: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
     range: vi.fn().mockResolvedValue({ data: rows, count: rows.length, error: null }),
   };
@@ -102,9 +104,10 @@ describe('GET /api/notifications vendor scope', () => {
     const query = {
       update: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
       is: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
-      not: vi.fn().mockReturnThis(),
       then: vi.fn(),
     };
     query.then.mockImplementation((resolve: (value: { error: null }) => void) => resolve({ error: null }));
@@ -121,4 +124,23 @@ describe('GET /api/notifications vendor scope', () => {
     expect(response.status).toBe(400);
     expect(mocks.from).not.toHaveBeenCalled();
   });
+  it('scopes single-read to the authenticated recipient, authorized vendor and assigned outlet',async()=>{
+    mocks.authorizeVendor.mockResolvedValue(access('outlet_manager'));
+    const query={update:vi.fn().mockReturnThis(),eq:vi.fn().mockReturnThis(),in:vi.fn().mockReturnThis(),not:vi.fn().mockReturnThis(),then:vi.fn()};
+    query.then.mockImplementation((resolve:(value:{error:null})=>void)=>resolve({error:null}));mocks.from.mockReturnValue(query);
+    const response=await markOne(request(`?scope=vendor&vendorId=${vendorId}`),{params:Promise.resolve({id:'n1'})});
+    expect(response.status).toBe(200);
+    expect(query.eq).toHaveBeenCalledWith('user_id',ownerId);
+    expect(query.eq).toHaveBeenCalledWith('id','n1');
+    expect(query.eq).toHaveBeenCalledWith('vendor_id',vendorId);
+    expect(query.in).toHaveBeenCalledWith('outlet_id',[outletOne]);
+    expect(query.eq).toHaveBeenCalledWith('audience_role','outlet_manager');
+    expect(query.not).toHaveBeenCalledWith('category','in','(vendor_wallet,vendor_account)');
+  });
+  it('rejects single-read without vendor authorization before updating',async()=>{
+    mocks.authorizeVendor.mockResolvedValue({ok:false,response:Response.json({error:'forbidden'},{status:403})});
+    const response=await markOne(request(`?scope=vendor&vendorId=${vendorId}`),{params:Promise.resolve({id:'n1'})});
+    expect(response.status).toBe(403);expect(mocks.from).not.toHaveBeenCalled();
+  });
+
 });

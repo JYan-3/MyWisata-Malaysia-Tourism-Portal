@@ -35,14 +35,11 @@
 // else in this function stays on whatever client the caller passed in.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { add } from '@/lib/money';
 import { getClearanceDays } from './settings';
 import { getTierForUser, type TierInfo } from './tier';
 import { createServiceClient } from '@/lib/supabase/service';
-import { computeFunnel, type Funnel } from './funnel';
+import type { Funnel } from './funnel';
 import { resolveProductNames } from './product-names';
-
-const CHART_DAYS = 30;
 
 export interface AffiliateProductStat {
   productId: string;
@@ -112,220 +109,55 @@ export interface AffiliateStats {
   tier: TierInfo;
 }
 
-function zeroFilledDays(): AffiliateDailyClicks[] {
-  const days: AffiliateDailyClicks[] = [];
-  const today = new Date();
-  for (let i = CHART_DAYS - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push({ date: d.toISOString().slice(0, 10), clicks: 0 });
-  }
-  return days;
-}
-
-function emptyStats(tier: TierInfo): AffiliateStats {
-  return {
-    affiliateCode: null,
-    totals: { clicks: 0, referrals: 0, pendingEarnings: 0, availableToWithdraw: 0, totalEarnings: 0 },
-    byProduct: [],
-    byCampaign: [],
-    clicksByDay: zeroFilledDays(),
-    commissions: [],
-    funnel: computeFunnel([], [], []),
-    tier,
-  };
-}
-
-/** `service` may be the cookie-aware client — affiliate_clicks/affiliate_attributions
- * now carry own-link-only SELECT RLS policies (migration 011), and affiliate_links
- * itself only allows reading your own row, so a plain per-user read is correctly scoped.
- * wallets and share_events also both carry real own-row RLS policies
- * (003_rls_policies.sql / 007_public_read_policies.sql). */
+/** Aggregates the owner's full history in SQL; only grouped results and five preview rows cross the API. */
 export async function getAffiliateStats(service: SupabaseClient, userId: string): Promise<AffiliateStats> {
-  // Resolved once up front since both the empty-state early return and the
-  // full return below need it — see lib/affiliate/tier.ts.
-  const tier = await getTierForUser(service, userId);
-
-  const { data: link } = await service
-    .from('affiliate_links')
-    .select('id, affiliate_code')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!link) return emptyStats(tier);
-
-  const [{ data: clicksData }, { data: sharesData }, { data: walletData }] = await Promise.all([
-    service.from('affiliate_clicks').select('id, target_type, target_id, source, campaign, created_at').eq('link_id', link.id),
-    service.from('share_events').select('content_type, content_id, platform').eq('affiliate_id', link.id),
-    service.from('wallets').select('earnings_sen').eq('user_id', userId).maybeSingle(),
+  const { data, error } = await service.rpc('get_my_affiliate_dashboard_summary');
+  if (error || !data || typeof data !== 'object') throw new Error('affiliate_dashboard_unavailable');
+  const result = data as {
+    affiliateCode: string | null;
+    totals: AffiliateStats['totals'];
+    byProduct: Array<Omit<AffiliateProductStat, 'productName'>>;
+    byCampaign: AffiliateCampaignStat[];
+    clicksByDay: AffiliateDailyClicks[];
+    commissions: Array<{
+      id: string; productId: string | null; targetType: string | null; orderAmount: number | string | null;
+      rate: number | string; amount: number | string; status: string; createdAt: string; clearedAt: string | null;
+    }>;
+    funnel: Funnel;
+  };
+  const productIds = [...new Set([
+    ...result.byProduct.map((row) => row.productId),
+    ...result.commissions.filter((row) => row.targetType === 'product').map((row) => row.productId).filter((id): id is string => Boolean(id)),
+  ])];
+  const serviceClient = createServiceClient();
+  const [productNames, clearanceDays, tier] = await Promise.all([
+    resolveProductNames(productIds),
+    getClearanceDays(serviceClient),
+    getTierForUser(serviceClient, userId),
   ]);
-  const clickRows = clicksData ?? [];
-  const shareRows = sharesData ?? [];
-  const clickIds = clickRows.map((c) => c.id);
-  // Fix 3c: "Available to withdraw" reads the real wallet balance, not a
-  // derived sum of 'confirmed' attributions — see the file header note.
-  const availableToWithdraw = ((walletData?.earnings_sen as number | undefined) ?? 0) / 100;
-
-  const { data: attributionsData } = clickIds.length
-    ? await service
-        .from('affiliate_attributions')
-        .select('id, click_id, order_id, commission_rate, commission_amount, status, created_at, cleared_at')
-        .in('click_id', clickIds)
-    : {
-        data: [] as {
-          id: string; click_id: string; order_id: string; commission_rate: number; commission_amount: number;
-          status: string; created_at: string; cleared_at: string | null;
-        }[],
-      };
-  const attributionRows = attributionsData ?? [];
-  // 'rejected' (admin manually declined) counts as inactive here alongside
-  // 'reversed' (order cancelled/refunded) — neither should count toward
-  // referrals/tier/earnings, they just got there by different paths.
-  const activeAttributions = attributionRows.filter((a) => a.status !== 'reversed' && a.status !== 'rejected');
-  const clearanceDays = await getClearanceDays(service);
-
-  const pendingEarnings = attributionRows
-    .filter((a) => a.status === 'pending')
-    .reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
-  const totalEarnings = activeAttributions.reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
-
-  // Order amounts for the earnings history's "order amount" column — one
-  // extra lookup, not worth folding into the attribution row itself since
-  // it's display-only.
-  const orderIds = [...new Set(attributionRows.map((a) => a.order_id))];
-  const { data: ordersData } = orderIds.length
-    ? await createServiceClient().from('orders').select('id, total_amount').in('id', orderIds)
-    : { data: [] as { id: string; total_amount: number }[] };
-  const orderAmounts = new Map((ordersData ?? []).map((o) => [o.id, Number(o.total_amount)]));
-
-  // Map click id -> target product id, to group attributions by product below.
-  const clickTarget = new Map(
-    clickRows.map((c) => [c.id, c.target_type === 'product' ? c.target_id : null]),
-  );
-
-  const byProductMap = new Map<string, { shares: number; clicks: number; referrals: number; earnings: number; reversed: number }>();
-  for (const click of clickRows) {
-    if (click.target_type !== 'product' || !click.target_id) continue;
-    const entry = byProductMap.get(click.target_id) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
-    entry.clicks += 1;
-    byProductMap.set(click.target_id, entry);
-  }
-  for (const share of shareRows) {
-    if (share.content_type !== 'product') continue;
-    const entry = byProductMap.get(share.content_id) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
-    entry.shares += 1;
-    byProductMap.set(share.content_id, entry);
-  }
-  for (const attribution of activeAttributions) {
-    const productId = clickTarget.get(attribution.click_id);
-    if (!productId) continue;
-    const entry = byProductMap.get(productId) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
-    entry.referrals += 1;
-    entry.earnings = add(entry.earnings, Number(attribution.commission_amount));
-    byProductMap.set(productId, entry);
-  }
-  // Reversed (order cancelled/refunded) counted separately from referrals/earnings
-  // above — a real refund-risk signal, not folded into the active-attribution
-  // totals. Reuses attributionRows already fetched above; no new query.
-  for (const attribution of attributionRows) {
-    if (attribution.status !== 'reversed') continue;
-    const productId = clickTarget.get(attribution.click_id);
-    if (!productId) continue;
-    const entry = byProductMap.get(productId) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
-    entry.reversed += 1;
-    byProductMap.set(productId, entry);
-  }
-
-  // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: same shape as byProduct
-  // above, grouped by click.campaign instead of click target. `null` is its
-  // own real bucket here (rendered as "Untagged" by the dashboard) rather
-  // than being filtered out, so untagged clicks aren't silently dropped from
-  // the breakdown.
-  const clickCampaign = new Map(clickRows.map((c) => [c.id, c.campaign as string | null]));
-  const byCampaignMap = new Map<string | null, { clicks: number; referrals: number; earnings: number }>();
-  for (const click of clickRows) {
-    const entry = byCampaignMap.get(click.campaign) ?? { clicks: 0, referrals: 0, earnings: 0 };
-    entry.clicks += 1;
-    byCampaignMap.set(click.campaign, entry);
-  }
-  for (const attribution of activeAttributions) {
-    const campaign = clickCampaign.get(attribution.click_id) ?? null;
-    const entry = byCampaignMap.get(campaign) ?? { clicks: 0, referrals: 0, earnings: 0 };
-    entry.referrals += 1;
-    entry.earnings = add(entry.earnings, Number(attribution.commission_amount));
-    byCampaignMap.set(campaign, entry);
-  }
-  const byCampaign: AffiliateCampaignStat[] = [...byCampaignMap.entries()]
-    .map(([campaign, v]) => ({ campaign, clicks: v.clicks, referrals: v.referrals, earnings: v.earnings }))
-    .sort((a, b) => b.earnings - a.earnings);
-
-  const productIds = [...byProductMap.keys()];
-  const productNames = await resolveProductNames(productIds);
-
-  const byProduct: AffiliateProductStat[] = productIds.map((id) => {
-    const entry = byProductMap.get(id)!;
-    return {
-      productId: id,
-      productName: productNames.get(id) ?? 'Deleted listing',
-      shares: entry.shares,
-      clicks: entry.clicks,
-      referrals: entry.referrals,
-      earnings: entry.earnings,
-      reversedReferrals: entry.reversed,
-    };
-  });
-
-  const clicksByDay = zeroFilledDays();
-  const dayIndex = new Map(clicksByDay.map((d, i) => [d.date, i]));
-  for (const click of clickRows) {
-    const day = String(click.created_at).slice(0, 10);
-    const idx = dayIndex.get(day);
-    if (idx !== undefined) clicksByDay[idx].clicks += 1;
-  }
-
-  const commissions: AffiliateCommission[] = attributionRows
-    .map((a) => {
-      const productId = clickTarget.get(a.click_id);
-      let clearsInDays: number | null = null;
-      if (a.status === 'pending') {
-        const ageMs = Date.now() - new Date(a.created_at).getTime();
-        const remainingDays = clearanceDays - ageMs / 86_400_000;
-        clearsInDays = Math.max(0, Math.ceil(remainingDays));
-      }
-      return {
-        id: a.id,
-        productName: productId ? (productNames.get(productId) ?? 'Deleted listing') : null,
-        orderAmount: orderAmounts.get(a.order_id) ?? null,
-        rate: Number(a.commission_rate),
-        amount: Number(a.commission_amount),
-        status: a.status as AffiliateCommission['status'],
-        createdAt: a.created_at,
-        clearedAt: a.cleared_at,
-        clearsInDays,
-      };
-    })
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-
-  const funnel = computeFunnel(
-    shareRows.map((s) => ({ platform: s.platform })),
-    clickRows.map((c) => ({ id: c.id, source: c.source })),
-    activeAttributions.map((a) => ({ clickId: a.click_id })),
-  );
-
+  const commissions: AffiliateCommission[] = result.commissions.map((row) => ({
+    id: row.id,
+    productName: row.targetType === 'product' && row.productId
+      ? productNames.get(row.productId) ?? 'Deleted listing'
+      : null,
+    orderAmount: row.orderAmount === null ? null : Number(row.orderAmount),
+    rate: Number(row.rate),
+    amount: Number(row.amount),
+    status: row.status as AffiliateCommission['status'],
+    createdAt: row.createdAt,
+    clearedAt: row.clearedAt,
+    clearsInDays: row.status === 'pending'
+      ? Math.max(0, Math.ceil(clearanceDays - (Date.now() - new Date(row.createdAt).getTime()) / 86_400_000))
+      : null,
+  }));
   return {
-    affiliateCode: link.affiliate_code,
-    totals: {
-      clicks: clickRows.length,
-      referrals: activeAttributions.length,
-      pendingEarnings,
-      availableToWithdraw,
-      totalEarnings,
-    },
-    byProduct,
-    byCampaign,
-    clicksByDay,
+    affiliateCode: result.affiliateCode,
+    totals: result.totals,
+    byProduct: result.byProduct.map((row) => ({ ...row, productName: productNames.get(row.productId) ?? 'Deleted listing' })),
+    byCampaign: result.byCampaign,
+    clicksByDay: result.clicksByDay,
     commissions,
-    funnel,
+    funnel: result.funnel,
     tier,
   };
 }

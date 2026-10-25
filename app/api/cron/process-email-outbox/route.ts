@@ -19,11 +19,14 @@ export async function GET(request: Request) {
   try { await processWithdrawalApproverNotifications(); }
   catch { monitorFailed = true; }
   try {
-    const result = await processEmailOutbox(20);
+    const result = await processEmailOutbox(2);
     try { await recordPortalDispatch('email', monitorFailed || result.reviewRequired > 0 || result.failed > 0 ? 'failed' : 'succeeded'); }
     catch { monitorFailed = true; }
     if (result.reviewRequired > 0) return NextResponse.json({ ...result, error: 'email_delivery_review_required' }, { status: 503 });
     return NextResponse.json(monitorFailed ? { ...result, error: 'kyc_monitor_unavailable' } : result, { status: monitorFailed ? 503 : 200 });
   }
-  catch { return NextResponse.json({ error: 'email_processing_unavailable' }, { status: 503 }); }
+  catch {
+    try { await recordPortalDispatch('email', 'failed'); } catch { /* Delivery failure remains the primary response. */ }
+    return NextResponse.json({ error: 'email_processing_unavailable' }, { status: 503 });
+  }
 }

@@ -1,10 +1,10 @@
 "use client";
 
 // Contract #1: AuthContext — { currentUser, roles, activeVendorId, activeOutletIds }.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { setCurrentUserId } from "@/backend/domains/current-user";
+import { clearCurrentUser, setCurrentUserId } from "@/backend/domains/current-user";
 import { createClient } from "@/lib/supabase/client";
 import { pickDemoRole } from "@/lib/auth/demo-user-role";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
@@ -64,6 +64,8 @@ type AuthMeUser = {
   staffModules: StaffModule[];
 };
 
+type AuthRequest = { generation: number; controller: AbortController };
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { t: tAuth } = useTranslation("auth");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -81,17 +83,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
   const router = useRouter();
+  const requestGeneration = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
+  const currentUserId = useRef<string | null>(currentUser?.id ?? null);
+  useLayoutEffect(() => {
+    currentUserId.current = currentUser?.id ?? null;
+  }, [currentUser?.id]);
 
-  const loadSupabaseUser = useCallback(async (authUserId: string) => {
-    const response = await fetch("/api/auth/me", { cache: "no-store" });
-    if (!response.ok) throw new Error(tAuth("errors.generic"));
-    const body = await response.json() as { user?: AuthMeUser };
-    const row = body.user;
-    if (!row || row.id !== authUserId) throw new Error(tAuth("errors.generic"));
+  const beginRequest = useCallback((): AuthRequest => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    const generation = ++requestGeneration.current;
+    activeRequest.current = controller;
+    return { generation, controller };
+  }, []);
 
-    const role = pickDemoRole(row.roles.map((name) => ({ roles: { name } })));
-    const name = row.fullName ?? row.email ?? tAuth("userFallback");
-    const user: StaffSessionUser = {
+  const invalidateRequests = useCallback(() => {
+    requestGeneration.current += 1;
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+  }, []);
+
+  const isCurrentRequest = useCallback((request: AuthRequest) => (
+    !request.controller.signal.aborted && request.generation === requestGeneration.current
+  ), []);
+
+  const clearIdentityState = useCallback(() => {
+    clearCurrentUser();
+    setCurrentUser(null);
+    setStaffVerified(false);
+    setStaffPasskeyRequired(true);
+    setStaffMfaRequired(false);
+    setCapabilities(GUEST_CAPABILITIES);
+    setVerificationFacts(null);
+    setEntitlementGeneration(0);
+    setActiveOutletName(null);
+    setStaffRoleNames([]);
+    setStaffPermissionKeys([]);
+    setStaffModules([]);
+  }, []);
+
+  const loadSupabaseUser = useCallback(async (authUserId: string, request = beginRequest()): Promise<StaffSessionUser | null> => {
+    if (!isCurrentRequest(request)) return null;
+    try {
+      const response = await fetch("/api/auth/me", { cache: "no-store", signal: request.controller.signal });
+      if (!isCurrentRequest(request)) return null;
+      if (!response.ok) throw new Error(tAuth("errors.generic"));
+      const body = await response.json() as { user?: AuthMeUser };
+      if (!isCurrentRequest(request)) return null;
+      const row = body.user;
+      if (!row || row.id !== authUserId) throw new Error(tAuth("errors.generic"));
+
+      const role = pickDemoRole(row.roles.map((name) => ({ roles: { name } })));
+      const name = row.fullName ?? row.email ?? tAuth("userFallback");
+      const user: StaffSessionUser = {
       staffVerified: row.staffVerified === true,
       staffPasskeyRequired: row.staffPasskeyRequired !== false,
       staffMfaRequired: row.staffMfaRequired !== false,
@@ -113,62 +158,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       staffModules: row.staffModules ?? [],
       vendorId: row.activeVendorId ?? undefined,
       outletId: row.activeOutletIds[0] ?? undefined,
-    };
-    setCurrentUser(user);
-    setCapabilities(row.capabilities);
-    setVerificationFacts(row.verificationFacts);
-    setEntitlementGeneration(row.entitlementGeneration);
-    setActiveOutletName(row.activeOutletName);
-    setStaffRoleNames(row.staffRoleNames);
-    setStaffPermissionKeys(row.staffPermissionKeys);
-    setStaffModules(row.staffModules ?? []);
-    setStaffVerified(row.staffVerified === true);
-    setStaffPasskeyRequired(row.staffPasskeyRequired !== false);
-    setStaffMfaRequired(row.staffMfaRequired !== false);
-    setCurrentUserId(authUserId);
-    return user;
-  }, [tAuth]);
+      };
+      if (!isCurrentRequest(request)) return null;
+      setCurrentUserId(user.id);
+      setCurrentUser(user);
+      setCapabilities(row.capabilities);
+      setVerificationFacts(row.verificationFacts);
+      setEntitlementGeneration(row.entitlementGeneration);
+      setActiveOutletName(row.activeOutletName);
+      setStaffRoleNames(row.staffRoleNames);
+      setStaffPermissionKeys(row.staffPermissionKeys);
+      setStaffModules(row.staffModules ?? []);
+      setStaffVerified(row.staffVerified === true);
+      setStaffPasskeyRequired(row.staffPasskeyRequired !== false);
+      setStaffMfaRequired(row.staffMfaRequired !== false);
+      return user;
+    } catch (error) {
+      if (!isCurrentRequest(request)) return null;
+      throw error;
+    } finally {
+      if (isCurrentRequest(request)) activeRequest.current = null;
+    }
+  }, [beginRequest, isCurrentRequest, tAuth]);
 
   useEffect(() => {
     let active = true;
+    const request = beginRequest();
 
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!active) return;
+      if (!active || !isCurrentRequest(request)) return;
       if (!user) {
         // Do not trust the old localStorage-only demo selection. Server pages
         // authenticate through Supabase cookies, so both sides must agree.
-        setCurrentUser(null);
-        setStaffVerified(false);
-        setStaffPasskeyRequired(true);
-        setStaffMfaRequired(false);
-        setCapabilities(GUEST_CAPABILITIES);
-        setVerificationFacts(null);
-        setEntitlementGeneration(0);
-        setActiveOutletName(null);
-        setStaffRoleNames([]);
-        setStaffPermissionKeys([]);
-        setStaffModules([]);
+        clearIdentityState();
         setLoading(false);
         return;
       }
-      await loadSupabaseUser(user.id);
-      if (active) setLoading(false);
+      await loadSupabaseUser(user.id, request);
+      if (active && isCurrentRequest(request)) setLoading(false);
     }
 
     load().catch(() => {
-      if (!active) return;
-      setCurrentUser(null);
-        setStaffVerified(false);
-        setStaffPasskeyRequired(true);
-        setStaffMfaRequired(false);
-      setCapabilities(GUEST_CAPABILITIES);
-      setVerificationFacts(null);
-      setEntitlementGeneration(0);
-      setActiveOutletName(null);
-      setStaffRoleNames([]);
-      setStaffPermissionKeys([]);
-      setStaffModules([]);
+      if (!active || !isCurrentRequest(request)) return;
+      clearIdentityState();
       setLoading(false);
     });
 
@@ -177,45 +210,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // emits INITIAL_SESSION when this listener subscribes; handling it here
       // would issue a duplicate /api/auth/me request on every app boot.
       if (_event === "INITIAL_SESSION") return;
+      const authRequest = beginRequest();
       if (!session?.user) {
-        setCurrentUser(null);
-        setStaffVerified(false);
-        setStaffPasskeyRequired(true);
-        setStaffMfaRequired(false);
-        setCapabilities(GUEST_CAPABILITIES);
-        setVerificationFacts(null);
-        setEntitlementGeneration(0);
-        setStaffRoleNames([]);
-        setStaffPermissionKeys([]);
-        setStaffModules([]);
+        clearIdentityState();
         setLoading(false);
         return;
       }
-      void loadSupabaseUser(session.user.id)
+      if (currentUserId.current !== session.user.id) clearIdentityState();
+      setLoading(true);
+      void loadSupabaseUser(session.user.id, authRequest)
         .catch(() => {
-          if (!active) return;
-          setCurrentUser(null);
-        setStaffVerified(false);
-        setStaffPasskeyRequired(true);
-        setStaffMfaRequired(false);
-          setCapabilities(GUEST_CAPABILITIES);
-          setVerificationFacts(null);
-          setEntitlementGeneration(0);
-          setActiveOutletName(null);
-          setStaffRoleNames([]);
-          setStaffPermissionKeys([]);
-          setStaffModules([]);
+          if (!active || !isCurrentRequest(authRequest)) return;
+          clearIdentityState();
         })
         .finally(() => {
-          if (active) setLoading(false);
+          if (active && isCurrentRequest(authRequest)) setLoading(false);
         });
     });
 
     return () => {
       active = false;
       subscription.unsubscribe();
+      invalidateRequests();
     };
-  }, [loadSupabaseUser, supabase]);
+  }, [beginRequest, clearIdentityState, invalidateRequests, isCurrentRequest, loadSupabaseUser, supabase]);
 
   useEffect(() => {
     if (loading || !currentUser) return;
@@ -229,29 +247,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const switchUser = useCallback(async (id: string, selectedUser?: User, captchaToken?: string) => {
     const user = selectedUser;
     if (!user || user.id !== id) throw new Error(tAuth('errors.demoLoad'));
+    const request = beginRequest();
+    setLoading(true);
+    clearIdentityState();
 
     try {
       const response = await fetch('/api/auth/demo-signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email, captchaToken }),
+        signal: request.controller.signal,
       });
       await response.json().catch(() => null);
+      if (!isCurrentRequest(request)) return null;
       if (!response.ok) throw new Error(tAuth('signIn.error'));
 
-      const loadedUser = await loadSupabaseUser(id);
+      const loadedUser = await loadSupabaseUser(id, request);
+      if (!loadedUser || !isCurrentRequest(request)) return null;
       setLoading(false);
       return loadedUser;
     } catch {
+      if (!isCurrentRequest(request)) return null;
+      invalidateRequests();
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      clearIdentityState();
+      setLoading(false);
       throw new Error(tAuth('signIn.error'));
     }
-  }, [loadSupabaseUser, supabase, tAuth]);
+  }, [beginRequest, clearIdentityState, invalidateRequests, isCurrentRequest, loadSupabaseUser, supabase, tAuth]);
 
   const refreshUser = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await loadSupabaseUser(user.id);
-  }, [loadSupabaseUser, supabase]);
+    const request = beginRequest();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!isCurrentRequest(request)) return;
+      if (!user) {
+        clearIdentityState();
+        setLoading(false);
+        return;
+      }
+      if (currentUserId.current !== user.id) clearIdentityState();
+      setLoading(true);
+      await loadSupabaseUser(user.id, request);
+      if (isCurrentRequest(request)) setLoading(false);
+    } catch {
+      if (!isCurrentRequest(request)) return;
+      clearIdentityState();
+      setLoading(false);
+    }
+  }, [beginRequest, clearIdentityState, isCurrentRequest, loadSupabaseUser, supabase]);
 
   const value: AuthContextValue = {
     staffVerified,
