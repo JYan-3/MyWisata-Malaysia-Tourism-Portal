@@ -56,7 +56,7 @@ export async function saveCurrencyPreference(
   }
 }
 
-function CurrencyOption({ currency }: { currency: ReferenceCurrency }) {
+function CurrencyOption({ currency, hideCode = false }: { currency: ReferenceCurrency; hideCode?: boolean }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       <Image
@@ -67,12 +67,18 @@ function CurrencyOption({ currency }: { currency: ReferenceCurrency }) {
         height={12}
         className="h-3 w-4 shrink-0 rounded-[2px] border border-foreground/10 object-cover"
       />
-      <span className="truncate font-medium">{currency}</span>
+      {/* sr-only (not hidden) so screen readers still hear the code when only the flag shows. */}
+      <span className={cn("truncate font-medium", hideCode ? "max-md:sr-only" : undefined)}>{currency}</span>
     </span>
   );
 }
 
-export function CurrencySwitcher({ compact = false, className }: { compact?: boolean; className?: string }) {
+export function CurrencySwitcher({ compact = false, codeHiddenOnMobile = false, className }: {
+  compact?: boolean;
+  // Below md the trigger shows only the flag; the dropdown list always shows flag + code.
+  codeHiddenOnMobile?: boolean;
+  className?: string;
+}) {
   const { t } = useTranslation("common");
   const { showFeedback } = useActionFeedback();
   const { currency, snapshot } = useReferenceCurrency();
@@ -137,7 +143,7 @@ export function CurrencySwitcher({ compact = false, className }: { compact?: boo
           )}
         >
           <SelectValue>
-            <CurrencyOption currency={currency} />
+            <CurrencyOption currency={currency} hideCode={codeHiddenOnMobile} />
           </SelectValue>
         </SelectTrigger>
         <SelectContent

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { REFERENCE_CURRENCIES } from "@/lib/currency/reference";
 import {
@@ -54,5 +56,18 @@ describe("currency switcher preference save", () => {
     expect(shouldNotifyRateUnavailable("SGD", "SGD", true)).toBe(false);
     expect(shouldNotifyRateUnavailable("SGD", "USD", true)).toBe(true);
     expect(shouldNotifyRateUnavailable(null, "SGD", false)).toBe(false);
+  });
+});
+
+describe("currency switcher mobile code", () => {
+  const source = readFileSync(resolve(process.cwd(), "components/shared/currency-switcher.tsx"), "utf8");
+
+  it("can hide the code visually below md in the trigger only, keeping it for screen readers", () => {
+    expect(source).toContain("codeHiddenOnMobile?: boolean");
+    // sr-only keeps the code in the accessible name of the trigger.
+    expect(source).toContain('hideCode ? "max-md:sr-only" : undefined');
+    expect(source).toContain("<CurrencyOption currency={currency} hideCode={codeHiddenOnMobile} />");
+    // The dropdown list always shows flag + code.
+    expect(source).toContain("<CurrencyOption currency={code} />");
   });
 });

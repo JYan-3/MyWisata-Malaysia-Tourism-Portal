@@ -30,7 +30,7 @@ export function EventPartnersSection({ partners, featured = false }: { partners:
       <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary"><Megaphone size={14} aria-hidden="true" /> {t("ui.eventPartners.eyebrow")}</p>
       <h2 id="event-partners-heading" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t("ui.eventPartners.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("ui.eventPartners.description")}</p>
-      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {partners.map((partner) => <EventPartnerCard key={partner.id} partner={partner} locale={locale} />)}
       </div>
     </section>
@@ -52,7 +52,7 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
           {t("ui.home.viewPartners")} <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {partners.map((partner) => (
           <EventPartnerCard key={partner.id} partner={partner} locale={locale} featured />
         ))}

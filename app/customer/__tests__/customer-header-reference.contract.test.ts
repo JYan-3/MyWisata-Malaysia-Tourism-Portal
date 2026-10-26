@@ -64,7 +64,7 @@ describe("customer header reference contract", () => {
   it("compresses the customer utility row at phone widths to keep account controls visible", () => {
     expect(customerLayoutSource).toContain("px-2 sm:px-6 flex items-center gap-1 sm:gap-8");
     expect(customerLayoutSource).toContain("w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]");
-    expect(customerLayoutSource).toContain("className=\"w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24\"");
+    expect(customerLayoutSource).toContain("<CurrencySwitcher compact codeHiddenOnMobile className=\"w-14 md:w-24\" />");
     expect(customerLayoutSource).toContain("text-muted-foreground transition-transform sm:inline");
   });
 
