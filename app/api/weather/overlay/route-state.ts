@@ -1,11 +1,20 @@
+import { createProviderSlotGate } from "@/lib/weather/provider-slot";
+
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 6;
+const MAX_TRACKED_USERS = 5_000;
 const userRequests = new Map<string, number[]>();
-const waiters: Array<() => void> = [];
-let activeCalls = 0;
+const providerGate = createProviderSlotGate({ maxRunning: 3, maxWaiters: 12 });
 
 export function consumeWeatherOverlayRateLimit(userId: string, now = Date.now()) {
-  const recent = (userRequests.get(userId) ?? []).filter((timestamp) => timestamp > now - RATE_WINDOW_MS);
+  let recent = userRequests.get(userId) ?? [];
+  if (userRequests.size >= MAX_TRACKED_USERS && !userRequests.has(userId)) {
+    for (const [key, timestamps] of userRequests) {
+      if (!timestamps.some((timestamp) => timestamp > now - RATE_WINDOW_MS)) userRequests.delete(key);
+    }
+    if (userRequests.size >= MAX_TRACKED_USERS) return false;
+  }
+  recent = recent.filter((timestamp) => timestamp > now - RATE_WINDOW_MS);
   if (recent.length >= RATE_LIMIT) {
     userRequests.set(userId, recent);
     return false;
@@ -15,19 +24,11 @@ export function consumeWeatherOverlayRateLimit(userId: string, now = Date.now())
   return true;
 }
 
-export async function withWeatherOverlayProviderSlot<T>(work: () => Promise<T>) {
-  if (activeCalls >= 3) await new Promise<void>((resolve) => waiters.push(resolve));
-  activeCalls += 1;
-  try {
-    return await work();
-  } finally {
-    activeCalls -= 1;
-    waiters.shift()?.();
-  }
+export function withWeatherOverlayProviderSlot<T>(work: () => Promise<T>, signal?: AbortSignal) {
+  return providerGate.run(work, signal);
 }
 
 export function __resetWeatherOverlayRouteStateForTests() {
   userRequests.clear();
-  waiters.splice(0);
-  activeCalls = 0;
+  providerGate.resetForTests();
 }

@@ -677,6 +677,7 @@
       "search": "Cari",
       "searching": "Mencari…",
       "noMatches": "Tiada padanan — teruskan menaip.",
+      "searchUnavailable": "Carian tempat tidak tersedia buat sementara waktu. Anda masih boleh menetapkan pin peta secara manual atau menggunakan GPS.",
       "mapRegion": "Peta interaktif",
       "dragToSetLocation": "Seret untuk menetapkan lokasi anda",
       "youAreHere": "Anda berada di sini",
@@ -2076,6 +2077,7 @@
       "savedToAtlas": "Disimpan ke atlas anda",
       "saveFeeling": "Simpan perasaan ini",
       "destinationCarousel": "Karusel destinasi",
+      "destinationPage": "Halaman {{page}} daripada {{total}}",
       "exploreDestinations": "Teroka Destinasi",
       "swipeDestinations": "Leret untuk meneroka semua {{count}} negeri.",
       "forYou": "Untuk Anda",
@@ -2394,7 +2396,11 @@
         "conflict": "Kekurangan kira-kira {{minutes}} min",
         "fits_estimate": "Sesuai dengan anggaran perjalanan semasa",
         "unknown": "Tempoh lawatan atau anggaran perjalanan tidak diketahui"
-      }
+      },
+      "versionConflict": "Perjalanan ini berubah dalam sesi lain. Input anda dikekalkan. Muat semula sebelum menyimpan lagi.",
+      "legacyRestore": "Pulihkan perjalanan lama",
+      "legacyRestoreHint": "Pelayar ini mempunyai perjalanan lama. Pulihkan sekali jika masih diperlukan.",
+      "legacyRestoreConfirm": "Pulihkan perjalanan lama ke akaun semasa? Perjalanan yang pernah dipulihkan tidak akan ditambah lagi."
     },
     "outletPage": {
       "notFound": "Cawangan tidak ditemui",

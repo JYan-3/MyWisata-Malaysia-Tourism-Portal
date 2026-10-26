@@ -677,6 +677,7 @@
       "search": "Search",
       "searching": "Searching…",
       "noMatches": "No matches — keep typing.",
+      "searchUnavailable": "Place search is temporarily unavailable. You can still set the map pin manually or use GPS.",
       "mapRegion": "Interactive map",
       "dragToSetLocation": "Drag to set your location",
       "youAreHere": "You are here",
@@ -2076,6 +2077,7 @@
       "savedToAtlas": "Saved to your atlas",
       "saveFeeling": "Save this feeling",
       "destinationCarousel": "Destination carousel",
+      "destinationPage": "Page {{page}} of {{total}}",
       "exploreDestinations": "Explore Destinations",
       "swipeDestinations": "Swipe to explore all {{count}} states.",
       "forYou": "For You",
@@ -2394,7 +2396,11 @@
         "conflict": "Short by approximately {{minutes}} min",
         "fits_estimate": "Fits the current travel estimate",
         "unknown": "Visit duration or travel estimate unknown"
-      }
+      },
+      "versionConflict": "This trip changed in another session. Your input is preserved. Reload the trip before saving again.",
+      "legacyRestore": "Restore old trips",
+      "legacyRestoreHint": "This browser has older saved trips. Restore them once if you still need them.",
+      "legacyRestoreConfirm": "Restore these old trips to your current account? Previously restored trips will not be added again."
     },
     "outletPage": {
       "notFound": "Outlet not found",

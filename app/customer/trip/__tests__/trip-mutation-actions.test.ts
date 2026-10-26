@@ -11,12 +11,18 @@ beforeEach(()=>vi.resetAllMocks());
 describe("Trip mutation transport",()=>{
  it("returns a safe validation failure rather than throwing into the framework",async()=>{
   mocks.update.mockRejectedValue(new Error("Trip times must follow itinerary order"));
-  await expect(updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"09:00"})).resolves.toEqual({ok:false});
+  await expect(updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"09:00"},"version")).resolves.toEqual({ok:false});
   expect(mocks.revalidate).not.toHaveBeenCalled();
  });
  it("returns the canonical row and revalidates only after success",async()=>{
-  const row={id:"stored",scheduled_time:"11:00:00"};mocks.update.mockResolvedValue(row);
-  expect(await updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"11:00"})).toEqual({ok:true,value:row});
+  const row={id:"stored",scheduled_time:"11:00:00"};mocks.update.mockResolvedValue({value:row,version:"next"});
+  expect(await updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"11:00"},"version")).toEqual({ok:true,value:row,version:"next"});
   expect(mocks.revalidate).toHaveBeenCalledWith("/customer/trip/trip");
+ });
+ it("keeps a committed mutation successful when cache revalidation fails",async()=>{
+  const row={id:"stored",scheduled_time:"11:00:00"};mocks.update.mockResolvedValue({value:row,version:"next"});
+  mocks.revalidate.mockImplementation(()=>{throw new Error("cache refresh unavailable");});
+  expect(await updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"11:00"},"version"))
+   .toEqual({ok:true,value:row,version:"next",refreshRequired:true});
  });
 });

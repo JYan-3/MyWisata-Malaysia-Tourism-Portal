@@ -98,7 +98,7 @@ export function MapClient({
   sponsoredPlacements: SponsoredPlacement[];
   suggestedAtByVendor: Record<string, string>;
 }) {
-  const trip = useTripItems(tripData.id, initialItems);
+  const trip = useTripItems(tripData.id, initialItems, tripData.updated_at);
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { alert: showAlert } = useAppDialog();
   const router = useRouter();
@@ -117,6 +117,7 @@ export function MapClient({
   const [startInput, setStartInput] = useState("");
   const [suggestions, setSuggestions] = useState<GeoHit[]>([]);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [geoUnavailable, setGeoUnavailable] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
@@ -125,6 +126,7 @@ export function MapClient({
   const [stopSearchInput, setStopSearchInput] = useState("");
   const [stopSuggestions, setStopSuggestions] = useState<GeoHit[]>([]);
   const [stopSearchLoading, setStopSearchLoading] = useState(false);
+  const [stopGeoUnavailable, setStopGeoUnavailable] = useState(false);
 
   // Edit-a-typed-stop search + real-time geocoding autocomplete (vendor stops
   // aren't editable — they're tied to a real listing).
@@ -132,6 +134,7 @@ export function MapClient({
   const [editStopInput, setEditStopInput] = useState("");
   const [editStopSuggestions, setEditStopSuggestions] = useState<GeoHit[]>([]);
   const [editStopLoading, setEditStopLoading] = useState(false);
+  const [editGeoUnavailable, setEditGeoUnavailable] = useState(false);
 
   // Off by default — vendor pins otherwise clutter the map once a trip has stops.
   const [showAllVendors, setShowAllVendors] = useState(false);
@@ -273,17 +276,21 @@ export function MapClient({
     if (q.length < 3) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([]);
+      setGeoUnavailable(false);
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setGeoLoading(true);
+    setGeoUnavailable(false);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Geocoding unavailable");
         const body = (await res.json()) as { data: { results: GeoHit[] } | null };
         if (!cancelled) setSuggestions(body.data?.results ?? []);
       } catch {
-        if (!cancelled) setSuggestions([]);
+        if (!cancelled) { setSuggestions([]); setGeoUnavailable(true); }
       } finally {
         if (!cancelled) setGeoLoading(false);
       }
@@ -291,6 +298,7 @@ export function MapClient({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [startInput, editingStart]);
 
@@ -301,17 +309,21 @@ export function MapClient({
     if (q.length < 3) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStopSuggestions([]);
+      setStopGeoUnavailable(false);
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setStopSearchLoading(true);
+    setStopGeoUnavailable(false);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Geocoding unavailable");
         const body = (await res.json()) as { data: { results: GeoHit[] } | null };
         if (!cancelled) setStopSuggestions(body.data?.results ?? []);
       } catch {
-        if (!cancelled) setStopSuggestions([]);
+        if (!cancelled) { setStopSuggestions([]); setStopGeoUnavailable(true); }
       } finally {
         if (!cancelled) setStopSearchLoading(false);
       }
@@ -319,6 +331,7 @@ export function MapClient({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [stopSearchInput, addingStop]);
 
@@ -329,17 +342,21 @@ export function MapClient({
     if (q.length < 3) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditStopSuggestions([]);
+      setEditGeoUnavailable(false);
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setEditStopLoading(true);
+    setEditGeoUnavailable(false);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Geocoding unavailable");
         const body = (await res.json()) as { data: { results: GeoHit[] } | null };
         if (!cancelled) setEditStopSuggestions(body.data?.results ?? []);
       } catch {
-        if (!cancelled) setEditStopSuggestions([]);
+        if (!cancelled) { setEditStopSuggestions([]); setEditGeoUnavailable(true); }
       } finally {
         if (!cancelled) setEditStopLoading(false);
       }
@@ -347,6 +364,7 @@ export function MapClient({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [editStopInput, editingStopId]);
 
@@ -437,7 +455,7 @@ export function MapClient({
     return (
       <div className="mt-1.5">
         {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
-        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noMatches")}</p>}
+        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer(geoUnavailable ? "ui.map.searchUnavailable" : "ui.map.noMatches")}</p>}
         {suggestions.length > 0 && (
           <ul className="overflow-hidden rounded-lg border border-border bg-card">
             {suggestions.map((s, i) => (
@@ -872,6 +890,7 @@ export function MapClient({
             {(
               <div className="mt-2">
                 {editStopLoading && <p className="text-xs text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
+                {!editStopLoading && editStopInput.trim().length >= 3 && editStopSuggestions.length === 0 && <p className="text-xs text-muted-foreground">{tCustomer(editGeoUnavailable ? "ui.map.searchUnavailable" : "ui.map.noMatches")}</p>}
                 {editStopSuggestions.length > 0 && (
                   <ul className="overflow-hidden rounded-lg border border-border bg-card">
                     {editStopSuggestions.map((suggestion, index) => (
@@ -1218,6 +1237,7 @@ export function MapClient({
                     <button onClick={() => { setAddingStop(false); setStopSearchInput(""); setStopSuggestions([]); }} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label={tCustomer("ui.actions.cancel")}><X size={14} /></button>
                   </div>
                   {stopSearchLoading && <p className="mt-2 text-xs text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
+                  {!stopSearchLoading && stopSearchInput.trim().length >= 3 && stopSuggestions.length === 0 && <p className="mt-2 text-xs text-muted-foreground">{tCustomer(stopGeoUnavailable ? "ui.map.searchUnavailable" : "ui.map.noMatches")}</p>}
                   {stopSuggestions.length > 0 && <ul className="mt-2 overflow-hidden rounded-lg border border-border bg-card">{stopSuggestions.map((suggestion, index) => <li key={suggestion.lat + "," + suggestion.lng + "," + index}><button onClick={() => chooseStopSuggestion(suggestion)} className="flex w-full items-start gap-2 border-b border-border px-3 py-2 text-left text-xs last:border-0 hover:bg-muted"><LocateFixed size={13} className="mt-0.5 shrink-0 text-primary" /><span className="break-words whitespace-normal">{suggestion.label}</span></button></li>)}</ul>}
                 </div>
               ) : <button onClick={() => setAddingStop(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={14} /> {tCustomer("ui.map.addPlace")}</button>}

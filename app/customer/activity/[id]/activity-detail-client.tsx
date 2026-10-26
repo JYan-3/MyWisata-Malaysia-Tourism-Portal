@@ -488,7 +488,7 @@ export function ActivityDetailClient({
               <Link href={getOutletShopHref(selectedOutlet.outletId)} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitOutlet")} →</Link>
             )}
           </div>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
             {relatedProducts.map((product) => (
               <ActivityCard
                 key={product.id}

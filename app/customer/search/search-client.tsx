@@ -309,7 +309,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
         </div>
         
         {visibleVendors.length ? (
-          <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-6 lg:grid-cols-4">
             {visibleVendors.map((vendor, index) => (
               <VendorCard
                 key={vendor.id}

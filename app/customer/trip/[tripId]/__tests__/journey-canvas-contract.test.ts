@@ -38,7 +38,8 @@ describe("journey canvas integration contract", () => {
   });
 
   it("rolls schedule changes back with an accessible error", () => {
-    expect(hookSource).toContain('t("strictMigration.tripPlanner.scheduleFailed")');
+    expect(hookSource).toContain('strictMigration.tripPlanner.scheduleFailed');
+    expect(hookSource).toContain('ui.trip.versionConflict');
     expect(source).toContain('role={trip.error ? "alert" : "status"}');
   });
 

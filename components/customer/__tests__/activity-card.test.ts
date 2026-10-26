@@ -83,7 +83,7 @@ describe("customer activity image handling", () => {
     expect(saveToggleSource).toMatch(/bg-white(?: dark:bg-card)? text-primary/);
     expect(cardSource).toContain('appearance="icon"');
     expect(storyMapSource).toContain('appearance="icon"');
-    expect(customerHomeSource).toContain('appearance="pill"');
+    expect(customerHomeSource).toContain('appearance="icon"');
     expect(designDemoSource).toContain('appearance="pill"');
     expect(destinationPreviewSource).toContain('appearance="pill"');
   });

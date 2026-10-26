@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { FORECAST_MAX_RESPONSE_BYTES, FORECAST_TIMEOUT_MS } from "@/lib/weather/open-meteo";
+import { startSharedProviderRequest, subscribeToSharedProviderRequest, type SharedProviderRequest } from "@/lib/weather/shared-provider-request";
 import type { RadarOverlayResult } from "@/lib/weather/types";
 
 export const RAINVIEWER_METADATA_URL = "https://api.rainviewer.com/public/weather-maps.json";
@@ -29,7 +30,7 @@ type CacheEntry = {
 };
 
 let completed: CacheEntry | null = null;
-let inFlight: Promise<RadarOverlayResult> | null = null;
+let inFlight: SharedProviderRequest<RadarOverlayResult> | null = null;
 
 function unavailable(now: Date): RadarOverlayResult {
   return {
@@ -105,24 +106,34 @@ function normalizedResult(payload: z.infer<typeof metadataSchema>, now: Date): R
 
 export function __resetRainViewerCacheForTests() {
   completed = null;
+  inFlight?.controller.abort();
   inFlight = null;
 }
 
-export async function getRainViewerRadar(options?: { fetcher?: typeof fetch; now?: () => Date }): Promise<RadarOverlayResult> {
+export function getRainViewerRadar(options?: { fetcher?: typeof fetch; now?: () => Date }): Promise<RadarOverlayResult>;
+export function getRainViewerRadar(options: { fetcher?: typeof fetch; now?: () => Date; signal: AbortSignal }): Promise<RadarOverlayResult | null>;
+export async function getRainViewerRadar(options?: { fetcher?: typeof fetch; now?: () => Date; signal?: AbortSignal }): Promise<RadarOverlayResult | null> {
+  if (options?.signal?.aborted) return null;
   const now = options?.now?.() ?? new Date();
   const nowMs = now.getTime();
   if (completed && completed.freshUntil > nowMs) return completed.value;
-  if (inFlight) return inFlight;
+  if (inFlight) {
+    const pending = inFlight;
+    return subscribeToSharedProviderRequest(pending, options?.signal, () => {
+      if (inFlight === pending) inFlight = null;
+    });
+  }
 
   const cached = completed;
-  const request = (async () => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FORECAST_TIMEOUT_MS);
+  const request = startSharedProviderRequest(async (signal) => {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(() => timeoutController.abort(), FORECAST_TIMEOUT_MS);
+    const requestSignal = AbortSignal.any([signal, timeoutController.signal]);
     try {
       const response = await (options?.fetcher ?? fetch)(RAINVIEWER_METADATA_URL, {
         cache: "no-store",
         redirect: "error",
-        signal: controller.signal,
+        signal: requestSignal,
       });
       if (!response.ok) throw new Error(`RainViewer returned ${response.status}`);
       const parsed = metadataSchema.safeParse(JSON.parse(await readResponseTextWithLimit(response)));
@@ -139,9 +150,12 @@ export async function getRainViewerRadar(options?: { fetcher?: typeof fetch; now
       return unavailable(now);
     } finally {
       clearTimeout(timeout);
-      inFlight = null;
     }
-  })();
+  }, (settled) => {
+    if (inFlight === settled) inFlight = null;
+  });
   inFlight = request;
-  return request;
+  return subscribeToSharedProviderRequest(request, options?.signal, () => {
+    if (inFlight === request) inFlight = null;
+  });
 }

@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
   rpcError: null as { message: string } | null,
   revalidateTag: vi.fn(),
+  scheduleEmailDelivery: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidateTag: state.revalidateTag }));
@@ -33,7 +34,7 @@ vi.mock("@/lib/supabase/service", () => ({
   })),
 }));
 
-vi.mock("@/lib/vendor-notifications/emit", () => ({ emitVendorNotification: vi.fn(async () => undefined) }));
+vi.mock("@/lib/email/events", () => ({ scheduleEmailDelivery: state.scheduleEmailDelivery }));
 
 import { POST } from "@/app/api/admin/catalogue/reviews/route";
 
@@ -42,6 +43,7 @@ describe("POST /api/admin/catalogue/reviews", () => {
     state.rpcCalls = [];
     state.rpcError = null;
     state.revalidateTag.mockClear();
+    state.scheduleEmailDelivery.mockClear();
   });
 
   it.each([
@@ -76,6 +78,7 @@ describe("POST /api/admin/catalogue/reviews", () => {
       },
     }]);
     expect(state.revalidateTag).toHaveBeenCalledWith("activities", { expire: 0 });
+    expect(state.scheduleEmailDelivery).toHaveBeenCalledTimes(1);
   });
 
   it("returns a conflict when another reviewer has already changed the task", async () => {
