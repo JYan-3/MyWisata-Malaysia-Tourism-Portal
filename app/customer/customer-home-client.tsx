@@ -273,7 +273,7 @@ export function CustomerHomeClient({
                 </Button>
               </div>
             </div>
-            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3" onClickCapture={destinationPager.suppressClickAfterTouch}>
+            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
               {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
                 const isSaved = savedStates.has(destination.state);
@@ -295,7 +295,6 @@ export function CustomerHomeClient({
                       saved={isSaved}
                       aria-label={saveLabel}
                       title={saveLabel}
-                      data-home-destination-save="true"
                       onClick={() => {
                         if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
                         void toggleSaved(destination.state);
@@ -504,7 +503,6 @@ export function CustomerHomeClient({
           padding-right: var(--destination-gap);
           scroll-snap-type: x mandatory;
           overscroll-behavior-x: contain;
-          touch-action: pan-y;
           scrollbar-width: none;
         }
 

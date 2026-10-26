@@ -12,12 +12,13 @@ describe("home destination pager hook", () => {
     expect(hook).toContain("pendingPageRef.current ?? Math.round(viewport.scrollLeft / metricsRef.current.pageStep)");
   });
 
-  it("routes each mobile horizontal touch gesture through the one-page helper", () => {
-    expect(hook).toContain('import { decideTouchPageTurn } from "@/lib/customer/touch-page-turn"');
-    expect(hook).toContain('addEventListener("pointerdown", onPointerDown)');
-    expect(hook).toContain('addEventListener("pointerup", onPointerUp)');
-    expect(hook).toContain("decideTouchPageTurn({");
-    expect(hook).toContain("startPage: gesture.startPage");
-    expect(hook).toContain("suppressCardClickUntilRef");
+  it("lets the browser scroll touch swipes and only pulls an overshooting fling back to one page", () => {
+    expect(hook).toContain('import { limitSwipeToOnePage } from "@/lib/customer/touch-page-turn"');
+    expect(hook).toContain('addEventListener("touchstart", onTouchStart, { passive: true })');
+    expect(hook).toContain('addEventListener("touchend", onTouchEnd, { passive: true })');
+    expect(hook).toContain("limitSwipeToOnePage({");
+    // No pointer-driven paging: iPhone Safari sends pointercancel for a slightly diagonal swipe, so it never turned.
+    expect(hook).not.toContain('addEventListener("pointerup"');
+    expect(hook).not.toContain("setPointerCapture");
   });
 });

@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   decideWheelTurn,
   INITIAL_WHEEL_TURN_STATE,
 } from "@/lib/customer/wheel-page-turn";
-import { decideTouchPageTurn } from "@/lib/customer/touch-page-turn";
+import { limitSwipeToOnePage } from "@/lib/customer/touch-page-turn";
 
-const TOUCH_PAGE_TURN_THRESHOLD_PX = 48;
+// A touch swipe counts as finished once the rail has stopped scrolling for this long (momentum included).
+const TOUCH_SETTLE_MS = 140;
 
 type PagerState = {
   page: number;
@@ -23,13 +24,11 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
   const wheelTurnRef = useRef(INITIAL_WHEEL_TURN_STATE);
   const pendingPageRef = useRef<number | null>(null);
   const pendingPageTimerRef = useRef<number | null>(null);
-  const touchGestureRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    startPage: number;
-  } | null>(null);
-  const suppressCardClickUntilRef = useRef(0);
+  // Page the finger started on, kept until that swipe's scroll settles; null when no touch swipe is in progress.
+  const touchStartPageRef = useRef<number | null>(null);
+  const touchingRef = useRef(false);
+  const touchScrolledRef = useRef(false);
+  const touchSettleTimerRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
 
   const sync = useCallback(() => {
@@ -56,6 +55,7 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
     if (!viewport || pageStep === 0) return;
 
     const page = Math.min(Math.max(requestedPage, 0), pageCount - 1);
+    touchStartPageRef.current = null;
     pendingPageRef.current = page;
     if (pendingPageTimerRef.current !== null) window.clearTimeout(pendingPageTimerRef.current);
     pendingPageTimerRef.current = window.setTimeout(() => {
@@ -66,17 +66,29 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
     viewport.scrollTo({ left: page * pageStep, behavior: reducedMotion ? "auto" : "smooth" });
   }, [viewportRef]);
 
-  const suppressClickAfterTouch = useCallback((event: MouseEvent<HTMLElement>) => {
-    if (performance.now() >= suppressCardClickUntilRef.current) return;
-    event.preventDefault();
-    event.stopPropagation();
-  }, []);
-
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
+    const settleTouchSwipe = () => {
+      touchSettleTimerRef.current = null;
+      const startPage = touchStartPageRef.current;
+      const { pageStep, pageCount } = metricsRef.current;
+      if (touchingRef.current || startPage === null || pageStep === 0) return;
+      touchStartPageRef.current = null;
+      const settledPage = Math.round(viewport.scrollLeft / pageStep);
+      const limitedPage = limitSwipeToOnePage({ startPage, settledPage, pageCount });
+      if (limitedPage !== settledPage) goToPage(limitedPage);
+    };
+    const scheduleTouchSettle = () => {
+      if (touchSettleTimerRef.current !== null) window.clearTimeout(touchSettleTimerRef.current);
+      touchSettleTimerRef.current = window.setTimeout(settleTouchSwipe, TOUCH_SETTLE_MS);
+    };
     const scheduleSync = () => {
+      if (touchStartPageRef.current !== null) {
+        touchScrolledRef.current = true;
+        if (!touchingRef.current) scheduleTouchSettle();
+      }
       if (frameRef.current !== null) return;
       frameRef.current = window.requestAnimationFrame(() => {
         frameRef.current = null;
@@ -99,43 +111,21 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
       event.preventDefault();
       goToPage(targetPage);
     };
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType !== "touch" || event.isPrimary === false) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target || target.closest("[data-home-destination-save], a, input, select, textarea")) return;
-      const { pageStep, pageCount } = metricsRef.current;
+    // Touch swipes scroll natively (the rail follows the finger); the browser's scroll-snap-stop normally stops on the
+    // next page, and settleTouchSwipe pulls back any fling that still went further than one page.
+    const onTouchStart = () => {
+      const { pageStep } = metricsRef.current;
       if (pageStep === 0) return;
-
-      const startPage = pendingPageRef.current ?? Math.round(viewport.scrollLeft / pageStep);
-      touchGestureRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        startPage: Math.min(Math.max(startPage, 0), pageCount - 1),
-      };
-      viewport.setPointerCapture(event.pointerId);
+      touchingRef.current = true;
+      touchScrolledRef.current = false;
+      touchStartPageRef.current = pendingPageRef.current ?? Math.round(viewport.scrollLeft / pageStep);
+      if (touchSettleTimerRef.current !== null) window.clearTimeout(touchSettleTimerRef.current);
     };
-    const onPointerUp = (event: PointerEvent) => {
-      const gesture = touchGestureRef.current;
-      if (!gesture || gesture.pointerId !== event.pointerId) return;
-      touchGestureRef.current = null;
-
-      const deltaX = event.clientX - gesture.startX;
-      const deltaY = event.clientY - gesture.startY;
-      if (Math.abs(deltaX) < TOUCH_PAGE_TURN_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) return;
-
-      suppressCardClickUntilRef.current = performance.now() + 500;
-      const targetPage = decideTouchPageTurn({
-        startPage: gesture.startPage,
-        deltaX,
-        thresholdPx: TOUCH_PAGE_TURN_THRESHOLD_PX,
-        pageCount: metricsRef.current.pageCount,
-      });
-      if (targetPage !== gesture.startPage) goToPage(targetPage);
-      event.preventDefault();
-    };
-    const onPointerCancel = (event: PointerEvent) => {
-      if (touchGestureRef.current?.pointerId === event.pointerId) touchGestureRef.current = null;
+    const onTouchEnd = () => {
+      touchingRef.current = false;
+      // A tap that never scrolled leaves nothing to settle.
+      if (!touchScrolledRef.current) touchStartPageRef.current = null;
+      else scheduleTouchSettle();
     };
     const observer = new ResizeObserver(sync);
 
@@ -143,20 +133,21 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
     observer.observe(viewport);
     viewport.addEventListener("scroll", scheduleSync, { passive: true });
     viewport.addEventListener("wheel", onWheel, { passive: false });
-    viewport.addEventListener("pointerdown", onPointerDown);
-    viewport.addEventListener("pointerup", onPointerUp);
-    viewport.addEventListener("pointercancel", onPointerCancel);
+    viewport.addEventListener("touchstart", onTouchStart, { passive: true });
+    viewport.addEventListener("touchend", onTouchEnd, { passive: true });
+    viewport.addEventListener("touchcancel", onTouchEnd, { passive: true });
     return () => {
       observer.disconnect();
       viewport.removeEventListener("scroll", scheduleSync);
       viewport.removeEventListener("wheel", onWheel);
-      viewport.removeEventListener("pointerdown", onPointerDown);
-      viewport.removeEventListener("pointerup", onPointerUp);
-      viewport.removeEventListener("pointercancel", onPointerCancel);
+      viewport.removeEventListener("touchstart", onTouchStart);
+      viewport.removeEventListener("touchend", onTouchEnd);
+      viewport.removeEventListener("touchcancel", onTouchEnd);
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
       if (pendingPageTimerRef.current !== null) window.clearTimeout(pendingPageTimerRef.current);
+      if (touchSettleTimerRef.current !== null) window.clearTimeout(touchSettleTimerRef.current);
     };
   }, [goToPage, sync, viewportRef]);
 
-  return { ...pager, goToPage, suppressClickAfterTouch };
+  return { ...pager, goToPage };
 }

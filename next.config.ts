@@ -81,6 +81,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  // Dev only: lets a phone on the same network (iPhone hotspot or home Wi-Fi) load the dev server by LAN IP.
+  allowedDevOrigins: ['172.20.10.*', '192.168.*.*'],
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },

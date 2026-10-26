@@ -1,13 +1,14 @@
-export function decideTouchPageTurn(input: {
+/**
+ * A touch swipe on the home destination rail may move at most one page. The browser scrolls the rail natively;
+ * if a hard fling settles further than one page from where the finger started, the rail is pulled back to start ± 1.
+ */
+export function limitSwipeToOnePage(input: {
   startPage: number;
-  deltaX: number;
-  thresholdPx: number;
+  settledPage: number;
   pageCount: number;
 }): number {
   const lastPage = Math.max(0, Math.floor(input.pageCount) - 1);
-  const startPage = Math.min(Math.max(Math.trunc(input.startPage), 0), lastPage);
-  if (Math.abs(input.deltaX) < Math.max(0, input.thresholdPx)) return startPage;
-
-  const direction = input.deltaX < 0 ? 1 : -1;
-  return Math.min(Math.max(startPage + direction, 0), lastPage);
+  const clamp = (page: number) => Math.min(Math.max(Math.trunc(page), 0), lastPage);
+  const startPage = clamp(input.startPage);
+  return clamp(Math.min(Math.max(input.settledPage, startPage - 1), startPage + 1));
 }
