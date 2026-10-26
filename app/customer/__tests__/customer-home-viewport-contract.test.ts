@@ -66,10 +66,11 @@ describe("customer home first viewport", () => {
   it("uses responsive snap pages without changing the selected destination", () => {
     expect(homeSource).toContain('"Kuala Lumpur", "Penang", "Sabah", "Melaka"');
     expect(homeSource).toContain("scroll-snap-type: x mandatory");
-    // The app handles horizontal swipe gestures and leaves vertical panning to the browser.
+    // The browser scrolls the rail under the finger (iPhone Safari cancels JS-only swipes); touch-action must not block it.
     const pagerRule = homeSource.match(/\.atlas-destination-pager \{([^}]*)\}/)?.[1] ?? "";
     expect(pagerRule).toContain("overflow-x: auto");
-    expect(pagerRule).toMatch(/touch-action:\s*pan-y/);
+    expect(pagerRule).not.toMatch(/touch-action/);
+    expect(homeSource).not.toContain("onClickCapture={destinationPager.suppressClickAfterTouch}");
     expect(homeSource).toContain("scroll-snap-align: none");
     expect(homeSource).toContain("nth-child(2n + 1)");
     expect(homeSource).toContain("nth-child(4n + 1)");
@@ -95,7 +96,6 @@ describe("customer home first viewport", () => {
     expect(cardMapping).toContain("<SaveToggleButton");
     expect(cardMapping).toContain("savedStates.has(destination.state)");
     expect(cardMapping).toContain("toggleSaved(destination.state)");
-    expect(cardMapping).toContain('data-home-destination-save="true"');
     expect(cardMapping).toMatch(/<\/button>\s*<SaveToggleButton/);
     expect(homeSource).toContain("sizes={{ dot: 11, pill: 36, gap: 8 }}");
     expect(homeSource).toContain("sizes={{ dot: 14, pill: 50, gap: 10 }}");

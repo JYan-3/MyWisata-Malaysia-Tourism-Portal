@@ -273,7 +273,7 @@ export function CustomerHomeClient({
                 </Button>
               </div>
             </div>
-            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3" onClickCapture={destinationPager.suppressClickAfterTouch}>
+            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
               {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
                 const isSaved = savedStates.has(destination.state);
@@ -295,7 +295,6 @@ export function CustomerHomeClient({
                       saved={isSaved}
                       aria-label={saveLabel}
                       title={saveLabel}
-                      data-home-destination-save="true"
                       onClick={() => {
                         if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
                         void toggleSaved(destination.state);
@@ -352,7 +351,7 @@ export function CustomerHomeClient({
                 {t("ui.actions.viewAll")} <ArrowRight size={14} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {highlightItems.map((activity) => (
                 <ActivityCard key={activity.id} activity={activity} />
               ))}
@@ -370,7 +369,7 @@ export function CustomerHomeClient({
                 {t("ui.actions.viewAll")} <ArrowRight size={14} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {forYouItems.map((activity) => (
                 <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} />
               ))}
@@ -411,7 +410,7 @@ export function CustomerHomeClient({
           {nearbyLoading ? (
             <p role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">{t("ui.states.loading")}</p>
           ) : nearbyPartners && nearbyPartners.length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {nearbyPartners.slice(0, 4).map((partner, index) => {
                 const primaryOutlet = partner.outlets[0];
                 const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
@@ -439,7 +438,7 @@ export function CustomerHomeClient({
             <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
             <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {vendors.slice(0, 4).map((vendor, index) => {
               const primaryOutlet = vendor.outlets[0];
               const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
@@ -504,7 +503,6 @@ export function CustomerHomeClient({
           padding-right: var(--destination-gap);
           scroll-snap-type: x mandatory;
           overscroll-behavior-x: contain;
-          touch-action: pan-y;
           scrollbar-width: none;
         }
 
