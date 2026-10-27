@@ -53,10 +53,11 @@ export default function VendorEventOrdersPage() {
   const days = [...new Set((items ?? []).map((item) => item.pickupDate))];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="w-full space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground"><ClipboardList size={22} className="text-primary" aria-hidden="true" /> {t('ui.eventOrders.title')}</h1>
+          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><ClipboardList size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.eventOrders.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t('ui.eventOrders.description')}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">

@@ -53,16 +53,11 @@ export default function VendorAnnouncementsPage() {
   const unreadCount = announcements.filter((item) => !item.isRead).length;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <header className="flex items-center gap-3">
-        <Bell className="text-primary" size={24} aria-hidden="true" />
-        <div>
-          <h1 className="text-xl font-bold text-foreground">
-            {t('ui.announcements.title')}
-            {unreadCount > 0 && <span className="ml-2 text-sm font-semibold text-primary">{t('ui.announcements.unreadCount', { count: unreadCount })}</span>}
-          </h1>
-          <p className="text-sm text-muted-foreground">{t('ui.announcements.description')}</p>
-        </div>
+    <div className="w-full space-y-6">
+      <header>
+        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Bell size={15} aria-hidden="true" /> {t('navigationSections.communication')}</div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.announcements.title')}{unreadCount > 0 && <span className="ml-2 align-middle text-sm font-semibold text-primary">{t('ui.announcements.unreadCount', { count: unreadCount })}</span>}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('ui.announcements.description')}</p>
       </header>
 
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
@@ -77,8 +72,8 @@ export default function VendorAnnouncementsPage() {
             <thead className="border-b border-border bg-secondary/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">{t('ui.announcements.columns.title')}</th>
-                <th className="px-4 py-3">{t('ui.announcements.columns.sender')}</th>
-                <th className="px-4 py-3">{t('ui.announcements.columns.date')}</th>
+                <th className="px-4 py-3 max-sm:hidden">{t('ui.announcements.columns.sender')}</th>
+                <th className="px-4 py-3 max-sm:hidden">{t('ui.announcements.columns.date')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -88,9 +83,11 @@ export default function VendorAnnouncementsPage() {
                     <Link href={`/vendor/announcements/${announcement.id}`} className={`hover:underline ${announcement.isRead ? 'text-foreground' : 'font-bold text-primary'}`}>
                       {announcement.title}
                     </Link>
+                    {/* Phones: sender and date move under the title instead of their own columns. */}
+                    <p className="mt-1 text-xs text-muted-foreground sm:hidden">{announcement.senderCode} · {formatDateTime(announcement.createdAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</p>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{announcement.senderCode}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDateTime(announcement.createdAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</td>
+                  <td className="px-4 py-3 text-muted-foreground max-sm:hidden">{announcement.senderCode}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground max-sm:hidden">{formatDateTime(announcement.createdAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</td>
                 </tr>
               ))}
             </tbody>

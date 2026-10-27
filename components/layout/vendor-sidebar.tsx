@@ -74,6 +74,7 @@ export default function VendorSidebar() {
         ...legalNavItems(tVendor).filter((item) => item.href !== '/legal/about'),
         { href: '/help', label: tVendor('customer:legal.nav.help') },
       ]}
+      menuLabel={tVendor('common:accessibility.openNavigation')}
       fixed
     />
   );
