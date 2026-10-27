@@ -7,6 +7,8 @@ vi.mock('react-i18next', () => {
   return { useTranslation: () => ({ t, i18n: { language: 'en', exists: () => true } }) };
 });
 vi.mock('@/components/providers/app-dialog', () => ({ useAppDialog: () => ({ prompt: vi.fn(async () => 'Verified customer absence and vendor contact attempts'), confirm: vi.fn(async () => true) }) }));
+// The platform funds panel loads its own data and has its own tests.
+vi.mock('@/components/admin/platform-funds-panel', () => ({ PlatformFundsPanel: () => null }));
 import ReconciliationPage from '@/app/admin/reports/reconciliation/page';
 
 let createRoot: typeof import('react-dom/client').createRoot;

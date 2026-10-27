@@ -1696,6 +1696,52 @@
         "zero": "零",
         "negative": "负数"
       }
+    },
+    "funds": {
+      "title": "平台资金",
+      "description": "累计数据，与上方的月份无关。平台的分成已在公司账户中；这里显示仍欠他人的金额以及已转出的金额。",
+      "refresh": "刷新",
+      "loadError": "无法加载平台资金。",
+      "saveError": "无法保存转账记录。",
+      "owed": {
+        "title": "仍欠他人的款项",
+        "readyToWithdraw": "商家和推广者可提现收入",
+        "onHold": "冻结中的收入",
+        "withdrawalsInProgress": "正在支付的提现",
+        "customerTopUp": "顾客充值余额",
+        "refundsPending": "已批准但未支付的退款",
+        "total": "欠款合计"
+      },
+      "earnings": {
+        "title": "平台收入",
+        "earned": "已确认结算的收入",
+        "transferred": "已转出",
+        "available": "可转出",
+        "hint": "仅计入已过冻结期的结算。记录转账不会移动资金，只是登记财务已转入公司账户的款项。"
+      },
+      "recordButton": "记录转账",
+      "nothingAvailable": "目前没有可转出的金额。",
+      "recordConfirm": "确定从平台收入中记录 {{amount}} 的转账吗？",
+      "voidPrompt": "为什么要作废这笔 {{amount}} 的转账（{{reference}}）？此操作无法撤销。",
+      "history": {
+        "title": "转账记录",
+        "empty": "尚未记录任何转账。",
+        "recordedBy": "记录人：{{name}}",
+        "voided": "已作废：{{reason}}",
+        "void": "作废"
+      },
+      "dialog": {
+        "title": "记录转账",
+        "description": "登记已从平台收入转入公司账户的款项。可转出：{{available}}。",
+        "amount": "金额（RM）",
+        "amountInvalid": "请输入大于零、最多两位小数的金额。",
+        "overAvailable": "金额超过可转出额度。",
+        "date": "转账日期",
+        "reference": "银行参考号",
+        "referencePlaceholder": "例如 MBB-778899",
+        "note": "备注（可选）",
+        "submit": "记录转账"
+      }
     }
   },
   "payouts": {

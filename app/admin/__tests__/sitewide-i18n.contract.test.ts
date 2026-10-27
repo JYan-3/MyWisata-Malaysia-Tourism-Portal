@@ -98,6 +98,7 @@ export const ADMIN_I18N_FILES = [
   "components/admin/kyc-mfa.tsx",
   "components/admin/staff-passkey.tsx",
   "components/admin/hotel-profile-diff.tsx",
+  "components/admin/platform-funds-panel.tsx",
   "components/admin/access-control/access-control-tabs.tsx",
   "components/admin/access-control/overview-tab.tsx",
   "components/admin/access-control/capabilities-tab.tsx",

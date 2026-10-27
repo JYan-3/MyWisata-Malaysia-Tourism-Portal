@@ -14,6 +14,7 @@ import { filterOrderReconciliationRows, summarizeOrderReconciliationRows, format
 import { DEFAULT_EVENT_OPERATIONS_FILTERS, EVENT_CASE_KINDS, EVENT_CASE_HANDLING, EVENT_CASE_OWNERS, EVENT_CASE_DEADLINES, type EventOperationsFilters } from '@/lib/admin/event-operations-filters';
 import { paginateStaffConductRecords } from "@/components/admin/staff-conduct-filtering";
 import type { OrderReconciliation, EventOperations } from "@/lib/admin/reconciliation";
+import { PlatformFundsPanel } from "@/components/admin/platform-funds-panel";
 
 const PAGE_SIZES = [15, 25, 50] as const;
 
@@ -177,6 +178,7 @@ export default function ReconciliationPage() {
         description={t("reconciliation.description")}
       />
 
+      <PlatformFundsPanel />
 
       {(error || actionError) && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error || actionError}</p>}
 
