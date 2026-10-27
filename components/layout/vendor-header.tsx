@@ -40,7 +40,7 @@ export default function VendorHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-4 bg-background/95 px-4 backdrop-blur-md sm:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-4 bg-background/95 pl-16 pr-4 backdrop-blur-md sm:pr-6 lg:pl-6">
         {/* Global Search / Command Launcher */}
         <button
           type="button"

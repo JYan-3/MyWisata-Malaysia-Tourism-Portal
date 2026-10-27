@@ -16,9 +16,10 @@ export default async function VendorLayout({ children }: { children: React.React
       <style>{'html:has(.vendor-portal), body:has(.vendor-portal) { overflow-x: hidden; }'}</style>
       <div className="vendor-portal min-h-screen overflow-x-hidden bg-background">
         <VendorSidebar />
-        <main className="ml-0 min-w-0 overflow-x-hidden pb-20 lg:ml-60 lg:pb-0">
+        <main className="ml-0 min-w-0 overflow-x-hidden lg:ml-60">
           <VendorHeader />
-          <div className="w-full px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+          {/* Extra bottom room on phones so the floating support chat button never covers the last content. */}
+          <div className="w-full px-4 pt-6 pb-24 sm:px-6 sm:pt-8 lg:pb-8 xl:px-8">
             <VendorAccessGate>{children}</VendorAccessGate>
           </div>
         </main>

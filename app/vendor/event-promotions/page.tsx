@@ -190,13 +190,11 @@ export default function VendorEventPromotionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 p-6">
-      <header className="flex items-center gap-3">
-        <Megaphone className="text-primary" size={24} aria-hidden="true" />
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t('ui.eventPromotions.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('ui.eventPromotions.description')}</p>
-        </div>
+    <div className="w-full space-y-8">
+      <header>
+        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Megaphone size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.eventPromotions.title')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('ui.eventPromotions.description')}</p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-5">

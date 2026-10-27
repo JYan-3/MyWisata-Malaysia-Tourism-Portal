@@ -472,7 +472,7 @@ export default function VendorOutletsPage() {
                     </div>
                     <StatusBadge status={outlet.status} />
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-gray-100 dark:border-border pt-3">
+                  <div className="mt-4 flex flex-col items-start gap-3 border-t border-gray-100 dark:border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                     <span className="text-xs text-gray-500 dark:text-muted-foreground">
                       {outlet.productsCount > 0 ? (
                         <>

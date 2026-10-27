@@ -29,7 +29,7 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toMatch(/<PortalSidebar[\s\S]*?sections={sidebarSections}[\s\S]*?fixed/);
     expect(sharedSidebarSource).toContain('w-60');
     expect(sharedSidebarSource).toContain('min-h-0 flex-1 overflow-y-auto');
-    expect(layoutSource).toContain('className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-20 lg:ml-60 lg:pb-0"');
+    expect(layoutSource).toContain('className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto lg:ml-60"');
   });
 
   it('provides a localized label for the staff conduct navigation item', () => {
@@ -86,7 +86,7 @@ describe('admin navigation shell', () => {
     expect(sharedSidebarSource).toContain('border-b border-white/10 px-4 py-4');
     expect(sharedSidebarSource).toContain('data-portal-sidebar="true"');
     expect(sharedSidebarSource).toContain('bg-slate-950');
-    expect(layoutSource).toContain('className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6"');
+    expect(layoutSource).toContain('className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 pl-16 pr-4 backdrop-blur-md sm:pr-6 lg:pl-6"');
     expect(layoutSource).not.toContain('border-b-2 border-gray-200');
   });
 });

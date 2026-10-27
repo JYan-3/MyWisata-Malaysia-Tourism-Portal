@@ -208,7 +208,7 @@ export default function VendorRedemptionsPage() {
 
       {/* Filter and Search Bar */}
       <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* Kind Filter Pills */}
           <div className="inline-flex rounded-xl bg-gray-100 dark:bg-muted p-1 text-xs font-semibold">
             {(
@@ -242,7 +242,7 @@ export default function VendorRedemptionsPage() {
                 setOutletFilter(e.target.value);
                 setPage(1);
               }}
-              className="h-9 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-xs font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-9 w-full min-w-0 max-w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-xs font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:w-auto sm:max-w-xs"
             >
               <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
               {outlets.map((o) => (
@@ -300,7 +300,8 @@ export default function VendorRedemptionsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            {/* Six columns cannot share a phone width; keep a readable minimum and scroll inside the card. */}
+            <table className="w-full min-w-[56rem] text-left text-sm">
               <thead className="border-b border-gray-100 dark:border-border bg-gray-50/75 dark:bg-muted/75 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3.5">{t('ui.redemptions.table.type', 'Type')}</th>
@@ -333,7 +334,7 @@ export default function VendorRedemptionsPage() {
                     <td className="px-5 py-4">
                       <p className="font-semibold text-gray-900 dark:text-foreground">{r.item.name}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <span className="break-all font-mono text-xs font-bold text-primary">
+                        <span className="whitespace-nowrap font-mono text-xs font-bold text-primary">
                           {r.item.code || '—'}
                         </span>
                         {r.item.code && (
