@@ -100,11 +100,14 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       if (!canKeepSavedBio && profileBio.success) {
         const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileBio.data) });
         if (!bioResponse.ok) {
-          throw new Error(tCustomer("ui.profileWizard.saveDetails"));
+          const body = await bioResponse.json().catch(() => ({}));
+          throw new Error(body.error?.code === "PERSONAL_DATA_REMOVE"
+            ? tCustomer("ui.profileWizard.personalSaveBioPrivacyBlocked")
+            : tCustomer("ui.profileWizard.saveDetails"));
         }
       }
       await loadProfile(); await refreshUser(); setEditing(null);
-    } catch { setError(tCustomer("ui.profileWizard.saveDetails")); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : tCustomer("ui.profileWizard.saveDetails")); }
     finally { setBusy(false); }
   }
 

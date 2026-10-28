@@ -16,6 +16,8 @@ export async function POST(request:Request) {
   if (!body.success) return response();
   if (!await reserveGuestRateLimit(`recovery:${guestAddressRateKey(request)}`,10,3600)) return response();
   const parsedReference = parseOrderReference(body.data.orderReference ?? body.data.orderId ?? '');
+  const hasReference = Boolean(body.data.orderReference || body.data.orderId);
+  if (hasReference && !parsedReference) return response();
   const service=createServiceClient();
   const emailHash = hashGuestCredential(body.data.email.toLowerCase());
   if (!await reserveGuestRateLimit(`recovery-email:${emailHash}`,3,3600)) return response();

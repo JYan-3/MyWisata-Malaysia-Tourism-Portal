@@ -26,10 +26,11 @@ const contentSchema = z.discriminatedUnion('surface', [
   }).strict(),
 ]);
 
-function providerError(reason: 'not_configured' | 'authentication_failed' | 'rate_limited' | 'unavailable') {
-  if (reason === 'not_configured' || reason === 'authentication_failed') return apiFail('AI_UNAVAILABLE', 'AI writing is temporarily unavailable. Please try again later.', 503);
+function providerError(reason: 'not_configured' | 'authentication_failed' | 'rate_limited' | 'sensitive_input' | 'unavailable') {
+  if (reason === 'sensitive_input') return apiFail('AI_PERSONAL_DATA_WITHHELD', 'Your content was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details and try again, or write the content manually.', 422);
+  if (reason === 'not_configured' || reason === 'authentication_failed') return apiFail('AI_UNAVAILABLE', 'AI writing is temporarily unavailable. You can write this content manually or contact platform support if the problem continues.', 503);
   if (reason === 'rate_limited') return apiFail('AI_RATE_LIMITED', 'The AI provider is temporarily rate limited. Please try again later.', 429);
-  return apiFail('AI_UNAVAILABLE', 'AI writing is temporarily unavailable. Please try again later.', 503);
+  return apiFail('AI_UNAVAILABLE', 'AI writing is temporarily unavailable. You can write this content manually or contact platform support if the problem continues.', 503);
 }
 
 export async function POST(request: Request, { params }: Props) {

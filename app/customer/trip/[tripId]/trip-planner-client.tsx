@@ -159,7 +159,6 @@ export function MapClient({
   const [aiError, setAiError] = useState("");
   const [tripActionStatus, setTripActionStatus] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
-  const [expandedStopIds, setExpandedStopIds] = useState<Set<string>>(() => new Set());
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
   const focusTokenRef = useRef(0);
   // Budget Guard alternatives shown via "Show on map" — kept here (not just
@@ -934,19 +933,8 @@ export function MapClient({
               <GripVertical size={14} className="mt-1 shrink-0 cursor-grab text-muted-foreground" />
               {activity?.image ? <span data-itinerary-image={item.id} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-secondary"><Image src={activity.image} alt="" width={40} height={40} unoptimized className="h-full w-full object-cover" /><b className="absolute bottom-0.5 left-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-white bg-primary px-0.5 text-[8px] text-white">{stopNumber > 0 ? stopNumber : "–"}</b></span> : <span className={"grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>}
               <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)]">
-                <button
-                  type="button"
-                  aria-expanded={expandedStopIds.has(item.id)}
-                  aria-label={tCustomer("strictMigration.tripPlanner.toggleItemTitle", { item: item.label })}
-                  onClick={() => setExpandedStopIds((current) => {
-                    const next = new Set(current);
-                    if (next.has(item.id)) next.delete(item.id);
-                    else next.add(item.id);
-                    return next;
-                  })}
-                  className={"min-w-0 break-words text-left text-xs font-bold text-foreground [overflow-wrap:anywhere] " + (expandedStopIds.has(item.id) ? "whitespace-normal" : "line-clamp-2")}
-                >{item.label}</button>
-                <span className="mt-0.5 min-w-0 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere] line-clamp-1">{sublabel}</span>
+                <span className="min-w-0 break-words whitespace-normal text-left text-xs font-bold text-foreground [overflow-wrap:anywhere]">{item.label}</span>
+                <span className="mt-0.5 min-w-0 break-words whitespace-normal text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{sublabel}</span>
                 <TripWeatherItemMarker result={weatherResult} />
               </span>
               {(isLocation || isCustom) && (

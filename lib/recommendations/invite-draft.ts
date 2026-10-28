@@ -71,6 +71,8 @@ export interface VendorInviteDraftContext {
   category: string | null;
 }
 
+export type VendorInviteDraftResult = VendorInviteDraft | { error: 'sensitive_data_detected' } | null;
+
 /**
  * Drafts a subject + body for a vendor recommendation invite email. Never
  * throws: returns null on any failure (missing key, network, timeout,
@@ -78,16 +80,10 @@ export interface VendorInviteDraftContext {
  * one" instead of a 500 — this is a nice-to-have admin tool, not a money or
  * accuracy path.
  */
-export async function draftVendorInviteEmail(context: VendorInviteDraftContext): Promise<VendorInviteDraft | null> {
+export async function draftVendorInviteEmail(context: VendorInviteDraftContext): Promise<VendorInviteDraftResult> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
 
-  // Same redaction boundary as kb-draft.ts/generate.ts — the recommendation's
-  // free-text description may contain PII the recommender typed in; nothing
-  // user-typed reaches Gemini unredacted.
-  const preparedDescription = prepareExternalText(context.description ?? '');
-  if (!preparedDescription.allowed) return null;
-  const cleanDescription = preparedDescription.clean;
   const language = {
     en: 'English',
     'zh-CN': 'Simplified Chinese',
@@ -97,10 +93,12 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
     context.category ? `CATEGORY: ${context.category}` : null,
-    cleanDescription ? `DESCRIPTION (from the customer who recommended this business): ${cleanDescription}` : null,
+    context.description ? `DESCRIPTION (from the customer who recommended this business): ${context.description}` : null,
   ]
     .filter(Boolean)
     .join('\n');
+  const preparedText = prepareExternalText(userText);
+  if (!preparedText.allowed) return { error: 'sensitive_data_detected' };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DRAFT_TIMEOUT_MS);
@@ -111,7 +109,7 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\nWrite the subject and body in ${language}. Keep the SUBJECT: and BODY: parser labels unchanged.` }] },
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        contents: [{ role: 'user', parts: [{ text: preparedText.clean }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
       }),
       signal: controller.signal,

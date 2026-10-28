@@ -46,7 +46,7 @@ export async function PATCH(request: Request) {
   // Moderation (fail-closed: unavailable = block)
   const modResult = await moderateBio(bio);
   if ('error' in modResult && modResult.error === 'sensitive_data_detected') {
-    return apiFail('PERSONAL_DATA_REMOVE', 'Remove identity, bank, phone, or address details before saving your bio', 422);
+    return apiFail('PERSONAL_DATA_REMOVE', 'Your bio was not sent for AI review because it may contain identity, bank, phone, email, or private address details. Remove those details and submit it again; review is required to save a bio.', 422);
   }
   if ('error' in modResult) {
     return apiFail('MODERATION_UNAVAILABLE', 'Bio review service is temporarily unavailable — try again shortly', 503);

@@ -1128,6 +1128,7 @@
       "batchFailed": "批量更新知识库文件失败。",
       "batchUpdate": "一个或多个知识库文件无法更新。",
       "draft": "暂时无法起草知识库条目。",
+      "privacyBlocked": "完整请求没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址，或手动编写知识库条目。关键词答复仍可使用。",
       "loadDescription": "加载聊天机器人概览时出错。请尝试刷新页面。",
       "loadTitle": "无法加载聊天机器人统计数据",
       "reindex": "重新索引失败。",
@@ -2713,7 +2714,9 @@
       "analysisUnavailable": "AI 分析不可用，以下仍显示确定性证据检查结果。",
       "confidence": "{{value}} 置信度",
       "errors": {
-        "unavailable": "AI 审核暂时不可用。"
+        "unavailable": "AI 审核暂时不可用。",
+        "privacyBlocked": "推荐内容可能含有电话、邮箱、证件、银行资料或私人地址，因此没有发送给 AI。请删除这些资料后重试，也可以不使用 AI，继续人工审核。",
+        "imagesWithheld": "推荐图片没有发送给 AI，因为图片可能包含个人资料。你可以直接继续人工审核，或移除图片后重试。"
       },
       "evidence": "证据",
       "kind": "类型",

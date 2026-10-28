@@ -66,17 +66,14 @@ describe('draftVendorInviteEmail', () => {
     await expect(draftVendorInviteEmail(context)).resolves.toBeNull();
   });
 
-  it('redacts PII from the description before prompting', async () => {
+  it('withholds the full vendor invitation prompt when a customer detail is present', async () => {
     process.env.LLM_API_KEY = 'test-key';
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'SUBJECT: Hi\nBODY: Hello there.' }] } }] }), { status: 200 }),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    await draftVendorInviteEmail({ ...context, description: 'Contact us at owner@example.com for details.' });
+    await expect(draftVendorInviteEmail({ ...context, description: 'Contact us at owner@example.com for details.' })).resolves.toEqual({ error: 'sensitive_data_detected' });
+    await expect(draftVendorInviteEmail({ ...context, vendorName: 'Call 012-3456789' })).resolves.toEqual({ error: 'sensitive_data_detected' });
 
-    const body = JSON.stringify(fetchMock.mock.calls[0]?.[1]?.body);
-    expect(body).not.toContain('owner@example.com');
-    expect(body).toContain('[EMAIL]');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

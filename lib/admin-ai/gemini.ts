@@ -38,20 +38,15 @@ export interface GeminiInlineImage {
 }
 
 /**
- * Redacts userText before sending — the hard boundary, same as
- * lib/chatbot/embed.ts/generate.ts. systemPrompt is always our own static
- * text, never redacted. Callers that need to know WHETHER anything was
- * found (e.g. to log pii_detected on a message row) should call
- * redactPII() themselves too — redacting already-clean text here is a safe
- * no-op, so double-redaction costs nothing.
+ * Rejects unsafe system or user text before sending. Images remain blocked
+ * until their contents can be checked without exposing identity documents.
  */
 export async function callGemini(systemPrompt: string, userText: string, options: CallGeminiOptions = {}): Promise<string> {
-  const apiKey = process.env.LLM_API_KEY;
-  if (!apiKey) throw new Error('LLM_API_KEY not configured');
-
   const prepared = prepareExternalText(userText);
   if (!prepared.allowed) throw new Error('sensitive_data_detected');
   if (options.images?.length) throw new Error('image_privacy_review_required');
+  const apiKey = process.env.LLM_API_KEY;
+  if (!apiKey) throw new Error('LLM_API_KEY not configured');
   const { clean, found } = prepared;
   const parts = [
     { text: clean },

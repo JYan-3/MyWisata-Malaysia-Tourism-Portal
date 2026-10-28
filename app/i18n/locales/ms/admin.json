@@ -1128,6 +1128,7 @@
       "batchFailed": "Kemas kini dokumen pengetahuan secara pukal gagal.",
       "batchUpdate": "Satu atau lebih dokumen pengetahuan tidak dapat dikemas kini.",
       "draft": "Tidak dapat merangka entri KB sekarang.",
+      "privacyBlocked": "Permintaan penuh tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, atau tulis entri KB secara manual. Jawapan kata kunci masih tersedia.",
       "loadDescription": "Sesuatu tidak kena semasa memuatkan gambaran keseluruhan chatbot. Cuba muat semula halaman.",
       "loadTitle": "Tidak dapat memuatkan statistik chatbot",
       "reindex": "Pengindeksan semula gagal.",
@@ -2713,7 +2714,9 @@
       "analysisUnavailable": "Analisis AI tidak tersedia. Semakan bukti berasaskan peraturan masih dipaparkan di bawah.",
       "confidence": "keyakinan {{value}}",
       "errors": {
-        "unavailable": "Semakan AI tidak tersedia sekarang."
+        "unavailable": "Semakan AI tidak tersedia sekarang.",
+        "privacyBlocked": "Cadangan penuh tidak dihantar kepada AI kerana mungkin mengandungi telefon, e-mel, ID, butiran bank atau alamat peribadi. Buang butiran tersebut dan cuba lagi, atau teruskan semakan secara manual tanpa AI.",
+        "imagesWithheld": "Foto cadangan tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Teruskan semakan secara manual atau buang foto dan cuba lagi."
       },
       "evidence": "Bukti",
       "kind": "Jenis",

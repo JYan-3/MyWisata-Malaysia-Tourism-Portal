@@ -69,18 +69,12 @@ interface GeminiGenerateResponse {
  * the keyword matcher — never let this reach the user as an error.
  */
 export async function generateAnswer(question: string, docs: GenerateDoc[]): Promise<string | null> {
+  const context = docs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
+  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${question}`;
+  const preparedPayload = prepareExternalText(userText);
+  if (!preparedPayload.allowed) throw new Error('sensitive_data_detected');
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
-
-  // CLAUDE-ADMIN-AI.md Part 1, §7.3: redact the user's question before it
-  // reaches Gemini. docs/context come from our own KB, not user input — not
-  // redacted, since that's internal platform content, never customer PII.
-  const preparedQuestion = prepareExternalText(question);
-  if (!preparedQuestion.allowed) throw new Error('sensitive_data_detected');
-  const { clean: cleanQuestion } = preparedQuestion;
-
-  const context = docs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
-  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${cleanQuestion}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
@@ -91,7 +85,7 @@ export async function generateAnswer(question: string, docs: GenerateDoc[]): Pro
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        contents: [{ role: 'user', parts: [{ text: preparedPayload.clean }] }],
         generationConfig: { temperature: 0.2, maxOutputTokens: 300 },
       }),
       signal: controller.signal,

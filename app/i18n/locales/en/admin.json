@@ -1128,6 +1128,7 @@
       "batchFailed": "Batch knowledge document update failed.",
       "batchUpdate": "One or more knowledge documents could not be updated.",
       "draft": "Could not draft a KB entry right now.",
+      "privacyBlocked": "The full request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the KB entry manually. Keyword answers remain available.",
       "loadDescription": "Something went wrong loading the chatbot overview. Try refreshing the page.",
       "loadTitle": "Couldn't load chatbot stats",
       "reindex": "Reindex failed.",
@@ -2713,7 +2714,9 @@
       "analysisUnavailable": "AI analysis unavailable. Deterministic evidence checks are still shown below.",
       "confidence": "{{value}} confidence",
       "errors": {
-        "unavailable": "AI review unavailable right now."
+        "unavailable": "AI review unavailable right now.",
+        "privacyBlocked": "The full recommendation was not sent to AI because it may contain phone, email, ID, bank, or private-address details. Remove those details and try again, or continue the review manually without AI.",
+        "imagesWithheld": "Recommendation photos were not sent to AI because they may contain private information. Continue the review manually, or remove the photos and try again."
       },
       "evidence": "Evidence",
       "kind": "Kind",

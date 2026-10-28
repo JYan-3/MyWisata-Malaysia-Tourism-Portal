@@ -993,7 +993,8 @@
         "action": "Terjemah",
         "showOriginal": "Tunjukkan asal",
         "working": "Menterjemah…",
-        "failed": "Tidak dapat menterjemah"
+        "failed": "Tidak dapat menterjemah",
+        "privacyBlocked": "Mesej ini tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian cuba lagi. Anda juga boleh membaca mesej asal tanpa terjemahan."
       },
       "attachOrder": "Lampirkan pesanan",
       "underReview": "Dilaporkan — pasukan kami sedang menyemak perbualan ini."
@@ -1602,6 +1603,8 @@
       "cameraCaptureFailed": "Foto tidak dapat diambil. Cuba lagi atau muat naik foto.",
       "bio": "Tentang anda",
       "saveDetails": "Simpan butiran",
+      "privacyBlocked": "Bio anda tidak dihantar kepada AI. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian cuba lagi. Anda boleh terus mengeditnya di sini.",
+      "personalSaveBioPrivacyBlocked": "Nama dan lokasi anda telah disimpan, tetapi bio tidak dihantar kepada AI. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian simpan bio sekali lagi.",
       "invalidPhone": "Masukkan nombor telefon antarabangsa yang sah.",
       "invalidOtp": "Masukkan OTP 6 digit yang lengkap.",
       "fullNameValidation": "Nama penuh mesti mengandungi sekurang-kurangnya 2 aksara.",
@@ -2396,6 +2399,7 @@
       "aiNameLoading": "Mencadangkan nama…",
       "aiNameAlternatives": "Pilih nama cadangan atau teruskan menyunting",
       "aiNameFallback": "AI tidak tersedia buat sementara waktu, jadi nama yang sepadan dengan tarikh ini dijana secara setempat.",
+      "aiNamePrivacyFallback": "Idea anda tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi dan cuba lagi. Nama ini dijana secara setempat; anda boleh terus mengedit perjalanan tanpa AI.",
       "aiNameError": "Nama tidak dapat dicadangkan sekarang. Anda masih boleh mencipta perjalanan ini.",
       "aiNamePhoneRequired": "Sahkan telefon anda untuk menggunakan penamaan AI. Anda masih boleh mencipta perjalanan dengan nama sendiri.",
       "startDate": "Tarikh Mula",

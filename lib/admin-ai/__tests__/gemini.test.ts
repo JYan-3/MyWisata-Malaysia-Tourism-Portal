@@ -21,4 +21,10 @@ describe('callGemini multimodal payload', () => {
     expect(log).not.toHaveBeenCalled();
     log.mockRestore();
   });
+
+  it('reports sensitive input before checking whether Gemini is configured', async () => {
+    delete process.env.LLM_API_KEY;
+    await expect(callGemini('system', 'Call me at 012-3456789')).rejects.toThrow('sensitive_data_detected');
+  });
+
 });

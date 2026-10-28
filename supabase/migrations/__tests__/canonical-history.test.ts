@@ -9,6 +9,7 @@ const approvedForwardMigrations = [
   "20261027145912_retail_pickup_redemption.sql",
   "20261027145914_enable_retail_pickup_guard.sql",
   "20261028014800_filter_vendor_redemption_stats.sql",
+  "20261028045801_notify_super_admin_on_withdrawal_escalation.sql",
   "20261027085814_required_short_bio_length.sql",
   "20261027083144_avatar_signed_upload_metadata_policy.sql",
   "20261027020606_normalize_mylawatan_brand_casing.sql",

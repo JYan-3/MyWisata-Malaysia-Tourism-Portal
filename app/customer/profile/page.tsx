@@ -250,7 +250,10 @@ function ProfileWizard({ userId }: { userId: string | null }) {
         body: JSON.stringify(parsed.data),
       });
       if (!res.ok) {
-        throw new Error(tCustomer("ui.profileWizard.saveDetails"));
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error?.code === "PERSONAL_DATA_REMOVE"
+          ? tCustomer("ui.profileWizard.privacyBlocked")
+          : tCustomer("ui.profileWizard.saveDetails"));
       }
       if (!mounted.current) return;
       setSelectedStep("bio");
@@ -259,8 +262,8 @@ function ProfileWizard({ userId }: { userId: string | null }) {
       if (!savedProfile) throw new Error("Profile refresh failed");
       advanceTo("survey", savedProfile);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
-    } catch {
-      setBioError(tCustomer("ui.profileWizard.saveDetails"));
+    } catch (cause) {
+      setBioError(cause instanceof Error ? cause.message : tCustomer("ui.profileWizard.saveDetails"));
     } finally {
       setBioBusy(false);
     }

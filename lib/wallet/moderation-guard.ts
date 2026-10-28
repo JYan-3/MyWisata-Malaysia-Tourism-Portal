@@ -57,7 +57,7 @@ export async function moderateWalletAction(input: GuardInput): Promise<WalletMod
   if ('error' in result) {
     await recordAttempt(input, 'unavailable', []);
     if (result.error === 'sensitive_data_detected') {
-      return { ok: false, code: 'PERSONAL_DATA_REMOVE', message: 'Remove identity, bank, phone, or address details before review.' };
+      return { ok: false, code: 'PERSONAL_DATA_REMOVE', message: 'Your full explanation was not sent to AI review because it may contain personal details. Remove identity, bank, phone, email, or private-address details and submit it again; AI-free submission is unavailable for this action.' };
     }
     return { ok: false, code: 'MODERATION_UNAVAILABLE', message: 'Content review is temporarily unavailable; please try again.' };
   }

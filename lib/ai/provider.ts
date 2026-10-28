@@ -2,7 +2,7 @@ import 'server-only';
 import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export type AiProvider = 'qwencloud' | 'modelscope';
-export type AiUnavailableReason = 'not_configured' | 'authentication_failed' | 'rate_limited' | 'unavailable';
+export type AiUnavailableReason = 'not_configured' | 'authentication_failed' | 'rate_limited' | 'sensitive_input' | 'unavailable';
 
 export type AiTextResult =
   | { available: true; provider: AiProvider; model: string; content: string }
@@ -44,10 +44,10 @@ export async function generateAiText(
   userPrompt: string,
   options: { temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number } = {},
 ): Promise<AiTextResult> {
+  const preparedPrompt = prepareExternalText(userPrompt);
+  if (!preparedPrompt.allowed) return { available: false, reason: 'sensitive_input' };
   const config = providerConfig();
   if (!config) return { available: false, reason: 'not_configured' };
-  const preparedPrompt = prepareExternalText(userPrompt);
-  if (!preparedPrompt.allowed) return { available: false, reason: 'unavailable' };
 
   const maxTokens = Math.min(1200, Math.max(100, Math.floor(options.maxTokens ?? 500)));
   let sawRateLimit = false;
@@ -67,7 +67,7 @@ export async function generateAiText(
           temperature: options.temperature ?? 0.35,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: preparedPrompt.clean },
+            { role: 'user', content: userPrompt },
           ],
           max_tokens: maxTokens,
         }),

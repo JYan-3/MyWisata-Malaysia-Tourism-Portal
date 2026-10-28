@@ -993,7 +993,8 @@
         "action": "翻译",
         "showOriginal": "显示原文",
         "working": "翻译中…",
-        "failed": "无法翻译"
+        "failed": "无法翻译",
+        "privacyBlocked": "这条消息没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址后重试；也可以直接阅读原文，不使用翻译。"
       },
       "attachOrder": "附加订单",
       "underReview": "已举报——我们的团队正在审核此对话。"
@@ -1602,6 +1603,8 @@
       "cameraCaptureFailed": "无法拍摄照片，请重试或改为上传照片。",
       "bio": "关于您",
       "saveDetails": "保存详情",
+      "privacyBlocked": "你的简介没有发送给 AI。请移除电话、邮箱、证件、银行资料或私人地址后重试；你可以继续在此编辑。",
+      "personalSaveBioPrivacyBlocked": "姓名和地点已保存，但简介没有发送给 AI。请移除电话、邮箱、证件、银行资料或私人地址，然后重新保存简介。",
       "invalidPhone": "请输入有效的国际电话号码。",
       "invalidOtp": "请输入完整的 6 位 OTP。",
       "fullNameValidation": "姓名必须至少包含 2 个字符。",
@@ -2396,6 +2399,7 @@
       "aiNameLoading": "正在推荐名称…",
       "aiNameAlternatives": "选择一个推荐名称，或继续自行修改",
       "aiNameFallback": "AI 暂时不可用，已根据行程日期在本地生成这些名称。",
+      "aiNamePrivacyFallback": "这条行程想法可能包含个人资料，因此没有发送给 AI。请删除电话、邮箱、证件、银行资料或私人地址后重试。这些名称已在本地生成，你也可以不使用 AI，继续自行编辑行程。",
       "aiNameError": "暂时无法推荐名称，你仍然可以正常创建行程。",
       "aiNamePhoneRequired": "验证手机后即可使用 AI 命名；你仍然可以使用自己的名称创建行程。",
       "startDate": "开始日期",
