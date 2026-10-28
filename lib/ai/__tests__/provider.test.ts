@@ -39,6 +39,19 @@ describe('generateAiText', () => {
     expect(fetchMock).toHaveBeenCalledWith('https://api-inference.modelscope.cn/v1/chat/completions', expect.objectContaining({ method: 'POST' }));
   });
 
+  it('blocks private address text and redacts contact data before provider requests', async () => {
+    process.env.MODELSCOPE_API_KEY = 'test-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: 'Draft copy' } }] }), { status: 200 }));
+
+    await expect(generateAiText('system', 'My home address is 12 Jalan Merpati, George Town.')).resolves.toEqual({ available: false, reason: 'unavailable' });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await generateAiText('system', 'Call me at 012-3456789');
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.messages[1].content).not.toContain('012-3456789');
+    expect(body.messages[1].content).toContain('[PHONE]');
+  });
+
   it('reports invalid provider credentials separately from a transient outage', async () => {
     process.env.MODELSCOPE_API_KEY = 'test-token';
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Authentication failed' } }), { status: 401 }));

@@ -21,6 +21,10 @@ export interface RedactResult {
   found: boolean;
 }
 
+export type ExternalTextResult =
+  | { allowed: true; clean: string; found: boolean }
+  | { allowed: false };
+
 const PATTERNS: { token: string; regex: RegExp }[] = [
   // Malaysian IC — dashed form: 990101-14-5678
   { token: '[IC]', regex: /\b\d{6}-\d{2}-\d{4}\b/g },
@@ -35,7 +39,26 @@ const PATTERNS: { token: string; regex: RegExp }[] = [
   { token: '[EMAIL]', regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
   // Credit-card-like — 13-16 consecutive digits.
   { token: '[CARD]', regex: /\b\d{13,16}\b/g },
+  // Other international phone formats, including separators and country codes.
+  { token: '[PHONE]', regex: /(?<!\d)(?:\+\d{1,3}[\s().-]?)?(?:\d[\s().-]?){7,13}\d(?!\d)/g },
+  // Account numbers are only redacted when explicitly labelled as banking data.
+  { token: '[BANK_ACCOUNT]', regex: /\b(?:account|acct|bank\s*(?:account|no\.?|number))\s*[:#-]?\s*[A-Z0-9-]{7,24}\b/gi },
+  // International bank transfer identifiers.
+  { token: '[IBAN]', regex: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/gi },
+  { token: '[SWIFT]', regex: /(?<!\[)\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b(?!\])/g },
 ];
+
+const PRIVATE_CONTEXT = /\b(?:kyc|know your customer|identity document|passport number|(?:my\s+)?name is|full name|my (?:personal )?(?:bank(?: account)?|account number|(?:home )?address)(?: is| number| details| information)?|i live at|i stay at|my address is|alamat saya|saya tinggal di)\b/i;
+const PRIVATE_CONTEXT_CJK = /(?:身份证(?:号码)?|护照(?:号码)?|(?:我的|本人)?(?:银行账户|账号|住址|地址|电话号码)|(?:我叫|我的名字是|本人姓名是)\s*[\p{Script=Han}]{2,4}(?=$|[，。,.！!？?\s])|(?:我叫|我的名字是|本人姓名是)\s*[\p{Script=Latin}][\p{Script=Latin}'’.-]{1,39}(?=$|[，。,.！!？?\s])|(?:我住在|本人住在|我家在)\s*[\p{Script=Han}0-9#\-]{0,30})/u;
+const ADDRESS_LIKE = /\b(?:no\.?\s*\d+\s*,?\s*|(?:block|unit|apartment|flat|suite)\s*\w+\s*,?\s*)?(?:jalan|jln\.?|lorong|street|st\.?|road|rd\.?|avenue|ave\.?|postcode|postal code|poskod|lane|drive|boulevard)\b/i;
+const POSTAL_ADDRESS = /(?:\b\d{1,5}\s+[^\n,]{2,40},\s*[^\n,]{2,40},?\s*\d{5}\b|\b\d{5}\s+[A-Z][A-Z .'-]{2,40}\b)/i;
+
+/** Prepare arbitrary user text for an external model. Unstructured address/KYC/bank text is denied entirely. */
+export function prepareExternalText(text: string): ExternalTextResult {
+  if (PRIVATE_CONTEXT.test(text) || PRIVATE_CONTEXT_CJK.test(text) || ADDRESS_LIKE.test(text) || POSTAL_ADDRESS.test(text)) return { allowed: false };
+  const redacted = redactPII(text);
+  return { allowed: true, clean: redacted.clean, found: redacted.found };
+}
 
 /**
  * Redacts Malaysia-appropriate PII patterns from text before it's sent to

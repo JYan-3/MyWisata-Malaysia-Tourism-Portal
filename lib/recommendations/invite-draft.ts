@@ -18,7 +18,7 @@ import { emailLocale } from '@/lib/email/copy';
 // reference "the sign-up link included below" without ever writing a URL
 // itself. The server appends the real link after the admin's edited text.
 
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
@@ -28,11 +28,11 @@ const DRAFT_TIMEOUT_MS = 15_000;
 // should placeholder.
 const SUPPORT_EMAIL = 'support@mylawatan.my';
 
-const SYSTEM_PROMPT = `You are drafting a short outreach email for MyLawatan, a Malaysian tourism
+const SYSTEM_PROMPT = `You are drafting a short outreach email for MYLawatan, a Malaysian tourism
 booking platform, inviting a locally-recommended business to join as a
 vendor.
 
-A MyLawatan customer recommended this business as worth having on the
+A MYLawatan customer recommended this business as worth having on the
 platform, and an admin has approved the recommendation. Draft a warm,
 professional invitation inviting the business to complete vendor sign-up.
 
@@ -85,7 +85,9 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
   // Same redaction boundary as kb-draft.ts/generate.ts — the recommendation's
   // free-text description may contain PII the recommender typed in; nothing
   // user-typed reaches Gemini unredacted.
-  const { clean: cleanDescription } = redactPII(context.description ?? '');
+  const preparedDescription = prepareExternalText(context.description ?? '');
+  if (!preparedDescription.allowed) return null;
+  const cleanDescription = preparedDescription.clean;
   const language = {
     en: 'English',
     'zh-CN': 'Simplified Chinese',
@@ -95,7 +97,6 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
     context.category ? `CATEGORY: ${context.category}` : null,
-    context.vendorAddress ? `LOCATION: ${context.vendorAddress}` : null,
     cleanDescription ? `DESCRIPTION (from the customer who recommended this business): ${cleanDescription}` : null,
   ]
     .filter(Boolean)

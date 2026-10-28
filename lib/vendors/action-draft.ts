@@ -17,7 +17,7 @@
 // happens once the admin confirms the (possibly hand-edited) reason in the
 // admin UI and the existing approve/suspend routes run.
 
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
@@ -37,7 +37,7 @@ proceed. Draft the REASON text the admin will send — it becomes the body of a 
 asking them to provide what's missing.`,
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are drafting a short administrative message for MyLawatan, a Malaysian
+const SYSTEM_PROMPT_PREFIX = `You are drafting a short administrative message for MYLawatan, a Malaysian
 tourism booking platform, about a vendor account.
 
 Rules — these are strict:
@@ -72,12 +72,13 @@ export async function draftVendorActionReason(action: VendorReasonAction, contex
   if (!apiKey) return null;
 
   // Same redaction boundary as approval-draft.ts/invite-draft.ts.
-  const { clean: cleanDescription } = redactPII(context.description ?? '');
+  const preparedDescription = prepareExternalText(context.description ?? '');
+  if (!preparedDescription.allowed) return null;
+  const cleanDescription = preparedDescription.clean;
 
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
     context.businessType ? `BUSINESS TYPE: ${context.businessType}` : null,
-    context.contactName ? `CONTACT NAME: ${context.contactName}` : null,
     cleanDescription ? `DESCRIPTION: ${cleanDescription}` : null,
   ].filter(Boolean).join('\n');
 

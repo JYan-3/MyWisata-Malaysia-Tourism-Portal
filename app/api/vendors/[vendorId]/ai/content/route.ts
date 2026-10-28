@@ -27,8 +27,7 @@ const contentSchema = z.discriminatedUnion('surface', [
 ]);
 
 function providerError(reason: 'not_configured' | 'authentication_failed' | 'rate_limited' | 'unavailable') {
-  if (reason === 'not_configured') return apiFail('AI_NOT_CONFIGURED', 'AI writing is not configured yet.', 503);
-  if (reason === 'authentication_failed') return apiFail('AI_AUTHENTICATION_FAILED', 'The configured AI provider token is invalid or expired. Update MODELSCOPE_API_KEY or QWEN_API_KEY in .env.local, then restart the server.', 503);
+  if (reason === 'not_configured' || reason === 'authentication_failed') return apiFail('AI_UNAVAILABLE', 'AI writing is temporarily unavailable. Please try again later.', 503);
   if (reason === 'rate_limited') return apiFail('AI_RATE_LIMITED', 'The AI provider is temporarily rate limited. Please try again later.', 429);
   return apiFail('AI_UNAVAILABLE', 'AI writing is temporarily unavailable. Please try again later.', 503);
 }

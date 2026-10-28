@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactPII } from "../pii";
+import { prepareExternalText, redactPII } from "../pii";
 
 describe("redactPII", () => {
   it("redacts a dashed Malaysian IC", () => {
@@ -54,5 +54,21 @@ describe("redactPII", () => {
     const second = redactPII("how do I book a tour");
     expect(second.clean).toBe("how do I book a tour");
     expect(second.found).toBe(false);
+  });
+
+  it("blocks explicit Chinese identity/address details and address-like postal blocks", () => {
+    expect(prepareExternalText("我的地址是槟城乔治市12号")).toEqual({ allowed: false });
+    expect(prepareExternalText("我住在槟城乔治市12号")).toEqual({ allowed: false });
+    expect(prepareExternalText("我叫张三")).toEqual({ allowed: false });
+    expect(prepareExternalText("我的名字是张三")).toEqual({ allowed: false });
+    expect(prepareExternalText("我叫John")).toEqual({ allowed: false });
+    expect(prepareExternalText("我的名字是John Smith")).toEqual({ allowed: false });
+    expect(prepareExternalText("身份证990101-14-5678")).toEqual({ allowed: false });
+    expect(prepareExternalText("12 George Town, Penang 10250")).toEqual({ allowed: false });
+  });
+
+  it("allows ordinary wallet review language while blocking personal bank details", () => {
+    expect(prepareExternalText("The payout bank information does not match the review record.").allowed).toBe(true);
+    expect(prepareExternalText("My bank account is 123456789012.")).toEqual({ allowed: false });
   });
 });

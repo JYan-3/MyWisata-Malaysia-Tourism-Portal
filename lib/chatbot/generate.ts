@@ -12,7 +12,7 @@
 // this is a short-answer FAQ bot, not a reasoning-heavy task. Google moves
 // these aliases around — if this 404s or 429s again later, re-run the
 // ListModels check (see lib/chatbot/embed.ts's note) rather than guessing.
-import { redactPII } from './pii';
+import { prepareExternalText } from './pii';
 
 export interface GenerateDoc {
   title: string;
@@ -32,7 +32,7 @@ const GENERATE_TIMEOUT_MS = 15_000;
 // doesn't get held to a looser standard than the English one — the failure
 // mode this guards against is a correct English fact becoming a subtly
 // wrong translation, not the bot refusing to answer at all.
-const SYSTEM_PROMPT = `You are the support assistant for MyLawatan, a Malaysian tourism platform.
+const SYSTEM_PROMPT = `You are the support assistant for MYLawatan, a Malaysian tourism platform.
 
 Answer ONLY using the CONTEXT below. The context is the complete set of
 facts you are allowed to use.
@@ -75,7 +75,9 @@ export async function generateAnswer(question: string, docs: GenerateDoc[]): Pro
   // CLAUDE-ADMIN-AI.md Part 1, §7.3: redact the user's question before it
   // reaches Gemini. docs/context come from our own KB, not user input — not
   // redacted, since that's internal platform content, never customer PII.
-  const { clean: cleanQuestion } = redactPII(question);
+  const preparedQuestion = prepareExternalText(question);
+  if (!preparedQuestion.allowed) throw new Error('sensitive_data_detected');
+  const { clean: cleanQuestion } = preparedQuestion;
 
   const context = docs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
   const userText = `CONTEXT:\n${context}\n\nQUESTION: ${cleanQuestion}`;
