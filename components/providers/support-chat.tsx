@@ -45,7 +45,13 @@ interface SupportChatContextValue {
 
 const SupportChatContext = createContext<SupportChatContextValue | null>(null);
 
-export function SupportChatProvider({ children }: { children: ReactNode }) {
+/**
+ * `countUnread={false}` keeps the bubble badge off. The vendor portal uses it:
+ * the badge counts messages in threads the user manages as an outlet, but the
+ * widget only lists threads they opened as a customer, so those messages would
+ * badge an empty panel. They live in the vendor Inbox instead.
+ */
+export function SupportChatProvider({ children, countUnread = true }: { children: ReactNode; countUnread?: boolean }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<SelectedChat | null>(null);
   const [pendingContext, setPendingContext] = useState<PendingChatContext | null>(null);
@@ -77,7 +83,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   // so the widget's own toggle bubble can badge it instead of the account
   // avatar (vendor chat no longer has any affordance in the account menu).
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !countUnread) return;
     let cancelled = false;
     let inFlight = false;
     let refreshPending = false;
@@ -133,7 +139,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       void supabase.removeChannel(channel);
     };
-  }, [currentUser]);
+  }, [currentUser, countUnread]);
 
   const value = useMemo(
     () => ({ open, setOpen, selected, selectChat, pendingContext, clearPendingContext, unreadChatCount }),

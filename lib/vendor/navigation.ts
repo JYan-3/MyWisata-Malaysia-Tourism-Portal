@@ -96,21 +96,11 @@ const OUTLET_MANAGER_SECTIONS: VendorNavigationSection[] = [
   },
   {
     labelKey: "communication",
-    items: [
-      { href: "/vendor/inbox", label: "Inbox", icon: MessageCircle },
-      { href: "/vendor/announcements", label: "Announcements", icon: Bell },
-    ],
+    items: [{ href: "/vendor/inbox", label: "Inbox", icon: MessageCircle }],
   },
   {
     labelKey: "insights",
     items: [{ href: "/vendor/analytics", label: "Analytics", icon: ChartNoAxesCombined }],
-  },
-  {
-    labelKey: "promotion",
-    items: [
-      { href: "/vendor/event-promotions", label: "Promotions", icon: Megaphone },
-      { href: "/vendor/events", label: "Events", icon: PartyPopper },
-    ],
   },
 ];
 
