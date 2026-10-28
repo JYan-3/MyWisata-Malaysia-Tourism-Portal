@@ -63,6 +63,9 @@ export async function POST(request: Request, { params }: Props) {
   const context = moderationContext[parsed.data.action as keyof typeof moderationContext];
   if (context) {
     const moderation = await moderateAccountText(parsed.data.reason, context);
+    if ("error" in moderation && moderation.error === "sensitive_data_detected") {
+      return apiFail("PERSONAL_DATA_REMOVE", "Remove identity, bank, phone, or address details before continuing", 422);
+    }
     if ("error" in moderation && moderation.error === "api_unavailable") {
       return apiFail("MODERATION_UNAVAILABLE", "Content review is temporarily unavailable; please try again", 503);
     }
