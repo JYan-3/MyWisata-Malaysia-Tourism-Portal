@@ -267,7 +267,6 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card px-6 py-24 text-center shadow-sm">
             <Navigation className="mb-4 h-12 w-12 text-primary opacity-50" />
             <h3 className="text-lg font-bold text-foreground">{t("ui.trip.emptyTitle")}</h3>
-            <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{t("ui.trip.emptyDescription")}</p>
             <button onClick={openCreateForm} className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30">
               {t("ui.trip.createFirst")}
             </button>

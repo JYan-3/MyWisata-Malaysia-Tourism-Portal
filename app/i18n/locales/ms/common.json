@@ -308,7 +308,7 @@
       "stop": "Berhenti mendengar"
     },
     "list": {
-      "supportLabel": "Sokongan MyLawatan",
+      "supportLabel": "Sokongan MYLawatan",
       "signInPrompt": "Log masuk untuk berbual dengan vendor."
     },
     "expandChat": "Kembangkan ke skrin penuh",
@@ -367,8 +367,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan. Hak cipta terpelihara."
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan. Hak cipta terpelihara."
   },
   "ui": {
     "vendor": {

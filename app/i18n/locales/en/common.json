@@ -308,7 +308,7 @@
       "stop": "Stop listening"
     },
     "list": {
-      "supportLabel": "MyLawatan Support",
+      "supportLabel": "MYLawatan Support",
       "signInPrompt": "Sign in to chat with vendors."
     },
     "expandChat": "Expand to full screen",
@@ -367,8 +367,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan. All rights reserved."
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan. All rights reserved."
   },
   "ui": {
     "vendor": {

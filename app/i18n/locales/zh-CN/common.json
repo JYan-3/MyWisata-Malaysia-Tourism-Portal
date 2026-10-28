@@ -308,7 +308,7 @@
       "stop": "停止聆听"
     },
     "list": {
-      "supportLabel": "MyLawatan 客服",
+      "supportLabel": "MYLawatan 客服",
       "signInPrompt": "登录后即可与商家聊天。"
     },
     "expandChat": "展开为全屏",
@@ -367,8 +367,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan。版权所有。"
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan。版权所有。"
   },
   "ui": {
     "vendor": {
