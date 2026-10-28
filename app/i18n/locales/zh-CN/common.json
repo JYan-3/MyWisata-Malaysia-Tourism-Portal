@@ -109,7 +109,8 @@
     "sendMessage": "发送消息",
     "search": "搜索",
     "previousPage": "上一页",
-    "nextPage": "下一页"
+    "nextPage": "下一页",
+    "openNavigation": "打开导航菜单"
   },
   "filters": {
     "searchByName": "按名称搜索…",

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
+import { ArrowLeft, BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { formatMYR } from '@/lib/i18n/format';
 import { useAuth } from '@/hooks/use-auth';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -58,6 +58,7 @@ function toChatMessages(thread: Thread): ChatMessage[] {
 
 export default function VendorInboxPage() {
   const { t } = useTranslation('vendor');
+  const { t: tCommon } = useTranslation('common');
   const { user } = useAuth();
   const vendorId = user?.activeVendorId;
   const { showFeedback } = useActionFeedback();
@@ -384,7 +385,8 @@ export default function VendorInboxPage() {
         <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.inbox.description')}</p>
       </div>
       <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm">
-        <div className="flex w-80 shrink-0 flex-col border-r border-gray-200 dark:border-border">
+        {/* Phones show the list or the open conversation, one at a time; md and up show both. */}
+        <div className={`flex shrink-0 flex-col border-r border-gray-200 dark:border-border md:w-80 ${selected ? 'max-md:hidden' : 'max-md:w-full max-md:border-r-0'}`}>
           <div className="shrink-0 border-b border-gray-100 dark:border-border p-4">
             <div className="relative">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
@@ -471,7 +473,12 @@ export default function VendorInboxPage() {
             })}
           </div>
         </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${selected ? '' : 'max-md:hidden'}`}>
+          {selected && (
+            <button type="button" onClick={() => setActive(null)} className="flex shrink-0 items-center gap-1.5 border-b border-gray-100 dark:border-border px-4 py-2.5 text-xs font-semibold text-primary md:hidden">
+              <ArrowLeft size={14} aria-hidden="true" /> {tCommon('actions.back')}
+            </button>
+          )}
           {!selected ? (
             <div className="flex flex-1 flex-col items-center justify-center text-gray-400 dark:text-muted-foreground">
               <MessageCircle size={34} className="mb-3 opacity-30" />

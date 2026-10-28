@@ -1054,13 +1054,13 @@ export default function VendorOrdersPage() {
                             </p>
                           </div>
                         </div>
-                        <p className="pl-[4.25rem] text-xs text-gray-600 dark:text-muted-foreground xl:pl-0">
+                        <p className="text-xs text-gray-600 dark:text-muted-foreground">
                           {order.outlets_summary}
                         </p>
-                        <p className="pl-[4.25rem] text-sm font-semibold text-gray-900 dark:text-foreground xl:pl-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                           {formatMYR(Number(order.vendor_total))}
                         </p>
-                        <div className="pl-[4.25rem] xl:pl-0">
+                        <div>
                           <StatusBadge status={order.vendor_fulfil_status} />
                           <span className="mt-1 block text-[11px] text-gray-400 dark:text-muted-foreground">
                             {t("ui.orders.orderStatus", {
@@ -1068,7 +1068,7 @@ export default function VendorOrdersPage() {
                             })}
                           </span>
                         </div>
-                        <div className="flex w-full max-w-[14rem] flex-col items-stretch justify-self-center gap-2 border-t border-gray-100 dark:border-border pt-3 xl:border-0 xl:pt-0">
+                        <div className="flex w-full flex-col items-stretch gap-2 border-t border-gray-100 dark:border-border pt-3 xl:max-w-[14rem] xl:justify-self-center xl:border-0 xl:pt-0">
                           <button
                             type="button"
                             onClick={() => setSelectedItem(order)}

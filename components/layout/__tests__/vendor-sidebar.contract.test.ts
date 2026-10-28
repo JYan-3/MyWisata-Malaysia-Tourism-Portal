@@ -36,10 +36,7 @@ describe("Outlet Manager navigation", () => {
       "/vendor/vouchers",
       "/vendor/orders",
       "/vendor/inbox",
-      "/vendor/announcements",
       "/vendor/analytics",
-      "/vendor/event-promotions",
-      "/vendor/events",
     ]);
     // Event vendors: events, payouts and invitations only — no shop pages.
     expect(getVendorNavigationSections(false, true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
@@ -49,6 +46,16 @@ describe("Outlet Manager navigation", () => {
       "/vendor/wallet",
       "/vendor/announcements",
     ]);
+  });
+
+  it("only lists outlet manager pages the access gate lets them open", () => {
+    const allowed = gateSource.match(/OUTLET_MANAGER_PATHS = \[([\s\S]*?)\]/)![1].match(/'\/vendor\/[^']+'/g)!.map((path) => path.slice(1, -1));
+    for (const section of getVendorNavigationSections(true)) {
+      for (const item of section.items) {
+        const path = item.href.split("?")[0];
+        expect(allowed, `${path} is in the sidebar but blocked by the gate`).toContain(path);
+      }
+    }
   });
 
   it("exposes the existing voucher workspace and analytics insights", () => {

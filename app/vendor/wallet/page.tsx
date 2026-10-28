@@ -131,13 +131,10 @@ export default function VendorWalletPage() {
   return (
     <div className="w-full space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-primary"><Wallet size={21} /></div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('ui.wallet.vendorFinance')}</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{t('ui.wallet.title')}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t('ui.wallet.description')}</p>
-          </div>
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Wallet size={15} aria-hidden="true" /> {t('ui.wallet.vendorFinance')}</div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.wallet.title')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('ui.wallet.description')}</p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <Button onClick={() => { setError(""); setShowModal(true); }} disabled={!canRequestWithdrawal || loading} className="flex items-center justify-center gap-2">

@@ -50,13 +50,11 @@ export default function VendorEventsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <header className="flex items-center gap-3">
-        <PartyPopper className="text-primary" size={24} aria-hidden="true" />
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t('ui.events.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('ui.events.description')}</p>
-        </div>
+    <div className="w-full space-y-6">
+      <header>
+        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><PartyPopper size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.events.title')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('ui.events.description')}</p>
       </header>
 
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}

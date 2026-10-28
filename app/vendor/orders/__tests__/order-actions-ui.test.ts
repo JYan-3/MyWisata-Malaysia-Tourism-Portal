@@ -40,7 +40,9 @@ describe("vendor order actions UI contract", () => {
     expect(source).toContain("xl:min-w-[1000px]");
     expect(source).toContain("xl:grid-cols-[32px_minmax(120px,1.2fr)");
     expect(source).toContain("_230px]");
-    expect(source).toContain("w-full max-w-[14rem]");
+    // Desktop keeps the narrow centred action column; phones use the full row width.
+    expect(source).toContain("xl:max-w-[14rem] xl:justify-self-center");
+    expect(source).not.toContain("pl-[4.25rem]");
     expect(source).toContain("whitespace-nowrap");
   });
 

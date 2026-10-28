@@ -109,7 +109,8 @@
     "sendMessage": "Send message",
     "search": "Search",
     "previousPage": "Previous page",
-    "nextPage": "Next page"
+    "nextPage": "Next page",
+    "openNavigation": "Open navigation menu"
   },
   "filters": {
     "searchByName": "Search by name…",
