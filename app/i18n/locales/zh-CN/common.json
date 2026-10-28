@@ -80,6 +80,7 @@
     "active": "活跃",
     "inactive": "未启用",
     "pending": "待处理",
+    "pendingSecondApproval": "等待第二位审核人批准",
     "pendingReview": "待审核",
     "changesRequested": "要求修改",
     "invited": "已邀请",
@@ -98,7 +99,11 @@
   },
   "errors": {
     "generic": "出错了，请重试。",
-    "network": "无法连接，请重试。"
+    "network": "无法连接，请重试。",
+    "referenceId": "问题编号：",
+    "copyReferenceId": "复制编号",
+    "referenceCopied": "已复制",
+    "referenceCopyUnavailable": "请选中上方编号并手动复制。"
   },
   "accessibility": {
     "dismissNotification": "关闭通知",

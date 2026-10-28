@@ -1925,7 +1925,18 @@
       "later": "Kemudian",
       "inProgress": "Sedang Diproses ({{count}})",
       "inProgress_one": "Sedang Diproses ({{count}})",
-      "inProgress_other": "Sedang Diproses ({{count}})"
+      "inProgress_other": "Sedang Diproses ({{count}})",
+      "withdrawalHistory": {
+        "title": "Sejarah pengeluaran",
+        "loading": "Memuatkan sejarah pengeluaran…",
+        "error": "Sejarah pengeluaran tidak dapat dimuatkan. Sila cuba lagi.",
+        "retry": "Cuba lagi",
+        "empty": "Tiada permohonan pengeluaran lagi.",
+        "unknownDestination": "Destinasi bayaran",
+        "page": "Halaman {{page}} daripada {{pages}} · {{total}} permohonan",
+        "previous": "Sebelumnya",
+        "next": "Seterusnya"
+      }
     },
     "profileSections": {
       "contact": "Butiran hubungan",

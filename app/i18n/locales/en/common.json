@@ -80,6 +80,7 @@
     "active": "Active",
     "inactive": "Inactive",
     "pending": "Pending",
+    "pendingSecondApproval": "Waiting for second approval",
     "pendingReview": "Pending review",
     "changesRequested": "Changes requested",
     "invited": "Invited",
@@ -98,7 +99,11 @@
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
-    "network": "Unable to connect. Please try again."
+    "network": "Unable to connect. Please try again.",
+    "referenceId": "Reference ID:",
+    "copyReferenceId": "Copy ID",
+    "referenceCopied": "Copied",
+    "referenceCopyUnavailable": "Select the ID above and copy it manually."
   },
   "accessibility": {
     "dismissNotification": "Dismiss notification",
