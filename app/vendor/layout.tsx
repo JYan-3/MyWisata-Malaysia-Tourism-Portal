@@ -28,7 +28,7 @@ export default async function VendorLayout({ children }: { children: React.React
             vendor-facing entries. Its own SupportChatProvider instance: the
             provider is just local open/close state, and a vendor's chatbot
             has no relationship to a customer session's. */}
-        <SupportChatProvider>
+        <SupportChatProvider countUnread={false}>
           <ChatbotWidget />
         </SupportChatProvider>
       </div>

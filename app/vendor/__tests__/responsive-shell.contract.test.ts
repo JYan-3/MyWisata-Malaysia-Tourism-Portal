@@ -19,4 +19,8 @@ describe('vendor responsive shell contract', () => {
     expect(headerSource).toContain('pl-16 pr-4');
     expect(headerSource).toContain('lg:pl-6');
   });
+
+  it('keeps vendor Inbox messages off the support chat bubble, which cannot list them', () => {
+    expect(layoutSource).toContain('<SupportChatProvider countUnread={false}>');
+  });
 });
