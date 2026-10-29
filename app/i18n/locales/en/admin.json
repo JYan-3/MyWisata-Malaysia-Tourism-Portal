@@ -832,6 +832,12 @@
     },
     "clearing": {
       "errors": ", {{count}} error(s)",
+      "orderReviewRequired": "{{count}} commission(s) remain pending for order review.",
+      "orderReviewRequired_one": "{{count}} commission remains pending for order review.",
+      "orderReviewRequired_other": "{{count}} commissions remain pending for order review.",
+      "rowErrors": "{{count}} result(s) need checking. Refresh the list before taking another action. Contact support with Request ID(s): {{requestIds}}.",
+      "rowErrors_one": "{{count}} result needs checking. Refresh the list before taking another action. Contact support with Request ID {{requestIds}}.",
+      "rowErrors_other": "{{count}} results need checking. Refresh the list before taking another action. Contact support with Request IDs: {{requestIds}}.",
       "result": "Cleared {{cleared}}, reversed {{reversed}}, skipped {{skipped}}{{errors}}",
       "errors_one": ", {{count}} error(s)",
       "errors_other": ", {{count}} error(s)"
@@ -858,6 +864,7 @@
       "batchFlags": "One or more fraud flags could not be updated.",
       "batchFlagUpdate": "Batch fraud flag update failed.",
       "clearing": "Clearing run failed.",
+      "clearingUncertain": "We could not confirm the result. Refresh the list before taking another action. Contact support with Request ID {{requestId}}.",
       "exportRetry": "Could not export the affiliate report. Please try again.",
       "flagNeedsLink": "Every selected open flag must have a link before disabling it.",
       "fraudSweep": "Fraud sweep failed.",
@@ -872,6 +879,9 @@
       "saveTier": "Failed to save tier.",
       "selectOpenFlags": "Select open fraud flags first.",
       "accept": "Could not accept this commission.",
+      "noShowPolicy": "This commission remains pending because there is no approved Affiliate rule for a verified customer no-show.",
+      "orderReview": "This order needs fulfilment or refund review. Resolve it in Reconciliation, then refresh before accepting.",
+      "requestIdUnavailable": "unavailable",
       "reject": "Could not reject this commission.",
       "guestReview": "Could not resolve the guest commission review. Refresh and try again."
     },
@@ -906,6 +916,22 @@
     },
     "minReferrals": "Min referrals",
     "noAttributions": "No attributions match this filter.",
+    "releasePreview": {
+      "label": "Order dry run",
+      "orderReference": "Order: {{id}}",
+      "openReconciliation": "Open Reconciliation",
+      "ready": "Order checks and the clearance window pass. Full eligibility is checked again during clearing; this preview made no changes.",
+      "waitingForMaturity": "Order checks pass. Waiting for the configured clearance date: {{date}}; full eligibility is checked again during clearing.",
+      "reasons": {
+        "no_show_policy": "Verified no-show; commission policy decision is still required.",
+        "order_exception_open": "Order exception still needs review.",
+        "order_missing": "Order could not be confirmed; keep this commission pending.",
+        "order_not_paid": "Order payment is not confirmed; keep this commission pending.",
+        "pickup_unconfirmed": "Event pickup has not been recorded as fulfilled.",
+        "preview_unavailable": "Could not verify this order; keep this commission pending.",
+        "refund_review": "Refund status needs review."
+      }
+    },
     "noCommissions": "No commissions earned yet.",
     "noDisabledLinks": "No links are currently disabled.",
     "noFlags": "Nothing flagged.",

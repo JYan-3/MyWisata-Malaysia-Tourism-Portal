@@ -130,6 +130,7 @@
     "hidden_gem": "Permata Tersembunyi"
   },
   "preferences": {
+    "travelStyles": { "solo": "Solo", "couple": "Pasangan", "family": "Keluarga", "group": "Berkumpulan" },
     "budgetRanges": {
       "budget": "Bajet (< RM100.00/hari)",
       "mid_range": "Pertengahan (RM100.00–RM500.00/hari)",
@@ -1379,6 +1380,7 @@
       "notesPlaceholder": "cth. Saya suka makanan jalanan, mengelakkan pusat beli-belah sesak dan sentiasa mengembara dengan anjing saya…",
       "basedOnActivity": "Berdasarkan aktiviti anda",
       "interests": "Minat (pilih semua yang berkenaan)",
+      "travelStyle": "Gaya perjalanan",
       "budgetRange": "Julat bajet",
       "preferredDistance": "Jarak pilihan",
       "mobilityAccessibility": "Mobiliti & kebolehcapaian",
@@ -1874,6 +1876,12 @@
       "bankWithdrawalsRestricted": "Pengeluaran bank dihadkan sementara",
       "unableVerifyPayout": "Tidak dapat mengesahkan akaun pembayaran",
       "completeKycFirst": "Lengkapkan KYC MYLawatan dahulu",
+      "verifyEmailForWithdrawal": "Sahkan e-mel anda dahulu",
+      "verifyEmailForWithdrawalDescription": "Sahkan alamat e-mel akaun sebelum meminta pengeluaran.",
+      "verifyPhoneForWithdrawal": "Sahkan telefon anda dahulu",
+      "verifyPhoneForWithdrawalDescription": "Telefon yang disahkan diperlukan sebelum meminta pengeluaran.",
+      "completeProfileForWithdrawal": "Lengkapkan profil dahulu",
+      "completeProfileForWithdrawalDescription": "Isi nama, foto, bio, bandar dan negara sebelum meminta pengeluaran.",
       "checkingSetup": "Menyemak penyediaan pengeluaran",
       "setupEarningsOptional": "Sediakan pengeluaran pendapatan (pilihan)",
       "approvedBankDestination": "Pengeluaran bank yang diluluskan akan dihantar ke akaun yang disimpan oleh Stripe.",
@@ -3209,6 +3217,7 @@
         "order": "pesanan {{amount}}",
         "cleared": "Dimasukkan ke dompet",
         "pendingToday": "Belum selesai · selesai hari ini",
+        "pendingNotice": "Komisen tertunda belum tersedia dalam dompet anda. Kami menyemak pemenuhan pesanan, bayaran balik dan tempoh pelepasan yang dikonfigurasi. Baki dompet sedia ada anda tidak terjejas.",
         "pendingIn_other": "Belum selesai · selesai dalam {{count}} hari",
         "pendingIn_one": "Belum selesai · selesai dalam {{count}} hari",
         "pendingIn": "Belum selesai · selesai dalam {{count}} hari",

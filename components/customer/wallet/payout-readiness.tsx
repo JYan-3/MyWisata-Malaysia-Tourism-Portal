@@ -2,6 +2,7 @@
 
 import { AlertCircle, Building2, CheckCircle2, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import { CustomerPanel } from "@/components/customer/customer-page-shell";
 import { Button } from "@/components/ui/button";
 import { ApiErrorNotice } from "@/components/shared/api-error-notice";
@@ -23,6 +24,9 @@ export function PayoutReadiness({ readiness, connectStatus, error, requestId, bu
   const warning = connectStatus === "currently_due" || connectStatus === "pending_verification";
   const failed = connectStatus === "past_due" || connectStatus === "restricted" || connectStatus === "status_error";
   const title = ready ? t("ui.wallet.bankWithdrawalsEnabled")
+    : readiness?.blockerCode === "email_verification_required" ? t("ui.wallet.verifyEmailForWithdrawal")
+    : readiness?.blockerCode === "phone_verification_required" ? t("ui.wallet.verifyPhoneForWithdrawal")
+    : readiness?.blockerCode === "profile_required" ? t("ui.wallet.completeProfileForWithdrawal")
     : readiness?.blockerCode === "kyc_required" || connectStatus === "kyc_required" ? t("ui.wallet.completeKycFirst")
     : readiness?.blockerCode === "minimum_balance_required" ? t("ui.wallet.noAvailableEarnings")
     : connectStatus === "currently_due" ? t("ui.wallet.completePayoutDetails")
@@ -30,6 +34,9 @@ export function PayoutReadiness({ readiness, connectStatus, error, requestId, bu
     : failed ? t("ui.wallet.bankWithdrawalsRestricted")
     : t("ui.wallet.setupEarningsWithdrawals");
   const description = ready ? t("ui.wallet.approvedBankDestination")
+    : readiness?.blockerCode === "email_verification_required" ? t("ui.wallet.verifyEmailForWithdrawalDescription")
+    : readiness?.blockerCode === "phone_verification_required" ? t("ui.wallet.verifyPhoneForWithdrawalDescription")
+    : readiness?.blockerCode === "profile_required" ? t("ui.wallet.completeProfileForWithdrawalDescription")
     : connectStatus === "currently_due" ? t("ui.wallet.stripeNeedsInfo")
     : connectStatus === "pending_verification" ? t("ui.wallet.stripeReviewing")
     : failed ? t("ui.wallet.bankRestrictedDescription")
@@ -40,6 +47,10 @@ export function PayoutReadiness({ readiness, connectStatus, error, requestId, bu
       {ready ? <CheckCircle2 size={16} className="text-primary" /> : warning ? <Clock size={16} className="text-amber-600 dark:text-amber-300" /> : failed ? <AlertCircle size={16} className="text-red-600 dark:text-red-300" /> : <Building2 size={16} className="text-muted-foreground" />}
     </div>
     <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{title}</p><p className="mt-0.5 text-xs text-muted-foreground">{description}</p>{error && <ApiErrorNotice message={error} requestId={requestId} />}{readiness?.destinationSummary && <p className="mt-1 text-xs text-muted-foreground">{readiness.destinationSummary.displayLabel}</p>}{readiness?.lastProviderCheckAt && <p className="mt-1 text-[11px] text-muted-foreground">{new Date(readiness.lastProviderCheckAt).toLocaleString()}</p>}<p className="mt-1 text-xs text-muted-foreground">{t("ui.wallet.stripePrivacy")}</p></div>
+    {readiness?.nextAction === "verify_email" && <Button asChild size="sm"><Link href="/customer/profile">{t("ui.profileWizard.title")}</Link></Button>}
+    {readiness?.nextAction === "verify_phone" && <Button asChild size="sm"><Link href="/customer/phone">{t("ui.profileWizard.verifyPhone")}</Link></Button>}
+    {readiness?.nextAction === "complete_profile" && <Button asChild size="sm"><Link href="/customer/profile">{t("ui.profileWizard.completeTitle")}</Link></Button>}
+    {readiness?.nextAction === "complete_kyc" && <Button asChild size="sm"><Link href="/customer/kyc">{t("ui.kyc.continue")}</Link></Button>}
     {(connectStatus === "unlinked" || connectStatus === "currently_due" || connectStatus === "past_due") && <Button size="sm" onClick={onSetup} disabled={busy}>{busy ? t("ui.states.loading") : t(connectStatus === "unlinked" ? "ui.wallet.setupWithdrawals" : "ui.wallet.updateDetails")}</Button>}
     {(connectStatus === "pending_verification" || connectStatus === "restricted" || connectStatus === "status_error") && <Button size="sm" variant="outline" onClick={onRetry}>{t("ui.wallet.retryStatusCheck")}</Button>}
   </div></CustomerPanel>;

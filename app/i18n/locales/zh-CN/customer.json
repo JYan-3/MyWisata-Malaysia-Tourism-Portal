@@ -130,6 +130,7 @@
     "hidden_gem": "隐藏宝藏"
   },
   "preferences": {
+    "travelStyles": { "solo": "独自旅行", "couple": "双人旅行", "family": "家庭旅行", "group": "团体旅行" },
     "budgetRanges": {
       "budget": "经济型（每天低于 RM100.00）",
       "mid_range": "中档（每天 RM100.00–RM500.00）",
@@ -1379,6 +1380,7 @@
       "notesPlaceholder": "例如：我喜欢街头美食、避开拥挤商场，并且总是带狗旅行……",
       "basedOnActivity": "根据您的活动",
       "interests": "兴趣（可多选）",
+      "travelStyle": "旅行方式",
       "budgetRange": "预算范围",
       "preferredDistance": "偏好距离",
       "mobilityAccessibility": "行动与无障碍",
@@ -1874,6 +1876,12 @@
       "bankWithdrawalsRestricted": "银行提款暂时受限",
       "unableVerifyPayout": "无法验证收款账户",
       "completeKycFirst": "请先完成 MYLawatan KYC",
+      "verifyEmailForWithdrawal": "请先验证邮箱",
+      "verifyEmailForWithdrawalDescription": "申请提款前，请先验证账户邮箱。",
+      "verifyPhoneForWithdrawal": "请先验证手机号",
+      "verifyPhoneForWithdrawalDescription": "申请提款前必须验证手机号。",
+      "completeProfileForWithdrawal": "请先完成个人资料",
+      "completeProfileForWithdrawalDescription": "申请提款前，请填写姓名、照片、简介、城市和国家。",
       "checkingSetup": "正在检查提现设置",
       "setupEarningsOptional": "设置收益提现（可选）",
       "approvedBankDestination": "获批的银行提款将汇入 Stripe 保存的账户。",
@@ -3209,6 +3217,7 @@
         "order": "订单 {{amount}}",
         "cleared": "已转入钱包",
         "pendingToday": "待结算 · 今天结算",
+        "pendingNotice": "待结算佣金暂不可用于钱包消费或提现。系统会检查订单履约、退款状态和已设定的结算期限；这不会影响你现有的钱包余额。",
         "pendingIn_other": "待结算 · {{count}} 天后结算",
         "pendingIn_one": "待结算 · {{count}} 天后结算",
         "pendingIn": "待结算 · {{count}} 天后结算",

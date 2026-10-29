@@ -832,6 +832,12 @@
     },
     "clearing": {
       "errors": "，{{count}} 个错误",
+      "orderReviewRequired": "{{count}} 笔佣金因订单审核仍保持待处理。",
+      "orderReviewRequired_one": "{{count}} 笔佣金因订单审核仍保持待处理。",
+      "orderReviewRequired_other": "{{count}} 笔佣金因订单审核仍保持待处理。",
+      "rowErrors": "有 {{count}} 笔结果需要确认。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号：{{requestIds}}。",
+      "rowErrors_one": "有 {{count}} 笔结果需要确认。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号：{{requestIds}}。",
+      "rowErrors_other": "有 {{count}} 笔结果需要确认。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号：{{requestIds}}。",
       "result": "已清除 {{cleared}} 个，已冲销 {{reversed}} 个，已跳过 {{skipped}} 个{{errors}}",
       "errors_one": "，{{count}} 个错误",
       "errors_other": "，{{count}} 个错误"
@@ -858,6 +864,7 @@
       "batchFlags": "一个或多个欺诈标记无法更新。",
       "batchFlagUpdate": "批量更新欺诈标记失败。",
       "clearing": "清算运行失败。",
+      "clearingUncertain": "无法确认这笔佣金的结果。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号 {{requestId}}。",
       "exportRetry": "无法导出联盟报告。请重试。",
       "flagNeedsLink": "停用前，每个选中的开放标记都必须有链接。",
       "fraudSweep": "欺诈扫描失败。",
@@ -872,6 +879,9 @@
       "saveTier": "无法保存等级。",
       "selectOpenFlags": "请先选择开放的欺诈标记。",
       "accept": "无法通过此佣金。",
+      "noShowPolicy": "已核实用户未到场，但尚无批准的 Affiliate 佣金规则；这笔佣金会继续待审。",
+      "orderReview": "此订单仍需处理取货或退款审核。请在对账页面处理后刷新，再接受佣金。",
+      "requestIdUnavailable": "暂不可用",
       "reject": "无法拒绝此佣金。",
       "guestReview": "无法处理 Guest 佣金审核。请刷新后重试。"
     },
@@ -906,6 +916,22 @@
     },
     "minReferrals": "最低推荐数",
     "noAttributions": "没有符合此筛选条件的归因。",
+    "releasePreview": {
+      "label": "订单只读预演",
+      "orderReference": "订单编号：{{id}}",
+      "openReconciliation": "打开订单对账",
+      "ready": "订单检查和结算期限均已通过。正式清算时仍会重新检查全部资格；此预演没有修改资料。",
+      "waitingForMaturity": "订单检查已通过，等待设定的结算日期：{{date}}；正式清算时仍会重新检查全部资格。",
+      "reasons": {
+        "no_show_policy": "已核实用户未到场，佣金规则仍待决定。",
+        "order_exception_open": "订单异常仍待审核。",
+        "order_missing": "无法确认订单；请保持佣金待审。",
+        "order_not_paid": "订单付款尚未确认；请保持佣金待审。",
+        "pickup_unconfirmed": "尚未记录活动订单已完成取货。",
+        "preview_unavailable": "无法核实订单；请保持佣金待审。",
+        "refund_review": "退款状态仍需审核。"
+      }
+    },
     "noCommissions": "尚未获得佣金。",
     "noDisabledLinks": "当前没有停用的链接。",
     "noFlags": "没有标记内容。",
