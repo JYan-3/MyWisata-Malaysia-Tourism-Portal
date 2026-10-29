@@ -832,6 +832,13 @@
     },
     "clearing": {
       "errors": ", {{count}} ralat",
+      "orderReviewRequired": "{{count}} komisen kekal tertunda sementara pesanan disemak.",
+      "orderReviewRequired_one": "{{count}} komisen kekal tertunda sementara pesanan disemak.",
+      "orderReviewRequired_other": "{{count}} komisen kekal tertunda sementara pesanan disemak.",
+      "rowErrors": "{{count}} hasil perlu disahkan. Muat semula senarai sebelum tindakan lain. Hubungi sokongan dengan ID Permintaan: {{requestIds}}.",
+      "rowErrors_one": "{{count}} hasil perlu disahkan. Muat semula senarai sebelum tindakan lain. Hubungi sokongan dengan ID Permintaan: {{requestIds}}.",
+      "rowErrors_other": "{{count}} hasil perlu disahkan. Muat semula senarai sebelum tindakan lain. Hubungi sokongan dengan ID Permintaan: {{requestIds}}.",
+      "orderReviewRequired": "{{count}} komisen kekal tertunda sementara pesanan disemak.",
       "result": "Diselesaikan {{cleared}}, diterbalikkan {{reversed}}, dilangkau {{skipped}}{{errors}}",
       "errors_one": ", {{count}} ralat",
       "errors_other": ", {{count}} ralat"
@@ -858,6 +865,7 @@
       "batchFlags": "Satu atau lebih bendera penipuan tidak dapat dikemas kini.",
       "batchFlagUpdate": "Kemas kini bendera penipuan secara pukal gagal.",
       "clearing": "Penyelesaian gagal.",
+      "clearingUncertain": "Kami tidak dapat mengesahkan hasil komisen ini. Muat semula senarai sebelum tindakan lain. Hubungi sokongan dengan ID Permintaan {{requestId}}.",
       "exportRetry": "Tidak dapat mengeksport laporan afiliasi. Sila cuba lagi.",
       "flagNeedsLink": "Setiap bendera terbuka yang dipilih mesti mempunyai pautan sebelum dilumpuhkan.",
       "fraudSweep": "Imbasan penipuan gagal.",
@@ -872,6 +880,11 @@
       "saveTier": "Gagal menyimpan peringkat.",
       "selectOpenFlags": "Pilih bendera penipuan terbuka dahulu.",
       "accept": "Tidak dapat menerima komisen ini.",
+      "noShowPolicy": "Ketidakhadiran pelanggan telah disahkan, tetapi tiada peraturan komisen Affiliate yang diluluskan; komisen ini kekal tertunda.",
+      "orderReview": "Pesanan ini memerlukan semakan pemenuhan atau bayaran balik. Selesaikan di Rekonsiliasi, kemudian muat semula sebelum menerima komisen.",
+      "requestIdUnavailable": "tidak tersedia",
+      "noShowPolicy": "Ketidakhadiran pelanggan telah disahkan, tetapi tiada peraturan komisen Affiliate yang diluluskan; komisen ini kekal tertunda.",
+      "orderReview": "Pesanan ini memerlukan semakan pemenuhan atau bayaran balik. Selesaikan di Rekonsiliasi, kemudian muat semula sebelum menerima komisen.",
       "reject": "Tidak dapat menolak komisen ini.",
       "guestReview": "Tidak dapat menyelesaikan semakan komisen tetamu. Muat semula dan cuba lagi."
     },
@@ -906,6 +919,22 @@
     },
     "minReferrals": "Min rujukan",
     "noAttributions": "Tiada atribusi sepadan dengan penapis ini.",
+    "releasePreview": {
+      "label": "Pratonton pesanan baca sahaja",
+      "orderReference": "Pesanan: {{id}}",
+      "openReconciliation": "Buka Rekonsiliasi",
+      "ready": "Semakan pesanan dan tempoh pelepasan telah dipenuhi. Kelayakan penuh akan disemak semula semasa penyelesaian; pratonton ini tidak mengubah data.",
+      "waitingForMaturity": "Semakan pesanan lulus. Menunggu tarikh pelepasan yang dikonfigurasi: {{date}}; kelayakan penuh akan disemak semula semasa penyelesaian.",
+      "reasons": {
+        "no_show_policy": "Ketidakhadiran telah disahkan; keputusan dasar komisen masih diperlukan.",
+        "order_exception_open": "Pengecualian pesanan masih perlu disemak.",
+        "order_missing": "Pesanan tidak dapat disahkan; kekalkan komisen sebagai tertunda.",
+        "order_not_paid": "Bayaran pesanan belum disahkan; kekalkan komisen sebagai tertunda.",
+        "pickup_unconfirmed": "Pengambilan aktiviti belum direkodkan sebagai selesai.",
+        "preview_unavailable": "Pesanan tidak dapat disahkan; kekalkan komisen sebagai tertunda.",
+        "refund_review": "Status bayaran balik masih perlu disemak."
+      }
+    },
     "noCommissions": "Tiada komisen diperoleh lagi.",
     "noDisabledLinks": "Tiada pautan yang sedang dilumpuhkan.",
     "noFlags": "Tiada apa-apa ditandai.",

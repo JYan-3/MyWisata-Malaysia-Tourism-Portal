@@ -80,6 +80,7 @@
     "active": "Aktif",
     "inactive": "Tidak aktif",
     "pending": "Menunggu",
+    "pendingSecondApproval": "Menunggu kelulusan pelulus kedua",
     "pendingReview": "Menunggu semakan",
     "changesRequested": "Perubahan diminta",
     "invited": "Dijemput",
@@ -98,7 +99,11 @@
   },
   "errors": {
     "generic": "Sesuatu tidak kena. Sila cuba lagi.",
-    "network": "Tidak dapat disambungkan. Sila cuba lagi."
+    "network": "Tidak dapat disambungkan. Sila cuba lagi.",
+    "referenceId": "ID rujukan:",
+    "copyReferenceId": "Salin ID",
+    "referenceCopied": "Disalin",
+    "referenceCopyUnavailable": "Pilih ID di atas dan salinnya secara manual."
   },
   "accessibility": {
     "dismissNotification": "Tutup pemberitahuan",
