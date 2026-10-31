@@ -303,7 +303,7 @@
       "guestTitle": "Sign in to verify your phone",
       "guestDescription": "Sign in before starting phone verification.",
       "completeTitle": "Phone verified",
-      "completeDescription": "Booking, purchasing, checkout and basic AI recommendations are now available, subject to current policy.",
+      "completeDescription": "You can now make bookings and purchases, complete checkout, and use basic AI recommendations. Enjoy using MYLawatan!",
       "verified": "Phone number verified."
     },
     "actions": {
@@ -2471,6 +2471,13 @@
         "fits_estimate": "Fits the current travel estimate",
         "unknown": "Visit duration or travel estimate unknown"
       },
+      "invalidChange": "Check the dates, time and stop order, then try again.",
+      "accessChanged": "Your trip access has changed. Sign in again and refresh the trip.",
+      "itemUnavailable": "This stop or time is no longer available. Refresh the trip and choose another option.",
+      "resultUnknown": "We could not confirm whether the change was saved. Check the saved trip before trying again.",
+      "serviceUnavailable": "The trip service is temporarily unavailable. Your current plan is preserved. Try again later.",
+      "verifyFailed": "We could not check the saved trip. Keep this page open and try checking again.",
+      "verifyState": "Check saved trip",
       "versionConflict": "This trip changed in another session. Your input is preserved. Reload the trip before saving again.",
       "legacyRestore": "Restore old trips",
       "legacyRestoreHint": "This browser has older saved trips. Restore them once if you still need them.",
@@ -2977,7 +2984,7 @@
         "pending": "Ready to collect",
         "collected": "Collected",
         "legacy_completed": "Already completed",
-        "refund_paused": "Collection paused while refund is reviewed",
+        "refund_paused": "Collection paused due to refund status. Check refund details.",
         "unavailable": "Collection is unavailable"
       }
     },
